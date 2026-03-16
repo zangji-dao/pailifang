@@ -39,7 +39,7 @@ if pnpm run build 2>&1 | tee -a $LOG_FILE; then
     echo "✅ 构建成功: $(date '+%Y-%m-%d %H:%M:%S')" >> $LOG_FILE
     
     # 提交日志到 GitHub
-    git add logs/
+    git add -f logs/build.log
     git commit -m "chore: 更新构建日志 - 成功" || echo "无日志变更"
     git push origin main || echo "日志推送失败（可忽略）"
     
@@ -56,7 +56,7 @@ else
     cp $LOG_FILE $ERROR_LOG_FILE
     
     # 提交日志到 GitHub
-    git add logs/
+    git add -f logs/build.log logs/build-error.log
     git commit -m "chore: 更新构建日志 - 失败" || echo "无日志变更"
     git push origin main || echo "日志推送失败（可忽略）"
     

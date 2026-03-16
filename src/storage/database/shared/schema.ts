@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm"
 
 
 export const customerFollows = pgTable("customer_follows", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`sql`gen_random_uuid()``).primaryKey().notNull(),
 	customerId: varchar("customer_id", { length: 36 }).notNull(),
 	userId: varchar("user_id", { length: 36 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
@@ -24,7 +24,7 @@ export const healthCheck = pgTable("health_check", {
 });
 
 export const customers = pgTable("customers", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	contactPerson: varchar("contact_person", { length: 128 }).notNull(),
 	contactPhone: varchar("contact_phone", { length: 20 }).notNull(),
@@ -42,7 +42,7 @@ export const customers = pgTable("customers", {
 ]);
 
 export const ledgers = pgTable("ledgers", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	customerId: varchar("customer_id", { length: 36 }).notNull(),
 	accountantId: varchar("accountant_id", { length: 36 }).notNull(),
@@ -59,7 +59,7 @@ export const ledgers = pgTable("ledgers", {
 ]);
 
 export const profitRules = pgTable("profit_rules", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
 	salesRate: integer("sales_rate").notNull(),
@@ -75,7 +75,7 @@ export const profitRules = pgTable("profit_rules", {
 ]);
 
 export const profitShares = pgTable("profit_shares", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	customerId: varchar("customer_id", { length: 36 }),
 	ledgerId: varchar("ledger_id", { length: 36 }),
 	salesId: varchar("sales_id", { length: 36 }),
@@ -99,7 +99,7 @@ export const profitShares = pgTable("profit_shares", {
 ]);
 
 export const users = pgTable("users", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	email: varchar({ length: 255 }).notNull(),
 	password: varchar({ length: 255 }).notNull(),
 	name: varchar({ length: 128 }).notNull(),
@@ -117,7 +117,7 @@ export const users = pgTable("users", {
 ]);
 
 export const workOrders = pgTable("work_orders", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	title: varchar({ length: 255 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
 	description: text(),
@@ -162,7 +162,7 @@ export const chartOfAccounts = pgTable("chart_of_accounts", {
 ]);
 
 export const auxiliaryTypes = pgTable("auxiliary_types", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 50 }).notNull(),
 	code: varchar({ length: 20 }).notNull(),
 	description: text(),
@@ -177,7 +177,7 @@ export const auxiliaryTypes = pgTable("auxiliary_types", {
 ]);
 
 export const auxiliaryItems = pgTable("auxiliary_items", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	typeId: varchar("type_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 200 }).notNull(),
@@ -203,7 +203,7 @@ export const auxiliaryItems = pgTable("auxiliary_items", {
 ]);
 
 export const accountAuxiliarySettings = pgTable("account_auxiliary_settings", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	accountId: varchar("account_id", { length: 36 }).notNull(),
 	auxiliaryTypeId: varchar("auxiliary_type_id", { length: 36 }).notNull(),
 	isRequired: boolean("is_required").default(false).notNull(),
@@ -220,7 +220,7 @@ export const accountAuxiliarySettings = pgTable("account_auxiliary_settings", {
 ]);
 
 export const auxiliaryBalances = pgTable("auxiliary_balances", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	ledgerId: varchar("ledger_id", { length: 36 }).notNull(),
 	accountId: varchar("account_id", { length: 36 }).notNull(),
 	accountCode: varchar("account_code", { length: 20 }).notNull(),
@@ -257,7 +257,7 @@ export const auxiliaryBalances = pgTable("auxiliary_balances", {
 ]);
 
 export const currencies = pgTable("currencies", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	code: varchar({ length: 10 }).notNull(),
 	name: varchar({ length: 50 }).notNull(),
 	symbol: varchar({ length: 10 }),
@@ -276,7 +276,7 @@ export const currencies = pgTable("currencies", {
 ]);
 
 export const exchangeRateHistory = pgTable("exchange_rate_history", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	currencyId: varchar("currency_id", { length: 36 }).notNull(),
 	currencyCode: varchar("currency_code", { length: 10 }).notNull(),
 	rateDate: date("rate_date").notNull(),
@@ -290,7 +290,7 @@ export const exchangeRateHistory = pgTable("exchange_rate_history", {
 
 // 基地表
 export const bases = pgTable("bases", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	address: text(),
 	status: varchar({ length: 20 }).default('active').notNull(),
@@ -303,7 +303,7 @@ export const bases = pgTable("bases", {
 
 // 企业表
 export const enterprises = pgTable("enterprises", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	creditCode: varchar("credit_code", { length: 50 }),
 	legalPerson: varchar("legal_person", { length: 100 }),
@@ -319,7 +319,7 @@ export const enterprises = pgTable("enterprises", {
 
 // 物业表（独立水电计量单元）
 export const meters = pgTable("meters", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	baseId: varchar("base_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 255 }),
@@ -349,7 +349,7 @@ export const meters = pgTable("meters", {
 
 // 物理空间表
 export const spaces = pgTable("spaces", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	meterId: varchar("meter_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 255 }),
@@ -369,7 +369,7 @@ export const spaces = pgTable("spaces", {
 
 // 注册号表
 export const regNumbers = pgTable("reg_numbers", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	spaceId: varchar("space_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	status: varchar({ length: 20 }).default('available').notNull(), // available=可用, allocated=已分配, reserved=预留
