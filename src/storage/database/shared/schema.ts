@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm"
 
 
 export const customerFollows = pgTable("customer_follows", {
-	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	customerId: varchar("customer_id", { length: 36 }).notNull(),
 	userId: varchar("user_id", { length: 36 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
