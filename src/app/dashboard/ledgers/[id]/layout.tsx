@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { LedgerContext } from "./ledger-context";
+import { LedgerContext, LedgerConfig, DEFAULT_LEDGER_CONFIG } from "./ledger-context";
 
 // 主菜单项类型（一级菜单）
 interface MainMenuItem {
@@ -159,11 +159,7 @@ export default function LedgerDetailLayout({ children }: LedgerDetailLayoutProps
   const pathname = usePathname();
   const ledgerId = params.id as string;
 
-  const [ledgerInfo, setLedgerInfo] = useState<{
-    name: string;
-    year: number;
-    standard: string;
-  } | null>(null);
+  const [ledgerInfo, setLedgerInfo] = useState<LedgerConfig | null>(null);
 
   const [activePath, setActivePath] = useState<string>("");
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -171,9 +167,11 @@ export default function LedgerDetailLayout({ children }: LedgerDetailLayoutProps
   // 获取账套信息
   useEffect(() => {
     setLedgerInfo({
+      ...DEFAULT_LEDGER_CONFIG,
+      id: ledgerId,
       name: "杭州某某科技有限公司",
       year: 2024,
-      standard: "小企业会计准则",
+      accountingStandard: "小企业会计准则",
     });
   }, [ledgerId]);
 
