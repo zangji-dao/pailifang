@@ -3,8 +3,6 @@
 # Π立方项目构建脚本 - 带日志上传
 # 用法: ./scripts/build-and-log.sh
 
-set -e
-
 PROJECT_DIR="/var/www/pi-cube"
 LOG_FILE="$PROJECT_DIR/logs/build.log"
 ERROR_LOG_FILE="$PROJECT_DIR/logs/build-error.log"
@@ -26,13 +24,15 @@ git reset --hard origin/main
 # 创建日志目录
 mkdir -p logs
 
-# 执行构建并记录日志
+# 执行构建并记录日志（使用 set -o pipefail 正确捕获错误）
 echo ""
 echo "🔨 开始构建..."
 echo "构建时间: $(date '+%Y-%m-%d %H:%M:%S')" > $LOG_FILE
 echo "==========================================" >> $LOG_FILE
 
+set -o pipefail
 if pnpm run build 2>&1 | tee -a $LOG_FILE; then
+    set +o pipefail
     # 构建成功
     echo "" >> $LOG_FILE
     echo "==========================================" >> $LOG_FILE
@@ -45,8 +45,9 @@ if pnpm run build 2>&1 | tee -a $LOG_FILE; then
     
     echo ""
     echo "✅ 构建成功！"
-    echo "📋 日志已推送到 GitHub: logs/build.log"
+    echo "📋 日志已保存: logs/build.log"
 else
+    set +o pipefail
     # 构建失败
     echo "" >> $LOG_FILE
     echo "==========================================" >> $LOG_FILE
@@ -62,6 +63,6 @@ else
     
     echo ""
     echo "❌ 构建失败！"
-    echo "📋 错误日志已推送到 GitHub: logs/build-error.log"
+    echo "📋 错误日志: logs/build-error.log"
     exit 1
 fi
