@@ -1,0 +1,1 @@
+export { CurrencySettingsPage } from "./CurrencySettingsPage";
