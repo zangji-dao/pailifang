@@ -13,27 +13,13 @@ interface MySQLConfig {
   database: string;
 }
 
-function loadEnv(): void {
-  // 在服务器端尝试加载环境变量
-  if (typeof window === 'undefined') {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('dotenv').config();
-    } catch {
-      // dotenv not available
-    }
-  }
-}
-
 function getMySQLConfig(): MySQLConfig {
-  loadEnv();
-
   const config: MySQLConfig = {
-    host: process.env.MYSQL_HOST || process.env.COZE_MYSQL_HOST || 'localhost',
-    port: parseInt(process.env.MYSQL_PORT || process.env.COZE_MYSQL_PORT || '3306', 10),
-    user: process.env.MYSQL_USER || process.env.COZE_MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || process.env.COZE_MYSQL_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || process.env.COZE_MYSQL_DATABASE || 'pi_cube',
+    host: process.env.MYSQL_HOST || 'localhost',
+    port: parseInt(process.env.MYSQL_PORT || '3306', 10),
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || 'pi_cube',
   };
 
   return config;
@@ -74,11 +60,6 @@ export async function closeConnection(): Promise<void> {
   }
 }
 
-// 获取数据库连接（带令牌支持，用于兼容旧代码）
-function getDbWithToken(token?: string): ReturnType<typeof drizzle> {
-  // MySQL 连接不需要 token 参数，直接返回 db
-  return getDb();
-}
-
-// 兼容旧代码的导出
-export { loadEnv, getMySQLConfig as getSupabaseCredentials, getDbWithToken as getSupabaseClient, getDb };
+// 兼容旧代码的别名
+export const getSupabaseClient = getDb;
+export const getSupabaseCredentials = getMySQLConfig;
