@@ -6,17 +6,24 @@
 - Nginx
 - PM2 (全局安装)
 
+## 重要说明
+
+**开发环境和生产环境共用同一个数据库**：
+- 数据库服务器：`152.136.12.122:5432`
+- 数据库名：`pi_cube`
+- 这意味着开发时的数据会直接同步到生产环境，无需额外迁移
+
 ## 环境变量配置
 
 在服务器上创建 `.env.production` 文件：
 
 ```bash
-# PostgreSQL 数据库配置
-DATABASE_HOST=152.136.12.122
-DATABASE_PORT=5432
-DATABASE_USER=postgres
-DATABASE_PASSWORD=your_password
-DATABASE_NAME=pi_accounting
+# PostgreSQL 数据库配置（与开发环境共用同一数据库）
+PG_HOST=152.136.12.122
+PG_PORT=5432
+PG_USER=pi_user
+PG_PASSWORD=your_password
+PG_DATABASE=pi_cube
 
 # 应用配置
 NODE_ENV=production
