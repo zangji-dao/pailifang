@@ -1,6 +1,29 @@
 // API 基础配置
-// BFF 架构：前端调用后端 API (端口 4001)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+// 动态获取 API 地址：优先使用环境变量，否则根据当前访问地址自动判断
+const getApiBaseUrl = (): string => {
+  // 1. 优先使用环境变量
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // 2. 服务端渲染时使用 localhost
+  if (typeof window === 'undefined') {
+    return 'http://localhost:4001';
+  }
+  
+  // 3. 客户端：根据当前访问地址动态判断
+  const { protocol, hostname, port } = window.location;
+  
+  // 如果通过域名访问（无端口或端口80/443），使用相对路径 /api（通过 Nginx 代理）
+  if (!port || port === '80' || port === '443') {
+    return `${protocol}//${hostname}/api`;
+  }
+  
+  // 如果通过 IP:端口访问，使用同 IP 的 4001 端口
+  return `${protocol}//${hostname}:4001`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface ApiResponse<T = any> {
   success: boolean;
