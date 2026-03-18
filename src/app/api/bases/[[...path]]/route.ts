@@ -1,28 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * API 代理：将 /api/bases/* 请求转发到后端
- * 沙箱环境：转发到生产环境后端
- * 生产环境：通过环境变量配置或 localhost:4001
+ * API 代理：/api/bases/* → 后端
+ * 自动判断环境，无需手动配置
  */
 async function proxyRequest(request: NextRequest, method: string) {
   try {
     const path = request.nextUrl.pathname.replace('/api/bases', '');
     const searchParams = request.nextUrl.searchParams.toString();
     
-    // 确定 API 基础 URL
+    // 确定后端地址（与 apiClient.ts 逻辑一致）
     let apiBaseUrl: string;
     
-    // 1. 优先使用环境变量
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-    }
-    // 2. 沙箱环境（*.dev.coze.site）使用生产环境后端
-    else if (request.nextUrl.hostname.includes('dev.coze.site')) {
+    // 沙箱环境：使用生产后端
+    if (process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')) {
       apiBaseUrl = 'http://152.136.12.122:4001';
-    }
-    // 3. 默认使用 localhost
-    else {
+    } else {
+      // 生产服务器：使用本地后端
       apiBaseUrl = 'http://localhost:4001';
     }
     
@@ -32,7 +26,6 @@ async function proxyRequest(request: NextRequest, method: string) {
       'Content-Type': 'application/json',
     };
 
-    // 转发 Authorization 头
     const authHeader = request.headers.get('Authorization');
     if (authHeader) {
       headers['Authorization'] = authHeader;
@@ -43,7 +36,6 @@ async function proxyRequest(request: NextRequest, method: string) {
       headers,
     };
 
-    // 转发请求体
     if (method !== 'GET' && method !== 'DELETE') {
       const body = await request.text();
       if (body) {
@@ -51,7 +43,6 @@ async function proxyRequest(request: NextRequest, method: string) {
       }
     }
 
-    console.log(`[API代理] ${method} ${url}`);
     const response = await fetch(url, options);
     const data = await response.json();
 

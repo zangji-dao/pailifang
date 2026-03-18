@@ -1,34 +1,31 @@
 // API 基础配置
-// 动态获取 API 地址：优先使用环境变量，否则根据当前访问地址自动判断
+// 自动判断环境，无需手动配置
+
 const getApiBaseUrl = (): string => {
-  // 1. 优先使用环境变量
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  
-  // 2. 服务端渲染时
+  // 服务端渲染时
   if (typeof window === 'undefined') {
-    // 检查是否是沙箱环境（通过环境变量判断）
+    // 沙箱环境：使用生产后端
     if (process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')) {
       return 'http://152.136.12.122:4001';
     }
+    // 生产服务器：使用本地后端
     return 'http://localhost:4001';
   }
   
-  // 3. 客户端：根据当前访问地址动态判断
+  // 客户端
   const { protocol, hostname, port } = window.location;
   
-  // 沙箱环境（*.dev.coze.site）使用生产环境后端
+  // 沙箱环境：使用生产后端
   if (hostname.includes('dev.coze.site')) {
     return 'http://152.136.12.122:4001';
   }
   
-  // 如果通过域名访问（无端口或端口80/443），使用相对路径 /api（通过 Nginx 代理）
+  // 生产环境：通过域名访问（无端口）→ 使用 Nginx 代理
   if (!port || port === '80' || port === '443') {
     return `${protocol}//${hostname}/api`;
   }
   
-  // 如果通过 IP:端口访问，使用同 IP 的 4001 端口
+  // 生产环境：通过 IP:端口访问 → 使用同 IP 的 4001 端口
   return `${protocol}//${hostname}:4001`;
 };
 
@@ -88,7 +85,6 @@ class ApiClient {
 
       return data;
     } catch (error) {
-      // 静默处理网络错误，返回失败响应让调用方处理降级逻辑
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
@@ -126,8 +122,5 @@ class ApiClient {
   }
 }
 
-// 导出 API 客户端实例
 export const apiClient = new ApiClient(API_BASE_URL);
-
-// 导出 API 基础 URL
 export const API_BASE_URL_EXPORTED = API_BASE_URL;
