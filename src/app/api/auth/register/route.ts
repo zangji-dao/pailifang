@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, users, eq } from "@/storage/database/db";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,16 +12,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
-
     // 检查邮箱是否已存在
-    const { data: existingUser } = await client
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .single();
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
 
-    if (existingUser) {
+    if (existing.length > 0) {
       return NextResponse.json(
         { error: "该邮箱已被注册" },
         { status: 409 }
@@ -29,20 +27,24 @@ export async function POST(req: NextRequest) {
     }
 
     // 创建用户
-    const { data: newUser, error: insertError } = await client
-      .from("users")
-      .insert({
-        email,
-        password,
-        name,
-        role,
-        phone,
-      })
-      .select()
-      .single();
+    const result = await db.insert(users).values({
+      email,
+      password,
+      name,
+      role,
+      phone,
+    });
 
-    if (insertError || !newUser) {
-      console.error("创建用户失败:", insertError);
+    // 查询刚创建的用户
+    const newUserResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    const newUser = newUserResult[0];
+
+    if (!newUser) {
       return NextResponse.json(
         { error: "创建用户失败" },
         { status: 500 }

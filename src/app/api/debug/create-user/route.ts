@@ -1,28 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, users } from "@/storage/database/db";
 
 export async function POST(req: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    await db.insert(users).values({
+      email: "test@example.com",
+      password: "test123",
+      name: "测试用户",
+      role: "accountant",
+      isActive: true,
+    });
 
-    const { data, error } = await client
-      .from("users")
-      .insert({
-        email: "test@example.com",
-        password: "test123",
-        name: "测试用户",
-        role: "accountant",
-        is_active: true,
-      })
+    // 查询刚创建的用户
+    const result = await db
       .select()
-      .single();
+      .from(users)
+      .where(eq(users.email, "test@example.com"))
+      .limit(1);
 
-    if (error) {
-      console.error("创建用户失败:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: result[0] });
   } catch (error) {
     console.error("创建用户失败:", error);
     return NextResponse.json(
@@ -31,3 +27,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+import { eq } from "drizzle-orm";

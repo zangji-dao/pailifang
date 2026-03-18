@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, users } from "@/storage/database/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getSupabaseClient();
-    const { data, error } = await client
-      .from("users")
-      .select("*");
+    const data = await db.select().from(users);
 
     return NextResponse.json({
       success: true,
       data,
-      error,
     });
   } catch (error) {
     console.error("查询用户失败:", error);

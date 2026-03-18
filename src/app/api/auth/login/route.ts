@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { users } from "@/storage/database/shared/schema";
+import { db, users, eq, and } from "@/storage/database/db";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,17 +12,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
-
     // 查询用户
-    const { data: userData, error: userError } = await client
-      .from("users")
-      .select("*")
-      .eq("email", email)
-      .eq("is_active", true)
-      .single();
+    const result = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.isActive, true)))
+      .limit(1);
 
-    if (userError || !userData) {
+    const userData = result[0];
+
+    if (!userData) {
       return NextResponse.json(
         { error: "用户不存在或已被禁用" },
         { status: 401 }
