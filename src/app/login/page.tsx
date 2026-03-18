@@ -88,10 +88,7 @@ export default function LoginPage() {
         backgroundPosition: "center",
       }}
     >
-      {/* 半透明遮罩 */}
-      <div className="absolute inset-0 bg-white/70 backdrop-blur-sm" />
-      
-      <Card className="w-full max-w-sm border-slate-200/60 shadow-xl relative z-10 bg-white/90 backdrop-blur">
+      <Card className="w-full max-w-sm border-slate-200/60 shadow-xl relative z-10 bg-white/95 backdrop-blur-sm">
         <CardHeader className="space-y-4 pt-8 pb-2">
           {/* Logo */}
           <div className="flex justify-center">
