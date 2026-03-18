@@ -1,20 +1,17 @@
 /**
  * 对象存储服务类型定义
- * 支持本地文件系统（开发环境）和 S3 兼容存储（生产环境 Lighthouse）
+ * 支持 S3 兼容存储（Lighthouse 轻量对象存储）
  */
 
 /**
  * 存储配置
  */
 export interface StorageConfig {
-  /** 存储类型: local | s3 */
-  type: 'local' | 's3';
+  /** 存储类型: s3 */
+  type: 's3';
   
-  /** 本地存储路径（仅 type=local 时使用） */
-  localStoragePath?: string;
-  
-  /** S3 配置（仅 type=s3 时使用） */
-  s3?: {
+  /** S3 配置 */
+  s3: {
     /** 访问密钥 ID */
     accessKeyId: string;
     /** 访问密钥 */

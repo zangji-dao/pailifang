@@ -71,7 +71,6 @@ export class S3StorageService implements IStorageService {
       Body: buffer,
       ContentType: contentType,
       Metadata: options?.metadata,
-      // 私有读写，不设置 ACL
     });
 
     await this.client.send(command);
@@ -149,7 +148,7 @@ export class S3StorageService implements IStorageService {
         contentType: response.ContentType || 'application/octet-stream',
         lastModified: response.LastModified,
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -166,7 +165,7 @@ export class S3StorageService implements IStorageService {
 
       await this.client.send(command);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -224,7 +223,7 @@ export class S3StorageService implements IStorageService {
     return {
       key: targetKey,
       url: url.url,
-      size: 0, // 复制操作不返回大小
+      size: 0,
     };
   }
 }
@@ -239,7 +238,6 @@ let storageInstance: S3StorageService | null = null;
  */
 export function getStorageService(): S3StorageService {
   if (!storageInstance) {
-    // 从环境变量读取配置
     const accessKeyId = process.env.S3_ACCESS_KEY_ID;
     const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
     const bucket = process.env.S3_BUCKET;

@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import { corsMiddleware } from './middleware/cors';
 import authRoutes from './routes/authRoutes';
 import customerRoutes from './routes/customerRoutes';
@@ -6,9 +7,18 @@ import ledgerRoutes from './routes/ledgerRoutes';
 import workOrderRoutes from './routes/workOrderRoutes';
 import profitShareRoutes from './routes/profitShareRoutes';
 import accountRoutes from './routes/accountRoutes';
+import storageRoutes from './routes/storageRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// 文件上传中间件配置
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 最大 50MB
+  },
+});
 
 // 中间件
 app.use(corsMiddleware);
@@ -27,6 +37,9 @@ app.use('/api/ledgers', ledgerRoutes);
 app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/profit-shares', profitShareRoutes);
 app.use('/api/accounts', accountRoutes);
+
+// 文件存储路由（需要文件上传中间件）
+app.use('/api/storage', upload.single('file'), storageRoutes);
 
 // 404 处理
 app.use((req, res) => {

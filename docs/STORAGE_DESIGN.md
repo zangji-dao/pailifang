@@ -75,15 +75,37 @@ Bucket: pi-cube-files-1234567890  # 带 APPID 的完整名称
 ### 5. 环境变量配置
 
 ```bash
-# .env.production
+# backend/.env
 
 # 腾讯云 Lighthouse 轻量对象存储配置
-STORAGE_TYPE=lighthouse
 S3_ACCESS_KEY_ID=AKIDxxxxxxxxxxxxxxxx
 S3_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
 S3_BUCKET=pi-cube-files-1234567890
 S3_REGION=ap-beijing
 S3_ENDPOINT=https://cos.ap-beijing.myqcloud.com
+```
+
+## 后端 API 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/storage/upload` | 上传文件 |
+| GET | `/api/storage/files` | 列出文件 |
+| GET | `/api/storage/files/:key` | 获取下载链接 |
+| DELETE | `/api/storage/files/:key` | 删除文件 |
+
+### 使用示例
+
+**上传文件**：
+```bash
+curl -X POST http://localhost:4001/api/storage/upload \
+  -F "file=@document.pdf" \
+  -F "type=document"
+```
+
+**获取下载链接**：
+```bash
+curl http://localhost:4001/api/storage/files/documents/1234567890-abc123.pdf
 ```
 
 ## 存储目录结构
