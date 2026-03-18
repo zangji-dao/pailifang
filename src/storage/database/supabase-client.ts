@@ -9,7 +9,8 @@ import * as schema from './shared/schema';
 import { eq, and, or, desc, asc, sql, inArray, isNull, isNotNull, like, gte, lte, gt, lt, SQL } from 'drizzle-orm';
 
 let pool: mysql.Pool | null = null;
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let dbInstance: any = null;
 
 function getMySQLConfig() {
   if (typeof window === 'undefined') {
@@ -45,11 +46,11 @@ function getPool(): mysql.Pool {
   return pool;
 }
 
-function getDb(): NonNullable<typeof dbInstance> {
+function getDb(): any {
   if (!dbInstance) {
     dbInstance = drizzle(getPool(), { schema, mode: 'default' });
   }
-  return dbInstance!;
+  return dbInstance;
 }
 
 // 表名映射
