@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Crown, Calculator, Phone } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +14,42 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // 测试账号快捷登录
+  const testAccounts = [
+    { email: "admin@example.com", password: "admin123", name: "管理员", role: "admin", icon: Crown, color: "text-amber-600", bg: "hover:bg-amber-50 hover:border-amber-300" },
+    { email: "accountant@example.com", password: "accountant123", name: "会计", role: "accountant", icon: Calculator, color: "text-emerald-600", bg: "hover:bg-emerald-50 hover:border-emerald-300" },
+    { email: "sales@example.com", password: "sales123", name: "销售", role: "sales", icon: Phone, color: "text-blue-600", bg: "hover:bg-blue-50 hover:border-blue-300" },
+  ];
+
+  const handleQuickLogin = async (account: typeof testAccounts[0]) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: account.email, password: account.password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "登录失败");
+      }
+
+      localStorage.setItem("user", JSON.stringify(data.data));
+      localStorage.setItem("isLoggedIn", "true");
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +159,27 @@ export default function LoginPage() {
               {loading ? "登录中..." : "登录"}
             </Button>
           </form>
+
+          {/* 测试账号快捷登录 */}
+          <div className="pt-4 border-t border-slate-100">
+            <p className="text-xs text-slate-400 text-center mb-3">测试账号快捷登录</p>
+            <div className="grid grid-cols-3 gap-2">
+              {testAccounts.map((account) => (
+                <Button
+                  key={account.role}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={`h-9 text-xs border-slate-200 ${account.bg}`}
+                  onClick={() => handleQuickLogin(account)}
+                  disabled={loading}
+                >
+                  <account.icon className={`w-3.5 h-3.5 mr-1 ${account.color}`} />
+                  {account.name}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
