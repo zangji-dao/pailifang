@@ -44,8 +44,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50/60 via-slate-50 to-amber-50/30 p-4">
-      <Card className="w-full max-w-sm border-slate-200/60 shadow-xl">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: "url('/login-bg.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* 半透明遮罩 */}
+      <div className="absolute inset-0 bg-white/70 backdrop-blur-sm" />
+      
+      <Card className="w-full max-w-sm border-slate-200/60 shadow-xl relative z-10 bg-white/90 backdrop-blur">
         <CardHeader className="space-y-4 pt-8 pb-2">
           {/* Logo */}
           <div className="flex justify-center">
