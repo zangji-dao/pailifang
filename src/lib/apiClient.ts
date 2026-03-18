@@ -6,13 +6,22 @@ const getApiBaseUrl = (): string => {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   
-  // 2. 服务端渲染时使用 localhost
+  // 2. 服务端渲染时
   if (typeof window === 'undefined') {
+    // 检查是否是沙箱环境（通过环境变量判断）
+    if (process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')) {
+      return 'http://152.136.12.122:4001';
+    }
     return 'http://localhost:4001';
   }
   
   // 3. 客户端：根据当前访问地址动态判断
   const { protocol, hostname, port } = window.location;
+  
+  // 沙箱环境（*.dev.coze.site）使用生产环境后端
+  if (hostname.includes('dev.coze.site')) {
+    return 'http://152.136.12.122:4001';
+  }
   
   // 如果通过域名访问（无端口或端口80/443），使用相对路径 /api（通过 Nginx 代理）
   if (!port || port === '80' || port === '443') {
