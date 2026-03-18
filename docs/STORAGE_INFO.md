@@ -20,7 +20,7 @@
 | Access Key ID | `S3_ACCESS_KEY_ID` |
 | Secret Access Key | `S3_SECRET_ACCESS_KEY` |
 
-> ⚠️ 密钥请从服务器 `/var/www/pi-cube/backend/.env` 文件获取，或联系管理员。
+> ⚠️ 密钥请从服务器 `/var/www/pi-cube/backend/.env` 文件获取，或联系管理员。请勿将密钥提交到代码仓库。
 
 ## 使用方式
 
@@ -131,16 +131,18 @@ cat /data/storage/documents/myfile.pdf
 
 ## 环境变量配置
 
-在项目 `.env` 文件中添加：
+在项目 `.env` 文件中添加（参考 `.env.example` 模板）：
 
 ```bash
 # 对象存储配置
-S3_ACCESS_KEY_ID=your_access_key_id
-S3_SECRET_ACCESS_KEY=your_secret_access_key
+S3_ACCESS_KEY_ID=<联系管理员获取>
+S3_SECRET_ACCESS_KEY=<联系管理员获取>
 S3_BUCKET=tianzhi-1314611801
 S3_REGION=ap-beijing
 S3_ENDPOINT=https://cos.ap-beijing.myqcloud.com
 ```
+
+> ⚠️ **安全提醒**：密钥请勿提交到代码仓库，仅存储在服务器的 `.env` 文件中。
 
 ## 费用说明
 
