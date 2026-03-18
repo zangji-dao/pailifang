@@ -1,5 +1,6 @@
 // API 基础配置
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// BFF 架构：前端调用后端 API (端口 4001)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
 export interface ApiResponse<T = any> {
   success: boolean;

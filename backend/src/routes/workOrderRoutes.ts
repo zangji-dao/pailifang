@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import { workOrderController } from '../controllers/workOrderController';
-import { optionalAuth } from '../middleware/auth';
 
 const router = Router();
-
-router.use(optionalAuth);
 
 // 获取工单列表
 router.get('/', workOrderController.getWorkOrders);
@@ -12,7 +9,10 @@ router.get('/', workOrderController.getWorkOrders);
 // 创建工单
 router.post('/', workOrderController.createWorkOrder);
 
-// 更新工单状态
-router.patch('/:id/status', workOrderController.updateWorkOrderStatus);
+// 更新工单
+router.put('/:id', workOrderController.updateWorkOrder);
+
+// 删除工单
+router.delete('/:id', workOrderController.deleteWorkOrder);
 
 export default router;

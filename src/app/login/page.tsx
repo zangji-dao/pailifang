@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Lock, User, Crown, Calculator, Phone } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,19 +30,16 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: account.email, password: account.password }),
+      const response = await apiClient.post("/api/auth/login", {
+        email: account.email,
+        password: account.password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "登录失败");
+      if (!response.success) {
+        throw new Error(response.error || "登录失败");
       }
 
-      localStorage.setItem("user", JSON.stringify(data.data));
+      localStorage.setItem("user", JSON.stringify(response.data));
       localStorage.setItem("isLoggedIn", "true");
       router.push("/dashboard");
     } catch (err: any) {
@@ -57,19 +55,16 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const response = await apiClient.post("/api/auth/login", {
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "登录失败");
+      if (!response.success) {
+        throw new Error(response.error || "登录失败");
       }
 
-      localStorage.setItem("user", JSON.stringify(data.data));
+      localStorage.setItem("user", JSON.stringify(response.data));
       localStorage.setItem("isLoggedIn", "true");
       router.push("/dashboard");
     } catch (err: any) {

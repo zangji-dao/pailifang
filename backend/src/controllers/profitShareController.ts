@@ -1,12 +1,16 @@
+/**
+ * 分润控制器 - 使用 Drizzle ORM
+ */
+
 import { Request, Response } from 'express';
-import { getSupabaseClient } from '../config/database';
-import { successResponse, errorResponse, paginatedResponse } from '../utils/response';
+import { db, profitShares, eq, desc, and, sql } from '../database/client';
 
 export const profitShareController = {
+  /**
+   * 获取分润列表
+   */
   async getProfitShares(req: Request, res: Response) {
     try {
-      const client = getSupabaseClient();
-      
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 10;
       const status = req.query.status as string;
@@ -14,93 +18,121 @@ export const profitShareController = {
       const salesId = req.query.salesId as string;
       const accountantId = req.query.accountantId as string;
 
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
+      const offset = (page - 1) * pageSize;
 
-      let query = client.from('profit_shares').select('*', { count: 'exact' });
+      // 构建查询条件
+      const conditions = [];
+      if (status) conditions.push(eq(profitShares.status, status));
+      if (period) conditions.push(eq(profitShares.period, period));
+      if (salesId) conditions.push(eq(profitShares.salesId, salesId));
+      if (accountantId) conditions.push(eq(profitShares.accountantId, accountantId));
 
-      if (status) {
-        query = query.eq('status', status);
-      }
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-      if (period) {
-        query = query.eq('period', period);
-      }
+      // 查询数据
+      const data = await db
+        .select()
+        .from(profitShares)
+        .where(whereClause)
+        .orderBy(desc(profitShares.createdAt))
+        .limit(pageSize)
+        .offset(offset);
 
-      if (salesId) {
-        query = query.eq('sales_id', salesId);
-      }
+      // 查询总数
+      const countResult = await db
+        .select({ count: sql`count(*)` })
+        .from(profitShares)
+        .where(whereClause);
+      const total = Number(countResult[0]?.count) || 0;
 
-      if (accountantId) {
-        query = query.eq('accountant_id', accountantId);
-      }
-
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (error) {
-        console.error('获取分润列表失败:', error);
-        return res.status(500).json(errorResponse('获取分润列表失败'));
-      }
-
-      return res.json(paginatedResponse(data || [], count || 0, page, pageSize));
+      return res.json({
+        success: true,
+        data,
+        total,
+        page,
+        pageSize,
+      });
     } catch (error) {
       console.error('获取分润列表失败:', error);
-      return res.status(500).json(errorResponse('获取分润列表失败'));
+      return res.status(500).json({
+        success: false,
+        error: '获取分润列表失败',
+      });
     }
   },
 
+  /**
+   * 创建分润记录
+   */
   async createProfitShare(req: Request, res: Response) {
     try {
       const body = req.body;
-      const client = getSupabaseClient();
 
-      const { data, error } = await client
-        .from('profit_shares')
-        .insert(body)
-        .select()
-        .single();
+      const result = await db
+        .insert(profitShares)
+        .values({
+          customerId: body.customerId,
+          ledgerId: body.ledgerId,
+          salesId: body.salesId,
+          accountantId: body.accountantId,
+          profitRuleId: body.profitRuleId,
+          totalAmount: body.totalAmount,
+          salesAmount: body.salesAmount,
+          accountantAmount: body.accountantAmount,
+          period: body.period,
+          status: body.status || 'pending',
+          notes: body.notes,
+        })
+        .returning();
 
-      if (error) {
-        console.error('创建分润记录失败:', error);
-        return res.status(500).json(errorResponse('创建分润记录失败'));
-      }
-
-      return res.json(successResponse(data, '创建分润记录成功'));
+      return res.json({
+        success: true,
+        data: result[0],
+        message: '创建分润记录成功',
+      });
     } catch (error) {
       console.error('创建分润记录失败:', error);
-      return res.status(500).json(errorResponse('创建分润记录失败'));
+      return res.status(500).json({
+        success: false,
+        error: '创建分润记录失败',
+      });
     }
   },
 
-  async updateProfitShareStatus(req: Request, res: Response) {
+  /**
+   * 更新分润状态
+   */
+  async updateProfitShare(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { status } = req.body;
-      const client = getSupabaseClient();
+      const body = req.body;
 
-      const updateData: any = { status };
-      if (status === 'paid') {
-        updateData.paid_at = new Date().toISOString();
+      const result = await db
+        .update(profitShares)
+        .set({
+          ...body,
+          updatedAt: new Date(),
+        })
+        .where(eq(profitShares.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: '分润记录不存在',
+        });
       }
 
-      const { data, error } = await client
-        .from('profit_shares')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('更新分润状态失败:', error);
-        return res.status(500).json(errorResponse('更新分润状态失败'));
-      }
-
-      return res.json(successResponse(data, '更新分润状态成功'));
+      return res.json({
+        success: true,
+        data: result[0],
+      });
     } catch (error) {
-      console.error('更新分润状态失败:', error);
-      return res.status(500).json(errorResponse('更新分润状态失败'));
+      console.error('更新分润失败:', error);
+      return res.status(500).json({
+        success: false,
+        error: '更新分润失败',
+      });
     }
   },
 };
