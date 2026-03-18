@@ -15,10 +15,12 @@
 
 ## API 密钥
 
-| 配置项 | 环境变量名 | 值 |
-|--------|------------|-----|
-| Access Key ID | `S3_ACCESS_KEY_ID` | `your_access_key_id` |
-| Secret Access Key | `S3_SECRET_ACCESS_KEY` | `your_secret_access_key` |
+| 配置项 | 环境变量名 |
+|--------|------------|
+| Access Key ID | `S3_ACCESS_KEY_ID` |
+| Secret Access Key | `S3_SECRET_ACCESS_KEY` |
+
+> ⚠️ 密钥请从服务器 `/var/www/pi-cube/backend/.env` 文件获取，或联系管理员。
 
 ## 使用方式
 
