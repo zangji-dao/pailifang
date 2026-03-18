@@ -570,13 +570,13 @@ export default function BaseDetailPage() {
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100">
                   <div className="flex items-center gap-1.5">
                     <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
-                    <span className="text-sm font-medium" style={{ color: "#57534E" }}>{meter.spaces.length}</span>
+                    <span className="text-sm font-medium" style={{ color: "#57534E" }}>{meter.spaces?.length || 0}</span>
                     <span className="text-sm" style={{ color: "#A8A29E" }}>空间</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
                     <span className="text-sm font-medium" style={{ color: "#57534E" }}>
-                      {meter.spaces.reduce((s, sp) => s + sp.regNumbers.length, 0)}
+                      {meter.spaces?.reduce((s, sp) => s + (sp.regNumbers?.length || 0), 0) || 0}
                     </span>
                     <span className="text-sm" style={{ color: "#A8A29E" }}>注册号</span>
                   </div>
@@ -674,14 +674,14 @@ export default function BaseDetailPage() {
                       </Button>
                     </div>
                     
-                    {meter.spaces.length === 0 ? (
+                    {(meter.spaces?.length || 0) === 0 ? (
                       <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                         <DoorOpen className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                         <p className="text-sm" style={{ color: "#A8A29E" }}>暂无物理空间</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {meter.spaces.map((space) => (
+                        {meter.spaces?.map((space) => (
                           <div 
                             key={space.id} 
                             className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
@@ -705,8 +705,8 @@ export default function BaseDetailPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: space.regNumbers.filter(r => r.status === "allocated").length > 0 ? "#DCFCE7" : "#F5F5F4", color: space.regNumbers.filter(r => r.status === "allocated").length > 0 ? "#15803D" : "#78716C" }}>
-                                  {space.regNumbers.filter(r => r.status === "allocated").length}/{space.regNumbers.length} 已分配
+                                <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter(r => r.status === "allocated")?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter(r => r.status === "allocated")?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
+                                  {(space.regNumbers?.filter(r => r.status === "allocated")?.length || 0)}/{space.regNumbers?.length || 0} 已分配
                                 </div>
                                 <ChevronRight className={cn("h-4 w-4 transition-transform", expandedSpace === space.id && "rotate-90")} style={{ color: "#A8A29E" }} />
                               </div>
@@ -721,11 +721,11 @@ export default function BaseDetailPage() {
                                     <Plus className="h-3 w-3 mr-1" />新增
                                   </Button>
                                 </div>
-                                {space.regNumbers.length === 0 ? (
+                                {(space.regNumbers?.length || 0) === 0 ? (
                                   <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无注册号</p>
                                 ) : (
                                   <div className="grid grid-cols-2 gap-2">
-                                    {space.regNumbers.map((reg) => (
+                                    {space.regNumbers?.map((reg) => (
                                       <div
                                         key={reg.id}
                                         className={cn(
