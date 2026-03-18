@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+config({ path: resolve(__dirname, '../.env') });
+
 import express from 'express';
 import multer from 'multer';
 import { corsMiddleware } from './middleware/cors';
