@@ -20,7 +20,7 @@ interface Base {
   address: string | null;
   status: string;
   meterCount: number;
-  created_at: string;
+  createdAt: string;
 }
 
 export default function BaseListPage() {

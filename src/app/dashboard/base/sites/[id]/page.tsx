@@ -67,7 +67,7 @@ interface RegNumber {
 
 interface Space {
   id: string;
-  meter_id: string;
+  meterId: string;
   code: string;
   name: string;
   area: number | null;
@@ -76,15 +76,15 @@ interface Space {
 
 interface Meter {
   id: string;
-  base_id: string;
+  baseId: string;
   code: string;
   name: string;
-  electricity_number: string | null;
-  electricity_type: MeterType;
-  water_number: string | null;
-  water_type: MeterType;
-  heating_number: string | null;
-  heating_type: MeterType;
+  electricityNumber: string | null;
+  electricityType: MeterType;
+  waterNumber: string | null;
+  waterType: MeterType;
+  heatingNumber: string | null;
+  heatingType: MeterType;
   area: number | null;
   spaces: Space[];
 }
@@ -521,33 +521,33 @@ export default function BaseDetailPage() {
 
                 {/* 表号信息 */}
                 <div className="space-y-2.5">
-                  {meter.electricity_number && (
+                  {meter.electricityNumber && (
                     <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: "#FFFBEB" }}>
                       <div className="flex items-center gap-2.5">
                         <MeterIcon type="electricity" size="sm" />
                         <span className="text-sm" style={{ color: "#78716C" }}>电表</span>
                       </div>
-                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.electricity_number}</span>
+                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.electricityNumber}</span>
                     </div>
                   )}
                   
-                  {meter.water_number && (
+                  {meter.waterNumber && (
                     <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: "#F0F9FF" }}>
                       <div className="flex items-center gap-2.5">
                         <MeterIcon type="water" size="sm" />
                         <span className="text-sm" style={{ color: "#78716C" }}>水表</span>
                       </div>
-                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.water_number}</span>
+                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.waterNumber}</span>
                     </div>
                   )}
                   
-                  {meter.heating_number && (
+                  {meter.heatingNumber && (
                     <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: "#FFF7ED" }}>
                       <div className="flex items-center gap-2.5">
                         <MeterIcon type="heating" size="sm" />
                         <span className="text-sm" style={{ color: "#78716C" }}>取暖</span>
                       </div>
-                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.heating_number}</span>
+                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.heatingNumber}</span>
                     </div>
                   )}
                 </div>
@@ -626,24 +626,24 @@ export default function BaseDetailPage() {
                       <MeterBillCard
                         type="electricity"
                         label="电表"
-                        meterNumber={meter.electricity_number}
-                        meterType={meter.electricity_type}
+                        meterNumber={meter.electricityNumber}
+                        meterType={meter.electricityType}
                       />
 
                       {/* 水表 */}
                       <MeterBillCard
                         type="water"
                         label="水表"
-                        meterNumber={meter.water_number}
-                        meterType={meter.water_type}
+                        meterNumber={meter.waterNumber}
+                        meterType={meter.waterType}
                       />
 
                       {/* 取暖 */}
                       <MeterBillCard
                         type="heating"
                         label="取暖号"
-                        meterNumber={meter.heating_number}
-                        meterType={meter.heating_type}
+                        meterNumber={meter.heatingNumber}
+                        meterType={meter.heatingType}
                       />
                     </div>
                   </div>
