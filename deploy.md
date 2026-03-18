@@ -47,7 +47,7 @@ npm install -g pnpm
 ```bash
 # 克隆代码到服务器
 cd /var/www
-git clone <your-repo-url> pi-accounting
+git clone https://github.com/zangji-dao/pailifang.git pi-accounting
 cd pi-accounting
 ```
 
