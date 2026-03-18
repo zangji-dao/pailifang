@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, ledgers, eq, desc, sql, and } from "@/storage/database/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getSupabaseClient();
     const { searchParams } = new URL(req.url);
 
     const page = parseInt(searchParams.get("page") || "1");
@@ -12,39 +11,36 @@ export async function GET(req: NextRequest) {
     const customerId = searchParams.get("customerId");
     const accountantId = searchParams.get("accountantId");
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+    const offset = (page - 1) * pageSize;
 
-    let query = client.from("ledgers").select("*", { count: "exact" });
+    // 构建查询条件
+    const conditions = [];
+    if (status) conditions.push(eq(ledgers.status, status));
+    if (customerId) conditions.push(eq(ledgers.customerId, customerId));
+    if (accountantId) conditions.push(eq(ledgers.accountantId, accountantId));
 
-    if (status) {
-      query = query.eq("status", status);
-    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    if (customerId) {
-      query = query.eq("customer_id", customerId);
-    }
+    // 查询数据
+    const data = await db
+      .select()
+      .from(ledgers)
+      .where(whereClause)
+      .orderBy(desc(ledgers.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-    if (accountantId) {
-      query = query.eq("accountant_id", accountantId);
-    }
-
-    const { data, error, count } = await query
-      .order("created_at", { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error("获取账套列表失败:", error);
-      return NextResponse.json(
-        { error: "获取账套列表失败" },
-        { status: 500 }
-      );
-    }
+    // 查询总数
+    const countResult = await db
+      .select({ count: sql`count(*)` })
+      .from(ledgers)
+      .where(whereClause);
+    const total = Number(countResult[0]?.count) || 0;
 
     return NextResponse.json({
       success: true,
-      data: data || [],
-      total: count || 0,
+      data,
+      total,
       page,
       pageSize,
     });
@@ -60,22 +56,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const client = getSupabaseClient();
 
-    const { data, error } = await client
-      .from("ledgers")
-      .insert(body)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("创建账套失败:", error);
-      return NextResponse.json({ error: "创建账套失败" }, { status: 500 });
-    }
+    await db.insert(ledgers).values({
+      name: body.name,
+      customerId: body.customerId,
+      accountantId: body.accountantId,
+      year: body.year,
+      status: body.status || 'active',
+      description: body.description,
+    });
 
     return NextResponse.json({
       success: true,
-      data,
+      message: "创建账套成功",
     });
   } catch (error) {
     console.error("创建账套失败:", error);
