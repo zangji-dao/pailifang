@@ -7,6 +7,7 @@ import {
   Zap,
   Droplets,
   Flame,
+  Wifi,
   DoorOpen,
   Building2,
   MapPin,
@@ -52,6 +53,7 @@ interface AuthStatus {
 }
 
 type MeterType = "base" | "customer";
+type MeterStatus = "normal" | "abnormal";
 
 interface Enterprise {
   id: string;
@@ -81,10 +83,16 @@ interface Meter {
   name: string;
   electricityNumber: string | null;
   electricityType: MeterType;
+  electricityStatus: MeterStatus;
   waterNumber: string | null;
   waterType: MeterType;
+  waterStatus: MeterStatus;
   heatingNumber: string | null;
   heatingType: MeterType;
+  heatingStatus: MeterStatus;
+  networkNumber: string | null;
+  networkType: MeterType;
+  networkStatus: MeterStatus;
   area: number | null;
   spaces: Space[];
 }
@@ -519,37 +527,43 @@ export default function BaseDetailPage() {
                   <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
                 </div>
 
-                {/* 表号信息 */}
-                <div className="space-y-2.5">
-                  {meter.electricityNumber && (
-                    <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: "#FFFBEB" }}>
-                      <div className="flex items-center gap-2.5">
-                        <MeterIcon type="electricity" size="sm" />
-                        <span className="text-sm" style={{ color: "#78716C" }}>电表</span>
-                      </div>
-                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.electricityNumber}</span>
-                    </div>
-                  )}
+                {/* 水电暖网状态 */}
+                <div className="grid grid-cols-4 gap-2">
+                  {/* 电 */}
+                  <div className="flex flex-col items-center p-2.5 rounded-xl bg-amber-50/50">
+                    <Zap className={`h-5 w-5 ${meter.electricityStatus === 'normal' ? 'text-amber-500' : 'text-red-500'}`} />
+                    <span className="text-xs mt-1" style={{ color: "#78716C" }}>电</span>
+                    <span className={`text-xs font-medium mt-0.5 ${meter.electricityStatus === 'normal' ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {meter.electricityStatus === 'normal' ? '正常' : '异常'}
+                    </span>
+                  </div>
                   
-                  {meter.waterNumber && (
-                    <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: "#F0F9FF" }}>
-                      <div className="flex items-center gap-2.5">
-                        <MeterIcon type="water" size="sm" />
-                        <span className="text-sm" style={{ color: "#78716C" }}>水表</span>
-                      </div>
-                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.waterNumber}</span>
-                    </div>
-                  )}
+                  {/* 水 */}
+                  <div className="flex flex-col items-center p-2.5 rounded-xl bg-sky-50/50">
+                    <Droplets className={`h-5 w-5 ${meter.waterStatus === 'normal' ? 'text-sky-500' : 'text-red-500'}`} />
+                    <span className="text-xs mt-1" style={{ color: "#78716C" }}>水</span>
+                    <span className={`text-xs font-medium mt-0.5 ${meter.waterStatus === 'normal' ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {meter.waterStatus === 'normal' ? '正常' : '异常'}
+                    </span>
+                  </div>
                   
-                  {meter.heatingNumber && (
-                    <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: "#FFF7ED" }}>
-                      <div className="flex items-center gap-2.5">
-                        <MeterIcon type="heating" size="sm" />
-                        <span className="text-sm" style={{ color: "#78716C" }}>取暖</span>
-                      </div>
-                      <span className="text-sm font-mono font-medium" style={{ color: "#1C1917" }}>{meter.heatingNumber}</span>
-                    </div>
-                  )}
+                  {/* 暖 */}
+                  <div className="flex flex-col items-center p-2.5 rounded-xl bg-orange-50/50">
+                    <Flame className={`h-5 w-5 ${meter.heatingStatus === 'normal' ? 'text-orange-500' : 'text-red-500'}`} />
+                    <span className="text-xs mt-1" style={{ color: "#78716C" }}>暖</span>
+                    <span className={`text-xs font-medium mt-0.5 ${meter.heatingStatus === 'normal' ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {meter.heatingStatus === 'normal' ? '正常' : '异常'}
+                    </span>
+                  </div>
+                  
+                  {/* 网 */}
+                  <div className="flex flex-col items-center p-2.5 rounded-xl bg-violet-50/50">
+                    <Wifi className={`h-5 w-5 ${meter.networkStatus === 'normal' ? 'text-violet-500' : 'text-red-500'}`} />
+                    <span className="text-xs mt-1" style={{ color: "#78716C" }}>网</span>
+                    <span className={`text-xs font-medium mt-0.5 ${meter.networkStatus === 'normal' ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {meter.networkStatus === 'normal' ? '正常' : '异常'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* 底部统计 */}

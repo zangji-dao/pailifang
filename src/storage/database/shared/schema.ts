@@ -327,12 +327,19 @@ export const meters = pgTable("meters", {
 	// 电表
 	electricityNumber: varchar("electricity_number", { length: 50 }),
 	electricityType: varchar("electricity_type", { length: 20 }).default('base'), // base=基地负责, customer=客户负责
+	electricityStatus: varchar("electricity_status", { length: 20 }).default('normal'), // normal=正常, abnormal=异常
 	// 水表
 	waterNumber: varchar("water_number", { length: 50 }),
 	waterType: varchar("water_type", { length: 20 }).default('base'),
+	waterStatus: varchar("water_status", { length: 20 }).default('normal'),
 	// 取暖
 	heatingNumber: varchar("heating_number", { length: 50 }),
 	heatingType: varchar("heating_type", { length: 20 }).default('base'),
+	heatingStatus: varchar("heating_status", { length: 20 }).default('normal'),
+	// 网络
+	networkNumber: varchar("network_number", { length: 50 }),
+	networkType: varchar("network_type", { length: 20 }).default('base'),
+	networkStatus: varchar("network_status", { length: 20 }).default('normal'),
 	// 面积
 	area: decimal("area", { precision: 10, scale: 2 }),
 	status: varchar({ length: 20 }).default('active').notNull(),
