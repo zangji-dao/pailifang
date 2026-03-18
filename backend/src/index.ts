@@ -1,6 +1,9 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
-config({ path: resolve(__dirname, '../.env') });
+import { config } from './config/env';
+
+// 打印环境信息
+console.log(`[环境] 当前环境: ${config.env}`);
+console.log(`[环境] 数据库: ${config.database.database}`);
+console.log(`[环境] 服务端口: ${config.server.port}`);
 
 import express from 'express';
 import multer from 'multer';
@@ -16,7 +19,7 @@ import storageRoutes from './routes/storageRoutes';
 import alipayRoutes from './routes/alipayRoutes';
 
 const app = express();
-const PORT = process.env.PORT || 4001;
+const PORT = config.server.port;
 
 // 文件上传中间件配置
 const upload = multer({
@@ -38,6 +41,8 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'Π立方企业服务中心 API',
     version: '1.0.0',
+    environment: config.env,
+    database: config.database.database,
   });
 });
 
@@ -59,6 +64,7 @@ app.get('/api', (req, res) => {
   res.json({
     message: 'Π立方企业服务中心 API',
     version: '1.0.0',
+    environment: config.env,
     endpoints: {
       auth: {
         login: 'POST /api/auth/login',

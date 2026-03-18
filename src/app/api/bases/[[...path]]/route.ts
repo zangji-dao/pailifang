@@ -3,22 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * API 代理：/api/bases/* → 后端
  * 自动判断环境，无需手动配置
+ * 
+ * 环境逻辑：
+ * - 沙箱环境：代理到 localhost:4001（沙箱独立后端）
+ * - 生产环境：代理到 localhost:4001（本地后端）
  */
 async function proxyRequest(request: NextRequest, method: string) {
   try {
     const path = request.nextUrl.pathname.replace('/api/bases', '');
     const searchParams = request.nextUrl.searchParams.toString();
     
-    // 确定后端地址（与 apiClient.ts 逻辑一致）
-    let apiBaseUrl: string;
-    
-    // 沙箱环境：使用生产后端
-    if (process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')) {
-      apiBaseUrl = 'http://152.136.12.122:4001';
-    } else {
-      // 生产服务器：使用本地后端
-      apiBaseUrl = 'http://localhost:4001';
-    }
+    // 沙箱和生产环境都使用本地后端
+    // 沙箱环境会启动独立的后端服务
+    const apiBaseUrl = 'http://localhost:4001';
     
     const url = `${apiBaseUrl}/api/bases${path}${searchParams ? `?${searchParams}` : ''}`;
 

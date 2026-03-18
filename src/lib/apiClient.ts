@@ -1,12 +1,20 @@
+/**
+ * API 客户端
+ * 
+ * 统一处理沙箱和生产环境的 API 调用
+ * 代码自动判断环境，无需手动配置
+ */
+
 // API 基础配置
 // 自动判断环境，无需手动配置
 
 const getApiBaseUrl = (): string => {
   // 服务端渲染时
   if (typeof window === 'undefined') {
-    // 沙箱环境：使用生产后端
-    if (process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')) {
-      return 'http://152.136.12.122:4001';
+    // 沙箱环境：使用本地后端（沙箱会启动独立后端）
+    if (process.env.COZE_PROJECT_ENV === 'DEV' || 
+        process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')) {
+      return 'http://localhost:4001';
     }
     // 生产服务器：使用本地后端
     return 'http://localhost:4001';
@@ -15,9 +23,10 @@ const getApiBaseUrl = (): string => {
   // 客户端
   const { protocol, hostname, port } = window.location;
   
-  // 沙箱环境：使用生产后端
+  // 沙箱环境：调用同沙箱的后端
   if (hostname.includes('dev.coze.site')) {
-    return 'http://152.136.12.122:4001';
+    // 沙箱环境后端端口 4001
+    return `${protocol}//${hostname}:4001`;
   }
   
   // 生产环境：通过域名访问（无端口）→ 使用 Nginx 代理
@@ -124,3 +133,14 @@ class ApiClient {
 
 export const apiClient = new ApiClient(API_BASE_URL);
 export const API_BASE_URL_EXPORTED = API_BASE_URL;
+
+// 导出环境判断函数（用于调试）
+export const getCurrentEnvironment = () => {
+  if (typeof window === 'undefined') {
+    return process.env.COZE_PROJECT_ENV === 'DEV' || 
+           process.env.COZE_PROJECT_DOMAIN_DEFAULT?.includes('dev.coze.site')
+      ? 'sandbox'
+      : 'production';
+  }
+  return window.location.hostname.includes('dev.coze.site') ? 'sandbox' : 'production';
+};

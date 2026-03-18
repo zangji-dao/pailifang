@@ -1,44 +1,32 @@
 /**
  * 数据库客户端 - PostgreSQL (Drizzle ORM)
+ * 
+ * 使用统一的环境配置模块
+ * 自动判断沙箱/生产环境，使用对应的数据库
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
-
-// 数据库连接配置
-function getPostgresConfig() {
-  return {
-    host: process.env.PG_HOST || '152.136.12.122',
-    port: parseInt(process.env.PG_PORT || '5432', 10),
-    user: process.env.PG_USER || 'pi_user',
-    password: process.env.PG_PASSWORD || 'PiCube2024',
-    database: process.env.PG_DATABASE || 'pi_cube',
-  };
-}
+import { config } from '../config/env';
 
 // 连接池单例
 let pool: Pool | null = null;
 
 function getPool(): Pool {
   if (!pool) {
-    const config = getPostgresConfig();
+    const dbConfig = config.database;
     
-    if (process.env.DATABASE_URL) {
-      pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: false,
-      });
-    } else {
-      pool = new Pool({
-        host: config.host,
-        port: config.port,
-        user: config.user,
-        password: config.password,
-        database: config.database,
-        ssl: false,
-      });
-    }
+    console.log(`[数据库] 环境: ${config.env}, 数据库: ${dbConfig.database}`);
+    
+    pool = new Pool({
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      password: dbConfig.password,
+      database: dbConfig.database,
+      ssl: false,
+    });
   }
   return pool;
 }
