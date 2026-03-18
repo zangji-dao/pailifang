@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, workOrders, eq, desc, and, sql } from "@/storage/database/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getSupabaseClient();
     const { searchParams } = new URL(req.url);
 
     const page = parseInt(searchParams.get("page") || "1");
@@ -12,39 +11,36 @@ export async function GET(req: NextRequest) {
     const priority = searchParams.get("priority");
     const assignedTo = searchParams.get("assignedTo");
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+    const offset = (page - 1) * pageSize;
 
-    let query = client.from("work_orders").select("*", { count: "exact" });
+    // 构建查询条件
+    const conditions = [];
+    if (status) conditions.push(eq(workOrders.status, status));
+    if (priority) conditions.push(eq(workOrders.priority, priority));
+    if (assignedTo) conditions.push(eq(workOrders.assignedTo, assignedTo));
 
-    if (status) {
-      query = query.eq("status", status);
-    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    if (priority) {
-      query = query.eq("priority", priority);
-    }
+    // 查询数据
+    const data = await db
+      .select()
+      .from(workOrders)
+      .where(whereClause)
+      .orderBy(desc(workOrders.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-    if (assignedTo) {
-      query = query.eq("assigned_to", assignedTo);
-    }
-
-    const { data, error, count } = await query
-      .order("created_at", { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error("获取工单列表失败:", error);
-      return NextResponse.json(
-        { error: "获取工单列表失败" },
-        { status: 500 }
-      );
-    }
+    // 查询总数
+    const countResult = await db
+      .select({ count: sql`count(*)` })
+      .from(workOrders)
+      .where(whereClause);
+    const total = Number(countResult[0]?.count) || 0;
 
     return NextResponse.json({
       success: true,
-      data: data || [],
-      total: count || 0,
+      data,
+      total,
       page,
       pageSize,
     });
@@ -60,22 +56,23 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const client = getSupabaseClient();
 
-    const { data, error } = await client
-      .from("work_orders")
-      .insert(body)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("创建工单失败:", error);
-      return NextResponse.json({ error: "创建工单失败" }, { status: 500 });
-    }
+    await db.insert(workOrders).values({
+      title: body.title,
+      type: body.type,
+      description: body.description,
+      customerId: body.customerId,
+      ledgerId: body.ledgerId,
+      assignedTo: body.assignedTo,
+      createdBy: body.createdBy,
+      priority: body.priority || 'medium',
+      status: body.status || 'pending',
+      dueDate: body.dueDate,
+    });
 
     return NextResponse.json({
       success: true,
-      data,
+      message: "创建工单成功",
     });
   } catch (error) {
     console.error("创建工单失败:", error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, bases, meters, spaces, regNumbers, enterprises, eq, asc, inArray } from "@/storage/database/db";
 
 export async function GET(
   req: NextRequest,
@@ -7,91 +7,78 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const client = getSupabaseClient();
 
     // 1. 获取基地信息
-    const { data: base, error: baseError } = await client
-      .from("bases")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const baseResult = await db
+      .select()
+      .from(bases)
+      .where(eq(bases.id, id))
+      .limit(1);
 
-    if (baseError || !base) {
+    if (baseResult.length === 0) {
       return NextResponse.json({ error: "基地不存在" }, { status: 404 });
     }
 
-    // 2. 获取物业列表
-    const { data: meters, error: metersError } = await client
-      .from("meters")
-      .select("*")
-      .eq("base_id", id)
-      .order("code", { ascending: true });
+    const base = baseResult[0];
 
-    if (metersError) {
-      return NextResponse.json({ error: metersError.message }, { status: 500 });
-    }
+    // 2. 获取物业列表
+    const metersList = await db
+      .select()
+      .from(meters)
+      .where(eq(meters.baseId, id))
+      .orderBy(asc(meters.code));
 
     // 3. 获取所有物理空间
-    const meterIds = (meters || []).map((m: any) => m.id);
-    const { data: spaces, error: spacesError } = await client
-      .from("spaces")
-      .select("*")
-      .in("meter_id", meterIds)
-      .order("code", { ascending: true });
-
-    if (spacesError) {
-      return NextResponse.json({ error: spacesError.message }, { status: 500 });
-    }
+    const meterIds = metersList.map((m) => m.id);
+    const spacesList = meterIds.length > 0 
+      ? await db
+          .select()
+          .from(spaces)
+          .where(inArray(spaces.meterId, meterIds))
+          .orderBy(asc(spaces.code))
+      : [];
 
     // 4. 获取所有注册号
-    const spaceIds = (spaces || []).map((s: any) => s.id);
-    const { data: regNumbers, error: regError } = await client
-      .from("reg_numbers")
-      .select("*")
-      .in("space_id", spaceIds);
-
-    if (regError) {
-      return NextResponse.json({ error: regError.message }, { status: 500 });
-    }
+    const spaceIds = spacesList.map((s) => s.id);
+    const regNumbersList = spaceIds.length > 0
+      ? await db
+          .select()
+          .from(regNumbers)
+          .where(inArray(regNumbers.spaceId, spaceIds))
+      : [];
 
     // 5. 获取所有企业信息
-    const enterpriseIds = (regNumbers || [])
-      .filter((r: any) => r.enterprise_id)
-      .map((r: any) => r.enterprise_id);
+    const enterpriseIds = regNumbersList
+      .filter((r) => r.enterpriseId)
+      .map((r) => r.enterpriseId!);
 
-    let enterprises: any[] = [];
-    if (enterpriseIds.length > 0) {
-      const { data: enterprisesData, error: entError } = await client
-        .from("enterprises")
-        .select("*")
-        .in("id", enterpriseIds);
-      
-      if (!entError && enterprisesData) {
-        enterprises = enterprisesData;
-      }
-    }
+    const enterprisesList = enterpriseIds.length > 0
+      ? await db
+          .select()
+          .from(enterprises)
+          .where(inArray(enterprises.id, enterpriseIds))
+      : [];
 
     // 6. 组装数据结构
-    const enterpriseMap = new Map(enterprises.map((e: any) => [e.id, e]));
-    const spaceMap = new Map((spaces || []).map((s: any) => [s.id, s]));
+    const enterpriseMap = new Map(enterprisesList.map((e) => [e.id, e]));
     const regBySpace = new Map<string, any[]>();
     
-    (regNumbers || []).forEach((reg: any) => {
-      if (!regBySpace.has(reg.space_id)) {
-        regBySpace.set(reg.space_id, []);
+    regNumbersList.forEach((reg) => {
+      if (!regBySpace.has(reg.spaceId)) {
+        regBySpace.set(reg.spaceId, []);
       }
       const regWithEnterprise = {
         ...reg,
-        enterprise: reg.enterprise_id ? enterpriseMap.get(reg.enterprise_id) : null,
+        enterprise: reg.enterpriseId ? enterpriseMap.get(reg.enterpriseId) : null,
       };
-      regBySpace.get(reg.space_id)!.push(regWithEnterprise);
+      regBySpace.get(reg.spaceId)!.push(regWithEnterprise);
     });
 
-    const metersWithSpaces = (meters || []).map((meter: any) => ({
+    const metersWithSpaces = metersList.map((meter) => ({
       ...meter,
-      spaces: (spaces || [])
-        .filter((s: any) => s.meter_id === meter.id)
-        .map((space: any) => ({
+      spaces: spacesList
+        .filter((s) => s.meterId === meter.id)
+        .map((space) => ({
           ...space,
           regNumbers: regBySpace.get(space.id) || [],
         })),

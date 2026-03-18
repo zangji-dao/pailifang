@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { db, bases, meters, spaces, regNumbers, enterprises, eq, desc, inArray, sql } from "@/storage/database/db";
 
 // Π立方基地物业数据
 const METER_DATA = [
@@ -15,88 +15,77 @@ const METER_DATA = [
 
 export async function POST(req: NextRequest) {
   try {
-    const client = getSupabaseClient();
     const results: any = {};
 
     // 1. 创建基地
-    const { data: existingBase } = await client
-      .from("bases")
-      .select("id")
-      .eq("name", "Π立方企服中心")
-      .single();
+    const existingBase = await db
+      .select()
+      .from(bases)
+      .where(eq(bases.name, "Π立方企服中心"))
+      .limit(1);
 
     let baseId: string;
-    if (!existingBase) {
-      const { data: newBase, error: baseError } = await client
-        .from("bases")
-        .insert({
-          name: "Π立方企服中心",
-          address: "吉林省松原市宁江区义乌城",
-          status: "active",
-        })
+    if (existingBase.length === 0) {
+      const newBase = await db.insert(bases).values({
+        name: "Π立方企服中心",
+        address: "吉林省松原市宁江区义乌城",
+        status: "active",
+      });
+      
+      // 获取刚创建的基地
+      const created = await db
         .select()
-        .single();
-
-      if (baseError) {
-        return NextResponse.json({ error: baseError.message }, { status: 500 });
-      }
-      baseId = newBase.id;
-      results.base = newBase;
+        .from(bases)
+        .where(eq(bases.name, "Π立方企服中心"))
+        .limit(1);
+      baseId = created[0].id;
+      results.base = created[0];
     } else {
-      baseId = existingBase.id;
-      results.base = existingBase;
+      baseId = existingBase[0].id;
+      results.base = existingBase[0];
     }
 
     // 2. 创建物业
-    const { data: existingMeters } = await client
-      .from("meters")
-      .select("id")
-      .eq("base_id", baseId);
+    const existingMeters = await db
+      .select()
+      .from(meters)
+      .where(eq(meters.baseId, baseId));
 
-    if (!existingMeters || existingMeters.length === 0) {
+    if (existingMeters.length === 0) {
       const metersToInsert = METER_DATA.map(meter => ({
-        base_id: baseId,
+        baseId: baseId,
         code: meter.code,
         name: meter.name,
-        water_number: meter.water,
-        electricity_number: meter.electricity,
-        heating_number: meter.heating,
-        water_type: "base",
-        electricity_type: "base",
-        heating_type: "base",
+        waterNumber: meter.water,
+        electricityNumber: meter.electricity,
+        heatingNumber: meter.heating,
+        waterType: "base",
+        electricityType: "base",
+        heatingType: "base",
         area: meter.area,
         status: "active",
       }));
 
-      const { data: newMeters, error: metersError } = await client
-        .from("meters")
-        .insert(metersToInsert)
-        .select();
-
-      if (metersError) {
-        return NextResponse.json({ error: metersError.message }, { status: 500 });
-      }
+      const newMeters = await db.insert(meters).values(metersToInsert);
       results.meters = newMeters;
 
       // 3. 为每个物业创建默认物理空间
-      if (newMeters) {
-        const spacesToInsert = newMeters.map((meter: any) => ({
-          meter_id: meter.id,
+      const createdMeters = await db
+        .select()
+        .from(meters)
+        .where(eq(meters.baseId, baseId));
+
+      if (createdMeters.length > 0) {
+        const spacesToInsert = createdMeters.map((meter: any) => ({
+          meterId: meter.id,
           code: "主空间",
           name: "主办公区",
           area: meter.area,
           status: "active",
         }));
 
-        const { data: newSpaces, error: spacesError } = await client
-          .from("spaces")
-          .insert(spacesToInsert)
-          .select();
-
-        if (spacesError) {
-          return NextResponse.json({ error: spacesError.message }, { status: 500 });
-        }
-        results.spaces = newSpaces;
+        await db.insert(spaces).values(spacesToInsert);
+        results.spaces = spacesToInsert;
       }
     } else {
       results.meters = existingMeters;
@@ -119,29 +108,23 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const client = getSupabaseClient();
-
     // 获取基地列表
-    const { data: bases, error: basesError } = await client
-      .from("bases")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (basesError) {
-      return NextResponse.json({ error: basesError.message }, { status: 500 });
-    }
+    const basesList = await db
+      .select()
+      .from(bases)
+      .orderBy(desc(bases.createdAt));
 
     // 获取每个基地的物业数量
     const basesWithStats = await Promise.all(
-      (bases || []).map(async (base: any) => {
-        const { count: meterCount } = await client
-          .from("meters")
-          .select("*", { count: "exact", head: true })
-          .eq("base_id", base.id);
+      basesList.map(async (base) => {
+        const meterResult = await db
+          .select({ count: sql`count(*)` })
+          .from(meters)
+          .where(eq(meters.baseId, base.id));
 
         return {
           ...base,
-          meterCount: meterCount || 0,
+          meterCount: Number(meterResult[0]?.count) || 0,
         };
       })
     );

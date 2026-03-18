@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { getSupabaseClient } from "@/storage/database/client";
 import {
   Plus,
   Calculator,

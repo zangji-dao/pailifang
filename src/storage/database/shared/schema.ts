@@ -1,30 +1,30 @@
-import { mysqlTable, varchar, text, datetime, int, json, boolean, unique, foreignKey, decimal, date, index, serial } from "drizzle-orm/mysql-core"
+import { pgTable, varchar, text, timestamp, integer, json, boolean, unique, foreignKey, decimal, date, index, serial } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
 
-export const customerFollows = mysqlTable("customer_follows", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const customerFollows = pgTable("customer_follows", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	customerId: varchar("customer_id", { length: 36 }).notNull(),
 	userId: varchar("user_id", { length: 36 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
 	content: text(),
-	nextFollowDate: datetime("next_follow_date"),
+	nextFollowDate: timestamp("next_follow_date"),
 	status: varchar({ length: 20 }).default('completed'),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
 	index("customer_follows_created_at_idx").on(table.createdAt),
 	index("customer_follows_customer_id_idx").on(table.customerId),
 	index("customer_follows_user_id_idx").on(table.userId),
 ]);
 
-export const healthCheck = mysqlTable("health_check", {
+export const healthCheck = pgTable("health_check", {
 	id: serial().primaryKey().notNull(),
-	updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const customers = mysqlTable("customers", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const customers = pgTable("customers", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	contactPerson: varchar("contact_person", { length: 128 }).notNull(),
 	contactPhone: varchar("contact_phone", { length: 20 }).notNull(),
@@ -33,24 +33,24 @@ export const customers = mysqlTable("customers", {
 	salesId: varchar("sales_id", { length: 36 }),
 	status: varchar({ length: 20 }).default('potential').notNull(),
 	notes: text(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("customers_name_idx").on(table.name),
 	index("customers_sales_id_idx").on(table.salesId),
 	index("customers_status_idx").on(table.status),
 ]);
 
-export const ledgers = mysqlTable("ledgers", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const ledgers = pgTable("ledgers", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	customerId: varchar("customer_id", { length: 36 }).notNull(),
 	accountantId: varchar("accountant_id", { length: 36 }).notNull(),
-	year: int().notNull(),
+	year: integer().notNull(),
 	status: varchar({ length: 20 }).default('active').notNull(),
 	description: text(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("ledgers_accountant_id_idx").on(table.accountantId),
 	index("ledgers_customer_id_idx").on(table.customerId),
@@ -58,38 +58,38 @@ export const ledgers = mysqlTable("ledgers", {
 	index("ledgers_year_idx").on(table.year),
 ]);
 
-export const profitRules = mysqlTable("profit_rules", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const profitRules = pgTable("profit_rules", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
-	salesRate: int("sales_rate").notNull(),
-	accountantRate: int("accountant_rate").notNull(),
-	baseAmount: int("base_amount").default(0),
+	salesRate: integer("sales_rate").notNull(),
+	accountantRate: integer("accountant_rate").notNull(),
+	baseAmount: integer("base_amount").default(0),
 	conditions: json(),
 	isActive: boolean("is_active").default(true).notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("profit_rules_is_active_idx").on(table.isActive),
 	index("profit_rules_type_idx").on(table.type),
 ]);
 
-export const profitShares = mysqlTable("profit_shares", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const profitShares = pgTable("profit_shares", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	customerId: varchar("customer_id", { length: 36 }),
 	ledgerId: varchar("ledger_id", { length: 36 }),
 	salesId: varchar("sales_id", { length: 36 }),
 	accountantId: varchar("accountant_id", { length: 36 }),
 	profitRuleId: varchar("profit_rule_id", { length: 36 }).notNull(),
-	totalAmount: int("total_amount").notNull(),
-	salesAmount: int("sales_amount").notNull(),
-	accountantAmount: int("accountant_amount").notNull(),
+	totalAmount: integer("total_amount").notNull(),
+	salesAmount: integer("sales_amount").notNull(),
+	accountantAmount: integer("accountant_amount").notNull(),
 	period: varchar({ length: 20 }).notNull(),
 	status: varchar({ length: 20 }).default('pending').notNull(),
-	paidAt: datetime("paid_at"),
+	paidAt: timestamp("paid_at"),
 	notes: text(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("profit_shares_accountant_id_idx").on(table.accountantId),
 	index("profit_shares_customer_id_idx").on(table.customerId),
@@ -98,8 +98,9 @@ export const profitShares = mysqlTable("profit_shares", {
 	index("profit_shares_status_idx").on(table.status),
 ]);
 
-export const users = mysqlTable("users", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+
+export const users = pgTable("users", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	email: varchar({ length: 255 }).notNull(),
 	password: varchar({ length: 255 }).notNull(),
 	name: varchar({ length: 128 }).notNull(),
@@ -108,16 +109,16 @@ export const users = mysqlTable("users", {
 	avatar: varchar({ length: 500 }),
 	isActive: boolean("is_active").default(true).notNull(),
 	metadata: json(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("users_email_idx").on(table.email),
 	index("users_role_idx").on(table.role),
 	unique("users_email_unique").on(table.email),
 ]);
 
-export const workOrders = mysqlTable("work_orders", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const workOrders = pgTable("work_orders", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	title: varchar({ length: 255 }).notNull(),
 	type: varchar({ length: 50 }).notNull(),
 	description: text(),
@@ -127,10 +128,10 @@ export const workOrders = mysqlTable("work_orders", {
 	createdBy: varchar("created_by", { length: 36 }).notNull(),
 	priority: varchar({ length: 20 }).default('medium').notNull(),
 	status: varchar({ length: 20 }).default('pending').notNull(),
-	dueDate: datetime("due_date"),
-	completedAt: datetime("completed_at"),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	dueDate: timestamp("due_date"),
+	completedAt: timestamp("completed_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("work_orders_assigned_to_idx").on(table.assignedTo),
 	index("work_orders_customer_id_idx").on(table.customerId),
@@ -139,20 +140,20 @@ export const workOrders = mysqlTable("work_orders", {
 	index("work_orders_status_idx").on(table.status),
 ]);
 
-export const chartOfAccounts = mysqlTable("chart_of_accounts", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const chartOfAccounts = pgTable("chart_of_accounts", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	ledgerId: varchar("ledger_id", { length: 36 }).notNull(),
 	code: varchar({ length: 20 }).notNull(),
 	name: varchar({ length: 100 }).notNull(),
 	parentId: varchar("parent_id", { length: 36 }),
-	level: int().default(1).notNull(),
+	level: integer().default(1).notNull(),
 	type: varchar({ length: 20 }).notNull(),
 	direction: varchar({ length: 10 }).notNull(),
 	isLeaf: boolean("is_leaf").default(true).notNull(),
 	isActive: boolean("is_active").default(true).notNull(),
 	remark: text(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("coa_code_idx").on(table.code),
 	index("coa_ledger_id_idx").on(table.ledgerId),
@@ -161,23 +162,23 @@ export const chartOfAccounts = mysqlTable("chart_of_accounts", {
 	index("coa_type_idx").on(table.type),
 ]);
 
-export const auxiliaryTypes = mysqlTable("auxiliary_types", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const auxiliaryTypes = pgTable("auxiliary_types", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 50 }).notNull(),
 	code: varchar({ length: 20 }).notNull(),
 	description: text(),
 	isSystem: boolean("is_system").default(false).notNull(),
 	status: varchar({ length: 20 }).default('active').notNull(),
-	sortOrder: int("sort_order").default(0),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	sortOrder: integer("sort_order").default(0),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("at_code_idx").on(table.code),
 	index("at_status_idx").on(table.status),
 ]);
 
-export const auxiliaryItems = mysqlTable("auxiliary_items", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const auxiliaryItems = pgTable("auxiliary_items", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	typeId: varchar("type_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 200 }).notNull(),
@@ -187,8 +188,8 @@ export const auxiliaryItems = mysqlTable("auxiliary_items", {
 	isLeaf: boolean("is_leaf").default(true).notNull(),
 	status: varchar({ length: 20 }).default('active').notNull(),
 	remark: text(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("ai_code_idx").on(table.code),
 	index("ai_full_code_idx").on(table.fullCode),
@@ -202,12 +203,12 @@ export const auxiliaryItems = mysqlTable("auxiliary_items", {
 		}).onDelete("cascade"),
 ]);
 
-export const accountAuxiliarySettings = mysqlTable("account_auxiliary_settings", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const accountAuxiliarySettings = pgTable("account_auxiliary_settings", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	accountId: varchar("account_id", { length: 36 }).notNull(),
 	auxiliaryTypeId: varchar("auxiliary_type_id", { length: 36 }).notNull(),
 	isRequired: boolean("is_required").default(false).notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
 	index("aas_account_id_idx").on(table.accountId),
 	index("aas_auxiliary_type_id_idx").on(table.auxiliaryTypeId),
@@ -219,8 +220,8 @@ export const accountAuxiliarySettings = mysqlTable("account_auxiliary_settings",
 	unique("uq_account_auxiliary").on(table.accountId, table.auxiliaryTypeId),
 ]);
 
-export const auxiliaryBalances = mysqlTable("auxiliary_balances", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const auxiliaryBalances = pgTable("auxiliary_balances", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	ledgerId: varchar("ledger_id", { length: 36 }).notNull(),
 	accountId: varchar("account_id", { length: 36 }).notNull(),
 	accountCode: varchar("account_code", { length: 20 }).notNull(),
@@ -236,7 +237,7 @@ export const auxiliaryBalances = mysqlTable("auxiliary_balances", {
 	endingDebit: decimal("ending_debit", { precision: 18, scale:  2 }).default('0').notNull(),
 	endingCredit: decimal("ending_credit", { precision: 18, scale:  2 }).default('0').notNull(),
 	direction: varchar({ length: 10 }).notNull(),
-	updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
 	index("ab_account_id_idx").on(table.accountId),
 	index("ab_auxiliary_item_id_idx").on(table.auxiliaryItemId),
@@ -256,70 +257,70 @@ export const auxiliaryBalances = mysqlTable("auxiliary_balances", {
 		}).onDelete("cascade"),
 ]);
 
-export const currencies = mysqlTable("currencies", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const currencies = pgTable("currencies", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	code: varchar({ length: 10 }).notNull(),
 	name: varchar({ length: 50 }).notNull(),
 	symbol: varchar({ length: 10 }),
 	exchangeRate: decimal("exchange_rate", { precision: 18, scale:  6 }).default('1').notNull(),
 	isBase: boolean("is_base").default(false).notNull(),
-	decimalPlaces: int("decimal_places").default(2).notNull(),
+	decimalPlaces: integer("decimal_places").default(2).notNull(),
 	status: varchar({ length: 20 }).default('active').notNull(),
-	sortOrder: int("sort_order").default(0),
+	sortOrder: integer("sort_order").default(0),
 	remark: text(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("currency_code_idx").on(table.code),
 	index("currency_status_idx").on(table.status),
 	unique("currencies_code_key").on(table.code),
 ]);
 
-export const exchangeRateHistory = mysqlTable("exchange_rate_history", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const exchangeRateHistory = pgTable("exchange_rate_history", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	currencyId: varchar("currency_id", { length: 36 }).notNull(),
 	currencyCode: varchar("currency_code", { length: 10 }).notNull(),
 	rateDate: date("rate_date").notNull(),
 	exchangeRate: decimal("exchange_rate", { precision: 18, scale:  6 }).notNull(),
 	source: varchar({ length: 50 }),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 
 // ==================== 基地管理相关表 ====================
 
 // 基地表
-export const bases = mysqlTable("bases", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const bases = pgTable("bases", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	address: text(),
 	status: varchar({ length: 20 }).default('active').notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("bases_name_idx").on(table.name),
 	index("bases_status_idx").on(table.status),
 ]);
 
 // 企业表
-export const enterprises = mysqlTable("enterprises", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const enterprises = pgTable("enterprises", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	creditCode: varchar("credit_code", { length: 50 }),
 	legalPerson: varchar("legal_person", { length: 100 }),
 	phone: varchar({ length: 20 }),
 	industry: varchar({ length: 100 }),
 	status: varchar({ length: 20 }).default('active').notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("enterprises_credit_code_idx").on(table.creditCode),
 	index("enterprises_name_idx").on(table.name),
 ]);
 
 // 物业表（独立水电计量单元）
-export const meters = mysqlTable("meters", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const meters = pgTable("meters", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	baseId: varchar("base_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 255 }),
@@ -335,8 +336,8 @@ export const meters = mysqlTable("meters", {
 	// 面积
 	area: decimal("area", { precision: 10, scale: 2 }),
 	status: varchar({ length: 20 }).default('active').notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("meters_base_id_idx").on(table.baseId),
 	index("meters_code_idx").on(table.code),
@@ -348,15 +349,15 @@ export const meters = mysqlTable("meters", {
 ]);
 
 // 物理空间表
-export const spaces = mysqlTable("spaces", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const spaces = pgTable("spaces", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	meterId: varchar("meter_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 255 }),
 	area: decimal("area", { precision: 10, scale: 2 }),
 	status: varchar({ length: 20 }).default('active').notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("spaces_meter_id_idx").on(table.meterId),
 	index("spaces_code_idx").on(table.code),
@@ -368,14 +369,14 @@ export const spaces = mysqlTable("spaces", {
 ]);
 
 // 注册号表
-export const regNumbers = mysqlTable("reg_numbers", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const regNumbers = pgTable("reg_numbers", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	spaceId: varchar("space_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	status: varchar({ length: 20 }).default('available').notNull(), // available=可用, allocated=已分配, reserved=预留
 	enterpriseId: varchar("enterprise_id", { length: 36 }),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("reg_numbers_code_idx").on(table.code),
 	index("reg_numbers_space_id_idx").on(table.spaceId),
@@ -393,20 +394,20 @@ export const regNumbers = mysqlTable("reg_numbers", {
 ]);
 
 // 支付宝授权表
-export const alipayAuthTokens = mysqlTable("alipay_auth_tokens", {
-	id: varchar({ length: 36 }).default(sql`(UUID())`).primaryKey().notNull(),
+export const alipayAuthTokens = pgTable("alipay_auth_tokens", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	userId: varchar("user_id", { length: 36 }).notNull(),
 	alipayUserId: varchar("alipay_user_id", { length: 64 }).notNull(),
 	accessToken: text("access_token").notNull(),
 	refreshToken: text("refresh_token").notNull(),
-	expiresIn: int("expires_in").notNull(),
-	reExpiresIn: int("re_expires_in").notNull(),
+	expiresIn: integer("expires_in").notNull(),
+	reExpiresIn: integer("re_expires_in").notNull(),
 	tokenType: varchar("token_type", { length: 20 }).default('Bearer'),
-	authTime: datetime("auth_time").notNull(),
-	expiresAt: datetime("expires_at").notNull(),
-	refreshExpiresAt: datetime("refresh_expires_at").notNull(),
-	createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: datetime("updated_at"),
+	authTime: timestamp("auth_time").notNull(),
+	expiresAt: timestamp("expires_at").notNull(),
+	refreshExpiresAt: timestamp("refresh_expires_at").notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("alipay_auth_tokens_user_id_idx").on(table.userId),
 	index("alipay_auth_tokens_alipay_user_id_idx").on(table.alipayUserId),

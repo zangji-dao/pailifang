@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getSupabaseClient } from '@/storage/database/client';
 import { refreshAccessToken } from './alipay';
 
 /**
