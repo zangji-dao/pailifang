@@ -193,6 +193,11 @@ export enum FileType {
 }
 
 /**
+ * 项目存储前缀（用于多项目隔离）
+ */
+export const PROJECT_PREFIX = 'pi-cube';
+
+/**
  * 根据文件类型获取存储路径前缀
  */
 export function getStoragePrefix(type: FileType, ...parts: string[]): string {
@@ -206,7 +211,7 @@ export function getStoragePrefix(type: FileType, ...parts: string[]): string {
   };
 
   const parts_ = parts.filter(Boolean);
-  return [typePrefixes[type], ...parts_].join('/');
+  return [PROJECT_PREFIX, typePrefixes[type], ...parts_].join('/');
 }
 
 /**
