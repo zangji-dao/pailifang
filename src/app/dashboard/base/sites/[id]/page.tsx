@@ -379,14 +379,14 @@ export default function BaseDetailPage() {
     fetchBaseDetail();
   }, [baseId]);
 
-  const totalMeters = baseDetail?.meters.length || 0;
-  const totalSpaces = baseDetail?.meters.reduce((sum, m) => sum + m.spaces.length, 0) || 0;
-  const totalRegNumbers = baseDetail?.meters.reduce(
-    (sum, m) => sum + m.spaces.reduce((s, sp) => s + sp.regNumbers.length, 0),
+  const totalMeters = baseDetail?.meters?.length || 0;
+  const totalSpaces = baseDetail?.meters?.reduce((sum, m) => sum + (m.spaces?.length || 0), 0) || 0;
+  const totalRegNumbers = baseDetail?.meters?.reduce(
+    (sum, m) => sum + (m.spaces?.reduce((s, sp) => s + (sp.regNumbers?.length || 0), 0) || 0),
     0
   ) || 0;
-  const allocatedRegNumbers = baseDetail?.meters.reduce(
-    (sum, m) => sum + m.spaces.reduce((s, sp) => s + sp.regNumbers.filter(r => r.status === "allocated").length, 0),
+  const allocatedRegNumbers = baseDetail?.meters?.reduce(
+    (sum, m) => sum + (m.spaces?.reduce((s, sp) => s + (sp.regNumbers?.filter(r => r.status === "allocated")?.length || 0), 0) || 0),
     0
   ) || 0;
 
