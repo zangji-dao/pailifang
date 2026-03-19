@@ -38,7 +38,7 @@ interface ApplicationFormData {
   id?: string;
   // 基本信息
   enterpriseName: string;
-  enterpriseNameBackup: string;
+  enterpriseNameBackups: string[]; // 备用名列表（可多个）
   registeredCapital: string;
   currencyType: string;
   taxType: TaxType | "";
@@ -95,7 +95,7 @@ interface ApplicationFormData {
 
 const initialFormData: ApplicationFormData = {
   enterpriseName: "",
-  enterpriseNameBackup: "",
+  enterpriseNameBackups: [],
   registeredCapital: "",
   currencyType: "CNY",
   taxType: "",
@@ -279,13 +279,52 @@ export function ApplicationFormDialog({
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="enterpriseNameBackup">备用名</Label>
-                    <Input
-                      id="enterpriseNameBackup"
-                      value={formData.enterpriseNameBackup}
-                      onChange={(e) => updateField("enterpriseNameBackup", e.target.value)}
-                      placeholder="请输入备用名称"
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label>备用名</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const backups = [...(formData.enterpriseNameBackups || []), ""];
+                          updateField("enterpriseNameBackups", backups);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        添加
+                      </Button>
+                    </div>
+                    {formData.enterpriseNameBackups && formData.enterpriseNameBackups.length > 0 ? (
+                      <div className="space-y-2">
+                        {formData.enterpriseNameBackups.map((backup, index) => (
+                          <div key={index} className="flex gap-2">
+                            <Input
+                              value={backup}
+                              onChange={(e) => {
+                                const newBackups = [...formData.enterpriseNameBackups];
+                                newBackups[index] = e.target.value;
+                                updateField("enterpriseNameBackups", newBackups);
+                              }}
+                              placeholder={`备用名 ${index + 1}`}
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const newBackups = formData.enterpriseNameBackups.filter((_, i) => i !== index);
+                                updateField("enterpriseNameBackups", newBackups);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">可选，点击"添加"按钮添加备用名</p>
+                    )}
                   </div>
                 </div>
 

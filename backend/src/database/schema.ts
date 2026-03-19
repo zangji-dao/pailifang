@@ -400,7 +400,7 @@ export const settlementApplications = pgTable("pi_settlement_applications", {
 	
 	// 企业基本信息
 	enterpriseName: varchar("enterprise_name", { length: 255 }).notNull(),
-	enterpriseNameBackup: varchar("enterprise_name_backup", { length: 255 }),
+	enterpriseNameBackups: json("enterprise_name_backups").$type<string[]>(),
 	registeredCapital: decimal("registered_capital", { precision: 12, scale: 2 }),
 	currencyType: varchar("currency_type", { length: 20 }).default('CNY'),
 	taxType: varchar("tax_type", { length: 20 }),

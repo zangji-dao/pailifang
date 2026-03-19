@@ -69,7 +69,7 @@ export const applicationController = {
           applicationNo: settlementApplications.applicationNo,
           applicationDate: settlementApplications.applicationDate,
           enterpriseName: settlementApplications.enterpriseName,
-          enterpriseNameBackup: settlementApplications.enterpriseNameBackup,
+          enterpriseNameBackups: settlementApplications.enterpriseNameBackups,
           applicationType: settlementApplications.applicationType,
           settlementType: settlementApplications.settlementType,
           approvalStatus: settlementApplications.approvalStatus,
@@ -168,7 +168,7 @@ export const applicationController = {
           applicationNo,
           applicationDate: data.applicationDate || new Date().toISOString().split('T')[0],
           enterpriseName: data.enterpriseName,
-          enterpriseNameBackup: data.enterpriseNameBackup,
+          enterpriseNameBackups: data.enterpriseNameBackups || [],
           registeredCapital: data.registeredCapital,
           currencyType: data.currencyType || 'CNY',
           taxType: data.taxType,
@@ -252,7 +252,7 @@ export const applicationController = {
         .update(settlementApplications)
         .set({
           enterpriseName: data.enterpriseName,
-          enterpriseNameBackup: data.enterpriseNameBackup,
+          enterpriseNameBackups: data.enterpriseNameBackups || [],
           registeredCapital: data.registeredCapital,
           currencyType: data.currencyType,
           taxType: data.taxType,

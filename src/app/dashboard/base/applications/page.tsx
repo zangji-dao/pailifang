@@ -35,7 +35,7 @@ interface Application {
   applicationNo: string;
   applicationDate: string | null;
   enterpriseName: string;
-  enterpriseNameBackup: string | null;
+  enterpriseNameBackups: string[] | null;
   applicationType: ApplicationType;
   approvalStatus: ApprovalStatus;
   approvedAt: string | null;
@@ -279,8 +279,10 @@ export default function ApplicationsPage() {
                   <td className="p-4 text-sm font-mono">{app.applicationNo}</td>
                   <td className="p-4">
                     <div className="font-medium">{app.enterpriseName}</div>
-                    {app.enterpriseNameBackup && (
-                      <div className="text-xs text-muted-foreground">备用名: {app.enterpriseNameBackup}</div>
+                    {app.enterpriseNameBackups && app.enterpriseNameBackups.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        备用名: {app.enterpriseNameBackups.join("、")}
+                      </div>
                     )}
                   </td>
                   <td className="p-4">
