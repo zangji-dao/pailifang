@@ -5,25 +5,14 @@ import { useRouter } from "next/navigation";
 import {
   Search,
   Plus,
-  FileText,
   Eye,
   Send,
-  CheckCircle,
-  XCircle,
+  Edit,
+  Trash2,
+  GitBranch,
   Loader2,
   AlertCircle,
   Building2,
-  Phone,
-  User,
-  MapPin,
-  DollarSign,
-  Users,
-  Briefcase,
-  Mail,
-  Edit,
-  Trash2,
-  FileSignature,
-  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +25,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
-import { ApplicationFormDialog } from "./_components/ApplicationFormDialog";
 
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
@@ -90,8 +78,6 @@ export default function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [showFormDialog, setShowFormDialog] = useState(false);
-  const [editingApplication, setEditingApplication] = useState<Application | null>(null);
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -116,16 +102,14 @@ export default function ApplicationsPage() {
     fetchApplications();
   }, []);
 
-  // 打开新建表单
+  // 打开新建表单（新标签页）
   const handleCreate = () => {
-    setEditingApplication(null);
-    setShowFormDialog(true);
+    router.push("/dashboard/base/applications/new");
   };
 
-  // 打开编辑表单
+  // 打开编辑表单（新标签页）
   const handleEdit = (application: Application) => {
-    setEditingApplication(application);
-    setShowFormDialog(true);
+    router.push(`/dashboard/base/applications/${application.id}`);
   };
 
   // 提交审批
@@ -170,7 +154,7 @@ export default function ApplicationsPage() {
     }
   };
 
-  // 查看详情/流程
+  // 查看流程
   const handleViewProcess = (application: Application) => {
     router.push(`/dashboard/base/processes?applicationId=${application.id}`);
   };
@@ -294,7 +278,7 @@ export default function ApplicationsPage() {
             {filteredApplications.length === 0 ? (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                  暂无申请记录
+                  暂无申请记录，点击"填写申请表"开始
                 </td>
               </tr>
             ) : (
@@ -387,7 +371,7 @@ export default function ApplicationsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleViewProcess(app)}
+                          onClick={() => handleEdit(app)}
                           className="gap-1"
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -413,17 +397,6 @@ export default function ApplicationsPage() {
           </tbody>
         </table>
       </div>
-
-      {/* 申请表单弹窗 */}
-      <ApplicationFormDialog
-        open={showFormDialog}
-        onOpenChange={setShowFormDialog}
-        application={editingApplication}
-        onSuccess={() => {
-          setShowFormDialog(false);
-          fetchApplications();
-        }}
-      />
     </div>
   );
 }
