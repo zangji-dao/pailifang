@@ -12,6 +12,7 @@ import {
   Users,
   Hash,
   DoorOpen,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,48 +39,91 @@ export default function BaseListPage() {
   const [bases, setBases] = useState<Base[]>([]);
   const [baseStats, setBaseStats] = useState<Record<string, BaseStats>>({});
   const [loading, setLoading] = useState(true);
+  
+  // 新增基地弹窗状态
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    address: "",
+    status: "active",
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      // 获取基地列表
+      const basesResponse = await fetch("/api/bases");
+      const basesResult = await basesResponse.json();
+      if (basesResult.success) {
+        setBases(basesResult.data);
+        
+        // 获取每个基地的详细统计
+        const stats: Record<string, BaseStats> = {};
+        for (const base of basesResult.data) {
+          try {
+            const detailResponse = await fetch(`/api/bases/${base.id}`);
+            const detailResult = await detailResponse.json();
+            if (detailResult.success && detailResult.data.meters) {
+              const meters = detailResult.data.meters;
+              stats[base.id] = {
+                totalSpaces: meters.reduce((sum: number, m: any) => sum + (m.spaces?.length || 0), 0),
+                totalRegNumbers: meters.reduce((sum: number, m: any) => 
+                  sum + (m.spaces?.reduce((s: number, sp: any) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
+                allocatedRegNumbers: meters.reduce((sum: number, m: any) => 
+                  sum + (m.spaces?.reduce((s: number, sp: any) => 
+                    s + (sp.regNumbers?.filter((r: any) => r.status === "allocated")?.length || 0), 0) || 0), 0),
+              };
+            }
+          } catch (e) {
+            console.error("获取基地详情失败:", e);
+          }
+        }
+        setBaseStats(stats);
+      }
+    } catch (error) {
+      console.error("获取基地列表失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // 获取基地列表
-        const basesResponse = await fetch("/api/bases");
-        const basesResult = await basesResponse.json();
-        if (basesResult.success) {
-          setBases(basesResult.data);
-          
-          // 获取每个基地的详细统计
-          const stats: Record<string, BaseStats> = {};
-          for (const base of basesResult.data) {
-            try {
-              const detailResponse = await fetch(`/api/bases/${base.id}`);
-              const detailResult = await detailResponse.json();
-              if (detailResult.success && detailResult.data.meters) {
-                const meters = detailResult.data.meters;
-                stats[base.id] = {
-                  totalSpaces: meters.reduce((sum: number, m: any) => sum + (m.spaces?.length || 0), 0),
-                  totalRegNumbers: meters.reduce((sum: number, m: any) => 
-                    sum + (m.spaces?.reduce((s: number, sp: any) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
-                  allocatedRegNumbers: meters.reduce((sum: number, m: any) => 
-                    sum + (m.spaces?.reduce((s: number, sp: any) => 
-                      s + (sp.regNumbers?.filter((r: any) => r.status === "allocated")?.length || 0), 0) || 0), 0),
-                };
-              }
-            } catch (e) {
-              console.error("获取基地详情失败:", e);
-            }
-          }
-          setBaseStats(stats);
-        }
-      } catch (error) {
-        console.error("获取基地列表失败:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
+
+  // 创建基地
+  const handleCreateBase = async () => {
+    if (!formData.name.trim()) {
+      alert("请输入基地名称");
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/bases", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setShowAddDialog(false);
+        setFormData({ name: "", address: "", status: "active" });
+        // 刷新列表
+        fetchData();
+      } else {
+        alert(result.error || "创建失败");
+      }
+    } catch (error) {
+      console.error("创建基地失败:", error);
+      alert("创建失败，请重试");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleBaseClick = (baseId: string, baseName: string) => {
     if (tabs) {
@@ -113,6 +157,7 @@ export default function BaseListPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Button 
           className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0 sm:ml-auto"
+          onClick={() => setShowAddDialog(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
           新增基地
@@ -300,6 +345,119 @@ export default function BaseListPage() {
           </div>
         )}
       </div>
+
+      {/* 新增基地弹窗 */}
+      {showAddDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 遮罩 */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowAddDialog(false)}
+          />
+          
+          {/* 弹窗内容 */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* 头部 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-lg font-semibold text-slate-900">新增基地</h3>
+              <button
+                onClick={() => setShowAddDialog(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* 表单 */}
+            <div className="p-6 space-y-4">
+              {/* 基地名称 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  基地名称 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="请输入基地名称"
+                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                />
+              </div>
+              
+              {/* 基地地址 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  基地地址
+                </label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="请输入基地地址"
+                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                />
+              </div>
+              
+              {/* 状态 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  状态
+                </label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="status"
+                      checked={formData.status === "active"}
+                      onChange={() => setFormData({ ...formData, status: "active" })}
+                      className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
+                    />
+                    <span className="text-sm text-slate-700">运营中</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="status"
+                      checked={formData.status === "inactive"}
+                      onChange={() => setFormData({ ...formData, status: "inactive" })}
+                      className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
+                    />
+                    <span className="text-sm text-slate-700">已停用</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            {/* 底部按钮 */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddDialog(false)}
+                disabled={submitting}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleCreateBase}
+                disabled={submitting}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    创建中...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    创建基地
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
