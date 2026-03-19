@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -519,10 +518,98 @@ export default function NewApplicationPage() {
 
   const [currentStep, setCurrentStep] = useState(0);
 
+  // 验证基本信息
+  const validateBasicStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.enterpriseName?.trim()) {
+      newErrors.enterpriseName = "请输入企业名称";
+    }
+    if (!formData.registeredCapital?.trim()) {
+      newErrors.registeredCapital = "请输入注册资金";
+    }
+    if (!formData.taxType) {
+      newErrors.taxType = "请选择缴税类型";
+    }
+    if (!formData.expectedAnnualRevenue?.trim()) {
+      newErrors.expectedAnnualRevenue = "请输入预计主营收入";
+    }
+    if (!formData.expectedAnnualTax?.trim()) {
+      newErrors.expectedAnnualTax = "请输入预计全口径税收";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 验证地址信息
+  const validateAddressStep = (): boolean => {
+    // 地址信息都是可选的
+    return true;
+  };
+
+  // 验证人员信息
+  const validatePersonnelStep = (): boolean => {
+    if (!formData.personnel || formData.personnel.length < 2) {
+      setErrors({ personnel: "至少需要2名人员（法人代表和监事）" });
+      return false;
+    }
+    
+    const hasLegalPerson = formData.personnel.some(p => p.roles.includes("legal_person"));
+    const hasSupervisor = formData.personnel.some(p => p.roles.includes("supervisor"));
+    
+    if (!hasLegalPerson) {
+      setErrors({ personnel: "请指定法人代表" });
+      return false;
+    }
+    if (!hasSupervisor) {
+      setErrors({ personnel: "请指定监事" });
+      return false;
+    }
+    
+    // 检查法人代表和监事是否是同一人
+    const legalPersonIndex = formData.personnel.findIndex(p => p.roles.includes("legal_person"));
+    const supervisorIndex = formData.personnel.findIndex(p => p.roles.includes("supervisor"));
+    
+    if (legalPersonIndex === supervisorIndex) {
+      setErrors({ personnel: "法人代表和监事不能是同一人" });
+      return false;
+    }
+    
+    setErrors({});
+    return true;
+  };
+
+  // 验证股东信息
+  const validateShareholderStep = (): boolean => {
+    // 股东信息可选
+    return true;
+  };
+
   // 切换到下一步
   const goToNextStep = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+      // 验证当前步骤
+      let isValid = true;
+      switch (currentStep) {
+        case 0:
+          isValid = validateBasicStep();
+          break;
+        case 1:
+          isValid = validateAddressStep();
+          break;
+        case 2:
+          isValid = validatePersonnelStep();
+          break;
+        case 3:
+          isValid = validateShareholderStep();
+          break;
+      }
+      
+      if (isValid) {
+        setCurrentStep(currentStep + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
@@ -530,6 +617,7 @@ export default function NewApplicationPage() {
   const goToPrevStep = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -571,8 +659,17 @@ export default function NewApplicationPage() {
                 <div key={step.value} className="flex items-center flex-1">
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(index)}
-                    className="flex items-center gap-2 group"
+                    onClick={() => {
+                      // 只能点击已完成的步骤或当前步骤
+                      if (index <= currentStep) {
+                        setCurrentStep(index);
+                      }
+                    }}
+                    disabled={index > currentStep}
+                    className={cn(
+                      "flex items-center gap-2 group",
+                      index > currentStep && "cursor-not-allowed opacity-60"
+                    )}
                   >
                     <span
                       className={cn(
@@ -613,22 +710,9 @@ export default function NewApplicationPage() {
             </p>
           </div>
 
-          <Tabs value={steps[currentStep].value} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
-              {steps.map((step, index) => (
-                <TabsTrigger
-                  key={step.value}
-                  value={step.value}
-                  onClick={() => setCurrentStep(index)}
-                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  {step.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            {/* 基本信息 */}
-            <TabsContent value="basic" className="space-y-6">
+          {/* 基本信息 */}
+          {currentStep === 0 && (
+          <div className="space-y-6">
               {/* 企业名称 */}
               <div className="rounded-lg border bg-card p-5">
                 <h3 className="text-base font-medium mb-4 flex items-center gap-2">
@@ -863,10 +947,12 @@ export default function NewApplicationPage() {
                   </svg>
                 </Button>
               </div>
-            </TabsContent>
+          </div>
+          )}
 
-            {/* 地址信息 */}
-            <TabsContent value="address" className="space-y-6">
+          {/* 地址信息 */}
+          {currentStep === 1 && (
+          <div className="space-y-6">
               {/* 原注册地址 */}
               <div className="rounded-lg border bg-card p-5">
                 <h3 className="text-base font-medium mb-4 flex items-center gap-2">
@@ -935,10 +1021,12 @@ export default function NewApplicationPage() {
                   </svg>
                 </Button>
               </div>
-            </TabsContent>
+          </div>
+          )}
 
-            {/* 人员信息 */}
-            <TabsContent value="personnel" className="space-y-4">
+          {/* 人员信息 */}
+          {currentStep === 2 && (
+          <div className="space-y-4">
               {/* 提示信息 */}
               <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
                 <div className="flex items-start gap-2">
@@ -1239,10 +1327,12 @@ export default function NewApplicationPage() {
                   </svg>
                 </Button>
               </div>
-            </TabsContent>
+          </div>
+          )}
 
-            {/* 股东信息 */}
-            <TabsContent value="shareholder" className="space-y-4">
+          {/* 股东信息 */}
+          {currentStep === 3 && (
+          <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium">股东信息</h3>
@@ -1479,10 +1569,12 @@ export default function NewApplicationPage() {
                   </svg>
                 </Button>
               </div>
-            </TabsContent>
+          </div>
+          )}
 
-            {/* 经营信息 */}
-            <TabsContent value="business" className="space-y-4">
+          {/* 经营信息 */}
+          {currentStep === 4 && (
+          <div className="space-y-4">
               <div className="space-y-2">
                 <Label>经营范围</Label>
                 <Textarea
@@ -1523,8 +1615,8 @@ export default function NewApplicationPage() {
                   保存草稿
                 </Button>
               </div>
-            </TabsContent>
-          </Tabs>
+          </div>
+          )}
         </div>
       </ScrollArea>
     </div>
