@@ -1,0 +1,43 @@
+module.exports = {
+  apps: [
+    {
+      name: "pi-backend",
+      script: "npx",
+      args: "tsx src/index.ts",
+      cwd: "/var/www/pi-cube/backend",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "1G",
+      env: {
+        NODE_ENV: "production",
+        COZE_PROJECT_ENV: "PROD",
+        PORT: "4001",
+        PG_PASSWORD: process.env.PG_PASSWORD || "PiCube2024"
+      },
+      error_file: "/var/www/pi-cube/logs/backend-error.log",
+      out_file: "/var/www/pi-cube/logs/backend-out.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z"
+    },
+    {
+      name: "pi-frontend",
+      script: "pnpm",
+      args: "run start",
+      cwd: "/var/www/pi-cube",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "1G",
+      env: {
+        NODE_ENV: "production",
+        COZE_PROJECT_ENV: "PROD",
+        PORT: "4000"
+      },
+      error_file: "/var/www/pi-cube/logs/frontend-error.log",
+      out_file: "/var/www/pi-cube/logs/frontend-out.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z"
+    }
+  ]
+};
