@@ -144,14 +144,10 @@ deploy_production() {
     log_step "使用 PM2 启动服务..."
     
     # 停止旧服务
-    pm2 delete pi-frontend 2>/dev/null || true
-    pm2 delete pi-backend 2>/dev/null || true
+    pm2 delete all 2>/dev/null || true
     
-    # 启动后端（设置生产环境变量）
-    COZE_PROJECT_ENV=PROD PG_PASSWORD="${PG_PASSWORD}" pm2 start --name pi-backend -- cwd backend npx tsx src/index.ts
-    
-    # 启动前端（默认 4000 端口，可通过 PORT 环境变量修改）
-    COZE_PROJECT_ENV=PROD PORT="${PORT:-4000}" pm2 start --name pi-frontend pnpm -- run start
+    # 使用 ecosystem.config.json 启动服务
+    pm2 start ecosystem.config.json
     
     # 保存 PM2 配置
     pm2 save
