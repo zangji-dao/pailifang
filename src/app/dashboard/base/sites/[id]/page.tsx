@@ -22,8 +22,19 @@ import {
   Check,
   Search,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../../tabs-context";
 
@@ -362,6 +373,8 @@ export default function BaseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [expandedMeter, setExpandedMeter] = useState<string | null>(null);
   const [expandedSpace, setExpandedSpace] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchBaseDetail = async () => {
@@ -384,6 +397,36 @@ export default function BaseDetailPage() {
 
     fetchBaseDetail();
   }, [baseId]);
+
+  // 删除基地
+  const handleDeleteBase = async () => {
+    if (!baseDetail) return;
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/bases/${baseDetail.id}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        // 关闭当前标签页
+        if (tabs) {
+          tabs.closeTab(`base-${baseId}`);
+        }
+        // 跳转回列表页
+        router.push('/dashboard/base/sites');
+      } else {
+        alert(result.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除基地失败:', error);
+      alert('删除失败，请稍后重试');
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
 
   const totalMeters = baseDetail?.meters?.length || 0;
   const totalSpaces = baseDetail?.meters?.reduce((sum, m) => sum + (m.spaces?.length || 0), 0) || 0;
@@ -453,6 +496,14 @@ export default function BaseDetailPage() {
             <Button className="h-11 px-5 bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-white rounded-xl shadow-lg shadow-slate-900/10 font-medium">
               <Plus className="h-4 w-4 mr-2" />
               新增物业
+            </Button>
+            <Button 
+              variant="outline"
+              className="h-11 px-5 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-xl font-medium"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              删除基地
             </Button>
           </div>
         </div>
@@ -762,6 +813,35 @@ export default function BaseDetailPage() {
           </div>
         </div>
       )}
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除基地</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除基地「{baseDetail?.name}」吗？此操作不可撤销，基地下的所有物业信息将被一并删除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBase}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                '确认删除'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
