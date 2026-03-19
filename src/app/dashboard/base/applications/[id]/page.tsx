@@ -210,7 +210,7 @@ export default function EditApplicationPage() {
       formDataUpload.append('file', file);
       formDataUpload.append('type', 'id_card');
 
-      const response = await fetch('http://localhost:4001/api/storage/upload', {
+      const response = await fetch('/api/storage/upload', {
         method: 'POST',
         body: formDataUpload,
       });
