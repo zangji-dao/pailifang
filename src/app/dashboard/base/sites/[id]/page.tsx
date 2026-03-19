@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import HLSPlayer from "@/components/hls-player";
 
 // 账单查询结果类型
 interface BillResult {
@@ -130,71 +131,7 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedCamera, setSelectedCamera] = useState<CameraInfo | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [videoError, setVideoError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<any>(null);
-
-  // 初始化 HLS 播放器
-  useEffect(() => {
-    if (!selectedCamera?.liveAddress?.hls || !videoRef.current) return;
-
-    const hlsUrl = selectedCamera.liveAddress.hls;
-    const video = videoRef.current;
-    setVideoError(null);
-
-    // 动态加载 HLS.js
-    const loadHls = async () => {
-      try {
-        const Hls = (await import('hls.js')).default;
-        
-        if (Hls.isSupported()) {
-          // 销毁旧的 HLS 实例
-          if (hlsRef.current) {
-            hlsRef.current.destroy();
-          }
-
-          const hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-          });
-          
-          hls.loadSource(hlsUrl);
-          hls.attachMedia(video);
-          
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            video.play().catch(() => {});
-          });
-          
-          hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
-            if (data.fatal) {
-              setVideoError('视频加载失败，请重试');
-            }
-          });
-          
-          hlsRef.current = hls;
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Safari 原生支持 HLS
-          video.src = hlsUrl;
-          video.play().catch(() => {});
-        } else {
-          setVideoError('浏览器不支持 HLS 播放');
-        }
-      } catch (e) {
-        console.error('加载 HLS.js 失败:', e);
-        setVideoError('播放器加载失败');
-      }
-    };
-
-    loadHls();
-
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, [selectedCamera?.liveAddress?.hls]);
 
   useEffect(() => {
     fetchCameras();
@@ -319,34 +256,7 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
       {/* 视频区域 */}
       <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
         {selectedCamera?.liveAddress?.hls ? (
-          <>
-            <video
-              ref={videoRef}
-              className="w-full h-full object-contain"
-              controls
-              autoPlay
-              muted
-              playsInline
-            />
-            {videoError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
-                <VideoOff className="h-12 w-12 text-slate-500 mb-2" />
-                <p className="text-slate-400 text-sm">{videoError}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-3 text-slate-400 hover:text-white"
-                  onClick={() => {
-                    setVideoError(null);
-                    setSelectedCamera({ ...selectedCamera });
-                  }}
-                >
-                  <RefreshCw className="h-4 w-4 mr-1.5" />
-                  重试
-                </Button>
-              </div>
-            )}
-          </>
+          <HLSPlayer src={selectedCamera.liveAddress.hls} />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <VideoOff className="h-12 w-12 text-slate-600 mb-2" />
