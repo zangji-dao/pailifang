@@ -866,32 +866,55 @@ export default function NewApplicationPage() {
             </TabsContent>
 
             {/* 地址信息 */}
-            <TabsContent value="address" className="space-y-4">
-              <div className="space-y-2">
-                <Label>原注册地址（迁移企业填写）</Label>
-                <Input
-                  value={formData.originalRegisteredAddress}
-                  onChange={(e) => updateField("originalRegisteredAddress", e.target.value)}
-                  placeholder="请输入原注册地址"
-                />
+            <TabsContent value="address" className="space-y-6">
+              {/* 原注册地址 */}
+              <div className="rounded-lg border bg-card p-5">
+                <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">1</span>
+                  原注册地址
+                  <Badge variant="outline" className="ml-2 text-xs font-normal">迁移企业必填</Badge>
+                </h3>
+                <div className="space-y-2">
+                  <Input
+                    value={formData.originalRegisteredAddress}
+                    onChange={(e) => updateField("originalRegisteredAddress", e.target.value)}
+                    placeholder="请输入原注册地址（如：北京市朝阳区某某街道某某号）"
+                    className="h-10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    仅迁移企业需要填写原注册地址，新建企业可跳过此项
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>邮寄地址</Label>
-                <Input
-                  value={formData.mailingAddress}
-                  onChange={(e) => updateField("mailingAddress", e.target.value)}
-                  placeholder="请输入邮寄地址"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>实际经营地址</Label>
-                <Input
-                  value={formData.businessAddress}
-                  onChange={(e) => updateField("businessAddress", e.target.value)}
-                  placeholder="请输入实际经营地址"
-                />
+              {/* 联系地址 */}
+              <div className="rounded-lg border bg-card p-5">
+                <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">2</span>
+                  联系地址
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>邮寄地址</Label>
+                    <Input
+                      value={formData.mailingAddress}
+                      onChange={(e) => updateField("mailingAddress", e.target.value)}
+                      placeholder="请输入邮寄地址"
+                      className="h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">用于接收重要文件和通知</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>实际经营地址</Label>
+                    <Input
+                      value={formData.businessAddress}
+                      onChange={(e) => updateField("businessAddress", e.target.value)}
+                      placeholder="请输入实际经营地址"
+                      className="h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">企业实际开展业务的地址</p>
+                  </div>
+                </div>
               </div>
 
               {/* 步骤导航 */}
