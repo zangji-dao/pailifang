@@ -44,6 +44,12 @@ export interface EnvironmentConfig {
     publicKey: string;   // 从环境变量读取
     redirectUri: string;
   };
+  
+  // 萤石云配置
+  ysWith: {
+    appKey: string;
+    appSecret: string;
+  };
 }
 
 /**
@@ -89,6 +95,10 @@ export function getEnvironmentConfig(): EnvironmentConfig {
   const alipayPrivateKey = process.env.ALIPAY_PRIVATE_KEY || '';
   const alipayPublicKey = process.env.ALIPAY_PUBLIC_KEY || '';
   
+  // 萤石云配置
+  const ysWithAppKey = process.env.YSWITH_APP_KEY || 'a3f88c0e03f6480cbb0e2aa20f27a897';
+  const ysWithAppSecret = process.env.YSWITH_APP_SECRET || '9209c4a91da554130c78d0d7a9cddff0';
+  
   // 支付宝回调地址
   const domain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || '';
   const alipayRedirectUri = isSandbox
@@ -117,6 +127,11 @@ export function getEnvironmentConfig(): EnvironmentConfig {
       privateKey: alipayPrivateKey,
       publicKey: alipayPublicKey,
       redirectUri: alipayRedirectUri,
+    },
+    
+    ysWith: {
+      appKey: ysWithAppKey,
+      appSecret: ysWithAppSecret,
     },
   };
 }
