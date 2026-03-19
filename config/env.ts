@@ -76,17 +76,18 @@ export function detectEnvironment(): Environment {
 
 /**
  * 获取环境配置
+ * 
+ * 方案一：沙箱与生产完全一致
+ * - 沙箱和生产使用同一个数据库 pi_cube
+ * - 代码完全一致，无需切换
  */
 export function getEnvironmentConfig(): EnvironmentConfig {
   const env = detectEnvironment();
   const isSandbox = env === 'sandbox';
   const isProduction = env === 'production';
   
-  // 数据库配置
-  // 默认：沙箱环境使用 pi_cube_dev，生产环境使用 pi_cube
-  // 如果设置了 USE_PROD_DB=true，沙箱也使用生产数据库（完全一致模式）
-  const useProdDb = process.env.USE_PROD_DB === 'true';
-  const dbName = isSandbox && !useProdDb ? 'pi_cube_dev' : 'pi_cube';
+  // 数据库配置：沙箱和生产使用同一个数据库
+  const dbName = 'pi_cube';
   
   // 数据库密码从环境变量读取（敏感信息不硬编码）
   const dbPassword = process.env.PG_PASSWORD || process.env.DB_PASSWORD || '';
