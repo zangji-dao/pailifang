@@ -13,6 +13,7 @@ import {
   Hash,
   DoorOpen,
   X,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,11 +34,19 @@ interface BaseStats {
   allocatedRegNumbers: number;
 }
 
+interface EnterpriseStats {
+  total: number;
+  tenant: number;
+  service: number;
+  active: number;
+}
+
 export default function BaseListPage() {
   const router = useRouter();
   const tabs = useTabs();
   const [bases, setBases] = useState<Base[]>([]);
   const [baseStats, setBaseStats] = useState<Record<string, BaseStats>>({});
+  const [enterpriseStats, setEnterpriseStats] = useState<EnterpriseStats>({ total: 0, tenant: 0, service: 0, active: 0 });
   const [loading, setLoading] = useState(true);
   
   // 新增基地弹窗状态
@@ -79,6 +88,17 @@ export default function BaseListPage() {
           }
         }
         setBaseStats(stats);
+      }
+
+      // 获取企业统计
+      try {
+        const enterpriseResponse = await fetch('/api/enterprises/stats');
+        const enterpriseResult = await enterpriseResponse.json();
+        if (enterpriseResult.success) {
+          setEnterpriseStats(enterpriseResult.data);
+        }
+      } catch (e) {
+        console.error("获取企业统计失败:", e);
       }
     } catch (error) {
       console.error("获取基地列表失败:", error);
@@ -165,7 +185,7 @@ export default function BaseListPage() {
       </div>
 
       {/* 核心指标卡片 - 响应式网格 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
         {/* 基地总数 */}
         <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
@@ -211,14 +231,27 @@ export default function BaseListPage() {
         </div>
 
         {/* 入驻企业 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm col-span-2 sm:col-span-1">
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-blue-100 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
-            <span className="text-xs sm:text-sm text-slate-500">入驻企业</span>
+            <span className="text-xs sm:text-sm text-blue-600">入驻企业</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalAllocated}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-blue-700">{enterpriseStats.tenant}</p>
+          <p className="text-xs text-slate-400 mt-1">基地内注册</p>
+        </div>
+
+        {/* 服务企业 */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-purple-100 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+            </div>
+            <span className="text-xs sm:text-sm text-purple-600">服务企业</span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-purple-700">{enterpriseStats.service}</p>
+          <p className="text-xs text-slate-400 mt-1">基地外注册</p>
         </div>
       </div>
 
