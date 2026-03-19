@@ -8,9 +8,46 @@ import {
   getCameraList,
   getLiveAddress,
   getLiveAddresses,
+  closeLive,
 } from '../services/ysWithService';
 
 const router = Router();
+
+/**
+ * 关闭直播
+ * POST /api/yswith/live/close
+ * Body: { deviceSerial, cameraNo? }
+ */
+router.post('/live/close', async (req: Request, res: Response) => {
+  try {
+    const { deviceSerial, cameraNo = 1 } = req.body;
+    
+    if (!deviceSerial) {
+      // 关闭所有摄像头的直播
+      const cameras = await getCameraList();
+      for (const camera of cameras) {
+        try {
+          await closeLive(camera.deviceSerial, camera.cameraNo);
+        } catch (e) {
+          // 忽略错误
+        }
+      }
+    } else {
+      await closeLive(deviceSerial, cameraNo);
+    }
+    
+    res.json({
+      success: true,
+      message: '直播已关闭',
+    });
+  } catch (error: any) {
+    console.error('关闭直播失败:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '关闭直播失败',
+    });
+  }
+});
 
 /**
  * 获取设备列表
@@ -109,14 +146,37 @@ router.post('/live/batch', async (req: Request, res: Response) => {
 /**
  * 获取所有摄像头及直播地址
  * GET /api/yswith/all
+ * Query: closeFirst=1 先关闭所有直播再获取
  */
 router.get('/all', async (req: Request, res: Response) => {
   try {
+    const { closeFirst, camera } = req.query;
+    
     // 获取摄像头列表
     const cameras = await getCameraList();
     
+    // 如果指定了关闭直播
+    if (closeFirst === '1') {
+      console.log('先关闭所有直播...');
+      for (const cam of cameras) {
+        try {
+          await closeLive(cam.deviceSerial, cam.cameraNo);
+        } catch (e) {
+          // 忽略错误
+        }
+      }
+      // 等待一下让服务器处理
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    // 如果指定了单个摄像头
+    let targetCameras = cameras;
+    if (camera) {
+      targetCameras = cameras.filter(c => c.deviceSerial === camera);
+    }
+    
     // 批量获取直播地址
-    const sources = cameras.map(c => ({
+    const sources = targetCameras.map(c => ({
       deviceSerial: c.deviceSerial,
       cameraNo: c.cameraNo,
     }));
@@ -131,7 +191,7 @@ router.get('/all', async (req: Request, res: Response) => {
     }
     
     // 合并数据
-    const result = cameras.map(camera => {
+    const result = targetCameras.map(camera => {
       const address = addresses.find(
         a => a.deviceSerial === camera.deviceSerial && a.cameraNo === camera.cameraNo
       );

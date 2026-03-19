@@ -136,15 +136,20 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchCameras();
+    fetchCameras(true);
   }, []);
 
-  const fetchCameras = async () => {
+  const fetchCameras = async (closeFirst: boolean = false) => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/yswith/all');
+      // 获取直播地址前先关闭所有直播
+      const url = closeFirst 
+        ? '/api/yswith/all?closeFirst=1' 
+        : '/api/yswith/all';
+      
+      const response = await fetch(url);
       const result = await response.json();
       
       if (result.success) {

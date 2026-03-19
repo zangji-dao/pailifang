@@ -166,6 +166,29 @@ export async function openLive(deviceSerial: string, cameraNo: number = 1): Prom
 }
 
 /**
+ * 关闭直播功能
+ */
+export async function closeLive(deviceSerial: string, cameraNo: number = 1): Promise<void> {
+  const token = await getAccessToken();
+  
+  const response = await fetch(`${YSWITH_API_BASE}/live/video/close`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      accessToken: token,
+      source: `${deviceSerial}:${cameraNo}`,
+    }),
+  });
+
+  const result = await response.json();
+  
+  // 关闭直播，忽略错误
+  console.log(`关闭直播 ${deviceSerial}:${cameraNo}`, result.msg || '成功');
+}
+
+/**
  * 获取直播地址
  */
 export async function getLiveAddress(
