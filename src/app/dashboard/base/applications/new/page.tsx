@@ -201,10 +201,24 @@ export default function NewApplicationPage() {
       if (roles.includes(role)) {
         newPersonnel[index] = { ...newPersonnel[index], roles: roles.filter((r) => r !== role) };
       } else {
-        newPersonnel[index] = { ...newPersonnel[index], roles: [...roles, role] };
+        // 检查该职务是否已被其他人担任
+        const isRoleTaken = prev.personnel.some((p, i) => i !== index && p.roles.includes(role));
+        if (!isRoleTaken) {
+          newPersonnel[index] = { ...newPersonnel[index], roles: [...roles, role] };
+        }
       }
       return { ...prev, personnel: newPersonnel };
     });
+  };
+
+  // 检查某个职务是否已被其他人担任
+  const isRoleTakenByOthers = (currentIndex: number, role: string): boolean => {
+    return formData.personnel.some((p, i) => i !== currentIndex && p.roles.includes(role));
+  };
+
+  // 获取某个职务的担任者索引
+  const getRoleHolderIndex = (role: string): number => {
+    return formData.personnel.findIndex((p) => p.roles.includes(role));
   };
 
   // 文件上传
@@ -556,16 +570,20 @@ export default function NewApplicationPage() {
       return false;
     }
     
-    const hasLegalPerson = formData.personnel.some(p => p.roles.includes("legal_person"));
-    const hasSupervisor = formData.personnel.some(p => p.roles.includes("supervisor"));
+    // 检查所有必填职务是否都有人担任
+    const requiredRoles = [
+      { key: "legal_person", label: "法人代表" },
+      { key: "supervisor", label: "监事" },
+      { key: "finance_manager", label: "财务负责人" },
+      { key: "ewt_contact", label: "e窗通登录联系人" },
+    ];
     
-    if (!hasLegalPerson) {
-      setErrors({ personnel: "请指定法人代表" });
-      return false;
-    }
-    if (!hasSupervisor) {
-      setErrors({ personnel: "请指定监事" });
-      return false;
+    for (const role of requiredRoles) {
+      const hasRole = formData.personnel.some(p => p.roles.includes(role.key));
+      if (!hasRole) {
+        setErrors({ personnel: `请指定${role.label}` });
+        return false;
+      }
     }
     
     // 检查法人代表和监事是否是同一人
@@ -574,6 +592,13 @@ export default function NewApplicationPage() {
     
     if (legalPersonIndex === supervisorIndex) {
       setErrors({ personnel: "法人代表和监事不能是同一人" });
+      return false;
+    }
+    
+    // 检查监事和财务负责人是否是同一人
+    const financeIndex = formData.personnel.findIndex(p => p.roles.includes("finance_manager"));
+    if (supervisorIndex === financeIndex) {
+      setErrors({ personnel: "监事和财务负责人不能是同一人" });
       return false;
     }
     
@@ -1157,11 +1182,17 @@ export default function NewApplicationPage() {
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(roleConfig).map(([role, config]) => {
                           const isSelected = person.roles.includes(role);
-                          const isDisabled =
-                            (role === "supervisor" && person.roles.includes("legal_person")) ||
-                            (role === "supervisor" && person.roles.includes("finance_manager")) ||
+                          const isTakenByOther = isRoleTakenByOthers(index, role);
+                          const holderIndex = getRoleHolderIndex(role);
+                          const holderName = holderIndex >= 0 ? formData.personnel[holderIndex]?.name : "";
+                          
+                          // 职务冲突规则：法人和监事不能同一人，监事和财务不能同一人
+                          const hasConflict = 
+                            (role === "supervisor" && (person.roles.includes("legal_person") || person.roles.includes("finance_manager"))) ||
                             (role === "legal_person" && person.roles.includes("supervisor")) ||
                             (role === "finance_manager" && person.roles.includes("supervisor"));
+                          
+                          const isDisabled = isTakenByOther || hasConflict;
 
                           return (
                             <button
@@ -1169,6 +1200,7 @@ export default function NewApplicationPage() {
                               type="button"
                               onClick={() => !isDisabled && togglePersonnelRole(index, role)}
                               disabled={isDisabled}
+                              title={isTakenByOther ? `该职务已由"${holderName || `人员${holderIndex + 1}`}"担任` : hasConflict ? "职务冲突，不能同时担任" : ""}
                               className={cn(
                                 "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
                                 isSelected 
@@ -1190,11 +1222,17 @@ export default function NewApplicationPage() {
                               </div>
                               <div className="text-left">
                                 <div className="text-sm font-medium">{config.label}</div>
+                                {isTakenByOther && !isSelected && (
+                                  <div className="text-xs text-muted-foreground">已被占用</div>
+                                )}
                               </div>
                             </button>
                           );
                         })}
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        每个职务只能由一人担任，灰色选项表示已被其他人选择或职务冲突
+                      </p>
                     </div>
 
                     {/* 身份证上传 */}
