@@ -508,6 +508,31 @@ export default function NewApplicationPage() {
 
   const roleError = validatePersonnelRoles();
 
+  // 步骤配置
+  const steps = [
+    { value: "basic", label: "基本信息", description: "企业名称、注册信息等" },
+    { value: "address", label: "地址信息", description: "注册地址、邮寄地址等" },
+    { value: "personnel", label: "人员信息", description: "法人、监事、财务等" },
+    { value: "shareholder", label: "股东信息", description: "股东及出资情况" },
+    { value: "business", label: "经营信息", description: "经营范围、中介等" },
+  ] as const;
+
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // 切换到下一步
+  const goToNextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  // 切换到上一步
+  const goToPrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* 头部 */}
@@ -539,13 +564,67 @@ export default function NewApplicationPage() {
       {/* 表单内容 */}
       <ScrollArea className="flex-1">
         <div className="p-6 max-w-4xl mx-auto">
-          <Tabs defaultValue="basic" className="w-full">
+          {/* 步骤进度指示器 */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              {steps.map((step, index) => (
+                <div key={step.value} className="flex items-center flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(index)}
+                    className="flex items-center gap-2 group"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                        index < currentStep
+                          ? "bg-primary text-primary-foreground"
+                          : index === currentStep
+                          ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {index < currentStep ? (
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <span className={cn(
+                      "text-sm font-medium hidden sm:block",
+                      index === currentStep ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {step.label}
+                    </span>
+                  </button>
+                  {index < steps.length - 1 && (
+                    <div className={cn(
+                      "flex-1 h-0.5 mx-2 transition-colors",
+                      index < currentStep ? "bg-primary" : "bg-muted"
+                    )} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              当前步骤：{steps[currentStep].label} - {steps[currentStep].description}
+            </p>
+          </div>
+
+          <Tabs value={steps[currentStep].value} className="w-full">
             <TabsList className="grid w-full grid-cols-5 mb-6">
-              <TabsTrigger value="basic">基本信息</TabsTrigger>
-              <TabsTrigger value="address">地址信息</TabsTrigger>
-              <TabsTrigger value="personnel">人员信息</TabsTrigger>
-              <TabsTrigger value="shareholder">股东信息</TabsTrigger>
-              <TabsTrigger value="business">经营信息</TabsTrigger>
+              {steps.map((step, index) => (
+                <TabsTrigger
+                  key={step.value}
+                  value={step.value}
+                  onClick={() => setCurrentStep(index)}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  {step.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             {/* 基本信息 */}
@@ -771,6 +850,19 @@ export default function NewApplicationPage() {
                   </div>
                 </div>
               </div>
+
+              {/* 步骤导航 */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  第 1 步，共 5 步
+                </div>
+                <Button type="button" onClick={goToNextStep}>
+                  下一步：地址信息
+                  <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </div>
             </TabsContent>
 
             {/* 地址信息 */}
@@ -800,6 +892,25 @@ export default function NewApplicationPage() {
                   onChange={(e) => updateField("businessAddress", e.target.value)}
                   placeholder="请输入实际经营地址"
                 />
+              </div>
+
+              {/* 步骤导航 */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  上一步：基本信息
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  第 2 步，共 5 步
+                </div>
+                <Button type="button" onClick={goToNextStep}>
+                  下一步：人员信息
+                  <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
               </div>
             </TabsContent>
 
@@ -1086,6 +1197,25 @@ export default function NewApplicationPage() {
                   </div>
                 </div>
               </div>
+
+              {/* 步骤导航 */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  上一步：地址信息
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  第 3 步，共 5 步
+                </div>
+                <Button type="button" onClick={goToNextStep}>
+                  下一步：股东信息
+                  <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </div>
             </TabsContent>
 
             {/* 股东信息 */}
@@ -1307,6 +1437,25 @@ export default function NewApplicationPage() {
                   )}
                 </div>
               ))}
+
+              {/* 步骤导航 */}
+              <div className="flex items-center justify-between pt-4 border-t mt-4">
+                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  上一步：人员信息
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  第 4 步，共 5 步
+                </div>
+                <Button type="button" onClick={goToNextStep}>
+                  下一步：经营信息
+                  <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </div>
             </TabsContent>
 
             {/* 经营信息 */}
@@ -1329,6 +1478,27 @@ export default function NewApplicationPage() {
                   placeholder="请输入备注信息"
                   rows={3}
                 />
+              </div>
+
+              {/* 步骤导航 - 最后一步 */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  上一步：股东信息
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  第 5 步，共 5 步（最后一步）
+                </div>
+                <Button type="button" onClick={handleSave} disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  保存草稿
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
