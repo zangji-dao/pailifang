@@ -157,7 +157,7 @@ export default function DashboardLayout({
     if (path === "/dashboard/base/tenants") {
       return {
         id: "base-tenants",
-        label: "入驻企业",
+        label: "企业管理",
         path: "/dashboard/base/tenants",
         icon: <Users className="h-3.5 w-3.5" />,
         closable: true,
@@ -401,7 +401,7 @@ export default function DashboardLayout({
       badge: null,
       children: [
         { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
-        { name: "入驻企业", href: "/dashboard/base/tenants", icon: Users },
+        { name: "企业管理", href: "/dashboard/base/tenants", icon: Users },
         { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
       ]
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -18,6 +18,7 @@ import {
   Calendar,
   FileText,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,116 +108,74 @@ const INDUSTRIES = [
   "其他",
 ];
 
-// 模拟数据
-const mockEnterprises: Enterprise[] = [
-  {
-    id: "1",
-    name: "松原市宇鑫化工有限公司",
-    creditCode: "91220700MA1234AB5X",
-    legalPerson: "张三",
-    phone: "138****5678",
-    registeredAddress: "吉林省松原市宁江区化工园区",
-    businessAddress: "吉林省松原市宁江区化工园区A栋",
-    industry: "制造业",
-    入驻Date: "2023-03-15",
-    status: "active",
-    type: "tenant",
-    remarks: "",
-  },
-  {
-    id: "2",
-    name: "吉林省宏远贸易公司",
-    creditCode: "91220100MA5678CD2Y",
-    legalPerson: "李四",
-    phone: "139****1234",
-    registeredAddress: "吉林省长春市朝阳区人民大街100号",
-    businessAddress: "吉林省长春市朝阳区人民大街100号",
-    industry: "批发和零售业",
-    入驻Date: "2022-08-20",
-    status: "active",
-    type: "tenant",
-    remarks: "",
-  },
-  {
-    id: "3",
-    name: "华信科技有限公司",
-    creditCode: "91220100MA9012EF3Z",
-    legalPerson: "王五",
-    phone: "137****9876",
-    registeredAddress: "吉林省长春市高新区硅谷大街888号",
-    businessAddress: "基地B座301室",
-    industry: "信息技术服务业",
-    入驻Date: "2024-01-10",
-    status: "active",
-    type: "tenant",
-    remarks: "高新技术企业",
-  },
-  {
-    id: "4",
-    name: "新兴建材有限公司",
-    creditCode: "91220100MA3456GH4W",
-    legalPerson: "赵六",
-    phone: "136****5432",
-    registeredAddress: "吉林省长春市宽城区建材市场",
-    businessAddress: "基地C座102室",
-    industry: "建筑业",
-    入驻Date: "2021-05-08",
-    status: "inactive",
-    type: "tenant",
-    remarks: "2024年3月迁出",
-  },
-  {
-    id: "5",
-    name: "长春市盛世餐饮公司",
-    creditCode: "91220100MA7890IJ5V",
-    legalPerson: "孙七",
-    phone: "135****8765",
-    registeredAddress: "吉林省长春市南关区人民广场",
-    businessAddress: "",
-    industry: "住宿和餐饮业",
-    入驻Date: "2024-06-01",
-    status: "pending",
-    type: "tenant",
-    remarks: "预计6月入驻",
-  },
-  {
-    id: "6",
-    name: "诚信会计师事务所",
-    creditCode: "91220100MA1234XX1A",
-    legalPerson: "周八",
-    phone: "138****1111",
-    registeredAddress: "吉林省长春市朝阳区解放大路888号",
-    businessAddress: "",
-    industry: "租赁和商务服务业",
-    入驻Date: "2024-01-01",
-    status: "active",
-    type: "service",
-    remarks: "合作会计师事务所",
-  },
-  {
-    id: "7",
-    name: "天成律师事务所",
-    creditCode: "91220100MA5678YY2B",
-    legalPerson: "吴九",
-    phone: "139****2222",
-    registeredAddress: "吉林省长春市南关区人民大街2000号",
-    businessAddress: "",
-    industry: "租赁和商务服务业",
-    入驻Date: "2024-02-15",
-    status: "active",
-    type: "service",
-    remarks: "合作律师事务所",
-  },
-];
+// API响应类型
+interface ApiEnterprise {
+  id: string;
+  name: string;
+  creditCode: string | null;
+  legalPerson: string | null;
+  phone: string | null;
+  registeredAddress: string | null;
+  businessAddress: string | null;
+  industry: string | null;
+  settledDate: string | null;
+  status: string;
+  type: string;
+  remarks: string | null;
+}
+
+// 转换API数据到前端格式
+function transformEnterprise(api: ApiEnterprise): Enterprise {
+  return {
+    id: api.id,
+    name: api.name,
+    creditCode: api.creditCode || "",
+    legalPerson: api.legalPerson || "",
+    phone: api.phone || "",
+    registeredAddress: api.registeredAddress || "",
+    businessAddress: api.businessAddress || "",
+    industry: api.industry || "",
+    入驻Date: api.settledDate || "",
+    status: api.status as EnterpriseStatus,
+    type: api.type as EnterpriseType,
+    remarks: api.remarks || "",
+  };
+}
 
 export default function TenantsPage() {
-  const [enterprises, setEnterprises] = useState<Enterprise[]>(mockEnterprises);
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingEnterprise, setEditingEnterprise] = useState<Enterprise | null>(null);
   const [viewingEnterprise, setViewingEnterprise] = useState<Enterprise | null>(null);
+  
+  // 获取企业数据
+  useEffect(() => {
+    const fetchEnterprises = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/enterprises');
+        if (!response.ok) {
+          throw new Error('获取企业数据失败');
+        }
+        const result = await response.json();
+        const data: ApiEnterprise[] = result.data || [];
+        setEnterprises(data.map(transformEnterprise));
+        setError(null);
+      } catch (err) {
+        console.error('获取企业数据失败:', err);
+        setError(err instanceof Error ? err.message : '获取企业数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEnterprises();
+  }, []);
   
   // 表单数据
   const [formData, setFormData] = useState<Partial<Enterprise>>({
@@ -330,6 +289,25 @@ export default function TenantsPage() {
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
+      {/* 加载状态 */}
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <span className="ml-2 text-slate-600">加载中...</span>
+        </div>
+      )}
+      
+      {/* 错误状态 */}
+      {error && !loading && (
+        <div className="flex items-center justify-center h-64">
+          <AlertCircle className="h-8 w-8 text-red-500" />
+          <span className="ml-2 text-red-600">{error}</span>
+        </div>
+      )}
+      
+      {/* 主要内容 */}
+      {!loading && !error && (
+        <>
       {/* 操作栏 */}
       <div className="bg-white border-b border-slate-100 px-6 py-4">
         <div className="flex items-center justify-end gap-2">
@@ -832,6 +810,8 @@ export default function TenantsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }
