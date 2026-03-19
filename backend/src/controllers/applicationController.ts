@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getSupabaseClient } from '../database/client';
+import { db, settlementApplications, settlementProcesses, registeredAddresses, eq, desc, and } from '../database/client';
 import type { Shareholder, Attachment, StageProgress, Personnel } from '../database/schema';
 
 // 流程阶段定义
@@ -46,33 +46,45 @@ export const applicationController = {
    */
   async getApplications(req: Request, res: Response) {
     try {
-      const supabase = getSupabaseClient();
-      const { approvalStatus, applicationType, status } = req.query;
+      const approvalStatus = req.query.approvalStatus as string;
+      const applicationType = req.query.applicationType as string;
+      const status = req.query.status as string;
 
-      let query = supabase
-        .from('pi_settlement_applications')
-        .select('id, application_no, application_date, enterprise_name, enterprise_name_backup, application_type, settlement_type, approval_status, approved_at, assigned_address, legal_person_name, legal_person_phone, contact_person_name, contact_person_phone, status, created_at')
-        .order('created_at', { ascending: false });
-
+      const conditions = [];
       if (approvalStatus) {
-        query = query.eq('approval_status', approvalStatus);
+        conditions.push(eq(settlementApplications.approvalStatus, approvalStatus));
       }
       if (applicationType) {
-        query = query.eq('application_type', applicationType);
+        conditions.push(eq(settlementApplications.applicationType, applicationType));
       }
       if (status) {
-        query = query.eq('status', status);
+        conditions.push(eq(settlementApplications.status, status));
       }
 
-      const { data, error } = await query;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-      if (error) {
-        console.error('获取申请列表失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '获取申请列表失败',
-        });
-      }
+      const data = await db
+        .select({
+          id: settlementApplications.id,
+          applicationNo: settlementApplications.applicationNo,
+          applicationDate: settlementApplications.applicationDate,
+          enterpriseName: settlementApplications.enterpriseName,
+          enterpriseNameBackup: settlementApplications.enterpriseNameBackup,
+          applicationType: settlementApplications.applicationType,
+          settlementType: settlementApplications.settlementType,
+          approvalStatus: settlementApplications.approvalStatus,
+          approvedAt: settlementApplications.approvedAt,
+          assignedAddress: settlementApplications.assignedAddress,
+          legalPersonName: settlementApplications.legalPersonName,
+          legalPersonPhone: settlementApplications.legalPersonPhone,
+          contactPersonName: settlementApplications.contactPersonName,
+          contactPersonPhone: settlementApplications.contactPersonPhone,
+          status: settlementApplications.status,
+          createdAt: settlementApplications.createdAt,
+        })
+        .from(settlementApplications)
+        .where(whereClause)
+        .orderBy(desc(settlementApplications.createdAt));
 
       res.json({
         success: true,
@@ -93,33 +105,34 @@ export const applicationController = {
   async getApplication(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const supabase = getSupabaseClient();
 
-      const { data: application, error: appError } = await supabase
-        .from('pi_settlement_applications')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const result = await db
+        .select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, id))
+        .limit(1);
 
-      if (appError || !application) {
+      if (result.length === 0) {
         return res.status(404).json({
           success: false,
           error: '申请不存在',
         });
       }
 
+      const application = result[0];
+
       // 获取关联的流程信息
-      const { data: process } = await supabase
-        .from('pi_settlement_processes')
-        .select('*')
-        .eq('application_id', id)
-        .single();
+      const processResult = await db
+        .select()
+        .from(settlementProcesses)
+        .where(eq(settlementProcesses.applicationId, id))
+        .limit(1);
 
       res.json({
         success: true,
         data: {
           ...application,
-          process: process || null,
+          process: processResult[0] || null,
         },
       });
     } catch (error) {
@@ -137,9 +150,7 @@ export const applicationController = {
   async createApplication(req: Request, res: Response) {
     try {
       const data = req.body;
-      const supabase = getSupabaseClient();
 
-      // 必填字段验证
       if (!data.enterpriseName || !data.applicationType) {
         return res.status(400).json({
           success: false,
@@ -147,99 +158,55 @@ export const applicationController = {
         });
       }
 
-      // 生成申请编号
       const applicationNo = data.applicationNo || generateApplicationNo();
       const id = generateUUID();
 
-      const insertData = {
-        id,
-        application_no: applicationNo,
-        application_date: data.applicationDate || new Date().toISOString().split('T')[0],
-        
-        // 企业基本信息
-        enterprise_name: data.enterpriseName,
-        enterprise_name_backup: data.enterpriseNameBackup,
-        registered_capital: data.registeredCapital,
-        currency_type: data.currencyType || 'CNY',
-        tax_type: data.taxType,
-        
-        // 预计经营数据
-        expected_annual_revenue: data.expectedAnnualRevenue,
-        expected_annual_tax: data.expectedAnnualTax,
-        
-        // 地址信息
-        original_registered_address: data.originalRegisteredAddress,
-        mailing_address: data.mailingAddress,
-        business_address: data.businessAddress,
-        
-        // 法人信息
-        legal_person_name: data.legalPersonName,
-        legal_person_phone: data.legalPersonPhone,
-        legal_person_email: data.legalPersonEmail,
-        legal_person_address: data.legalPersonAddress,
-        
-        // 股东信息
-        shareholders: data.shareholders || [],
-        
-        // 人员信息（新版）
-        personnel: data.personnel || [],
-        
-        // 监事信息
-        supervisor_name: data.supervisorName,
-        supervisor_phone: data.supervisorPhone,
-        
-        // 财务负责人信息
-        finance_manager_name: data.financeManagerName,
-        finance_manager_phone: data.financeManagerPhone,
-        
-        // 实际联络人信息
-        contact_person_name: data.contactPersonName,
-        contact_person_phone: data.contactPersonPhone,
-        
-        // e窗通联系人信息
-        ewt_contact_name: data.ewtContactName,
-        ewt_contact_phone: data.ewtContactPhone,
-        
-        // 中介信息
-        intermediary_department: data.intermediaryDepartment,
-        intermediary_name: data.intermediaryName,
-        intermediary_phone: data.intermediaryPhone,
-        
-        // 经营范围
-        business_scope: data.businessScope,
-        
-        // 申请类型
-        application_type: data.applicationType,
-        settlement_type: data.settlementType,
-        
-        // 附件
-        attachments: data.attachments || [],
-        
-        // 其他
-        remarks: data.remarks,
-        
-        // 状态
-        approval_status: 'draft',
-        status: 'draft',
-      };
-
-      const { data: result, error } = await supabase
-        .from('pi_settlement_applications')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('创建申请失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '创建申请失败',
-        });
-      }
+      const result = await db
+        .insert(settlementApplications)
+        .values({
+          id,
+          applicationNo,
+          applicationDate: data.applicationDate || new Date().toISOString().split('T')[0],
+          enterpriseName: data.enterpriseName,
+          enterpriseNameBackup: data.enterpriseNameBackup,
+          registeredCapital: data.registeredCapital,
+          currencyType: data.currencyType || 'CNY',
+          taxType: data.taxType,
+          expectedAnnualRevenue: data.expectedAnnualRevenue,
+          expectedAnnualTax: data.expectedAnnualTax,
+          originalRegisteredAddress: data.originalRegisteredAddress,
+          mailingAddress: data.mailingAddress,
+          businessAddress: data.businessAddress,
+          legalPersonName: data.legalPersonName,
+          legalPersonPhone: data.legalPersonPhone,
+          legalPersonEmail: data.legalPersonEmail,
+          legalPersonAddress: data.legalPersonAddress,
+          shareholders: data.shareholders || [],
+          personnel: data.personnel || [],
+          supervisorName: data.supervisorName,
+          supervisorPhone: data.supervisorPhone,
+          financeManagerName: data.financeManagerName,
+          financeManagerPhone: data.financeManagerPhone,
+          contactPersonName: data.contactPersonName,
+          contactPersonPhone: data.contactPersonPhone,
+          ewtContactName: data.ewtContactName,
+          ewtContactPhone: data.ewtContactPhone,
+          intermediaryDepartment: data.intermediaryDepartment,
+          intermediaryName: data.intermediaryName,
+          intermediaryPhone: data.intermediaryPhone,
+          businessScope: data.businessScope,
+          applicationType: data.applicationType,
+          settlementType: data.settlementType,
+          attachments: data.attachments || [],
+          remarks: data.remarks,
+          approvalStatus: 'draft',
+          status: 'draft',
+        })
+        .returning();
 
       res.json({
         success: true,
-        data: result,
+        data: result[0],
         message: '申请创建成功',
       });
     } catch (error) {
@@ -258,115 +225,72 @@ export const applicationController = {
     try {
       const { id } = req.params;
       const data = req.body;
-      const supabase = getSupabaseClient();
 
-      // 检查申请是否存在
-      const { data: existing, error: existError } = await supabase
-        .from('pi_settlement_applications')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const existingResult = await db
+        .select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, id))
+        .limit(1);
 
-      if (existError || !existing) {
+      if (existingResult.length === 0) {
         return res.status(404).json({
           success: false,
           error: '申请不存在',
         });
       }
 
-      // 只有草稿和驳回状态才能修改
-      if (!['draft', 'rejected'].includes(existing.approval_status)) {
+      const existing = existingResult[0];
+
+      if (!['draft', 'rejected'].includes(existing.approvalStatus)) {
         return res.status(400).json({
           success: false,
           error: '只能修改草稿或已驳回的申请',
         });
       }
 
-      const updateData = {
-        // 企业基本信息
-        enterprise_name: data.enterpriseName,
-        enterprise_name_backup: data.enterpriseNameBackup,
-        registered_capital: data.registeredCapital,
-        currency_type: data.currencyType,
-        tax_type: data.taxType,
-        
-        // 预计经营数据
-        expected_annual_revenue: data.expectedAnnualRevenue,
-        expected_annual_tax: data.expectedAnnualTax,
-        
-        // 地址信息
-        original_registered_address: data.originalRegisteredAddress,
-        mailing_address: data.mailingAddress,
-        business_address: data.businessAddress,
-        
-        // 法人信息
-        legal_person_name: data.legalPersonName,
-        legal_person_phone: data.legalPersonPhone,
-        legal_person_email: data.legalPersonEmail,
-        legal_person_address: data.legalPersonAddress,
-        
-        // 股东信息
-        shareholders: data.shareholders,
-        
-        // 人员信息（新版）
-        personnel: data.personnel,
-        
-        // 监事信息
-        supervisor_name: data.supervisorName,
-        supervisor_phone: data.supervisorPhone,
-        
-        // 财务负责人信息
-        finance_manager_name: data.financeManagerName,
-        finance_manager_phone: data.financeManagerPhone,
-        
-        // 实际联络人信息
-        contact_person_name: data.contactPersonName,
-        contact_person_phone: data.contactPersonPhone,
-        
-        // e窗通联系人信息
-        ewt_contact_name: data.ewtContactName,
-        ewt_contact_phone: data.ewtContactPhone,
-        
-        // 中介信息
-        intermediary_department: data.intermediaryDepartment,
-        intermediary_name: data.intermediaryName,
-        intermediary_phone: data.intermediaryPhone,
-        
-        // 经营范围
-        business_scope: data.businessScope,
-        
-        // 申请类型
-        application_type: data.applicationType,
-        settlement_type: data.settlementType,
-        
-        // 附件
-        attachments: data.attachments,
-        
-        // 其他
-        remarks: data.remarks,
-        
-        // 更新时间
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: result, error } = await supabase
-        .from('pi_settlement_applications')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('更新申请失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '更新申请失败',
-        });
-      }
+      const result = await db
+        .update(settlementApplications)
+        .set({
+          enterpriseName: data.enterpriseName,
+          enterpriseNameBackup: data.enterpriseNameBackup,
+          registeredCapital: data.registeredCapital,
+          currencyType: data.currencyType,
+          taxType: data.taxType,
+          expectedAnnualRevenue: data.expectedAnnualRevenue,
+          expectedAnnualTax: data.expectedAnnualTax,
+          originalRegisteredAddress: data.originalRegisteredAddress,
+          mailingAddress: data.mailingAddress,
+          businessAddress: data.businessAddress,
+          legalPersonName: data.legalPersonName,
+          legalPersonPhone: data.legalPersonPhone,
+          legalPersonEmail: data.legalPersonEmail,
+          legalPersonAddress: data.legalPersonAddress,
+          shareholders: data.shareholders,
+          personnel: data.personnel,
+          supervisorName: data.supervisorName,
+          supervisorPhone: data.supervisorPhone,
+          financeManagerName: data.financeManagerName,
+          financeManagerPhone: data.financeManagerPhone,
+          contactPersonName: data.contactPersonName,
+          contactPersonPhone: data.contactPersonPhone,
+          ewtContactName: data.ewtContactName,
+          ewtContactPhone: data.ewtContactPhone,
+          intermediaryDepartment: data.intermediaryDepartment,
+          intermediaryName: data.intermediaryName,
+          intermediaryPhone: data.intermediaryPhone,
+          businessScope: data.businessScope,
+          applicationType: data.applicationType,
+          settlementType: data.settlementType,
+          attachments: data.attachments,
+          remarks: data.remarks,
+          updatedAt: new Date(),
+        })
+        .where(eq(settlementApplications.id, id))
+        .returning();
 
       res.json({
         success: true,
-        data: result,
+        data: result[0],
         message: '申请更新成功',
       });
     } catch (error) {
@@ -384,50 +308,42 @@ export const applicationController = {
   async submitApplication(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const supabase = getSupabaseClient();
 
-      const { data: existing, error: existError } = await supabase
-        .from('pi_settlement_applications')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const existingResult = await db
+        .select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, id))
+        .limit(1);
 
-      if (existError || !existing) {
+      if (existingResult.length === 0) {
         return res.status(404).json({
           success: false,
           error: '申请不存在',
         });
       }
 
-      if (!['draft', 'rejected'].includes(existing.approval_status)) {
+      const existing = existingResult[0];
+
+      if (!['draft', 'rejected'].includes(existing.approvalStatus)) {
         return res.status(400).json({
           success: false,
           error: '只能提交草稿或已驳回的申请',
         });
       }
 
-      const { data: result, error } = await supabase
-        .from('pi_settlement_applications')
-        .update({
-          approval_status: 'pending',
+      const result = await db
+        .update(settlementApplications)
+        .set({
+          approvalStatus: 'pending',
           status: 'submitted',
-          updated_at: new Date().toISOString(),
+          updatedAt: new Date(),
         })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('提交审批失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '提交审批失败',
-        });
-      }
+        .where(eq(settlementApplications.id, id))
+        .returning();
 
       res.json({
         success: true,
-        data: result,
+        data: result[0],
         message: '申请已提交审批',
       });
     } catch (error) {
@@ -446,22 +362,23 @@ export const applicationController = {
     try {
       const { id } = req.params;
       const { addressId, approvalOpinion } = req.body;
-      const supabase = getSupabaseClient();
 
-      const { data: existing, error: existError } = await supabase
-        .from('pi_settlement_applications')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const existingResult = await db
+        .select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, id))
+        .limit(1);
 
-      if (existError || !existing) {
+      if (existingResult.length === 0) {
         return res.status(404).json({
           success: false,
           error: '申请不存在',
         });
       }
 
-      if (existing.approval_status !== 'pending') {
+      const existing = existingResult[0];
+
+      if (existing.approvalStatus !== 'pending') {
         return res.status(400).json({
           success: false,
           error: '只能审批待审批状态的申请',
@@ -470,100 +387,84 @@ export const applicationController = {
 
       let assignedAddress = null;
 
-      // 如果指定了地址，检查地址是否可用
       if (addressId) {
-        const { data: address, error: addrError } = await supabase
-          .from('pi_registered_addresses')
-          .select('*')
-          .eq('id', addressId)
-          .single();
+        const addressResult = await db
+          .select()
+          .from(registeredAddresses)
+          .where(eq(registeredAddresses.id, addressId))
+          .limit(1);
 
-        if (addrError || !address) {
+        if (addressResult.length === 0) {
           return res.status(404).json({
             success: false,
             error: '地址不存在',
           });
         }
+
+        const address = addressResult[0];
         if (address.status !== 'available') {
           return res.status(400).json({
             success: false,
             error: '地址不可用',
           });
         }
-        assignedAddress = address.full_address;
+        assignedAddress = address.fullAddress;
 
-        // 更新地址状态
-        await supabase
-          .from('pi_registered_addresses')
-          .update({
+        await db
+          .update(registeredAddresses)
+          .set({
             status: 'assigned',
-            application_id: id,
-            assigned_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            applicationId: id,
+            assignedAt: new Date(),
+            updatedAt: new Date(),
           })
-          .eq('id', addressId);
+          .where(eq(registeredAddresses.id, addressId));
       }
 
-      // 更新申请状态
-      const { data: applicationResult, error: updateError } = await supabase
-        .from('pi_settlement_applications')
-        .update({
-          approval_status: 'approved',
+      const applicationResult = await db
+        .update(settlementApplications)
+        .set({
+          approvalStatus: 'approved',
           status: 'processing',
-          approval_opinion: approvalOpinion,
-          approved_at: new Date().toISOString(),
-          assigned_address_id: addressId || null,
-          assigned_address: assignedAddress,
-          updated_at: new Date().toISOString(),
+          approvalOpinion: approvalOpinion,
+          approvedAt: new Date(),
+          assignedAddressId: addressId || null,
+          assignedAddress: assignedAddress,
+          updatedAt: new Date(),
         })
-        .eq('id', id)
-        .select()
-        .single();
+        .where(eq(settlementApplications.id, id))
+        .returning();
 
-      if (updateError) {
-        console.error('审批通过失败:', updateError);
-        return res.status(500).json({
-          success: false,
-          error: '审批通过失败',
-        });
-      }
-
-      // 初始化流程阶段
-      const stages = existing.application_type === 'new' 
-        ? JSON.parse(JSON.stringify(NEW_ENTERPRISE_STAGES)) 
+      const stages = existing.applicationType === 'new'
+        ? JSON.parse(JSON.stringify(NEW_ENTERPRISE_STAGES))
         : JSON.parse(JSON.stringify(MIGRATION_STAGES));
-      
-      // 标记第一阶段为完成
+
       stages[0].status = 'completed';
       stages[0].startedAt = new Date().toISOString();
       stages[0].completedAt = new Date().toISOString();
 
-      // 如果分配了地址，标记第二阶段也完成
       if (addressId && stages.length > 1) {
         stages[1].status = 'completed';
         stages[1].startedAt = new Date().toISOString();
         stages[1].completedAt = new Date().toISOString();
       }
 
-      // 创建入驻流程
       const currentStageIndex = addressId ? 1 : 0;
-      await supabase
-        .from('pi_settlement_processes')
-        .insert({
-          id: generateUUID(),
-          application_id: id,
-          enterprise_name: existing.enterprise_name,
-          process_type: existing.application_type,
-          current_stage: stages[currentStageIndex].stage,
-          current_stage_index: currentStageIndex,
-          overall_status: 'in_progress',
-          stages: stages,
-          started_at: new Date().toISOString(),
-        });
+      await db.insert(settlementProcesses).values({
+        id: generateUUID(),
+        applicationId: id,
+        enterpriseName: existing.enterpriseName,
+        processType: existing.applicationType,
+        currentStage: stages[currentStageIndex].stage,
+        currentStageIndex: currentStageIndex,
+        overallStatus: 'in_progress',
+        stages: stages,
+        startedAt: new Date(),
+      });
 
       res.json({
         success: true,
-        data: applicationResult,
+        data: applicationResult[0],
         message: '审批通过',
       });
     } catch (error) {
@@ -582,50 +483,42 @@ export const applicationController = {
     try {
       const { id } = req.params;
       const { rejectionReason } = req.body;
-      const supabase = getSupabaseClient();
 
-      const { data: existing, error: existError } = await supabase
-        .from('pi_settlement_applications')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const existingResult = await db
+        .select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, id))
+        .limit(1);
 
-      if (existError || !existing) {
+      if (existingResult.length === 0) {
         return res.status(404).json({
           success: false,
           error: '申请不存在',
         });
       }
 
-      if (existing.approval_status !== 'pending') {
+      const existing = existingResult[0];
+
+      if (existing.approvalStatus !== 'pending') {
         return res.status(400).json({
           success: false,
           error: '只能驳回待审批状态的申请',
         });
       }
 
-      const { data: result, error } = await supabase
-        .from('pi_settlement_applications')
-        .update({
-          approval_status: 'rejected',
-          rejection_reason: rejectionReason,
-          updated_at: new Date().toISOString(),
+      const result = await db
+        .update(settlementApplications)
+        .set({
+          approvalStatus: 'rejected',
+          rejectionReason: rejectionReason,
+          updatedAt: new Date(),
         })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('审批驳回失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '审批驳回失败',
-        });
-      }
+        .where(eq(settlementApplications.id, id))
+        .returning();
 
       res.json({
         success: true,
-        data: result,
+        data: result[0],
         message: '申请已驳回',
       });
     } catch (error) {
@@ -643,41 +536,32 @@ export const applicationController = {
   async deleteApplication(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const supabase = getSupabaseClient();
 
-      const { data: existing, error: existError } = await supabase
-        .from('pi_settlement_applications')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const existingResult = await db
+        .select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, id))
+        .limit(1);
 
-      if (existError || !existing) {
+      if (existingResult.length === 0) {
         return res.status(404).json({
           success: false,
           error: '申请不存在',
         });
       }
 
-      // 只有草稿状态才能删除
-      if (existing.approval_status !== 'draft') {
+      const existing = existingResult[0];
+
+      if (existing.approvalStatus !== 'draft') {
         return res.status(400).json({
           success: false,
           error: '只能删除草稿状态的申请',
         });
       }
 
-      const { error } = await supabase
-        .from('pi_settlement_applications')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('删除申请失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '删除申请失败',
-        });
-      }
+      await db
+        .delete(settlementApplications)
+        .where(eq(settlementApplications.id, id));
 
       res.json({
         success: true,
@@ -697,26 +581,16 @@ export const applicationController = {
    */
   async getStats(req: Request, res: Response) {
     try {
-      const supabase = getSupabaseClient();
-
-      const { data, error } = await supabase
-        .from('pi_settlement_applications')
-        .select('approval_status');
-
-      if (error) {
-        console.error('获取统计信息失败:', error);
-        return res.status(500).json({
-          success: false,
-          error: '获取统计信息失败',
-        });
-      }
+      const data = await db
+        .select({ approvalStatus: settlementApplications.approvalStatus })
+        .from(settlementApplications);
 
       const result = {
         total: data.length,
-        draft: data.filter((d: any) => d.approval_status === 'draft').length,
-        pending: data.filter((d: any) => d.approval_status === 'pending').length,
-        approved: data.filter((d: any) => d.approval_status === 'approved').length,
-        rejected: data.filter((d: any) => d.approval_status === 'rejected').length,
+        draft: data.filter((d) => d.approvalStatus === 'draft').length,
+        pending: data.filter((d) => d.approvalStatus === 'pending').length,
+        approved: data.filter((d) => d.approvalStatus === 'approved').length,
+        rejected: data.filter((d) => d.approvalStatus === 'rejected').length,
       };
 
       res.json({
