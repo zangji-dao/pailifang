@@ -26,7 +26,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 // 类型定义
 type ApplicationType = "new" | "migration";
-type SettlementType = "free" | "paid" | "tax_commitment";
 type TaxType = "general" | "small_scale";
 
 interface Shareholder {
@@ -64,7 +63,6 @@ interface ApplicationFormData {
   intermediaryPhone: string;
   businessScope: string;
   applicationType: ApplicationType | "";
-  settlementType: SettlementType | "";
   remarks: string;
 }
 
@@ -97,7 +95,6 @@ const initialFormData: ApplicationFormData = {
   intermediaryPhone: "",
   businessScope: "",
   applicationType: "",
-  settlementType: "",
   remarks: "",
 };
 
@@ -285,43 +282,25 @@ export default function NewApplicationPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    申请类型 <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.applicationType}
-                    onValueChange={(v) => updateField("applicationType", v as ApplicationType)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择申请类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">新建企业</SelectItem>
-                      <SelectItem value="migration">迁移企业</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.applicationType && (
-                    <p className="text-xs text-destructive">{errors.applicationType}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>入驻类型</Label>
-                  <Select
-                    value={formData.settlementType}
-                    onValueChange={(v) => updateField("settlementType", v as SettlementType)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择入驻类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="free">免费入驻</SelectItem>
-                      <SelectItem value="paid">付费入驻</SelectItem>
-                      <SelectItem value="tax_commitment">承诺税收入驻</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label>
+                  申请类型 <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.applicationType}
+                  onValueChange={(v) => updateField("applicationType", v as ApplicationType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择申请类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">新建企业</SelectItem>
+                    <SelectItem value="migration">迁移企业</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.applicationType && (
+                  <p className="text-xs text-destructive">{errors.applicationType}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

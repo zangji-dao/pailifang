@@ -29,7 +29,6 @@ import { useTabs } from "@/app/dashboard/tabs-context";
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
 type ApplicationType = "new" | "migration";
-type SettlementType = "free" | "paid" | "tax_commitment";
 
 interface Application {
   id: string;
@@ -38,7 +37,6 @@ interface Application {
   enterpriseName: string;
   enterpriseNameBackup: string | null;
   applicationType: ApplicationType;
-  settlementType: SettlementType | null;
   approvalStatus: ApprovalStatus;
   approvedAt: string | null;
   assignedAddress: string | null;
@@ -61,12 +59,6 @@ const statusConfig: Record<ApprovalStatus, { label: string; className: string }>
 const applicationTypeConfig: Record<ApplicationType, { label: string; className: string }> = {
   new: { label: "新建企业", className: "bg-purple-50 text-purple-600 border-purple-200" },
   migration: { label: "迁移企业", className: "bg-orange-50 text-orange-600 border-orange-200" },
-};
-
-const settlementTypeConfig: Record<SettlementType, { label: string; className: string }> = {
-  free: { label: "免费入驻", className: "text-green-600" },
-  paid: { label: "付费入驻", className: "text-blue-600" },
-  tax_commitment: { label: "承诺税收", className: "text-amber-600" },
 };
 
 export default function ApplicationsPage() {
@@ -295,11 +287,6 @@ export default function ApplicationsPage() {
                     <Badge variant="outline" className={cn("font-normal", applicationTypeConfig[app.applicationType].className)}>
                       {applicationTypeConfig[app.applicationType].label}
                     </Badge>
-                    {app.settlementType && (
-                      <span className={cn("ml-2 text-xs", settlementTypeConfig[app.settlementType].className)}>
-                        ({settlementTypeConfig[app.settlementType].label})
-                      </span>
-                    )}
                   </td>
                   <td className="p-4 text-sm">
                     <div>{app.legalPersonName || "-"}</div>
