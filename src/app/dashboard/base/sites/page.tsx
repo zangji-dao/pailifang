@@ -8,11 +8,30 @@ import {
   Home,
   Plus,
   Loader2,
-  Sparkles,
-  Layers,
+  Zap,
+  Droplets,
+  Flame,
+  Wifi,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  Users,
+  Wrench,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface ServiceStatus {
+  name: string;
+  icon: React.ReactNode;
+  normal: number;
+  warning: number;
+  error: number;
+  color: string;
+  bgColor: string;
+}
 
 interface Base {
   id: string;
@@ -27,14 +46,68 @@ export default function BaseListPage() {
   const router = useRouter();
   const [bases, setBases] = useState<Base[]>([]);
   const [loading, setLoading] = useState(true);
+  const [serviceStats, setServiceStats] = useState<ServiceStatus[]>([
+    { name: "供电", icon: <Zap className="h-5 w-5" />, normal: 0, warning: 0, error: 0, color: "text-amber-500", bgColor: "bg-amber-50" },
+    { name: "供水", icon: <Droplets className="h-5 w-5" />, normal: 0, warning: 0, error: 0, color: "text-blue-500", bgColor: "bg-blue-50" },
+    { name: "供暖", icon: <Flame className="h-5 w-5" />, normal: 0, warning: 0, error: 0, color: "text-orange-500", bgColor: "bg-orange-50" },
+    { name: "网络", icon: <Wifi className="h-5 w-5" />, normal: 0, warning: 0, error: 0, color: "text-violet-500", bgColor: "bg-violet-50" },
+  ]);
 
   useEffect(() => {
-    const fetchBases = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("/api/bases");
-        const result = await response.json();
-        if (result.success) {
-          setBases(result.data);
+        // 获取基地列表
+        const basesResponse = await fetch("/api/bases");
+        const basesResult = await basesResponse.json();
+        if (basesResult.success) {
+          setBases(basesResult.data);
+          
+          // 获取每个基地的详细数据统计服务状态
+          let totalStats = {
+            electricity: { normal: 0, warning: 0, error: 0 },
+            water: { normal: 0, warning: 0, error: 0 },
+            heating: { normal: 0, warning: 0, error: 0 },
+            network: { normal: 0, warning: 0, error: 0 },
+          };
+          
+          for (const base of basesResult.data) {
+            try {
+              const detailResponse = await fetch(`/api/bases/${base.id}`);
+              const detailResult = await detailResponse.json();
+              if (detailResult.success && detailResult.data.meters) {
+                detailResult.data.meters.forEach((meter: any) => {
+                  // 电
+                  if (meter.electricityStatus === "normal") totalStats.electricity.normal++;
+                  else if (meter.electricityStatus === "warning") totalStats.electricity.warning++;
+                  else if (meter.electricityStatus === "error") totalStats.electricity.error++;
+                  
+                  // 水
+                  if (meter.waterStatus === "normal") totalStats.water.normal++;
+                  else if (meter.waterStatus === "warning") totalStats.water.warning++;
+                  else if (meter.waterStatus === "error") totalStats.water.error++;
+                  
+                  // 暖
+                  if (meter.heatingStatus === "normal") totalStats.heating.normal++;
+                  else if (meter.heatingStatus === "warning") totalStats.heating.warning++;
+                  else if (meter.heatingStatus === "error") totalStats.heating.error++;
+                  
+                  // 网络
+                  if (meter.networkStatus === "normal") totalStats.network.normal++;
+                  else if (meter.networkStatus === "warning") totalStats.network.warning++;
+                  else if (meter.networkStatus === "error") totalStats.network.error++;
+                });
+              }
+            } catch (e) {
+              console.error("获取基地详情失败:", e);
+            }
+          }
+          
+          setServiceStats([
+            { name: "供电", icon: <Zap className="h-5 w-5" />, normal: totalStats.electricity.normal, warning: totalStats.electricity.warning, error: totalStats.electricity.error, color: "text-amber-500", bgColor: "bg-amber-50" },
+            { name: "供水", icon: <Droplets className="h-5 w-5" />, normal: totalStats.water.normal, warning: totalStats.water.warning, error: totalStats.water.error, color: "text-blue-500", bgColor: "bg-blue-50" },
+            { name: "供暖", icon: <Flame className="h-5 w-5" />, normal: totalStats.heating.normal, warning: totalStats.heating.warning, error: totalStats.heating.error, color: "text-orange-500", bgColor: "bg-orange-50" },
+            { name: "网络", icon: <Wifi className="h-5 w-5" />, normal: totalStats.network.normal, warning: totalStats.network.warning, error: totalStats.network.error, color: "text-violet-500", bgColor: "bg-violet-50" },
+          ]);
         }
       } catch (error) {
         console.error("获取基地列表失败:", error);
@@ -43,7 +116,7 @@ export default function BaseListPage() {
       }
     };
 
-    fetchBases();
+    fetchData();
   }, []);
 
   const handleBaseClick = (baseId: string) => {
@@ -51,6 +124,8 @@ export default function BaseListPage() {
   };
 
   const totalMeters = bases.reduce((sum, b) => sum + b.meterCount, 0);
+  const totalErrors = serviceStats.reduce((sum, s) => sum + s.error, 0);
+  const totalWarnings = serviceStats.reduce((sum, s) => sum + s.warning, 0);
 
   if (loading) {
     return (
@@ -61,147 +136,254 @@ export default function BaseListPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #FDFBF7 0%, #F8F5F0 100%)" }}>
-      <div className="p-8 max-w-7xl mx-auto">
-        {/* 页面头部 */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-1 h-8 bg-gradient-to-b from-amber-400 to-amber-600 rounded-full" />
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#1C1917" }}>
-              基地管理
-            </h1>
+    <div className="min-h-screen bg-slate-50/50">
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* 页面标题 */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">物业运营中心</h1>
+            <p className="text-sm text-slate-500 mt-1">实时监控各基地服务状态</p>
           </div>
-          <p className="text-base ml-4" style={{ color: "#78716C" }}>
-            管理所有基地及其物业分配，追踪水电取暖费用
-          </p>
+          <Button 
+            className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            新增基地
+          </Button>
         </div>
 
-        {/* 统计区域 - 优雅的数字展示 */}
-        <div className="flex items-center gap-8 mb-10 ml-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center shadow-sm">
-              <Building2 className="h-5 w-5 text-amber-600" />
+        {/* 核心指标卡片 */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {/* 基地总数 */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-slate-600" />
+              </div>
+              <span className="text-sm text-slate-500">基地总数</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: "#1C1917" }}>
-                {bases.length}
-              </p>
-              <p className="text-sm" style={{ color: "#A8A29E" }}>基地</p>
+            <p className="text-3xl font-bold text-slate-900">{bases.length}</p>
+          </div>
+
+          {/* 物业总数 */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <Home className="h-5 w-5 text-emerald-600" />
+              </div>
+              <span className="text-sm text-slate-500">物业总数</span>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">{totalMeters}</p>
+          </div>
+
+          {/* 异常告警 */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              </div>
+              <span className="text-sm text-slate-500">异常告警</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-red-500">{totalErrors}</p>
+              {totalErrors > 0 && <span className="text-xs text-red-400">需立即处理</span>}
             </div>
           </div>
 
-          <div className="w-px h-10 bg-slate-200" />
-
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center shadow-sm">
-              <Home className="h-5 w-5 text-emerald-600" />
+          {/* 预警提醒 */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-amber-500" />
+              </div>
+              <span className="text-sm text-slate-500">预警提醒</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: "#1C1917" }}>
-                {totalMeters}
-              </p>
-              <p className="text-sm" style={{ color: "#A8A29E" }}>物业</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-amber-500">{totalWarnings}</p>
+              {totalWarnings > 0 && <span className="text-xs text-amber-400">需关注</span>}
             </div>
-          </div>
-
-          <div className="w-px h-10 bg-slate-200" />
-
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center shadow-sm">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: "#1C1917" }}>
-                0
-              </p>
-              <p className="text-sm" style={{ color: "#A8A29E" }}>入驻企业</p>
-            </div>
-          </div>
-
-          <div className="ml-auto">
-            <Button 
-              className="h-12 px-6 bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-white rounded-xl shadow-lg shadow-slate-900/10 font-medium transition-all hover:shadow-xl hover:shadow-slate-900/20"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              新增基地
-            </Button>
           </div>
         </div>
 
-        {/* 基地卡片网格 */}
-        {bases.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-slate-200/60 shadow-sm">
-            <Building2 className="h-16 w-16 text-slate-200 mx-auto mb-4" />
-            <p className="text-lg font-medium" style={{ color: "#57534E" }}>暂无基地</p>
-            <p className="text-sm mt-1" style={{ color: "#A8A29E" }}>点击上方"新增基地"开始添加</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {bases.map((base, index) => (
-              <div
-                key={base.id}
-                onClick={() => handleBaseClick(base.id)}
-                className="group cursor-pointer"
-              >
-                <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-1">
-                  {/* 卡片头部 */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-50 via-amber-100 to-orange-100 flex items-center justify-center shadow-inner">
-                        <Layers className="h-7 w-7 text-amber-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold group-hover:text-amber-700 transition-colors" style={{ color: "#1C1917" }}>
-                          {base.name}
-                        </h3>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className={`w-2 h-2 rounded-full ${base.status === "active" ? "bg-emerald-400" : "bg-slate-300"}`} />
-                          <span className="text-xs" style={{ color: "#A8A29E" }}>
-                            {base.status === "active" ? "运营中" : "已停用"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 地址信息 */}
-                  {base.address && (
-                    <div className="flex items-center gap-2 py-3 px-3 rounded-xl mb-4" style={{ background: "#FAFAF9" }}>
-                      <MapPin className="h-4 w-4 flex-shrink-0" style={{ color: "#A8A29E" }} />
-                      <span className="text-sm truncate" style={{ color: "#57534E" }}>
-                        {base.address}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* 底部统计 */}
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center">
-                          <Home className="h-4 w-4 text-amber-600" />
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold tabular-nums" style={{ color: "#1C1917" }}>
-                            {base.meterCount}
-                          </p>
-                          <p className="text-xs" style={{ color: "#A8A29E" }}>物业</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-1 text-sm font-medium text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                      查看详情
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
+        {/* 服务状态概览 - 核心监控区 */}
+        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm mb-6">
+          <div className="p-5 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-slate-400" />
+                <h2 className="font-semibold text-slate-900">基础设施服务状态</h2>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-slate-500">正常</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-slate-500">预警</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-400" />
+                  <span className="text-slate-500">异常</span>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
+          
+          <div className="p-5">
+            <div className="grid grid-cols-4 gap-4">
+              {serviceStats.map((service) => {
+                const total = service.normal + service.warning + service.error;
+                const normalPercent = total > 0 ? (service.normal / total) * 100 : 0;
+                const hasIssue = service.error > 0 || service.warning > 0;
+                
+                return (
+                  <div 
+                    key={service.name}
+                    className={cn(
+                      "relative p-4 rounded-xl border-2 transition-all",
+                      service.error > 0 ? "border-red-200 bg-red-50/50" :
+                      service.warning > 0 ? "border-amber-200 bg-amber-50/50" :
+                      "border-slate-100 bg-slate-50/50"
+                    )}
+                  >
+                    {/* 状态指示灯 */}
+                    <div className="absolute top-3 right-3">
+                      {service.error > 0 ? (
+                        <span className="flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                      ) : service.warning > 0 ? (
+                        <span className="w-3 h-3 rounded-full bg-amber-400" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      )}
+                    </div>
+
+                    {/* 服务图标和名称 */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", service.bgColor)}>
+                        <span className={service.color}>{service.icon}</span>
+                      </div>
+                      <span className="font-medium text-slate-700">{service.name}</span>
+                    </div>
+
+                    {/* 进度条 */}
+                    <div className="mb-3">
+                      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            service.error > 0 ? "bg-red-400" :
+                            service.warning > 0 ? "bg-amber-400" :
+                            "bg-emerald-400"
+                          )}
+                          style={{ width: `${normalPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 统计数字 */}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="text-slate-600">{service.normal}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="text-amber-600 font-medium">{service.warning}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-400" />
+                        <span className="text-red-600 font-medium">{service.error}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 基地列表 */}
+        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
+          <div className="p-5 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-900">基地列表</h2>
+              <span className="text-sm text-slate-500">共 {bases.length} 个基地</span>
+            </div>
+          </div>
+          
+          {bases.length === 0 ? (
+            <div className="text-center py-16">
+              <Building2 className="h-12 w-12 text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-500">暂无基地</p>
+              <p className="text-sm text-slate-400 mt-1">点击上方"新增基地"开始添加</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {bases.map((base) => (
+                <div
+                  key={base.id}
+                  onClick={() => handleBaseClick(base.id)}
+                  className="flex items-center justify-between p-5 hover:bg-slate-50 cursor-pointer transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200">
+                      <Building2 className="h-6 w-6 text-slate-500" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-slate-900 group-hover:text-slate-700">{base.name}</h3>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-xs font-medium",
+                          base.status === "active" 
+                            ? "bg-emerald-50 text-emerald-600" 
+                            : "bg-slate-100 text-slate-500"
+                        )}>
+                          {base.status === "active" ? "运营中" : "已停用"}
+                        </span>
+                      </div>
+                      {base.address && (
+                        <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span>{base.address}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    {/* 服务状态快速预览 */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <Zap className="h-4 w-4 text-amber-400" />
+                        <span className="text-sm text-slate-600">--</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Droplets className="h-4 w-4 text-blue-400" />
+                        <span className="text-sm text-slate-600">--</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Flame className="h-4 w-4 text-orange-400" />
+                        <span className="text-sm text-slate-600">--</span>
+                      </div>
+                    </div>
+
+                    {/* 物业数量 */}
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-slate-900">{base.meterCount}</p>
+                      <p className="text-xs text-slate-500">物业</p>
+                    </div>
+
+                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
