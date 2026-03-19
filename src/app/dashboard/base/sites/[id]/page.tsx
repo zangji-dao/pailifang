@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTabs } from "../../tabs-context";
 
 // 账单查询结果类型
 interface BillResult {
@@ -354,6 +355,7 @@ function MeterBillCard({
 export default function BaseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const tabs = useTabs();
   const baseId = params.id as string;
 
   const [baseDetail, setBaseDetail] = useState<BaseDetail | null>(null);
@@ -368,6 +370,10 @@ export default function BaseDetailPage() {
         const result = await response.json();
         if (result.success) {
           setBaseDetail(result.data);
+          // 更新标签页标题
+          if (tabs && result.data?.name) {
+            tabs.updateTabLabel(`base-${baseId}`, result.data.name);
+          }
         }
       } catch (error) {
         console.error("获取基地详情失败:", error);

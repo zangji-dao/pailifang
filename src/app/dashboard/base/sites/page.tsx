@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTabs } from "../tabs-context";
 
 interface Base {
   id: string;
@@ -33,6 +34,7 @@ interface BaseStats {
 
 export default function BaseListPage() {
   const router = useRouter();
+  const tabs = useTabs();
   const [bases, setBases] = useState<Base[]>([]);
   const [baseStats, setBaseStats] = useState<Record<string, BaseStats>>({});
   const [loading, setLoading] = useState(true);
@@ -79,8 +81,17 @@ export default function BaseListPage() {
     fetchData();
   }, []);
 
-  const handleBaseClick = (baseId: string) => {
-    router.push(`/dashboard/base/sites/${baseId}`);
+  const handleBaseClick = (baseId: string, baseName: string) => {
+    if (tabs) {
+      tabs.openTab({
+        id: `base-${baseId}`,
+        label: baseName,
+        path: `/dashboard/base/sites/${baseId}`,
+        icon: <Home className="h-3.5 w-3.5" />,
+      });
+    } else {
+      router.push(`/dashboard/base/sites/${baseId}`);
+    }
   };
 
   const totalMeters = bases.reduce((sum, b) => sum + b.meterCount, 0);
@@ -97,203 +108,197 @@ export default function BaseListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        {/* 页面标题 */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">物业运营中心</h1>
-            <p className="text-sm text-slate-500 mt-1">管理和监控所有基地运营状况</p>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* 操作栏 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <Button 
+          className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0 sm:ml-auto"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          新增基地
+        </Button>
+      </div>
+
+      {/* 核心指标卡片 - 响应式网格 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        {/* 基地总数 */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+              <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+            </div>
+            <span className="text-xs sm:text-sm text-slate-500">基地总数</span>
           </div>
-          <Button 
-            className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            新增基地
-          </Button>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{bases.length}</p>
         </div>
 
-        {/* 核心指标卡片 - 响应式网格 */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
-          {/* 基地总数 */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
-              </div>
-              <span className="text-xs sm:text-sm text-slate-500">基地总数</span>
+        {/* 物业总数 */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+              <Home className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{bases.length}</p>
+            <span className="text-xs sm:text-sm text-slate-500">物业总数</span>
           </div>
-
-          {/* 物业总数 */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                <Home className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
-              </div>
-              <span className="text-xs sm:text-sm text-slate-500">物业总数</span>
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalMeters}</p>
-          </div>
-
-          {/* 物理空间 */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <DoorOpen className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
-              </div>
-              <span className="text-xs sm:text-sm text-slate-500">物理空间</span>
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalSpaces}</p>
-          </div>
-
-          {/* 注册号 */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <Hash className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              </div>
-              <span className="text-xs sm:text-sm text-slate-500">注册号</span>
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalRegNumbers}</p>
-          </div>
-
-          {/* 入驻企业 */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm col-span-2 sm:col-span-1">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
-              </div>
-              <span className="text-xs sm:text-sm text-slate-500">入驻企业</span>
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalAllocated}</p>
-          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalMeters}</p>
         </div>
 
-        {/* 基地列表 */}
-        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
-          <div className="p-4 sm:p-5 border-b border-slate-100">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-900">基地列表</h2>
-              <span className="text-sm text-slate-500">共 {bases.length} 个基地</span>
+        {/* 物理空间 */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <DoorOpen className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
+            <span className="text-xs sm:text-sm text-slate-500">物理空间</span>
           </div>
-          
-          {bases.length === 0 ? (
-            <div className="text-center py-16">
-              <Building2 className="h-12 w-12 text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-500">暂无基地</p>
-              <p className="text-sm text-slate-400 mt-1">点击上方"新增基地"开始添加</p>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalSpaces}</p>
+        </div>
+
+        {/* 注册号 */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <Hash className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {bases.map((base) => {
-                const stats = baseStats[base.id] || { totalSpaces: 0, totalRegNumbers: 0, allocatedRegNumbers: 0 };
-                
-                return (
-                  <div
-                    key={base.id}
-                    onClick={() => handleBaseClick(base.id)}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50 cursor-pointer transition-colors group gap-4"
-                  >
-                    {/* 左侧：基地信息 */}
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
-                        <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-slate-500" />
+            <span className="text-xs sm:text-sm text-slate-500">注册号</span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalRegNumbers}</p>
+        </div>
+
+        {/* 入驻企业 */}
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm col-span-2 sm:col-span-1">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
+            </div>
+            <span className="text-xs sm:text-sm text-slate-500">入驻企业</span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalAllocated}</p>
+        </div>
+      </div>
+
+      {/* 基地列表 */}
+      <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
+        <div className="p-4 sm:p-5 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900">基地列表</h2>
+            <span className="text-sm text-slate-500">共 {bases.length} 个基地</span>
+          </div>
+        </div>
+        
+        {bases.length === 0 ? (
+          <div className="text-center py-16">
+            <Building2 className="h-12 w-12 text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-500">暂无基地</p>
+            <p className="text-sm text-slate-400 mt-1">点击上方"新增基地"开始添加</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {bases.map((base) => {
+              const stats = baseStats[base.id] || { totalSpaces: 0, totalRegNumbers: 0, allocatedRegNumbers: 0 };
+              
+              return (
+                <div
+                  key={base.id}
+                  onClick={() => handleBaseClick(base.id, base.name)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50 cursor-pointer transition-colors group gap-4"
+                >
+                  {/* 左侧：基地信息 */}
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
+                      <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-slate-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-slate-900 group-hover:text-slate-700 truncate">{base.name}</h3>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-xs font-medium shrink-0",
+                          base.status === "active" 
+                            ? "bg-emerald-50 text-emerald-600" 
+                            : "bg-slate-100 text-slate-500"
+                        )}>
+                          {base.status === "active" ? "运营中" : "已停用"}
+                        </span>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-medium text-slate-900 group-hover:text-slate-700 truncate">{base.name}</h3>
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-xs font-medium shrink-0",
-                            base.status === "active" 
-                              ? "bg-emerald-50 text-emerald-600" 
-                              : "bg-slate-100 text-slate-500"
-                          )}>
-                            {base.status === "active" ? "运营中" : "已停用"}
-                          </span>
+                      {base.address && (
+                        <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500 truncate">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{base.address}</span>
                         </div>
-                        {base.address && (
-                          <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500 truncate">
-                            <MapPin className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{base.address}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 中间：统计数据 - 小屏幕隐藏，大屏幕显示 */}
-                    <div className="hidden lg:flex items-center gap-8">
-                      {/* 物业 */}
-                      <div className="text-center min-w-[60px]">
-                        <p className="text-xl font-bold text-slate-900">{base.meterCount}</p>
-                        <p className="text-xs text-slate-500">物业</p>
-                      </div>
-                      
-                      {/* 物理空间 */}
-                      <div className="text-center min-w-[60px]">
-                        <p className="text-xl font-bold text-slate-900">{stats.totalSpaces}</p>
-                        <p className="text-xs text-slate-500">空间</p>
-                      </div>
-                      
-                      {/* 注册号 */}
-                      <div className="text-center min-w-[60px]">
-                        <p className="text-xl font-bold text-slate-900">{stats.totalRegNumbers}</p>
-                        <p className="text-xs text-slate-500">注册号</p>
-                      </div>
-                      
-                      {/* 入驻企业 */}
-                      <div className="text-center min-w-[80px]">
-                        <p className="text-xl font-bold text-violet-600">{stats.allocatedRegNumbers}</p>
-                        <p className="text-xs text-slate-500">入驻企业</p>
-                      </div>
-                    </div>
-
-                    {/* 右侧：快捷入口 */}
-                    <div className="flex items-center justify-between sm:justify-end gap-4">
-                      {/* 小屏幕：显示统计标签 */}
-                      <div className="flex sm:hidden items-center gap-2 text-xs text-slate-500">
-                        <span className="px-2 py-1 bg-slate-100 rounded">{base.meterCount} 物业</span>
-                        <span className="px-2 py-1 bg-violet-50 text-violet-600 rounded">{stats.allocatedRegNumbers} 企业</span>
-                      </div>
-                      
-                      {/* 大屏幕：快捷按钮 */}
-                      <div className="hidden sm:flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/base/sites/${base.id}?tab=meters`);
-                          }}
-                        >
-                          <Home className="h-4 w-4 mr-1.5" />
-                          物业管理
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/base/sites/${base.id}?tab=enterprises`);
-                          }}
-                        >
-                          <Users className="h-4 w-4 mr-1.5" />
-                          入驻企业
-                        </Button>
-                      </div>
-                      
-                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* 中间：统计数据 - 小屏幕隐藏，大屏幕显示 */}
+                  <div className="hidden lg:flex items-center gap-8">
+                    {/* 物业 */}
+                    <div className="text-center min-w-[60px]">
+                      <p className="text-xl font-bold text-slate-900">{base.meterCount}</p>
+                      <p className="text-xs text-slate-500">物业</p>
+                    </div>
+                    
+                    {/* 物理空间 */}
+                    <div className="text-center min-w-[60px]">
+                      <p className="text-xl font-bold text-slate-900">{stats.totalSpaces}</p>
+                      <p className="text-xs text-slate-500">空间</p>
+                    </div>
+                    
+                    {/* 注册号 */}
+                    <div className="text-center min-w-[60px]">
+                      <p className="text-xl font-bold text-slate-900">{stats.totalRegNumbers}</p>
+                      <p className="text-xs text-slate-500">注册号</p>
+                    </div>
+                    
+                    {/* 入驻企业 */}
+                    <div className="text-center min-w-[80px]">
+                      <p className="text-xl font-bold text-violet-600">{stats.allocatedRegNumbers}</p>
+                      <p className="text-xs text-slate-500">入驻企业</p>
+                    </div>
+                  </div>
+
+                  {/* 右侧：快捷入口 */}
+                  <div className="flex items-center justify-between sm:justify-end gap-4">
+                    {/* 小屏幕：显示统计标签 */}
+                    <div className="flex sm:hidden items-center gap-2 text-xs text-slate-500">
+                      <span className="px-2 py-1 bg-slate-100 rounded">{base.meterCount} 物业</span>
+                      <span className="px-2 py-1 bg-violet-50 text-violet-600 rounded">{stats.allocatedRegNumbers} 企业</span>
+                    </div>
+                    
+                    {/* 大屏幕：快捷按钮 */}
+                    <div className="hidden sm:flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleBaseClick(base.id, base.name);
+                        }}
+                      >
+                        <Home className="h-4 w-4 mr-1.5" />
+                        物业管理
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleBaseClick(base.id, base.name);
+                        }}
+                      >
+                        <Users className="h-4 w-4 mr-1.5" />
+                        入驻企业
+                      </Button>
+                    </div>
+                    
+                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -274,36 +274,25 @@ export default function TenantsPage() {
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
-      {/* 页面标题 */}
+      {/* 操作栏 */}
       <div className="bg-white border-b border-slate-100 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <Building2 className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900">入驻企业管理</h1>
-              <p className="text-sm text-slate-500">登记和管理入驻企业的基本信息</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="text-slate-600">
-              <Download className="h-4 w-4 mr-1.5" />
-              导出
-            </Button>
-            <Button variant="outline" size="sm" className="text-slate-600">
-              <Upload className="h-4 w-4 mr-1.5" />
-              导入
-            </Button>
-            <Button 
-              size="sm" 
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-              onClick={handleAdd}
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              新增企业
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" size="sm" className="text-slate-600">
+            <Download className="h-4 w-4 mr-1.5" />
+            导出
+          </Button>
+          <Button variant="outline" size="sm" className="text-slate-600">
+            <Upload className="h-4 w-4 mr-1.5" />
+            导入
+          </Button>
+          <Button 
+            size="sm" 
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+            onClick={handleAdd}
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            新增企业
+          </Button>
         </div>
       </div>
 
