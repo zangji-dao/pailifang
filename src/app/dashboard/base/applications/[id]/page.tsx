@@ -647,57 +647,77 @@ export default function EditApplicationPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>备用名</Label>
-                      {canEdit && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const backups = [...(formData.enterpriseNameBackups || []), ""];
-                            updateField("enterpriseNameBackups", backups);
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          添加
-                        </Button>
-                      )}
-                    </div>
-                    {formData.enterpriseNameBackups && formData.enterpriseNameBackups.length > 0 ? (
-                      <div className="space-y-2">
-                        {formData.enterpriseNameBackups.map((backup, index) => (
-                          <div key={index} className="flex gap-2">
-                            <Input
-                              value={backup}
-                              onChange={(e) => {
-                                const newBackups = [...formData.enterpriseNameBackups];
-                                newBackups[index] = e.target.value;
-                                updateField("enterpriseNameBackups", newBackups);
-                              }}
-                              placeholder={`备用名 ${index + 1}`}
-                              className="flex-1"
-                              disabled={!canEdit}
-                            />
-                            {canEdit && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const newBackups = formData.enterpriseNameBackups.filter((_, i) => i !== index);
+                    <Label className="flex items-center gap-2">
+                      备用名
+                      <span className="text-xs text-muted-foreground font-normal">(可选)</span>
+                    </Label>
+                    <div className="space-y-2">
+                      {formData.enterpriseNameBackups && formData.enterpriseNameBackups.length > 0 ? (
+                        <>
+                          {formData.enterpriseNameBackups.map((backup, index) => (
+                            <div key={index} className="flex items-center gap-2 group">
+                              <span className="text-xs text-muted-foreground w-6 shrink-0">{index + 1}.</span>
+                              <Input
+                                value={backup}
+                                onChange={(e) => {
+                                  const newBackups = [...formData.enterpriseNameBackups];
+                                  newBackups[index] = e.target.value;
                                   updateField("enterpriseNameBackups", newBackups);
                                 }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground pt-2">可选，点击"添加"按钮添加备用名</p>
-                    )}
+                                placeholder={`请输入备用名 ${index + 1}`}
+                                className="flex-1 h-8"
+                                disabled={!canEdit}
+                              />
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    const newBackups = formData.enterpriseNameBackups.filter((_, i) => i !== index);
+                                    updateField("enterpriseNameBackups", newBackups);
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          {canEdit && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full h-8 border-dashed text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                const backups = [...(formData.enterpriseNameBackups || []), ""];
+                                updateField("enterpriseNameBackups", backups);
+                              }}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              继续添加
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        canEdit ? (
+                          <button
+                            type="button"
+                            className="w-full h-9 rounded-md border border-dashed border-muted-foreground/30 bg-transparent hover:border-primary/50 hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              const backups = [...(formData.enterpriseNameBackups || []), ""];
+                              updateField("enterpriseNameBackups", backups);
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            添加备用名
+                          </button>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">暂无备用名</p>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
