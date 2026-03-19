@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RotateCcw, Check, Move } from "lucide-react";
+import { RotateCcw, Check, Move, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Point {
@@ -24,7 +24,6 @@ interface ImageCropperProps {
 function computePerspectiveTransform(srcPoints: Point[], dstWidth: number, dstHeight: number): number[] {
   const [p0, p1, p2, p3] = srcPoints; // 左上、右上、右下、左下
   
-  // 目标点：矩形四个角
   const dstPoints: Point[] = [
     { x: 0, y: 0 },
     { x: dstWidth, y: 0 },
@@ -32,12 +31,11 @@ function computePerspectiveTransform(srcPoints: Point[], dstWidth: number, dstHe
     { x: 0, y: dstHeight },
   ];
   
-  // 计算8个方程的系数矩阵
   const src = [p0, p1, p2, p3];
   const dst = dstPoints;
   
-  const a = [];
-  const b = [];
+  const a: number[][] = [];
+  const b: number[] = [];
   
   for (let i = 0; i < 4; i++) {
     a.push([src[i].x, src[i].y, 1, 0, 0, 0, -dst[i].x * src[i].x, -dst[i].x * src[i].y]);
@@ -46,10 +44,8 @@ function computePerspectiveTransform(srcPoints: Point[], dstWidth: number, dstHe
     b.push(dst[i].y);
   }
   
-  // 高斯消元法求解
   const n = 8;
   for (let i = 0; i < n; i++) {
-    // 找主元
     let maxRow = i;
     for (let k = i + 1; k < n; k++) {
       if (Math.abs(a[k][i]) > Math.abs(a[maxRow][i])) {
@@ -59,7 +55,6 @@ function computePerspectiveTransform(srcPoints: Point[], dstWidth: number, dstHe
     [a[i], a[maxRow]] = [a[maxRow], a[i]];
     [b[i], b[maxRow]] = [b[maxRow], b[i]];
     
-    // 消元
     for (let k = i + 1; k < n; k++) {
       const factor = a[k][i] / a[i][i];
       for (let j = i; j < n; j++) {
@@ -69,7 +64,6 @@ function computePerspectiveTransform(srcPoints: Point[], dstWidth: number, dstHe
     }
   }
   
-  // 回代
   const h = new Array(n).fill(0);
   for (let i = n - 1; i >= 0; i--) {
     h[i] = b[i];
@@ -79,7 +73,7 @@ function computePerspectiveTransform(srcPoints: Point[], dstWidth: number, dstHe
     h[i] /= a[i][i];
   }
   
-  return [...h, 1]; // 9个元素，h8=1
+  return [...h, 1];
 }
 
 // 应用透视变换
@@ -104,12 +98,10 @@ function applyPerspectiveTransform(
   
   for (let y = 0; y < dstHeight; y++) {
     for (let x = 0; x < dstWidth; x++) {
-      // 逆变换：从目标坐标求源坐标
       const w = h6 * x + h7 * y + h8;
       const srcX = (h0 * x + h1 * y + h2) / w;
       const srcY = (h3 * x + h4 * y + h5) / w;
       
-      // 双线性插值
       const x0 = Math.floor(srcX);
       const y0 = Math.floor(srcY);
       const x1 = Math.min(x0 + 1, image.width - 1);
@@ -120,7 +112,6 @@ function applyPerspectiveTransform(
       
       const dstIdx = (y * dstWidth + x) * 4;
       
-      // 边界检查
       if (x0 >= 0 && x0 < image.width && y0 >= 0 && y0 < image.height) {
         const getPixel = (px: number, py: number) => {
           const idx = (py * image.width + px) * 4;
@@ -146,7 +137,6 @@ function applyPerspectiveTransform(
           dstData[dstIdx + c] = Math.round(val);
         }
       } else {
-        // 超出边界设为透明
         dstData[dstIdx + 3] = 0;
       }
     }
@@ -169,7 +159,7 @@ export function ImageCropper({
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   
-  // 透视裁剪的四个角点（相对于原图的坐标）
+  // 透视裁剪的四个角点（左上、右上、右下、左下）
   const [perspectivePoints, setPerspectivePoints] = useState<Point[]>([
     { x: 0, y: 0 },
     { x: 0, y: 0 },
@@ -182,8 +172,10 @@ export function ImageCropper({
   
   // 拖拽状态
   const [draggingPoint, setDraggingPoint] = useState<number | null>(null);
+  const [draggingEdge, setDraggingEdge] = useState<number | null>(null);
   const [isDraggingRect, setIsDraggingRect] = useState(false);
-  const [dragStart, setDragStart] = useState<Point | null>(null);
+  const [rectDragStart, setRectDragStart] = useState<Point | null>(null);
+  const [rectDragOffset, setRectDragOffset] = useState({ x: 0, y: 0 });
   
   // 加载图片并初始化裁剪区域
   useEffect(() => {
@@ -191,16 +183,17 @@ export function ImageCropper({
       const img = new window.Image();
       img.onload = () => {
         setImageSize({ width: img.width, height: img.height });
-        // 初始化透视裁剪区域为图片中心区域
-        const padding = Math.min(img.width, img.height) * 0.1;
+        // 初始化透视裁剪区域为图片中心区域（预留给身份证留白）
+        const paddingX = img.width * 0.05;
+        const paddingY = img.height * 0.05;
         setPerspectivePoints([
-          { x: padding, y: padding },
-          { x: img.width - padding, y: padding },
-          { x: img.width - padding, y: img.height - padding },
-          { x: padding, y: img.height - padding },
+          { x: paddingX, y: paddingY },
+          { x: img.width - paddingX, y: paddingY },
+          { x: img.width - paddingX, y: img.height - paddingY },
+          { x: paddingX, y: img.height - paddingY },
         ]);
         // 初始化矩形裁剪区域
-        const cropHeight = Math.min(img.height, img.width / aspectRatio);
+        const cropHeight = Math.min(img.height * 0.9, (img.width * 0.9) / aspectRatio);
         const cropWidth = cropHeight * aspectRatio;
         setRectCrop({
           x: (img.width - cropWidth) / 2,
@@ -217,7 +210,7 @@ export function ImageCropper({
   useEffect(() => {
     if (containerRef.current && imageSize.width > 0) {
       const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = 400;
+      const containerHeight = 450;
       const scale = Math.min(containerWidth / imageSize.width, containerHeight / imageSize.height);
       const displayWidth = imageSize.width * scale;
       const displayHeight = imageSize.height * scale;
@@ -229,7 +222,7 @@ export function ImageCropper({
     }
   }, [imageSize]);
   
-  // 坐标转换：显示坐标 -> 原图坐标
+  // 坐标转换
   const displayToImage = useCallback((displayX: number, displayY: number): Point => {
     const scale = imageSize.width / displaySize.width;
     return {
@@ -238,7 +231,6 @@ export function ImageCropper({
     };
   }, [imageSize, displaySize, offset]);
   
-  // 坐标转换：原图坐标 -> 显示坐标
   const imageToDisplay = useCallback((imageX: number, imageY: number): Point => {
     const scale = displaySize.width / imageSize.width;
     return {
@@ -247,79 +239,109 @@ export function ImageCropper({
     };
   }, [imageSize, displaySize, offset]);
   
-  // 处理角点拖拽
+  // 处理角点拖拽开始
   const handlePointMouseDown = (pointIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDraggingPoint(pointIndex);
-    setDragStart({ x: e.clientX, y: e.clientY });
   };
   
+  // 处理边拖拽开始
+  const handleEdgeMouseDown = (edgeIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggingEdge(edgeIndex);
+  };
+  
+  // 处理矩形裁剪框拖拽
+  const handleRectMouseDown = (e: React.MouseEvent) => {
+    if (mode !== "rect") return;
+    e.preventDefault();
+    setIsDraggingRect(true);
+    setRectDragStart({ x: e.clientX, y: e.clientY });
+    setRectDragOffset({ x: rectCrop.x, y: rectCrop.y });
+  };
+  
+  // 鼠标移动处理
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (draggingPoint !== null && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const displayX = e.clientX - rect.left;
-      const displayY = e.clientY - rect.top;
-      const imagePoint = displayToImage(displayX, displayY);
-      
-      // 限制在图片范围内
-      const clampedPoint = {
-        x: Math.max(0, Math.min(imageSize.width, imagePoint.x)),
-        y: Math.max(0, Math.min(imageSize.height, imagePoint.y)),
-      };
-      
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const displayX = e.clientX - rect.left;
+    const displayY = e.clientY - rect.top;
+    const imagePoint = displayToImage(displayX, displayY);
+    
+    // 限制在图片范围内
+    const clampPoint = (p: Point) => ({
+      x: Math.max(0, Math.min(imageSize.width, p.x)),
+      y: Math.max(0, Math.min(imageSize.height, p.y)),
+    });
+    
+    if (draggingPoint !== null) {
       setPerspectivePoints(prev => {
         const newPoints = [...prev];
-        newPoints[draggingPoint] = clampedPoint;
+        newPoints[draggingPoint] = clampPoint(imagePoint);
         return newPoints;
       });
-    } else if (mode === "rect" && isDraggingRect && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const displayX = e.clientX - rect.left;
-      const displayY = e.clientY - rect.top;
-      const imagePoint = displayToImage(displayX, displayY);
-      
-      // 根据拖拽位置调整裁剪框
-      const centerX = rectCrop.x + rectCrop.width / 2;
-      const centerY = rectCrop.y + rectCrop.height / 2;
-      const newCenterX = (centerX + imagePoint.x) / 2;
-      const newCenterY = (centerY + imagePoint.y) / 2;
-      
-      setRectCrop(prev => ({
-        x: Math.max(0, Math.min(imageSize.width - prev.width, newCenterX - prev.width / 2)),
-        y: Math.max(0, Math.min(imageSize.height - prev.height, newCenterY - prev.height / 2)),
-        width: prev.width,
-        height: prev.height,
-      }));
+    } else if (draggingEdge !== null) {
+      // 边拖拽：移动边的两个端点
+      setPerspectivePoints(prev => {
+        const newPoints = [...prev];
+        const edgeToPoint: Record<number, number[]> = {
+          0: [0, 1], // 上边 -> 左上、右上
+          1: [1, 2], // 右边 -> 右上、右下
+          2: [2, 3], // 下边 -> 右下、左下
+          3: [3, 0], // 左边 -> 左下、左上
+        };
+        const pointIndices = edgeToPoint[draggingEdge];
+        pointIndices.forEach(idx => {
+          const oldPoint = prev[idx];
+          // 计算移动方向
+          if (draggingEdge === 0 || draggingEdge === 2) {
+            // 上下边，移动Y
+            newPoints[idx] = clampPoint({ x: oldPoint.x, y: imagePoint.y });
+          } else {
+            // 左右边，移动X
+            newPoints[idx] = clampPoint({ x: imagePoint.x, y: oldPoint.y });
+          }
+        });
+        return newPoints;
+      });
+    } else if (isDraggingRect && rectDragStart) {
+      const deltaX = (e.clientX - rectDragStart.x) * (imageSize.width / displaySize.width);
+      const deltaY = (e.clientY - rectDragStart.y) * (imageSize.height / displaySize.height);
+      const newX = Math.max(0, Math.min(imageSize.width - rectCrop.width, rectDragOffset.x + deltaX));
+      const newY = Math.max(0, Math.min(imageSize.height - rectCrop.height, rectDragOffset.y + deltaY));
+      setRectCrop(prev => ({ ...prev, x: newX, y: newY }));
     }
-  }, [draggingPoint, isDraggingRect, displayToImage, imageSize, mode, rectCrop]);
+  }, [draggingPoint, draggingEdge, isDraggingRect, rectDragStart, rectDragOffset, displayToImage, imageSize, displaySize, rectCrop, mode]);
   
   const handleMouseUp = useCallback(() => {
     setDraggingPoint(null);
+    setDraggingEdge(null);
     setIsDraggingRect(false);
-    setDragStart(null);
+    setRectDragStart(null);
   }, []);
   
   useEffect(() => {
-    if (draggingPoint !== null || isDraggingRect) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [draggingPoint, isDraggingRect, handleMouseMove, handleMouseUp]);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
   
-  // 重置裁剪区域
+  // 重置
   const handleReset = () => {
-    const padding = Math.min(imageSize.width, imageSize.height) * 0.1;
+    const paddingX = imageSize.width * 0.05;
+    const paddingY = imageSize.height * 0.05;
     setPerspectivePoints([
-      { x: padding, y: padding },
-      { x: imageSize.width - padding, y: padding },
-      { x: imageSize.width - padding, y: imageSize.height - padding },
-      { x: padding, y: imageSize.height - padding },
+      { x: paddingX, y: paddingY },
+      { x: imageSize.width - paddingX, y: paddingY },
+      { x: imageSize.width - paddingX, y: imageSize.height - paddingY },
+      { x: paddingX, y: imageSize.height - paddingY },
     ]);
-    const cropHeight = Math.min(imageSize.height, imageSize.width / aspectRatio);
+    const cropHeight = Math.min(imageSize.height * 0.9, (imageSize.width * 0.9) / aspectRatio);
     const cropWidth = cropHeight * aspectRatio;
     setRectCrop({
       x: (imageSize.width - cropWidth) / 2,
@@ -327,6 +349,18 @@ export function ImageCropper({
       width: cropWidth,
       height: cropHeight,
     });
+  };
+  
+  // 自动检测边缘（简化版：自动贴边）
+  const handleAutoDetect = () => {
+    // 简单实现：自动扩大到图片边缘附近
+    const margin = Math.min(imageSize.width, imageSize.height) * 0.02;
+    setPerspectivePoints([
+      { x: margin, y: margin },
+      { x: imageSize.width - margin, y: margin },
+      { x: imageSize.width - margin, y: imageSize.height - margin },
+      { x: margin, y: imageSize.height - margin },
+    ]);
   };
   
   // 执行裁剪
@@ -338,8 +372,7 @@ export function ImageCropper({
     const img = imageRef.current;
     
     if (mode === "perspective") {
-      // 透视裁剪
-      const dstWidth = 800; // 输出宽度
+      const dstWidth = 800;
       const dstHeight = Math.round(dstWidth / aspectRatio);
       canvas.width = dstWidth;
       canvas.height = dstHeight;
@@ -347,7 +380,6 @@ export function ImageCropper({
       const transform = computePerspectiveTransform(perspectivePoints, dstWidth, dstHeight);
       applyPerspectiveTransform(ctx, img, transform, dstWidth, dstHeight);
     } else {
-      // 矩形裁剪
       canvas.width = rectCrop.width;
       canvas.height = rectCrop.height;
       ctx.drawImage(
@@ -363,7 +395,6 @@ export function ImageCropper({
       );
     }
     
-    // 转换为 Blob
     canvas.toBlob((blob) => {
       if (blob) {
         onCrop(blob);
@@ -373,6 +404,19 @@ export function ImageCropper({
   
   // 获取显示坐标
   const displayPoints = perspectivePoints.map(p => imageToDisplay(p.x, p.y));
+  
+  // 边的中点坐标
+  const edgeMidPoints = [
+    // 上边中点
+    { x: (displayPoints[0].x + displayPoints[1].x) / 2, y: (displayPoints[0].y + displayPoints[1].y) / 2 },
+    // 右边中点
+    { x: (displayPoints[1].x + displayPoints[2].x) / 2, y: (displayPoints[1].y + displayPoints[2].y) / 2 },
+    // 下边中点
+    { x: (displayPoints[2].x + displayPoints[3].x) / 2, y: (displayPoints[2].y + displayPoints[3].y) / 2 },
+    // 左边中点
+    { x: (displayPoints[3].x + displayPoints[0].x) / 2, y: (displayPoints[3].y + displayPoints[0].y) / 2 },
+  ];
+  
   const displayRectCrop = {
     x: imageToDisplay(rectCrop.x, rectCrop.y).x,
     y: imageToDisplay(rectCrop.x, rectCrop.y).y,
@@ -380,18 +424,21 @@ export function ImageCropper({
     height: rectCrop.height * (displaySize.width / imageSize.width),
   };
   
+  const cornerLabels = ["左上", "右上", "右下", "左下"];
+  const edgeLabels = ["上边", "右边", "下边", "左边"];
+  
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>裁剪身份证图片</DialogTitle>
         </DialogHeader>
         
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "perspective" | "rect")}>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as "perspective" | "rect")} className="flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="perspective" className="flex items-center gap-2">
-              <Move className="h-4 w-4" />
-              透视裁剪
+              <Maximize2 className="h-4 w-4" />
+              透视裁剪（推荐）
             </TabsTrigger>
             <TabsTrigger value="rect" className="flex items-center gap-2">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -401,186 +448,232 @@ export function ImageCropper({
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="perspective" className="mt-4">
-            <p className="text-sm text-muted-foreground mb-2">
-              拖动四个角点对齐身份证边角，系统将自动矫正透视变形
-            </p>
-          </TabsContent>
+          <div className="mt-2 text-sm text-muted-foreground">
+            {mode === "perspective" ? (
+              <p>
+                <strong>使用方法：</strong>
+                拖动四个角点对齐身份证的四角，拖动边的中点可调整整条边。
+                系统会自动矫正透视变形，生成正面视图。
+              </p>
+            ) : (
+              <p>
+                <strong>使用方法：</strong>
+                拖动裁剪框选择区域，保持固定身份证比例（{aspectRatio}:1）。
+              </p>
+            )}
+          </div>
           
-          <TabsContent value="rect" className="mt-4">
-            <p className="text-sm text-muted-foreground mb-2">
-              拖动裁剪框选择区域
-            </p>
-          </TabsContent>
-        </Tabs>
-        
-        {/* 裁剪区域 */}
-        <div
-          ref={containerRef}
-          className="relative bg-muted rounded-lg overflow-hidden"
-          style={{ height: 400 }}
-        >
-          {/* 原图（隐藏，用于裁剪） */}
-          <img
-            ref={imageRef}
-            src={imageSrc}
-            alt="原图"
-            className="hidden"
-            crossOrigin="anonymous"
-          />
-          
-          {/* 显示图片 */}
-          <img
-            src={imageSrc}
-            alt="预览"
-            className="absolute object-contain"
-            style={{
-              left: offset.x,
-              top: offset.y,
-              width: displaySize.width,
-              height: displaySize.height,
-            }}
-            crossOrigin="anonymous"
-          />
-          
-          {/* 透视裁剪蒙层和角点 */}
-          {mode === "perspective" && displaySize.width > 0 && (
-            <>
-              {/* SVG 蒙层和裁剪区域 */}
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                width="100%"
-                height="100%"
-              >
-                {/* 蒙层 */}
-                <defs>
-                  <mask id="cropMask">
-                    <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                    <polygon
-                      points={displayPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                      fill="black"
-                    />
-                  </mask>
-                </defs>
-                <rect
-                  x="0"
-                  y="0"
+          {/* 裁剪区域 */}
+          <div
+            ref={containerRef}
+            className="relative bg-muted/50 rounded-lg overflow-hidden flex-1 min-h-[450px]"
+          >
+            {/* 隐藏的原图用于裁剪 */}
+            <img
+              ref={imageRef}
+              src={imageSrc}
+              alt="原图"
+              className="hidden"
+              crossOrigin="anonymous"
+            />
+            
+            {/* 显示图片 */}
+            <img
+              src={imageSrc}
+              alt="预览"
+              className="absolute object-contain select-none"
+              style={{
+                left: offset.x,
+                top: offset.y,
+                width: displaySize.width,
+                height: displaySize.height,
+              }}
+              crossOrigin="anonymous"
+              draggable={false}
+            />
+            
+            {/* 透视裁剪 UI */}
+            {mode === "perspective" && displaySize.width > 0 && (
+              <>
+                {/* SVG 蒙层和边框 */}
+                <svg
+                  className="absolute inset-0 pointer-events-none"
                   width="100%"
                   height="100%"
-                  fill="rgba(0,0,0,0.5)"
-                  mask="url(#cropMask)"
-                />
-                
-                {/* 裁剪区域边框 */}
-                <polygon
-                  points={displayPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                  fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="2"
-                  strokeDasharray="5,5"
-                />
-                
-                {/* 网格线 */}
-                {perspectivePoints.length === 4 && (
-                  <>
-                    <line
-                      x1={displayPoints[0].x}
-                      y1={displayPoints[0].y}
-                      x2={displayPoints[2].x}
-                      y2={displayPoints[2].y}
-                      stroke="hsl(var(--primary) / 0.3)"
-                      strokeWidth="1"
-                    />
-                    <line
-                      x1={displayPoints[1].x}
-                      y1={displayPoints[1].y}
-                      x2={displayPoints[3].x}
-                      y2={displayPoints[3].y}
-                      stroke="hsl(var(--primary) / 0.3)"
-                      strokeWidth="1"
-                    />
-                  </>
-                )}
-              </svg>
-              
-              {/* 四个角点 */}
-              {displayPoints.map((point, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "absolute w-6 h-6 -ml-3 -mt-3 rounded-full border-2 border-primary bg-background cursor-move shadow-lg",
-                    "hover:scale-125 transition-transform",
-                    "flex items-center justify-center text-xs font-medium text-primary"
-                  )}
-                  style={{ left: point.x, top: point.y }}
-                  onMouseDown={(e) => handlePointMouseDown(index, e)}
                 >
-                  {index + 1}
-                </div>
-              ))}
-            </>
-          )}
-          
-          {/* 矩形裁剪框 */}
-          {mode === "rect" && displaySize.width > 0 && (
-            <>
-              {/* 蒙层 */}
-              <div
-                className="absolute bg-black/50"
-                style={{
-                  left: offset.x,
-                  top: offset.y,
-                  width: displaySize.width,
-                  height: displaySize.height,
-                  clipPath: `polygon(
-                    0 0, 100% 0, 100% 100%, 0 100%, 0 0,
-                    ${displayRectCrop.x - offset.x}px ${displayRectCrop.y - offset.y}px,
-                    ${displayRectCrop.x - offset.x}px ${displayRectCrop.y - offset.y + displayRectCrop.height}px,
-                    ${displayRectCrop.x - offset.x + displayRectCrop.width}px ${displayRectCrop.y - offset.y + displayRectCrop.height}px,
-                    ${displayRectCrop.x - offset.x + displayRectCrop.width}px ${displayRectCrop.y - offset.y}px,
-                    ${displayRectCrop.x - offset.x}px ${displayRectCrop.y - offset.y}px
-                  )`,
-                }}
-              />
-              
-              {/* 裁剪框 */}
-              <div
-                className="absolute border-2 border-primary border-dashed cursor-move"
-                style={{
-                  left: displayRectCrop.x,
-                  top: displayRectCrop.y,
-                  width: displayRectCrop.width,
-                  height: displayRectCrop.height,
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsDraggingRect(true);
-                  setDragStart({ x: e.clientX, y: e.clientY });
-                }}
-              >
-                {/* 九宫格参考线 */}
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-                  {Array.from({ length: 9 }).map((_, i) => (
+                  <defs>
+                    <mask id="cropMask">
+                      <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                      <polygon
+                        points={displayPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="black"
+                      />
+                    </mask>
+                  </defs>
+                  {/* 半透明蒙层 */}
+                  <rect
+                    x="0"
+                    y="0"
+                    width="100%"
+                    height="100%"
+                    fill="rgba(0,0,0,0.6)"
+                    mask="url(#cropMask)"
+                  />
+                  
+                  {/* 裁剪区域边框 - 粗线 */}
+                  <polygon
+                    points={displayPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                    fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="3"
+                    className="drop-shadow-md"
+                  />
+                  
+                  {/* 对角线辅助线 */}
+                  <line
+                    x1={displayPoints[0].x}
+                    y1={displayPoints[0].y}
+                    x2={displayPoints[2].x}
+                    y2={displayPoints[2].y}
+                    stroke="hsl(var(--primary) / 0.3)"
+                    strokeWidth="1"
+                    strokeDasharray="8,4"
+                  />
+                  <line
+                    x1={displayPoints[1].x}
+                    y1={displayPoints[1].y}
+                    x2={displayPoints[3].x}
+                    y2={displayPoints[3].y}
+                    stroke="hsl(var(--primary) / 0.3)"
+                    strokeWidth="1"
+                    strokeDasharray="8,4"
+                  />
+                </svg>
+                
+                {/* 四条边 - 可拖拽区域 */}
+                {displayPoints.map((_, i) => {
+                  const next = (i + 1) % 4;
+                  const midPoint = edgeMidPoints[i];
+                  return (
                     <div
-                      key={i}
-                      className={cn(
-                        "border-primary/30",
-                        i % 3 === 1 ? "border-l border-r" : "",
-                        Math.floor(i / 3) === 1 ? "border-t border-b" : ""
-                      )}
-                    />
-                  ))}
+                      key={`edge-${i}`}
+                      className="absolute cursor-move group"
+                      style={{
+                        left: midPoint.x - 20,
+                        top: midPoint.y - 20,
+                        width: 40,
+                        height: 40,
+                      }}
+                      onMouseDown={(e) => handleEdgeMouseDown(i, e)}
+                    >
+                      {/* 边的中点指示器 */}
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-background shadow-lg opacity-70 group-hover:opacity-100 group-hover:scale-125 transition-all" />
+                      {/* Hover 提示 */}
+                      <div className="absolute left-1/2 top-full mt-1 -translate-x-1/2 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        拖拽调整{edgeLabels[i]}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* 四个角点 */}
+                {displayPoints.map((point, index) => (
+                  <div
+                    key={`point-${index}`}
+                    className={cn(
+                      "absolute cursor-move group",
+                      "transition-transform duration-100"
+                    )}
+                    style={{
+                      left: point.x - 24,
+                      top: point.y - 24,
+                      width: 48,
+                      height: 48,
+                    }}
+                    onMouseDown={(e) => handlePointMouseDown(index, e)}
+                  >
+                    {/* 角点圆圈 */}
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border-2 border-primary shadow-lg group-hover:scale-110 transition-transform">
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary">
+                        {index + 1}
+                      </span>
+                    </div>
+                    {/* 角点标签 */}
+                    <div className="absolute left-1/2 top-full mt-1 -translate-x-1/2 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      {cornerLabels[index]}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+            
+            {/* 矩形裁剪 UI */}
+            {mode === "rect" && displaySize.width > 0 && (
+              <>
+                {/* 蒙层 - 使用 clip-path */}
+                <div
+                  className="absolute bg-black/60 pointer-events-none"
+                  style={{
+                    left: offset.x,
+                    top: offset.y,
+                    width: displaySize.width,
+                    height: displaySize.height,
+                    clipPath: `polygon(
+                      0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+                      ${displayRectCrop.x - offset.x}px ${displayRectCrop.y - offset.y}px,
+                      ${displayRectCrop.x - offset.x}px ${displayRectCrop.y - offset.y + displayRectCrop.height}px,
+                      ${displayRectCrop.x - offset.x + displayRectCrop.width}px ${displayRectCrop.y - offset.y + displayRectCrop.height}px,
+                      ${displayRectCrop.x - offset.x + displayRectCrop.width}px ${displayRectCrop.y - offset.y}px,
+                      ${displayRectCrop.x - offset.x}px ${displayRectCrop.y - offset.y}px
+                    )`,
+                  }}
+                />
+                
+                {/* 裁剪框 */}
+                <div
+                  className="absolute border-[3px] border-primary cursor-move shadow-xl"
+                  style={{
+                    left: displayRectCrop.x,
+                    top: displayRectCrop.y,
+                    width: displayRectCrop.width,
+                    height: displayRectCrop.height,
+                  }}
+                  onMouseDown={handleRectMouseDown}
+                >
+                  {/* 九宫格参考线 */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {/* 垂直线 */}
+                    <div className="absolute top-0 bottom-0 left-1/3 w-px bg-primary/40" />
+                    <div className="absolute top-0 bottom-0 left-2/3 w-px bg-primary/40" />
+                    {/* 水平线 */}
+                    <div className="absolute left-0 right-0 top-1/3 h-px bg-primary/40" />
+                    <div className="absolute left-0 right-0 top-2/3 h-px bg-primary/40" />
+                  </div>
+                  
+                  {/* 四个角标记 */}
+                  <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary bg-background" />
+                  <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary bg-background" />
+                  <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary bg-background" />
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary bg-background" />
                 </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        </Tabs>
         
-        <DialogFooter className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            重置
-          </Button>
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              重置
+            </Button>
+            {mode === "perspective" && (
+              <Button variant="outline" size="sm" onClick={handleAutoDetect}>
+                <Maximize2 className="h-4 w-4 mr-2" />
+                自动贴边
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>
               取消
