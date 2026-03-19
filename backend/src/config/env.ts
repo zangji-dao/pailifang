@@ -1,25 +1,14 @@
 /**
  * 后端统一环境配置模块
  * 
- * 核心原则：
- * 1. 代码自动判断环境，无需手动配置
- * 2. 敏感信息通过系统环境变量注入
- * 3. 沙箱和生产环境使用同一份代码
+ * 使用 Coze 平台提供的服务：
+ * - 数据库：Supabase (COZE_SUPABASE_URL, COZE_SUPABASE_ANON_KEY)
+ * - 对象存储：Coze S3 (COZE_BUCKET_ENDPOINT_URL, COZE_BUCKET_NAME)
  * 
  * 环境判断逻辑：
  * - COZE_PROJECT_ENV=DEV → 沙箱环境
  * - COZE_PROJECT_ENV=PROD → 生产环境
- * - COZE_PROJECT_DOMAIN_DEFAULT 包含 dev.coze.site → 沙箱环境
- * - 其他情况 → 生产环境
  */
-
-// 加载环境变量（从 .env 文件）
-import { config as dotenvConfig } from 'dotenv';
-import { resolve } from 'path';
-
-// 尝试加载 .env 文件
-dotenvConfig({ path: resolve(__dirname, '../../.env') });
-dotenvConfig({ path: resolve(__dirname, '../../../.env.local') });
 
 // 环境类型
 export type Environment = 'sandbox' | 'production';
@@ -31,15 +20,6 @@ export interface EnvironmentConfig {
   isSandbox: boolean;
   isProduction: boolean;
   
-  // 数据库配置
-  database: {
-    host: string;
-    port: number;
-    user: string;
-    password: string;  // 从环境变量读取
-    database: string;  // 沙箱用 pi_cube_dev，生产用 pi_cube
-  };
-  
   // 服务配置
   server: {
     port: number;
@@ -48,8 +28,8 @@ export interface EnvironmentConfig {
   // 支付宝配置
   alipay: {
     appId: string;
-    privateKey: string;  // 从环境变量读取
-    publicKey: string;   // 从环境变量读取
+    privateKey: string;
+    publicKey: string;
     redirectUri: string;
   };
   
@@ -64,7 +44,6 @@ export interface EnvironmentConfig {
  * 判断当前环境
  */
 export function detectEnvironment(): Environment {
-  // 优先使用 COZE_PROJECT_ENV
   const projectEnv = process.env.COZE_PROJECT_ENV;
   if (projectEnv === 'DEV') {
     return 'sandbox';
@@ -85,22 +64,16 @@ export function detectEnvironment(): Environment {
 
 /**
  * 获取环境配置
- * 
- * 方案一：沙箱与生产完全一致
- * - 沙箱和生产都使用同一个数据库 pi_cube
- * - 代码完全一致，无需切换
  */
 export function getEnvironmentConfig(): EnvironmentConfig {
   const env = detectEnvironment();
   const isSandbox = env === 'sandbox';
   const isProduction = env === 'production';
   
-  // 从环境变量读取数据库配置
-  const dbPassword = process.env.PG_PASSWORD || process.env.DB_PASSWORD || process.env.PGPASSWORD || '';
-  const dbUser = process.env.PGUSER || 'pi_user';
-  const dbHost = process.env.PGHOST || '152.136.12.122';
-  const dbPort = parseInt(process.env.PGPORT || '5432', 10);
-  const dbName = process.env.PGDATABASE || 'pi_cube';
+  console.log(`[环境] 当前环境: ${env}`);
+  console.log(`[环境] 服务端口: ${process.env.PORT || 4001}`);
+  
+  // 支付宝配置
   const alipayPrivateKey = process.env.ALIPAY_PRIVATE_KEY || '';
   const alipayPublicKey = process.env.ALIPAY_PUBLIC_KEY || '';
   
@@ -118,14 +91,6 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     env,
     isSandbox,
     isProduction,
-    
-    database: {
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName,
-    },
     
     server: {
       port: parseInt(process.env.PORT || '4001', 10),

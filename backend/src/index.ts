@@ -2,7 +2,6 @@ import { config } from './config/env';
 
 // 打印环境信息
 console.log(`[环境] 当前环境: ${config.env}`);
-console.log(`[环境] 数据库: ${config.database.database}`);
 console.log(`[环境] 服务端口: ${config.server.port}`);
 
 import express from 'express';
@@ -49,7 +48,6 @@ app.get('/health', (req, res) => {
     service: 'Π立方企业服务中心 API',
     version: '1.0.0',
     environment: config.env,
-    database: config.database.database,
   });
 });
 

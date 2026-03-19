@@ -3,7 +3,8 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { getStorageService, FileType, getStoragePrefix, validateFileSize } from '../services/storage';
+import { getStorageService, getStoragePrefix, validateFileSize } from '../services/storage';
+import { FileType } from '../services/storage/types';
 
 const router = Router();
 

@@ -1,45 +1,55 @@
 /**
- * 数据库客户端 - PostgreSQL (Drizzle ORM)
+ * 数据库客户端 - Drizzle ORM
  * 
- * 使用统一的环境配置模块
- * 自动判断沙箱/生产环境，使用对应的数据库
+ * 使用 Drizzle ORM 连接到 Supabase PostgreSQL
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
-import { config } from '../config/env';
 
-// 连接池单例
-let pool: Pool | null = null;
-
-function getPool(): Pool {
-  if (!pool) {
-    const dbConfig = config.database;
-    
-    console.log(`[数据库] 环境: ${config.env}, 数据库: ${dbConfig.database}`);
-    
-    // 根据环境变量决定是否使用 SSL
-    const sslMode = process.env.PGSSLMODE;
-    const ssl = sslMode === 'require' ? { rejectUnauthorized: false } : false;
-    
-    pool = new Pool({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      database: dbConfig.database,
-      ssl,
-    });
-  }
-  return pool;
-}
-
-// 导出数据库客户端
-export const db = drizzle(getPool(), { schema });
+// 导出 Drizzle ORM 操作符
+export { eq, or, and, like, desc, asc, sql, inArray, isNull, isNotNull, between, gte, lte, gt, lt, ne } from 'drizzle-orm';
 
 // 导出 schema
 export * from './schema';
 
-// 导出 drizzle 操作符
-export { eq, ne, gt, gte, lt, lte, and, or, desc, asc, sql, inArray, isNull, isNotNull, like } from 'drizzle-orm';
+// 数据库连接配置
+function getDatabaseConfig() {
+  // PostgreSQL 连接字符串 (优先使用 PGDATABASE_URL)
+  const databaseUrl = process.env.PGDATABASE_URL || process.env.COZE_SUPABASE_DB_URL || process.env.DATABASE_URL;
+  
+  if (!databaseUrl) {
+    throw new Error('数据库连接字符串未设置 (PGDATABASE_URL, COZE_SUPABASE_DB_URL 或 DATABASE_URL)');
+  }
+  
+  console.log(`[数据库] 连接到: ${databaseUrl.split('@')[1]?.split('/')[0] || '数据库'}`);
+  return databaseUrl;
+}
+
+// 创建连接池
+const pool = new Pool({
+  connectionString: getDatabaseConfig(),
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+// 创建 Drizzle 实例
+export const db = drizzle(pool, { schema });
+
+// 健康检查
+export async function checkDatabaseConnection(): Promise<boolean> {
+  try {
+    const result = await pool.query('SELECT 1');
+    return result.rowCount === 1;
+  } catch (error) {
+    console.error('数据库连接失败:', error);
+    return false;
+  }
+}
+
+// 优雅关闭
+export async function closeDatabase(): Promise<void> {
+  await pool.end();
+}
