@@ -146,8 +146,8 @@ deploy_production() {
     # 停止旧服务
     pm2 delete all 2>/dev/null || true
     
-    # 使用 ecosystem.config.json 启动服务
-    pm2 start ecosystem.config.json
+    # 使用 ecosystem.config.js 启动服务
+    pm2 start ecosystem.config.js
     
     # 保存 PM2 配置
     pm2 save
