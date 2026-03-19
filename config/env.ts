@@ -83,8 +83,10 @@ export function getEnvironmentConfig(): EnvironmentConfig {
   const isProduction = env === 'production';
   
   // 数据库配置
-  // 沙箱环境使用 pi_cube_dev，生产环境使用 pi_cube
-  const dbName = isSandbox ? 'pi_cube_dev' : 'pi_cube';
+  // 默认：沙箱环境使用 pi_cube_dev，生产环境使用 pi_cube
+  // 如果设置了 USE_PROD_DB=true，沙箱也使用生产数据库（完全一致模式）
+  const useProdDb = process.env.USE_PROD_DB === 'true';
+  const dbName = isSandbox && !useProdDb ? 'pi_cube_dev' : 'pi_cube';
   
   // 数据库密码从环境变量读取（敏感信息不硬编码）
   const dbPassword = process.env.PG_PASSWORD || process.env.DB_PASSWORD || '';
