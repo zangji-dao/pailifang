@@ -9,11 +9,13 @@ import {
   Trash2,
   Save,
   Send,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -24,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
@@ -34,6 +37,14 @@ interface Shareholder {
   name: string;
   investment: string;
   phone: string;
+}
+
+interface Personnel {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  roles: string[];
 }
 
 interface ApplicationFormData {
@@ -52,17 +63,8 @@ interface ApplicationFormData {
   originalRegisteredAddress: string;
   mailingAddress: string;
   businessAddress: string;
-  legalPersonName: string;
-  legalPersonPhone: string;
-  legalPersonEmail: string;
-  legalPersonAddress: string;
+  personnel: Personnel[];
   shareholders: Shareholder[];
-  supervisorName: string;
-  supervisorPhone: string;
-  financeManagerName: string;
-  financeManagerPhone: string;
-  contactPersonName: string;
-  contactPersonPhone: string;
   ewtContactName: string;
   ewtContactPhone: string;
   intermediaryDepartment: string;
@@ -78,6 +80,13 @@ const statusConfig: Record<ApprovalStatus, { label: string; className: string }>
   pending: { label: "待审批", className: "bg-blue-50 text-blue-600 border-blue-200" },
   approved: { label: "已通过", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   rejected: { label: "已驳回", className: "bg-red-50 text-red-600 border-red-200" },
+};
+
+const roleConfig: Record<string, { label: string; description: string }> = {
+  legal_person: { label: "法人代表", description: "公司法定代表人" },
+  supervisor: { label: "监事", description: "负责监督公司运营" },
+  finance_manager: { label: "财务负责人", description: "负责公司财务管理" },
+  contact_person: { label: "实际联络人", description: "日常事务联系人" },
 };
 
 export default function EditApplicationPage() {
@@ -101,6 +110,10 @@ export default function EditApplicationPage() {
           setFormData({
             ...initialFormData,
             ...result.data,
+            personnel: result.data.personnel || [
+              { name: "", phone: "", email: "", address: "", roles: ["legal_person", "finance_manager", "contact_person"] },
+              { name: "", phone: "", email: "", address: "", roles: ["supervisor"] },
+            ],
             shareholders: result.data.shareholders || [{ name: "", investment: "", phone: "" }],
           });
         } else {
@@ -131,6 +144,44 @@ export default function EditApplicationPage() {
     }
   };
 
+  // 人员操作
+  const addPersonnel = () => {
+    setFormData((prev) => prev ? {
+      ...prev,
+      personnel: [...prev.personnel, { name: "", phone: "", email: "", address: "", roles: [] }],
+    } : null);
+  };
+
+  const removePersonnel = (index: number) => {
+    setFormData((prev) => prev ? {
+      ...prev,
+      personnel: prev.personnel.filter((_, i) => i !== index),
+    } : null);
+  };
+
+  const updatePersonnel = (index: number, field: keyof Personnel, value: any) => {
+    setFormData((prev) => {
+      if (!prev) return null;
+      const newPersonnel = [...prev.personnel];
+      newPersonnel[index] = { ...newPersonnel[index], [field]: value };
+      return { ...prev, personnel: newPersonnel };
+    });
+  };
+
+  const togglePersonnelRole = (index: number, role: string) => {
+    setFormData((prev) => {
+      if (!prev) return null;
+      const newPersonnel = [...prev.personnel];
+      const roles = newPersonnel[index].roles;
+      if (roles.includes(role)) {
+        newPersonnel[index] = { ...newPersonnel[index], roles: roles.filter((r) => r !== role) };
+      } else {
+        newPersonnel[index] = { ...newPersonnel[index], roles: [...roles, role] };
+      }
+      return { ...prev, personnel: newPersonnel };
+    });
+  };
+
   // 股东操作
   const addShareholder = () => {
     setFormData((prev) => prev ? {
@@ -155,11 +206,42 @@ export default function EditApplicationPage() {
     });
   };
 
+  // 验证人员角色冲突
+  const validatePersonnelRoles = (): string | null => {
+    if (!formData) return "数据未加载";
+
+    const legalPersonIndex = formData.personnel.findIndex((p) => p.roles.includes("legal_person"));
+    const supervisorIndex = formData.personnel.findIndex((p) => p.roles.includes("supervisor"));
+    const financeIndex = formData.personnel.findIndex((p) => p.roles.includes("finance_manager"));
+
+    if (legalPersonIndex !== -1 && legalPersonIndex === supervisorIndex) {
+      return "法人代表和监事不能是同一人";
+    }
+
+    if (supervisorIndex !== -1 && supervisorIndex === financeIndex) {
+      return "监事和财务负责人不能是同一人";
+    }
+
+    if (legalPersonIndex === -1) {
+      return "必须指定法人代表";
+    }
+
+    if (supervisorIndex === -1) {
+      return "必须指定监事";
+    }
+
+    return null;
+  };
+
   // 验证
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData?.enterpriseName) newErrors.enterpriseName = "请输入企业名称";
     if (!formData?.applicationType) newErrors.applicationType = "请选择申请类型";
+
+    const roleError = validatePersonnelRoles();
+    if (roleError) newErrors.personnel = roleError;
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -195,7 +277,6 @@ export default function EditApplicationPage() {
 
     setSaving(true);
     try {
-      // 先保存
       const saveResponse = await fetch(`/api/settlement/applications/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -208,7 +289,6 @@ export default function EditApplicationPage() {
         return;
       }
 
-      // 再提交
       const submitResponse = await fetch(`/api/settlement/applications/${id}/submit`, {
         method: "POST",
       });
@@ -258,9 +338,7 @@ export default function EditApplicationPage() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold">
-                {formData.applicationNo}
-              </h1>
+              <h1 className="text-xl font-semibold">{formData.applicationNo}</h1>
               <Badge variant="outline" className={statusConfig[formData.approvalStatus].className}>
                 {statusConfig[formData.approvalStatus].label}
               </Badge>
@@ -371,28 +449,26 @@ export default function EditApplicationPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    申请类型 <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.applicationType}
-                    onValueChange={(v) => updateField("applicationType", v as ApplicationType)}
-                    disabled={!canEdit}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择申请类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">新建企业</SelectItem>
-                      <SelectItem value="migration">迁移企业</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.applicationType && (
-                    <p className="text-xs text-destructive">{errors.applicationType}</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label>
+                  申请类型 <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.applicationType}
+                  onValueChange={(v) => updateField("applicationType", v as ApplicationType)}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择申请类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">新建企业</SelectItem>
+                    <SelectItem value="migration">迁移企业</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.applicationType && (
+                  <p className="text-xs text-destructive">{errors.applicationType}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -478,130 +554,150 @@ export default function EditApplicationPage() {
 
             {/* 人员信息 */}
             <TabsContent value="personnel" className="space-y-4">
-              {/* 法人信息 */}
-              <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">法人信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>法人姓名</Label>
-                    <Input
-                      value={formData.legalPersonName}
-                      onChange={(e) => updateField("legalPersonName", e.target.value)}
-                      placeholder="请输入法人姓名"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>法人电话</Label>
-                    <Input
-                      value={formData.legalPersonPhone}
-                      onChange={(e) => updateField("legalPersonPhone", e.target.value)}
-                      placeholder="请输入法人电话"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>法人邮箱</Label>
-                    <Input
-                      type="email"
-                      value={formData.legalPersonEmail}
-                      onChange={(e) => updateField("legalPersonEmail", e.target.value)}
-                      placeholder="请输入法人邮箱"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>法人住址</Label>
-                    <Input
-                      value={formData.legalPersonAddress}
-                      onChange={(e) => updateField("legalPersonAddress", e.target.value)}
-                      placeholder="请输入法人住址"
-                      disabled={!canEdit}
-                    />
+              {/* 提示信息 */}
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">工商注册人员配置规则：</p>
+                    <ul className="list-disc list-inside space-y-1 text-blue-700">
+                      <li>最少需要 <strong>2个人</strong>：法人代表、监事（必须分开）</li>
+                      <li>法人代表可以兼任财务负责人、实际联络人</li>
+                      <li>监事<strong>不能</strong>兼任法人代表或财务负责人</li>
+                    </ul>
                   </div>
                 </div>
               </div>
 
-              {/* 监事信息 */}
-              <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">监事信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>监事姓名</Label>
-                    <Input
-                      value={formData.supervisorName}
-                      onChange={(e) => updateField("supervisorName", e.target.value)}
-                      placeholder="请输入监事姓名"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>监事电话</Label>
-                    <Input
-                      value={formData.supervisorPhone}
-                      onChange={(e) => updateField("supervisorPhone", e.target.value)}
-                      placeholder="请输入监事电话"
-                      disabled={!canEdit}
-                    />
+              {errors.personnel && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">{errors.personnel}</span>
                   </div>
                 </div>
+              )}
+
+              {/* 人员列表 */}
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">公司人员</h3>
+                {canEdit && (
+                  <Button size="sm" variant="outline" onClick={addPersonnel} className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    添加人员
+                  </Button>
+                )}
               </div>
 
-              {/* 财务负责人 */}
-              <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">财务负责人信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>财务负责人姓名</Label>
-                    <Input
-                      value={formData.financeManagerName}
-                      onChange={(e) => updateField("financeManagerName", e.target.value)}
-                      placeholder="请输入财务负责人姓名"
-                      disabled={!canEdit}
-                    />
+              {formData.personnel.map((person, index) => (
+                <div key={index} className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">人员 {index + 1}</span>
+                    {canEdit && formData.personnel.length > 2 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removePersonnel(index)}
+                        className="h-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
+
+                  {/* 基本信息 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>姓名</Label>
+                      <Input
+                        value={person.name}
+                        onChange={(e) => updatePersonnel(index, "name", e.target.value)}
+                        placeholder="请输入姓名"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>电话</Label>
+                      <Input
+                        value={person.phone}
+                        onChange={(e) => updatePersonnel(index, "phone", e.target.value)}
+                        placeholder="请输入电话"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>邮箱</Label>
+                      <Input
+                        type="email"
+                        value={person.email}
+                        onChange={(e) => updatePersonnel(index, "email", e.target.value)}
+                        placeholder="请输入邮箱"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>住址</Label>
+                      <Input
+                        value={person.address}
+                        onChange={(e) => updatePersonnel(index, "address", e.target.value)}
+                        placeholder="请输入住址"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 职务选择 */}
                   <div className="space-y-2">
-                    <Label>财务负责人电话</Label>
-                    <Input
-                      value={formData.financeManagerPhone}
-                      onChange={(e) => updateField("financeManagerPhone", e.target.value)}
-                      placeholder="请输入财务负责人电话"
-                      disabled={!canEdit}
-                    />
+                    <Label>担任职务</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(roleConfig).map(([role, config]) => {
+                        const isDisabled =
+                          !canEdit ||
+                          (role === "supervisor" && person.roles.includes("legal_person")) ||
+                          (role === "supervisor" && person.roles.includes("finance_manager")) ||
+                          (role === "legal_person" && person.roles.includes("supervisor")) ||
+                          (role === "finance_manager" && person.roles.includes("supervisor"));
+
+                        return (
+                          <div
+                            key={role}
+                            className={cn(
+                              "flex items-center space-x-2 p-2 rounded border",
+                              isDisabled && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <Checkbox
+                              id={`role-${index}-${role}`}
+                              checked={person.roles.includes(role)}
+                              onCheckedChange={() => togglePersonnelRole(index, role)}
+                              disabled={isDisabled}
+                            />
+                            <div className="flex-1">
+                              <label
+                                htmlFor={`role-${index}-${role}`}
+                                className={cn(
+                                  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                                  isDisabled ? "cursor-not-allowed" : "cursor-pointer"
+                                )}
+                              >
+                                {config.label}
+                              </label>
+                              <p className="text-xs text-muted-foreground">{config.description}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
 
-              {/* 实际联络人 */}
+              {/* 其他联系人 */}
               <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">实际联络人信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>实际联络人姓名</Label>
-                    <Input
-                      value={formData.contactPersonName}
-                      onChange={(e) => updateField("contactPersonName", e.target.value)}
-                      placeholder="请输入实际联络人姓名"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>实际联络人电话</Label>
-                    <Input
-                      value={formData.contactPersonPhone}
-                      onChange={(e) => updateField("contactPersonPhone", e.target.value)}
-                      placeholder="请输入实际联络人电话"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* e窗通联系人 */}
-              <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">登录e窗通联系人信息</h3>
+                <h3 className="font-medium">登录e窗通联系人</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>联系人姓名</Label>
@@ -624,7 +720,6 @@ export default function EditApplicationPage() {
                 </div>
               </div>
 
-              {/* 中介信息 */}
               <div className="rounded-lg border p-4 space-y-4">
                 <h3 className="font-medium">中介人信息</h3>
                 <div className="grid grid-cols-3 gap-4">
@@ -767,17 +862,11 @@ const initialFormData: ApplicationFormData = {
   originalRegisteredAddress: "",
   mailingAddress: "",
   businessAddress: "",
-  legalPersonName: "",
-  legalPersonPhone: "",
-  legalPersonEmail: "",
-  legalPersonAddress: "",
+  personnel: [
+    { name: "", phone: "", email: "", address: "", roles: ["legal_person", "finance_manager", "contact_person"] },
+    { name: "", phone: "", email: "", address: "", roles: ["supervisor"] },
+  ],
   shareholders: [{ name: "", investment: "", phone: "" }],
-  supervisorName: "",
-  supervisorPhone: "",
-  financeManagerName: "",
-  financeManagerPhone: "",
-  contactPersonName: "",
-  contactPersonPhone: "",
   ewtContactName: "",
   ewtContactPhone: "",
   intermediaryDepartment: "",
