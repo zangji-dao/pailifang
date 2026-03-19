@@ -19,13 +19,17 @@ function getPool(): Pool {
     
     console.log(`[数据库] 环境: ${config.env}, 数据库: ${dbConfig.database}`);
     
+    // 根据环境变量决定是否使用 SSL
+    const sslMode = process.env.PGSSLMODE;
+    const ssl = sslMode === 'require' ? { rejectUnauthorized: false } : false;
+    
     pool = new Pool({
       host: dbConfig.host,
       port: dbConfig.port,
       user: dbConfig.user,
       password: dbConfig.password,
       database: dbConfig.database,
-      ssl: false,
+      ssl,
     });
   }
   return pool;

@@ -87,11 +87,12 @@ export function getEnvironmentConfig(): EnvironmentConfig {
   const isSandbox = env === 'sandbox';
   const isProduction = env === 'production';
   
-  // 数据库配置：沙箱和生产使用同一个数据库
-  const dbName = 'pi_cube';
-  
-  // 从环境变量读取敏感信息
-  const dbPassword = process.env.PG_PASSWORD || process.env.DB_PASSWORD || '';
+  // 从环境变量读取数据库配置
+  const dbPassword = process.env.PG_PASSWORD || process.env.DB_PASSWORD || process.env.PGPASSWORD || '';
+  const dbUser = process.env.PGUSER || 'pi_user';
+  const dbHost = process.env.PGHOST || '152.136.12.122';
+  const dbPort = parseInt(process.env.PGPORT || '5432', 10);
+  const dbName = process.env.PGDATABASE || 'pi_cube';
   const alipayPrivateKey = process.env.ALIPAY_PRIVATE_KEY || '';
   const alipayPublicKey = process.env.ALIPAY_PUBLIC_KEY || '';
   
@@ -111,9 +112,9 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     isProduction,
     
     database: {
-      host: '152.136.12.122',
-      port: 5432,
-      user: 'pi_user',
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
       password: dbPassword,
       database: dbName,
     },

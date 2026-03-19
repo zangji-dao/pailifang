@@ -1,19 +1,8 @@
 import { Request, Response } from 'express';
 import { db } from '../database/client';
 import { settlementProcesses, settlementApplications, enterprises, contracts } from '../database/schema';
-import { eq, desc } from 'drizzle-orm';
-
-// 流程阶段定义
-const STAGE_CONFIG: Record<string, { name: string; description: string }> = {
-  approved: { name: '审批通过', description: '政府审批已通过' },
-  address_assigned: { name: '地址已分配', description: '已分配注册地址' },
-  pre_approval: { name: '预核准办理中', description: '正在办理预核准' },
-  pre_approval_done: { name: '前置审批中', description: '正在办理前置审批' },
-  registering: { name: '企业注册中', description: '正在办理企业注册' },
-  seal_applying: { name: '公章办理中', description: '正在办理公章' },
-  pending_contract: { name: '待签合同', description: '等待签订合同' },
-  completed: { name: '入驻完成', description: '入驻流程已完成' },
-};
+import { eq, sql, desc, and } from 'drizzle-orm';
+import type { StageProgress } from '../database/schema';
 
 export const processController = {
   /**
@@ -21,43 +10,41 @@ export const processController = {
    */
   async getProcesses(req: Request, res: Response) {
     try {
-      const { processType, currentStage } = req.query;
+      const { overallStatus, processType } = req.query;
 
-      let results = await db.select({
+      const results = await db.select({
         id: settlementProcesses.id,
         applicationId: settlementProcesses.applicationId,
-        enterpriseId: settlementProcesses.enterpriseId,
-        enterpriseName: settlementApplications.enterpriseName,
+        enterpriseName: settlementProcesses.enterpriseName,
         processType: settlementProcesses.processType,
         currentStage: settlementProcesses.currentStage,
-        stageProgress: settlementProcesses.stageProgress,
+        currentStageIndex: settlementProcesses.currentStageIndex,
+        overallStatus: settlementProcesses.overallStatus,
         startedAt: settlementProcesses.startedAt,
         completedAt: settlementProcesses.completedAt,
-        applicationType: settlementApplications.applicationType,
-        settlementType: settlementApplications.settlementType,
-        contactPerson: settlementApplications.contactPerson,
-        contactPhone: settlementApplications.contactPhone,
+        createdAt: settlementProcesses.createdAt,
+        // 关联申请信息
+        legalPersonName: settlementApplications.legalPersonName,
+        legalPersonPhone: settlementApplications.legalPersonPhone,
+        contactPersonName: settlementApplications.contactPersonName,
+        contactPersonPhone: settlementApplications.contactPersonPhone,
+        assignedAddress: settlementApplications.assignedAddress,
       }).from(settlementProcesses)
         .leftJoin(settlementApplications, eq(settlementProcesses.applicationId, settlementApplications.id))
         .orderBy(desc(settlementProcesses.createdAt));
 
       // 过滤
+      let filtered = results;
+      if (overallStatus) {
+        filtered = filtered.filter(p => p.overallStatus === overallStatus);
+      }
       if (processType) {
-        results = results.filter(p => p.processType === processType);
+        filtered = filtered.filter(p => p.processType === processType);
       }
-      if (currentStage) {
-        results = results.filter(p => p.currentStage === currentStage);
-      }
-
-      // 添加阶段名称
-      const processedResults = results.map(r => ({
-        ...r,
-        currentStageName: r.currentStage ? STAGE_CONFIG[r.currentStage]?.name : null,
-      }));
 
       res.json({
         success: true,
-        data: processedResults,
+        data: filtered,
       });
     } catch (error) {
       console.error('获取流程列表失败:', error);
@@ -69,33 +56,13 @@ export const processController = {
   },
 
   /**
-   * 获取单个流程
+   * 获取单个流程详情
    */
   async getProcess(req: Request, res: Response) {
     try {
       const { id } = req.params;
 
-      const result = await db.select({
-        id: settlementProcesses.id,
-        applicationId: settlementProcesses.applicationId,
-        enterpriseId: settlementProcesses.enterpriseId,
-        processType: settlementProcesses.processType,
-        currentStage: settlementProcesses.currentStage,
-        stageProgress: settlementProcesses.stageProgress,
-        startedAt: settlementProcesses.startedAt,
-        completedAt: settlementProcesses.completedAt,
-        remarks: settlementProcesses.remarks,
-        createdAt: settlementProcesses.createdAt,
-        updatedAt: settlementProcesses.updatedAt,
-        // 申请信息
-        enterpriseName: settlementApplications.enterpriseName,
-        contactPerson: settlementApplications.contactPerson,
-        contactPhone: settlementApplications.contactPhone,
-        applicationType: settlementApplications.applicationType,
-        settlementType: settlementApplications.settlementType,
-      }).from(settlementProcesses)
-        .leftJoin(settlementApplications, eq(settlementProcesses.applicationId, settlementApplications.id))
-        .where(eq(settlementProcesses.id, id));
+      const result = await db.select().from(settlementProcesses).where(eq(settlementProcesses.id, id));
 
       if (result.length === 0) {
         return res.status(404).json({
@@ -104,28 +71,24 @@ export const processController = {
         });
       }
 
-      // 获取关联的企业信息
-      let enterprise = null;
-      if (result[0].enterpriseId) {
-        const enterpriseResult = await db.select().from(enterprises).where(eq(enterprises.id, result[0].enterpriseId));
-        enterprise = enterpriseResult[0] || null;
-      }
+      const process = result[0];
+
+      // 获取关联的申请信息
+      const application = await db.select()
+        .from(settlementApplications)
+        .where(eq(settlementApplications.id, process.applicationId));
 
       // 获取关联的合同信息
-      let contract = null;
-      if (result[0].enterpriseId) {
-        const contractResult = await db.select().from(contracts).where(eq(contracts.enterpriseId, result[0].enterpriseId));
-        contract = contractResult[0] || null;
-      }
+      const contract = await db.select()
+        .from(contracts)
+        .where(eq(contracts.applicationId, process.applicationId));
 
       res.json({
         success: true,
         data: {
-          ...result[0],
-          currentStageName: result[0].currentStage ? STAGE_CONFIG[result[0].currentStage]?.name : null,
-          enterprise,
-          contract,
-          stageConfig: STAGE_CONFIG,
+          ...process,
+          application: application[0] || null,
+          contract: contract[0] || null,
         },
       });
     } catch (error) {
@@ -143,9 +106,8 @@ export const processController = {
   async updateStage(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { stage, status, attachments, remarks } = req.body;
+      const { stage, action, remarks, attachments } = req.body;
 
-      // 检查流程是否存在
       const existing = await db.select().from(settlementProcesses).where(eq(settlementProcesses.id, id));
       if (existing.length === 0) {
         return res.status(404).json({
@@ -155,10 +117,10 @@ export const processController = {
       }
 
       const process = existing[0];
-      const stageProgress = process.stageProgress as any[] || [];
+      const stages: StageProgress[] = process.stages as StageProgress[] || [];
 
-      // 更新阶段进度
-      const stageIndex = stageProgress.findIndex(s => s.stage === stage);
+      // 找到对应阶段
+      const stageIndex = stages.findIndex(s => s.stage === stage);
       if (stageIndex === -1) {
         return res.status(400).json({
           success: false,
@@ -166,48 +128,78 @@ export const processController = {
         });
       }
 
-      // 更新阶段状态
-      stageProgress[stageIndex] = {
-        ...stageProgress[stageIndex],
-        status,
-        startedAt: status === 'in_progress' ? new Date().toISOString() : stageProgress[stageIndex].startedAt,
-        completedAt: status === 'completed' ? new Date().toISOString() : stageProgress[stageIndex].completedAt,
-        attachments: attachments || stageProgress[stageIndex].attachments,
-        remarks: remarks || stageProgress[stageIndex].remarks,
-      };
+      const now = new Date().toISOString();
 
-      // 如果阶段完成，更新当前阶段为下一个
-      let currentStage = process.currentStage;
-      if (status === 'completed') {
-        const nextStageIndex = stageIndex + 1;
-        if (nextStageIndex < stageProgress.length) {
-          currentStage = stageProgress[nextStageIndex].stage;
-          stageProgress[nextStageIndex].status = 'in_progress';
-          stageProgress[nextStageIndex].startedAt = new Date().toISOString();
+      // 根据动作更新阶段状态
+      switch (action) {
+        case 'start':
+          stages[stageIndex].status = 'in_progress';
+          stages[stageIndex].startedAt = now;
+          break;
+        case 'complete':
+          stages[stageIndex].status = 'completed';
+          stages[stageIndex].completedAt = now;
+          break;
+        case 'skip':
+          stages[stageIndex].status = 'skipped';
+          break;
+        default:
+          return res.status(400).json({
+            success: false,
+            error: '无效的操作',
+          });
+      }
+
+      if (remarks) {
+        stages[stageIndex].remarks = remarks;
+      }
+      if (attachments) {
+        stages[stageIndex].attachments = attachments;
+      }
+
+      // 计算当前阶段
+      let currentStageIndex = stageIndex;
+      if (action === 'complete' || action === 'skip') {
+        // 找到下一个未完成的阶段
+        for (let i = stageIndex + 1; i < stages.length; i++) {
+          if (stages[i].status === 'pending') {
+            currentStageIndex = i;
+            break;
+          }
         }
       }
 
-      // 检查是否全部完成
-      let completedAt = process.completedAt;
-      const allCompleted = stageProgress.every(s => s.status === 'completed' || s.status === 'skipped');
-      if (allCompleted) {
-        completedAt = new Date();
-        currentStage = 'completed';
-      }
+      // 检查是否所有阶段都已完成
+      const allCompleted = stages.every(s => s.status === 'completed' || s.status === 'skipped');
+      const overallStatus = allCompleted ? 'completed' : 'in_progress';
 
+      // 更新流程
       const result = await db.update(settlementProcesses)
         .set({
-          currentStage,
-          stageProgress,
-          completedAt,
+          stages: stages,
+          currentStage: stages[currentStageIndex].stage,
+          currentStageIndex: currentStageIndex,
+          overallStatus: overallStatus,
+          completedAt: allCompleted ? new Date() : null,
           updatedAt: new Date(),
         })
         .where(eq(settlementProcesses.id, id))
         .returning();
 
+      // 如果流程完成，更新申请状态
+      if (allCompleted) {
+        await db.update(settlementApplications)
+          .set({
+            status: 'completed',
+            updatedAt: new Date(),
+          })
+          .where(eq(settlementApplications.id, process.applicationId));
+      }
+
       res.json({
         success: true,
         data: result[0],
+        message: action === 'complete' ? '阶段已完成' : action === 'skip' ? '阶段已跳过' : '阶段已开始',
       });
     } catch (error) {
       console.error('更新流程阶段失败:', error);
@@ -219,165 +211,46 @@ export const processController = {
   },
 
   /**
-   * 跳过阶段
-   */
-  async skipStage(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { stage, remarks } = req.body;
-
-      // 检查流程是否存在
-      const existing = await db.select().from(settlementProcesses).where(eq(settlementProcesses.id, id));
-      if (existing.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: '流程不存在',
-        });
-      }
-
-      const process = existing[0];
-      const stageProgress = process.stageProgress as any[] || [];
-
-      // 更新阶段进度
-      const stageIndex = stageProgress.findIndex(s => s.stage === stage);
-      if (stageIndex === -1) {
-        return res.status(400).json({
-          success: false,
-          error: '无效的阶段',
-        });
-      }
-
-      // 标记为跳过
-      stageProgress[stageIndex] = {
-        ...stageProgress[stageIndex],
-        status: 'skipped',
-        remarks: remarks || '已跳过',
-      };
-
-      // 更新当前阶段为下一个
-      let currentStage = process.currentStage;
-      const nextStageIndex = stageIndex + 1;
-      if (nextStageIndex < stageProgress.length) {
-        currentStage = stageProgress[nextStageIndex].stage;
-        stageProgress[nextStageIndex].status = 'in_progress';
-        stageProgress[nextStageIndex].startedAt = new Date().toISOString();
-      }
-
-      const result = await db.update(settlementProcesses)
-        .set({
-          currentStage,
-          stageProgress,
-          updatedAt: new Date(),
-        })
-        .where(eq(settlementProcesses.id, id))
-        .returning();
-
-      res.json({
-        success: true,
-        data: result[0],
-      });
-    } catch (error) {
-      console.error('跳过阶段失败:', error);
-      res.status(500).json({
-        success: false,
-        error: '跳过阶段失败',
-      });
-    }
-  },
-
-  /**
-   * 关联企业
-   */
-  async linkEnterprise(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { enterpriseId } = req.body;
-
-      if (!enterpriseId) {
-        return res.status(400).json({
-          success: false,
-          error: '企业ID不能为空',
-        });
-      }
-
-      // 检查流程是否存在
-      const existing = await db.select().from(settlementProcesses).where(eq(settlementProcesses.id, id));
-      if (existing.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: '流程不存在',
-        });
-      }
-
-      // 检查企业是否存在
-      const enterprise = await db.select().from(enterprises).where(eq(enterprises.id, enterpriseId));
-      if (enterprise.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: '企业不存在',
-        });
-      }
-
-      // 更新流程
-      const result = await db.update(settlementProcesses)
-        .set({
-          enterpriseId,
-          updatedAt: new Date(),
-        })
-        .where(eq(settlementProcesses.id, id))
-        .returning();
-
-      // 同时更新申请表
-      await db.update(settlementApplications)
-        .set({
-          enterpriseId,
-          updatedAt: new Date(),
-        })
-        .where(eq(settlementApplications.id, existing[0].applicationId));
-
-      res.json({
-        success: true,
-        data: result[0],
-      });
-    } catch (error) {
-      console.error('关联企业失败:', error);
-      res.status(500).json({
-        success: false,
-        error: '关联企业失败',
-      });
-    }
-  },
-
-  /**
-   * 获取统计信息
+   * 获取流程统计
    */
   async getStats(req: Request, res: Response) {
     try {
-      const total = await db.select({ count: 'count' }).from(settlementProcesses);
-      const inProgress = await db.select().from(settlementProcesses);
-      
-      // 统计各阶段数量
-      const stageStats: Record<string, number> = {};
-      for (const stage of Object.keys(STAGE_CONFIG)) {
-        stageStats[stage] = inProgress.filter(p => p.currentStage === stage).length;
-      }
+      const stats = await db.select({
+        overallStatus: settlementProcesses.overallStatus,
+        processType: settlementProcesses.processType,
+        count: sql<number>`count(*)::int`,
+      }).from(settlementProcesses)
+        .groupBy(settlementProcesses.overallStatus, settlementProcesses.processType);
 
-      const completed = inProgress.filter(p => p.currentStage === 'completed').length;
+      const result = {
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        completed: 0,
+        cancelled: 0,
+        newEnterprise: 0,
+        migration: 0,
+      };
+
+      stats.forEach(s => {
+        result.total += s.count;
+        if (s.overallStatus === 'pending') result.pending += s.count;
+        if (s.overallStatus === 'in_progress') result.inProgress += s.count;
+        if (s.overallStatus === 'completed') result.completed += s.count;
+        if (s.overallStatus === 'cancelled') result.cancelled += s.count;
+        if (s.processType === 'new') result.newEnterprise += s.count;
+        if (s.processType === 'migration') result.migration += s.count;
+      });
 
       res.json({
         success: true,
-        data: {
-          total: inProgress.length,
-          inProgress: inProgress.length - completed,
-          completed,
-          stageStats,
-        },
+        data: result,
       });
     } catch (error) {
-      console.error('获取统计信息失败:', error);
+      console.error('获取流程统计失败:', error);
       res.status(500).json({
         success: false,
-        error: '获取统计信息失败',
+        error: '获取流程统计失败',
       });
     }
   },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   Loader2,
@@ -12,6 +12,8 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
+  MapPin,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,12 +29,16 @@ import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 类型定义
 type ProcessType = "new" | "migration";
+type OverallStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
 interface StageProgress {
   stage: string;
+  stageName: string;
+  stageIndex: number;
   status: "pending" | "in_progress" | "completed" | "skipped";
   startedAt?: string;
   completedAt?: string;
+  operator?: string;
   attachments?: { name: string; url: string }[];
   remarks?: string;
 }
@@ -44,42 +50,61 @@ interface Process {
   enterpriseName: string | null;
   processType: ProcessType;
   currentStage: string | null;
-  currentStageName: string | null;
-  stageProgress: StageProgress[];
+  currentStageIndex: number;
+  overallStatus: OverallStatus;
+  stages: StageProgress[];
   startedAt: string | null;
   completedAt: string | null;
-  applicationType: string;
-  settlementType: string;
-  contactPerson: string | null;
-  contactPhone: string | null;
+  createdAt: string;
+  // 关联的申请信息
+  legalPersonName?: string;
+  legalPersonPhone?: string;
+  contactPersonName?: string;
+  contactPersonPhone?: string;
+  assignedAddress?: string;
 }
 
 // 流程阶段配置
-const STAGE_CONFIG: Record<string, { name: string; description: string }> = {
-  approved: { name: "审批通过", description: "政府审批已通过" },
-  address_assigned: { name: "地址已分配", description: "已分配注册地址" },
-  pre_approval: { name: "预核准办理中", description: "正在办理预核准" },
-  pre_approval_done: { name: "前置审批中", description: "正在办理前置审批" },
-  registering: { name: "企业注册中", description: "正在办理企业注册" },
-  seal_applying: { name: "公章办理中", description: "正在办理公章" },
-  pending_contract: { name: "待签合同", description: "等待签订合同" },
-  completed: { name: "入驻完成", description: "入驻流程已完成" },
-};
+const NEW_ENTERPRISE_STAGES = [
+  { stage: "approved", name: "审批通过" },
+  { stage: "address_assigned", name: "地址分配" },
+  { stage: "pre_approval", name: "预核准" },
+  { stage: "pre_approval_done", name: "前置审批" },
+  { stage: "registered", name: "企业注册" },
+  { stage: "seal_made", name: "公章办理" },
+  { stage: "contract_pending", name: "待签合同" },
+  { stage: "completed", name: "入驻完成" },
+];
+
+const MIGRATION_STAGES = [
+  { stage: "approved", name: "审批通过" },
+  { stage: "address_assigned", name: "地址分配" },
+  { stage: "contract_pending", name: "待签合同" },
+  { stage: "completed", name: "入驻完成" },
+];
 
 const stageStatusConfig: Record<string, { label: string; className: string; icon: any }> = {
-  pending: { label: "待处理", className: "bg-gray-50 text-gray-500 border-gray-200", icon: Clock },
+  pending: { label: "待处理", className: "bg-muted/50 text-muted-foreground border-border", icon: Clock },
   in_progress: { label: "进行中", className: "bg-blue-50 text-blue-600 border-blue-200", icon: Loader2 },
   completed: { label: "已完成", className: "bg-emerald-50 text-emerald-600 border-emerald-200", icon: CheckCircle },
   skipped: { label: "已跳过", className: "bg-amber-50 text-amber-600 border-amber-200", icon: ArrowRight },
 };
 
 const processTypeConfig: Record<ProcessType, { label: string; className: string }> = {
-  new: { label: "新建企业流程", className: "bg-purple-50 text-purple-600 border-purple-200" },
-  migration: { label: "迁移企业流程", className: "bg-orange-50 text-orange-600 border-orange-200" },
+  new: { label: "新建企业", className: "bg-purple-50 text-purple-600 border-purple-200" },
+  migration: { label: "迁移企业", className: "bg-orange-50 text-orange-600 border-orange-200" },
+};
+
+const overallStatusConfig: Record<OverallStatus, { label: string; className: string }> = {
+  pending: { label: "待开始", className: "text-gray-500" },
+  in_progress: { label: "进行中", className: "text-blue-600" },
+  completed: { label: "已完成", className: "text-emerald-600" },
+  cancelled: { label: "已取消", className: "text-red-500" },
 };
 
 export default function ProcessesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tabsContext = useTabs();
 
   const [processes, setProcesses] = useState<Process[]>([]);
@@ -87,27 +112,31 @@ export default function ProcessesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [processTypeFilter, setProcessTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // 从URL参数获取申请ID
+  const applicationIdFromUrl = searchParams.get("applicationId");
 
   // 获取流程列表
-  useEffect(() => {
-    const fetchProcesses = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/settlement/processes");
-        if (!response.ok) {
-          throw new Error("获取流程列表失败");
-        }
-        const result = await response.json();
-        setProcesses(result.data || []);
-        setError(null);
-      } catch (err) {
-        console.error("获取流程列表失败:", err);
-        setError(err instanceof Error ? err.message : "获取流程列表失败");
-      } finally {
-        setLoading(false);
+  const fetchProcesses = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/settlement/processes");
+      if (!response.ok) {
+        throw new Error("获取流程列表失败");
       }
-    };
+      const result = await response.json();
+      setProcesses(result.data || []);
+      setError(null);
+    } catch (err) {
+      console.error("获取流程列表失败:", err);
+      setError(err instanceof Error ? err.message : "获取流程列表失败");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProcesses();
   }, []);
 
@@ -117,37 +146,37 @@ export default function ProcessesPage() {
       !searchKeyword ||
       (p.enterpriseName && p.enterpriseName.includes(searchKeyword));
     const matchType = processTypeFilter === "all" || p.processType === processTypeFilter;
-    return matchSearch && matchType;
-  });
-
-  // 打开流程详情标签页
-  const handleView = (process: Process) => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: `process-${process.id}`,
-        label: process.enterpriseName || "入驻流程",
-        path: `/dashboard/base/processes/${process.id}`,
-      });
-    } else {
-      router.push(`/dashboard/base/processes/${process.id}`);
+    const matchStatus = statusFilter === "all" || p.overallStatus === statusFilter;
+    
+    // 如果URL中有申请ID，优先显示该申请的流程
+    if (applicationIdFromUrl) {
+      return p.applicationId === applicationIdFromUrl;
     }
-  };
+    
+    return matchSearch && matchType && matchStatus;
+  });
 
   // 计算流程进度
   const getProgress = (process: Process) => {
-    if (!process.stageProgress || process.stageProgress.length === 0) return 0;
-    const completed = process.stageProgress.filter(
+    if (!process.stages || process.stages.length === 0) return 0;
+    const completed = process.stages.filter(
       (s) => s.status === "completed" || s.status === "skipped"
     ).length;
-    return Math.round((completed / process.stageProgress.length) * 100);
+    return Math.round((completed / process.stages.length) * 100);
+  };
+
+  // 获取当前阶段名称
+  const getCurrentStageName = (process: Process) => {
+    if (!process.stages || !process.currentStage) return "-";
+    const stage = process.stages.find(s => s.stage === process.currentStage);
+    return stage?.stageName || process.currentStage;
   };
 
   // 加载状态
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-slate-600">加载中...</span>
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -156,9 +185,9 @@ export default function ProcessesPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
-        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-        <p className="text-red-600 mb-4">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <p className="text-destructive mb-4">{error}</p>
+        <Button variant="outline" onClick={fetchProcesses}>
           重新加载
         </Button>
       </div>
@@ -166,22 +195,29 @@ export default function ProcessesPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
+    <div className="space-y-6">
+      {/* 页面标题 */}
+      <div>
+        <h1 className="text-2xl font-semibold">入驻流程</h1>
+        <p className="text-muted-foreground mt-1">
+          跟踪企业入驻各阶段进度
+        </p>
+      </div>
+
       {/* 搜索和筛选 */}
-      <div className="px-6 py-4 flex items-center gap-3 border-b border-slate-100 bg-white">
+      <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
+            placeholder="搜索企业名称..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="搜索企业名称..."
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100"
+            className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-
         <Select value={processTypeFilter} onValueChange={setProcessTypeFilter}>
-          <SelectTrigger className="w-36 h-9 text-sm">
+          <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="流程类型" />
           </SelectTrigger>
           <SelectContent>
@@ -190,116 +226,138 @@ export default function ProcessesPage() {
             <SelectItem value="migration">迁移企业</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="流程状态" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="in_progress">进行中</SelectItem>
+            <SelectItem value="completed">已完成</SelectItem>
+            <SelectItem value="pending">待开始</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* 流程列表 */}
-      <div className="flex-1 overflow-auto px-6 py-4">
-        {filteredProcesses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <Building2 className="h-12 w-12 text-slate-300 mb-3" />
-            <p className="text-slate-500">暂无入驻流程</p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {filteredProcesses.map((process) => (
-              <div
-                key={process.id}
-                className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleView(process)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-slate-900">
-                        {process.enterpriseName || "待关联企业"}
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        {process.contactPerson && (
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {process.contactPerson}
-                          </span>
-                        )}
-                        {process.contactPhone && (
-                          <span className="ml-2 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {process.contactPhone}
-                          </span>
-                        )}
-                      </p>
-                    </div>
+      {filteredProcesses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 rounded-lg border bg-card">
+          <Building2 className="h-12 w-12 text-muted-foreground/50 mb-3" />
+          <p className="text-muted-foreground">暂无入驻流程</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            请先在"入驻申请"页面提交申请
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredProcesses.map((process) => (
+            <div
+              key={process.id}
+              className="rounded-lg border bg-card p-5 hover:shadow-sm transition-shadow"
+            >
+              {/* 头部信息 */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-primary" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs font-medium",
-                        processTypeConfig[process.processType].className
-                      )}
-                    >
-                      {processTypeConfig[process.processType].label}
-                    </Badge>
-                    <span className="text-sm text-slate-500">
-                      {getProgress(process)}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* 进度条 */}
-                <div className="mb-4">
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-300"
-                      style={{ width: `${getProgress(process)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* 流程阶段 */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {process.stageProgress?.map((stage, index) => {
-                    const config = STAGE_CONFIG[stage.stage];
-                    const statusCfg = stageStatusConfig[stage.status];
-                    const Icon = statusCfg.icon;
-                    return (
-                      <div
-                        key={stage.stage}
-                        className={cn(
-                          "flex items-center gap-1 px-2 py-1 rounded-full text-xs border",
-                          statusCfg.className
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            "h-3 w-3",
-                            stage.status === "in_progress" && "animate-spin"
-                          )}
-                        />
-                        <span>{config?.name || stage.stage}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 当前阶段 */}
-                {process.currentStageName && (
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <p className="text-sm text-slate-600">
-                      当前阶段：
-                      <span className="font-medium text-slate-900 ml-1">
-                        {process.currentStageName}
+                  <div>
+                    <h3 className="font-medium">
+                      {process.enterpriseName || "待关联企业"}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-0.5">
+                      <Badge variant="outline" className={cn("font-normal", processTypeConfig[process.processType].className)}>
+                        {processTypeConfig[process.processType].label}
+                      </Badge>
+                      <span className={overallStatusConfig[process.overallStatus].className}>
+                        {overallStatusConfig[process.overallStatus].label}
                       </span>
-                    </p>
+                      <span>{getProgress(process)}% 完成</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {new Date(process.createdAt).toLocaleDateString("zh-CN")}
+                  </div>
+                </div>
+              </div>
+
+              {/* 进度条 */}
+              <div className="mb-4">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${getProgress(process)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* 联系信息 */}
+              <div className="flex items-center gap-6 text-sm text-muted-foreground mb-4 pb-4 border-b">
+                {process.legalPersonName && (
+                  <div className="flex items-center gap-1">
+                    <User className="h-3.5 w-3.5" />
+                    <span>法人：{process.legalPersonName}</span>
+                  </div>
+                )}
+                {process.legalPersonPhone && (
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5" />
+                    <span>{process.legalPersonPhone}</span>
+                  </div>
+                )}
+                {process.assignedAddress && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span>{process.assignedAddress}</span>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* 流程阶段 */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {process.stages?.map((stage, index) => {
+                  const statusCfg = stageStatusConfig[stage.status];
+                  const Icon = statusCfg.icon;
+                  const isActive = stage.stage === process.currentStage;
+                  
+                  return (
+                    <div
+                      key={stage.stage}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                        statusCfg.className,
+                        isActive && "ring-2 ring-primary ring-offset-2"
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          stage.status === "in_progress" && "animate-spin"
+                        )}
+                      />
+                      <span>{stage.stageName}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 当前阶段 */}
+              <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">当前阶段：</span>
+                  <span className="font-medium ml-1">{getCurrentStageName(process)}</span>
+                </div>
+                <Button size="sm" variant="outline">
+                  查看详情
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

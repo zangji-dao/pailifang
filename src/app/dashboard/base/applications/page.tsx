@@ -15,6 +15,15 @@ import {
   Building2,
   Phone,
   User,
+  MapPin,
+  DollarSign,
+  Users,
+  Briefcase,
+  Mail,
+  Edit,
+  Trash2,
+  FileSignature,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,32 +36,36 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
+import { ApplicationFormDialog } from "./_components/ApplicationFormDialog";
 
 // 类型定义
-type ApprovalStatus = "pending" | "submitted" | "approved" | "rejected";
+type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
 type ApplicationType = "new" | "migration";
 type SettlementType = "free" | "paid" | "tax_commitment";
 
 interface Application {
   id: string;
+  applicationNo: string;
+  applicationDate: string | null;
   enterpriseName: string;
-  contactPerson: string | null;
-  contactPhone: string | null;
+  enterpriseNameBackup: string | null;
   applicationType: ApplicationType;
-  settlementType: SettlementType;
+  settlementType: SettlementType | null;
   approvalStatus: ApprovalStatus;
-  approvalDate: string | null;
-  addressId: string | null;
-  addressCode: string | null;
-  enterpriseId: string | null;
-  remarks: string | null;
+  approvedAt: string | null;
+  assignedAddress: string | null;
+  legalPersonName: string | null;
+  legalPersonPhone: string | null;
+  contactPersonName: string | null;
+  contactPersonPhone: string | null;
+  status: string;
   createdAt: string;
 }
 
 // 状态配置
 const statusConfig: Record<ApprovalStatus, { label: string; className: string }> = {
-  pending: { label: "待提交", className: "bg-gray-50 text-gray-600 border-gray-200" },
-  submitted: { label: "审批中", className: "bg-blue-50 text-blue-600 border-blue-200" },
+  draft: { label: "草稿", className: "bg-gray-50 text-gray-600 border-gray-200" },
+  pending: { label: "待审批", className: "bg-blue-50 text-blue-600 border-blue-200" },
   approved: { label: "已通过", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   rejected: { label: "已驳回", className: "bg-red-50 text-red-600 border-red-200" },
 };
@@ -77,220 +90,179 @@ export default function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showFormDialog, setShowFormDialog] = useState(false);
+  const [editingApplication, setEditingApplication] = useState<Application | null>(null);
 
   // 获取申请列表
-  useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/settlement/applications");
-        if (!response.ok) {
-          throw new Error("获取申请列表失败");
-        }
-        const result = await response.json();
-        setApplications(result.data || []);
-        setError(null);
-      } catch (err) {
-        console.error("获取申请列表失败:", err);
-        setError(err instanceof Error ? err.message : "获取申请列表失败");
-      } finally {
-        setLoading(false);
+  const fetchApplications = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/settlement/applications");
+      if (!response.ok) {
+        throw new Error("获取申请列表失败");
       }
-    };
+      const result = await response.json();
+      setApplications(result.data || []);
+      setError(null);
+    } catch (err) {
+      console.error("获取申请列表失败:", err);
+      setError(err instanceof Error ? err.message : "获取申请列表失败");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchApplications();
   }, []);
 
+  // 打开新建表单
+  const handleCreate = () => {
+    setEditingApplication(null);
+    setShowFormDialog(true);
+  };
+
+  // 打开编辑表单
+  const handleEdit = (application: Application) => {
+    setEditingApplication(application);
+    setShowFormDialog(true);
+  };
+
+  // 提交审批
+  const handleSubmit = async (id: string) => {
+    if (!confirm("确认提交此申请进行审批？")) return;
+
+    try {
+      const response = await fetch(`/api/settlement/applications/${id}/submit`, {
+        method: "POST",
+      });
+      const result = await response.json();
+      if (result.success) {
+        fetchApplications();
+        alert("申请已提交审批");
+      } else {
+        alert(result.error || "提交失败");
+      }
+    } catch (err) {
+      console.error("提交审批失败:", err);
+      alert("提交审批失败");
+    }
+  };
+
+  // 删除申请
+  const handleDelete = async (id: string) => {
+    if (!confirm("确认删除此申请？删除后无法恢复。")) return;
+
+    try {
+      const response = await fetch(`/api/settlement/applications/${id}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (result.success) {
+        fetchApplications();
+        alert("申请已删除");
+      } else {
+        alert(result.error || "删除失败");
+      }
+    } catch (err) {
+      console.error("删除申请失败:", err);
+      alert("删除申请失败");
+    }
+  };
+
+  // 查看详情/流程
+  const handleViewProcess = (application: Application) => {
+    router.push(`/dashboard/base/processes?applicationId=${application.id}`);
+  };
+
   // 过滤申请列表
-  const filteredApplications = applications.filter((a) => {
-    const matchSearch =
+  const filteredApplications = applications.filter((app) => {
+    const matchStatus = statusFilter === "all" || app.approvalStatus === statusFilter;
+    const matchKeyword =
       !searchKeyword ||
-      a.enterpriseName.includes(searchKeyword) ||
-      (a.contactPerson && a.contactPerson.includes(searchKeyword));
-    const matchStatus = statusFilter === "all" || a.approvalStatus === statusFilter;
-    return matchSearch && matchStatus;
+      app.enterpriseName.includes(searchKeyword) ||
+      app.applicationNo.includes(searchKeyword) ||
+      (app.legalPersonName && app.legalPersonName.includes(searchKeyword));
+    return matchStatus && matchKeyword;
   });
 
   // 统计数据
   const stats = {
     total: applications.length,
+    draft: applications.filter((a) => a.approvalStatus === "draft").length,
     pending: applications.filter((a) => a.approvalStatus === "pending").length,
-    submitted: applications.filter((a) => a.approvalStatus === "submitted").length,
     approved: applications.filter((a) => a.approvalStatus === "approved").length,
     rejected: applications.filter((a) => a.approvalStatus === "rejected").length,
   };
 
-  // 打开新增申请标签页
-  const handleAdd = () => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: "application-create",
-        label: "新增入驻申请",
-        path: "/dashboard/base/applications/create",
-      });
-    } else {
-      router.push("/dashboard/base/applications/create");
-    }
-  };
-
-  // 打开申请详情标签页
-  const handleView = (application: Application) => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: `application-${application.id}`,
-        label: application.enterpriseName,
-        path: `/dashboard/base/applications/${application.id}`,
-      });
-    } else {
-      router.push(`/dashboard/base/applications/${application.id}`);
-    }
-  };
-
-  // 提交审批
-  const handleSubmit = async (application: Application) => {
-    if (!confirm(`确定要提交「${application.enterpriseName}」的审批申请吗？`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/settlement/applications/${application.id}/submit`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "提交失败");
-      }
-
-      // 刷新列表
-      setApplications((prev) =>
-        prev.map((a) => (a.id === application.id ? { ...a, approvalStatus: "submitted" } : a))
-      );
-    } catch (err) {
-      console.error("提交失败:", err);
-      alert(err instanceof Error ? err.message : "提交失败");
-    }
-  };
-
-  // 加载状态
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-slate-600">加载中...</span>
-      </div>
-    );
-  }
-
-  // 错误状态
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-        <p className="text-red-600 mb-4">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          重新加载
-        </Button>
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
-      {/* 操作栏 */}
-      <div className="bg-white border-b border-slate-100 px-6 py-4">
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-            onClick={handleAdd}
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            新增申请
-          </Button>
+    <div className="space-y-6">
+      {/* 页面标题 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">入驻申请</h1>
+          <p className="text-muted-foreground mt-1">
+            填写入园审批表，管理企业入驻申请
+          </p>
         </div>
+        <Button onClick={handleCreate} className="gap-2">
+          <Plus className="h-4 w-4" />
+          填写申请表
+        </Button>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-5 gap-4 px-6 py-4">
-        <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">申请总数</p>
-              <p className="text-2xl font-semibold text-slate-900 mt-1">{stats.total}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-slate-500" />
-            </div>
-          </div>
+      <div className="grid grid-cols-5 gap-4">
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">总计</div>
+          <div className="text-2xl font-semibold">{stats.total}</div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">待提交</p>
-              <p className="text-2xl font-semibold text-gray-700 mt-1">{stats.pending}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-gray-500" />
-            </div>
-          </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">草稿</div>
+          <div className="text-2xl font-semibold text-gray-600">{stats.draft}</div>
         </div>
-        <div className="bg-white rounded-xl border border-blue-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-blue-600">审批中</p>
-              <p className="text-2xl font-semibold text-blue-700 mt-1">{stats.submitted}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Loader2 className="h-5 w-5 text-blue-500" />
-            </div>
-          </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">待审批</div>
+          <div className="text-2xl font-semibold text-blue-600">{stats.pending}</div>
         </div>
-        <div className="bg-white rounded-xl border border-emerald-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-emerald-600">已通过</p>
-              <p className="text-2xl font-semibold text-emerald-700 mt-1">{stats.approved}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
-            </div>
-          </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">已通过</div>
+          <div className="text-2xl font-semibold text-emerald-600">{stats.approved}</div>
         </div>
-        <div className="bg-white rounded-xl border border-red-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-red-600">已驳回</p>
-              <p className="text-2xl font-semibold text-red-700 mt-1">{stats.rejected}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
-              <XCircle className="h-5 w-5 text-red-500" />
-            </div>
-          </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">已驳回</div>
+          <div className="text-2xl font-semibold text-red-600">{stats.rejected}</div>
         </div>
       </div>
 
       {/* 搜索和筛选 */}
-      <div className="px-6 py-3 flex items-center gap-3 border-b border-slate-100 bg-white">
+      <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
+            placeholder="搜索企业名称、编号或法人..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="搜索企业名称、联系人..."
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100"
+            className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-32 h-9 text-sm">
-            <SelectValue placeholder="审批状态" />
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="全部状态" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="pending">待提交</SelectItem>
-            <SelectItem value="submitted">审批中</SelectItem>
+            <SelectItem value="draft">草稿</SelectItem>
+            <SelectItem value="pending">待审批</SelectItem>
             <SelectItem value="approved">已通过</SelectItem>
             <SelectItem value="rejected">已驳回</SelectItem>
           </SelectContent>
@@ -298,143 +270,160 @@ export default function ApplicationsPage() {
       </div>
 
       {/* 申请列表 */}
-      <div className="flex-1 overflow-auto px-6 py-4">
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-100">
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  企业名称
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  联系人
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  联系电话
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  申请类型
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  入驻类型
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  审批状态
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  分配地址
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  申请时间
-                </th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500">
-                  操作
-                </th>
+      {error && (
+        <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-4 text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-card">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="p-4 text-left text-sm font-medium">申请编号</th>
+              <th className="p-4 text-left text-sm font-medium">企业名称</th>
+              <th className="p-4 text-left text-sm font-medium">申请类型</th>
+              <th className="p-4 text-left text-sm font-medium">法人/电话</th>
+              <th className="p-4 text-left text-sm font-medium">状态</th>
+              <th className="p-4 text-left text-sm font-medium">创建时间</th>
+              <th className="p-4 text-right text-sm font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredApplications.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  暂无申请记录
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500">
-                    <FileText className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                    <p>暂无申请数据</p>
+            ) : (
+              filteredApplications.map((app) => (
+                <tr key={app.id} className="border-b last:border-b-0 hover:bg-muted/50">
+                  <td className="p-4 text-sm font-mono">{app.applicationNo}</td>
+                  <td className="p-4">
+                    <div className="font-medium">{app.enterpriseName}</div>
+                    {app.enterpriseNameBackup && (
+                      <div className="text-xs text-muted-foreground">备用名: {app.enterpriseNameBackup}</div>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <Badge variant="outline" className={cn("font-normal", applicationTypeConfig[app.applicationType].className)}>
+                      {applicationTypeConfig[app.applicationType].label}
+                    </Badge>
+                    {app.settlementType && (
+                      <span className={cn("ml-2 text-xs", settlementTypeConfig[app.settlementType].className)}>
+                        ({settlementTypeConfig[app.settlementType].label})
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-4 text-sm">
+                    <div>{app.legalPersonName || "-"}</div>
+                    <div className="text-muted-foreground">{app.legalPersonPhone || "-"}</div>
+                  </td>
+                  <td className="p-4">
+                    <Badge variant="outline" className={cn("font-normal", statusConfig[app.approvalStatus].className)}>
+                      {statusConfig[app.approvalStatus].label}
+                    </Badge>
+                  </td>
+                  <td className="p-4 text-sm text-muted-foreground">
+                    {new Date(app.createdAt).toLocaleDateString("zh-CN")}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center justify-end gap-2">
+                      {app.approvalStatus === "draft" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(app)}
+                            className="gap-1"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            编辑
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleSubmit(app.id)}
+                            className="gap-1"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            提交
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(app.id)}
+                            className="gap-1 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {app.approvalStatus === "rejected" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(app)}
+                            className="gap-1"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            修改
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleSubmit(app.id)}
+                            className="gap-1"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            重新提交
+                          </Button>
+                        </>
+                      )}
+                      {app.approvalStatus === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleViewProcess(app)}
+                          className="gap-1"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          查看
+                        </Button>
+                      )}
+                      {app.approvalStatus === "approved" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleViewProcess(app)}
+                          className="gap-1"
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                          查看流程
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filteredApplications.map((application) => (
-                  <tr
-                    key={application.id}
-                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                  >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <Building2 className="h-4 w-4 text-amber-600" />
-                        </div>
-                        <span className="font-medium text-slate-900">
-                          {application.enterpriseName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3.5 w-3.5 text-slate-400" />
-                        {application.contactPerson || "-"}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3.5 w-3.5 text-slate-400" />
-                        {application.contactPhone || "-"}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs font-medium",
-                          applicationTypeConfig[application.applicationType].className
-                        )}
-                      >
-                        {applicationTypeConfig[application.applicationType].label}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={cn(
-                          "text-sm font-medium",
-                          settlementTypeConfig[application.settlementType].className
-                        )}
-                      >
-                        {settlementTypeConfig[application.settlementType].label}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs font-medium",
-                          statusConfig[application.approvalStatus].className
-                        )}
-                      >
-                        {statusConfig[application.approvalStatus].label}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {application.addressCode || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {new Date(application.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
-                          onClick={() => handleView(application)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {application.approvalStatus === "pending" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-slate-400 hover:text-blue-600"
-                            onClick={() => handleSubmit(application)}
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {/* 申请表单弹窗 */}
+      <ApplicationFormDialog
+        open={showFormDialog}
+        onOpenChange={setShowFormDialog}
+        application={editingApplication}
+        onSuccess={() => {
+          setShowFormDialog(false);
+          fetchApplications();
+        }}
+      />
     </div>
   );
 }

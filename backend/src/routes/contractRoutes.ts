@@ -24,7 +24,7 @@ router.delete('/:id', contractController.deleteContract);
 // 签署合同
 router.post('/:id/sign', contractController.signContract);
 
-// 终止合同
-router.post('/:id/terminate', contractController.terminateContract);
+// 终止合同（使用 updateContract 接口，status=terminated）
+// router.post('/:id/terminate', contractController.terminateContract);
 
 export default router;
