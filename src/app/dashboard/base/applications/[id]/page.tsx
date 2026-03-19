@@ -1153,7 +1153,7 @@ export default function EditApplicationPage() {
 
           {/* 人员信息 */}
           {currentStep === 2 && (
-          <div className="space-y-4">
+          <div className="space-y-6">
               {/* 提示信息 */}
               <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
                 <div className="flex items-start gap-2">
@@ -1190,9 +1190,24 @@ export default function EditApplicationPage() {
               </div>
 
               {formData.personnel.map((person, index) => (
-                <div key={index} className="rounded-lg border p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">人员 {index + 1}</span>
+                <div key={index} className="rounded-lg border bg-card overflow-hidden">
+                  {/* 人员头部 */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                        {index + 1}
+                      </span>
+                      <span className="font-medium">{person.name || `人员 ${index + 1}`}</span>
+                      {person.roles.length > 0 && (
+                        <div className="flex gap-1">
+                          {person.roles.map(role => (
+                            <Badge key={role} variant="secondary" className="text-xs">
+                              {roleConfig[role]?.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {canEdit && formData.personnel.length > 2 && (
                       <Button
                         size="sm"
@@ -1205,204 +1220,224 @@ export default function EditApplicationPage() {
                     )}
                   </div>
 
-                  {/* 基本信息 */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>姓名</Label>
-                      <Input
-                        value={person.name}
-                        onChange={(e) => updatePersonnel(index, "name", e.target.value)}
-                        placeholder="请输入姓名"
-                        disabled={!canEdit}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>电话</Label>
-                      <Input
-                        value={person.phone}
-                        onChange={(e) => updatePersonnel(index, "phone", e.target.value)}
-                        placeholder="请输入电话"
-                        disabled={!canEdit}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>邮箱</Label>
-                      <Input
-                        type="email"
-                        value={person.email}
-                        onChange={(e) => updatePersonnel(index, "email", e.target.value)}
-                        placeholder="请输入邮箱"
-                        disabled={!canEdit}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>住址</Label>
-                      <Input
-                        value={person.address}
-                        onChange={(e) => updatePersonnel(index, "address", e.target.value)}
-                        placeholder="请输入住址"
-                        disabled={!canEdit}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 职务选择 */}
-                  <div className="space-y-2">
-                    <Label>担任职务</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {Object.entries(roleConfig).map(([role, config]) => {
-                        const isDisabled =
-                          !canEdit ||
-                          (role === "supervisor" && person.roles.includes("legal_person")) ||
-                          (role === "supervisor" && person.roles.includes("finance_manager")) ||
-                          (role === "legal_person" && person.roles.includes("supervisor")) ||
-                          (role === "finance_manager" && person.roles.includes("supervisor"));
-
-                        return (
-                          <div
-                            key={role}
-                            className={cn(
-                              "flex items-center space-x-2 p-2 rounded border",
-                              isDisabled && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <Checkbox
-                              id={`role-${index}-${role}`}
-                              checked={person.roles.includes(role)}
-                              onCheckedChange={() => togglePersonnelRole(index, role)}
-                              disabled={isDisabled}
-                            />
-                            <div className="flex-1">
-                              <label
-                                htmlFor={`role-${index}-${role}`}
-                                className={cn(
-                                  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-                                  isDisabled ? "cursor-not-allowed" : "cursor-pointer"
-                                )}
-                              >
-                                {config.label}
-                              </label>
-                              <p className="text-xs text-muted-foreground">{config.description}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 身份证上传 */}
-                  <div className="space-y-2">
-                    <Label>身份证照片</Label>
+                  <div className="p-4 space-y-4">
+                    {/* 基本信息 */}
                     <div className="grid grid-cols-2 gap-4">
-                      {/* 正面 */}
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">正面（人像面）</p>
-                        {person.idCardFrontUrl ? (
-                          <div className="relative group">
-                            <img
-                              src={person.idCardFrontUrl}
-                              alt="身份证正面"
-                              className="w-full h-24 object-cover rounded border"
-                            />
-                            {canEdit && (
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => removeIdCard('front', index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        ) : (
-                          <label
-                            className={cn(
-                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
-                              uploadingFiles[`${index}-front`] && "opacity-50 cursor-wait",
-                              !canEdit && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            {uploadingFiles[`${index}-front`] ? (
-                              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-                            ) : (
-                              <>
-                                <Upload className="h-6 w-6 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground mt-1">上传正面</span>
-                              </>
-                            )}
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/jpg"
-                              className="hidden"
-                              onChange={(e) => handleFileChange(e, 'front', index)}
-                              disabled={!canEdit || uploadingFiles[`${index}-front`]}
-                            />
-                          </label>
-                        )}
+                        <Label>姓名</Label>
+                        <Input
+                          value={person.name}
+                          onChange={(e) => updatePersonnel(index, "name", e.target.value)}
+                          placeholder="请输入姓名"
+                          disabled={!canEdit}
+                        />
                       </div>
-
-                      {/* 反面 */}
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">反面（国徽面）</p>
-                        {person.idCardBackUrl ? (
-                          <div className="relative group">
-                            <img
-                              src={person.idCardBackUrl}
-                              alt="身份证反面"
-                              className="w-full h-24 object-cover rounded border"
-                            />
-                            {canEdit && (
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => removeIdCard('back', index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        ) : (
-                          <label
-                            className={cn(
-                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
-                              uploadingFiles[`${index}-back`] && "opacity-50 cursor-wait",
-                              !canEdit && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            {uploadingFiles[`${index}-back`] ? (
-                              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-                            ) : (
-                              <>
-                                <Upload className="h-6 w-6 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground mt-1">上传反面</span>
-                              </>
-                            )}
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/jpg"
-                              className="hidden"
-                              onChange={(e) => handleFileChange(e, 'back', index)}
-                              disabled={!canEdit || uploadingFiles[`${index}-back`]}
-                            />
-                          </label>
-                        )}
+                        <Label>电话</Label>
+                        <Input
+                          value={person.phone}
+                          onChange={(e) => updatePersonnel(index, "phone", e.target.value)}
+                          placeholder="请输入电话"
+                          disabled={!canEdit}
+                        />
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">支持JPG、PNG格式，单张不超过5MB</p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>邮箱</Label>
+                        <Input
+                          type="email"
+                          value={person.email}
+                          onChange={(e) => updatePersonnel(index, "email", e.target.value)}
+                          placeholder="请输入邮箱"
+                          disabled={!canEdit}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>住址</Label>
+                        <Input
+                          value={person.address}
+                          onChange={(e) => updatePersonnel(index, "address", e.target.value)}
+                          placeholder="请输入住址"
+                          disabled={!canEdit}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 职务选择 */}
+                    <div className="space-y-2">
+                      <Label>担任职务</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(roleConfig).map(([role, config]) => {
+                          const isSelected = person.roles.includes(role);
+                          const isDisabled =
+                            !canEdit ||
+                            (role === "supervisor" && person.roles.includes("legal_person")) ||
+                            (role === "supervisor" && person.roles.includes("finance_manager")) ||
+                            (role === "legal_person" && person.roles.includes("supervisor")) ||
+                            (role === "finance_manager" && person.roles.includes("supervisor"));
+
+                          return (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => !isDisabled && togglePersonnelRole(index, role)}
+                              disabled={isDisabled}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
+                                isSelected 
+                                  ? "bg-primary/10 border-primary text-primary" 
+                                  : isDisabled 
+                                    ? "opacity-50 cursor-not-allowed bg-muted" 
+                                    : "hover:bg-muted/50"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-4 h-4 rounded border flex items-center justify-center",
+                                isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                              )}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="text-left">
+                                <div className="text-sm font-medium">{config.label}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 身份证上传 */}
+                    <div className="space-y-3">
+                      <Label>身份证照片</Label>
+                      <div className="grid grid-cols-2 gap-6">
+                        {/* 身份证正面 */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">正面（人像面）</p>
+                          {person.idCardFrontUrl ? (
+                            <div className="relative group">
+                              <div className="aspect-[1.58/1] rounded-lg border overflow-hidden bg-slate-100 shadow-sm">
+                                <img
+                                  src={person.idCardFrontUrl}
+                                  alt="身份证正面"
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeIdCard('front', index)}
+                                  className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex flex-col items-center justify-center aspect-[1.58/1] rounded-lg border-2 border-dashed transition-all",
+                              canEdit 
+                                ? "border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 cursor-pointer" 
+                                : "border-muted-foreground/25 opacity-50 cursor-not-allowed"
+                            )}>
+                              {uploadingFiles[`${index}-front`] ? (
+                                <div className="flex flex-col items-center gap-2">
+                                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">上传中...</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                    <Upload className="h-5 w-5 text-muted-foreground" />
+                                  </div>
+                                  <span className="text-sm text-muted-foreground">点击上传正面</span>
+                                </div>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                onChange={(e) => handleFileChange(e, 'front', index)}
+                                disabled={!canEdit || uploadingFiles[`${index}-front`]}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* 身份证反面 */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">反面（国徽面）</p>
+                          {person.idCardBackUrl ? (
+                            <div className="relative group">
+                              <div className="aspect-[1.58/1] rounded-lg border overflow-hidden bg-slate-100 shadow-sm">
+                                <img
+                                  src={person.idCardBackUrl}
+                                  alt="身份证反面"
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeIdCard('back', index)}
+                                  className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex flex-col items-center justify-center aspect-[1.58/1] rounded-lg border-2 border-dashed transition-all",
+                              canEdit 
+                                ? "border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 cursor-pointer" 
+                                : "border-muted-foreground/25 opacity-50 cursor-not-allowed"
+                            )}>
+                              {uploadingFiles[`${index}-back`] ? (
+                                <div className="flex flex-col items-center gap-2">
+                                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">上传中...</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                    <Upload className="h-5 w-5 text-muted-foreground" />
+                                  </div>
+                                  <span className="text-sm text-muted-foreground">点击上传反面</span>
+                                </div>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                onChange={(e) => handleFileChange(e, 'back', index)}
+                                disabled={!canEdit || uploadingFiles[`${index}-back`]}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        支持 JPG、PNG 格式，单个文件不超过 5MB
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
 
               {/* 其他联系人 */}
-              <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">登录e窗通联系人</h3>
+              <div className="rounded-lg border bg-card p-4 space-y-4">
+                <h3 className="font-medium flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                    {formData.personnel.length + 1}
+                  </span>
+                  登录e窗通联系人
+                </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>联系人姓名</Label>
@@ -1425,8 +1460,13 @@ export default function EditApplicationPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border p-4 space-y-4">
-                <h3 className="font-medium">中介人信息</h3>
+              <div className="rounded-lg border bg-card p-4 space-y-4">
+                <h3 className="font-medium flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                    {formData.personnel.length + 2}
+                  </span>
+                  中介人信息
+                </h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>所在部门</Label>
