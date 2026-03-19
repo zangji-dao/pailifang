@@ -12,8 +12,6 @@ import {
   Users,
   Hash,
   DoorOpen,
-  Wrench,
-  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -100,82 +98,82 @@ export default function BaseListPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50">
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         {/* 页面标题 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">物业运营中心</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">物业运营中心</h1>
             <p className="text-sm text-slate-500 mt-1">管理和监控所有基地运营状况</p>
           </div>
           <Button 
-            className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium"
+            className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0"
           >
             <Plus className="h-4 w-4 mr-2" />
             新增基地
           </Button>
         </div>
 
-        {/* 核心指标卡片 */}
-        <div className="grid grid-cols-5 gap-4 mb-6">
+        {/* 核心指标卡片 - 响应式网格 */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
           {/* 基地总数 */}
-          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-slate-600" />
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
               </div>
-              <span className="text-sm text-slate-500">基地总数</span>
+              <span className="text-xs sm:text-sm text-slate-500">基地总数</span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{bases.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{bases.length}</p>
           </div>
 
           {/* 物业总数 */}
-          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Home className="h-5 w-5 text-amber-600" />
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                <Home className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
               </div>
-              <span className="text-sm text-slate-500">物业总数</span>
+              <span className="text-xs sm:text-sm text-slate-500">物业总数</span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{totalMeters}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalMeters}</p>
           </div>
 
           {/* 物理空间 */}
-          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <DoorOpen className="h-5 w-5 text-emerald-600" />
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <DoorOpen className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
               </div>
-              <span className="text-sm text-slate-500">物理空间</span>
+              <span className="text-xs sm:text-sm text-slate-500">物理空间</span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{totalSpaces}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalSpaces}</p>
           </div>
 
           {/* 注册号 */}
-          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Hash className="h-5 w-5 text-blue-600" />
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                <Hash className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               </div>
-              <span className="text-sm text-slate-500">注册号</span>
+              <span className="text-xs sm:text-sm text-slate-500">注册号</span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{totalRegNumbers}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalRegNumbers}</p>
           </div>
 
           {/* 入驻企业 */}
-          <div className="bg-white rounded-xl p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Users className="h-5 w-5 text-violet-600" />
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
               </div>
-              <span className="text-sm text-slate-500">入驻企业</span>
+              <span className="text-xs sm:text-sm text-slate-500">入驻企业</span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{totalAllocated}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalAllocated}</p>
           </div>
         </div>
 
         {/* 基地列表 */}
         <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
-          <div className="p-5 border-b border-slate-100">
+          <div className="p-4 sm:p-5 border-b border-slate-100">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-slate-900">基地列表</h2>
               <span className="text-sm text-slate-500">共 {bases.length} 个基地</span>
@@ -197,18 +195,18 @@ export default function BaseListPage() {
                   <div
                     key={base.id}
                     onClick={() => handleBaseClick(base.id)}
-                    className="flex items-center justify-between p-5 hover:bg-slate-50 cursor-pointer transition-colors group"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50 cursor-pointer transition-colors group gap-4"
                   >
                     {/* 左侧：基地信息 */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200">
-                        <Building2 className="h-7 w-7 text-slate-500" />
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
+                        <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-slate-500" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-slate-900 group-hover:text-slate-700">{base.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-medium text-slate-900 group-hover:text-slate-700 truncate">{base.name}</h3>
                           <span className={cn(
-                            "px-2 py-0.5 rounded text-xs font-medium",
+                            "px-2 py-0.5 rounded text-xs font-medium shrink-0",
                             base.status === "active" 
                               ? "bg-emerald-50 text-emerald-600" 
                               : "bg-slate-100 text-slate-500"
@@ -217,44 +215,51 @@ export default function BaseListPage() {
                           </span>
                         </div>
                         {base.address && (
-                          <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500">
-                            <MapPin className="h-3.5 w-3.5" />
-                            <span>{base.address}</span>
+                          <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500 truncate">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{base.address}</span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {/* 中间：统计数据 */}
-                    <div className="flex items-center gap-8">
+                    {/* 中间：统计数据 - 小屏幕隐藏，大屏幕显示 */}
+                    <div className="hidden lg:flex items-center gap-8">
                       {/* 物业 */}
-                      <div className="text-center">
+                      <div className="text-center min-w-[60px]">
                         <p className="text-xl font-bold text-slate-900">{base.meterCount}</p>
                         <p className="text-xs text-slate-500">物业</p>
                       </div>
                       
                       {/* 物理空间 */}
-                      <div className="text-center">
+                      <div className="text-center min-w-[60px]">
                         <p className="text-xl font-bold text-slate-900">{stats.totalSpaces}</p>
                         <p className="text-xs text-slate-500">空间</p>
                       </div>
                       
                       {/* 注册号 */}
-                      <div className="text-center">
+                      <div className="text-center min-w-[60px]">
                         <p className="text-xl font-bold text-slate-900">{stats.totalRegNumbers}</p>
                         <p className="text-xs text-slate-500">注册号</p>
                       </div>
                       
                       {/* 入驻企业 */}
-                      <div className="text-center">
+                      <div className="text-center min-w-[80px]">
                         <p className="text-xl font-bold text-violet-600">{stats.allocatedRegNumbers}</p>
                         <p className="text-xs text-slate-500">入驻企业</p>
                       </div>
                     </div>
 
                     {/* 右侧：快捷入口 */}
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between sm:justify-end gap-4">
+                      {/* 小屏幕：显示统计标签 */}
+                      <div className="flex sm:hidden items-center gap-2 text-xs text-slate-500">
+                        <span className="px-2 py-1 bg-slate-100 rounded">{base.meterCount} 物业</span>
+                        <span className="px-2 py-1 bg-violet-50 text-violet-600 rounded">{stats.allocatedRegNumbers} 企业</span>
+                      </div>
+                      
+                      {/* 大屏幕：快捷按钮 */}
+                      <div className="hidden sm:flex items-center gap-2">
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -281,7 +286,7 @@ export default function BaseListPage() {
                         </Button>
                       </div>
                       
-                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
                     </div>
                   </div>
                 );
