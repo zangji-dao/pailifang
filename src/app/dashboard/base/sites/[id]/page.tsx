@@ -143,16 +143,18 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
     const video = videoRef.current;
     setVideoError(null);
 
-    // 检查是否支持 HLS.js
-    if (typeof window !== 'undefined') {
-      import('hls.js').then((Hls) => {
-        if (Hls.default.isSupported()) {
+    // 动态加载 HLS.js
+    const loadHls = async () => {
+      try {
+        const Hls = (await import('hls.js')).default;
+        
+        if (Hls.isSupported()) {
           // 销毁旧的 HLS 实例
           if (hlsRef.current) {
             hlsRef.current.destroy();
           }
 
-          const hls = new Hls.default({
+          const hls = new Hls({
             enableWorker: true,
             lowLatencyMode: true,
           });
@@ -164,7 +166,7 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
             video.play().catch(() => {});
           });
           
-          hls.on(Hls.Events.ERROR, (event: any, data: any) => {
+          hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
             if (data.fatal) {
               setVideoError('视频加载失败，请重试');
             }
@@ -178,8 +180,13 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
         } else {
           setVideoError('浏览器不支持 HLS 播放');
         }
-      });
-    }
+      } catch (e) {
+        console.error('加载 HLS.js 失败:', e);
+        setVideoError('播放器加载失败');
+      }
+    };
+
+    loadHls();
 
     return () => {
       if (hlsRef.current) {
