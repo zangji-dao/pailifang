@@ -19,6 +19,11 @@ import profitShareRoutes from './routes/profitShareRoutes';
 import storageRoutes from './routes/storageRoutes';
 import alipayRoutes from './routes/alipayRoutes';
 import ysWithRoutes from './routes/ysWithRoutes';
+// 入驻管理相关路由
+import addressRoutes from './routes/addressRoutes';
+import applicationRoutes from './routes/applicationRoutes';
+import processRoutes from './routes/processRoutes';
+import contractRoutes from './routes/contractRoutes';
 
 const app = express();
 const PORT = config.server.port;
@@ -59,6 +64,11 @@ app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/profit-shares', profitShareRoutes);
 app.use('/api/alipay', alipayRoutes);
 app.use('/api/yswith', ysWithRoutes);
+// 入驻管理相关路由
+app.use('/api/settlement/addresses', addressRoutes);
+app.use('/api/settlement/applications', applicationRoutes);
+app.use('/api/settlement/processes', processRoutes);
+app.use('/api/settlement/contracts', contractRoutes);
 
 // 文件存储路由（需要文件上传中间件）
 app.use('/api/storage', upload.single('file'), storageRoutes);

@@ -51,6 +51,7 @@ import {
   MapPin,
   Building,
   Home,
+  GitBranch,
 } from "lucide-react";
 import { TabsContext, Tab } from "./tabs-context";
 
@@ -154,12 +155,52 @@ export default function DashboardLayout({
         group: "base",
       };
     }
+    if (path === "/dashboard/base/applications") {
+      return {
+        id: "base-applications",
+        label: "入驻申请",
+        path: "/dashboard/base/applications",
+        icon: <FileText className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    if (path === "/dashboard/base/processes") {
+      return {
+        id: "base-processes",
+        label: "入驻流程",
+        path: "/dashboard/base/processes",
+        icon: <GitBranch className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    if (path === "/dashboard/base/addresses") {
+      return {
+        id: "base-addresses",
+        label: "地址管理",
+        path: "/dashboard/base/addresses",
+        icon: <MapPin className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
     if (path === "/dashboard/base/tenants") {
       return {
         id: "base-tenants",
         label: "企业管理",
         path: "/dashboard/base/tenants",
         icon: <Users className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    if (path === "/dashboard/base/contracts") {
+      return {
+        id: "base-contracts",
+        label: "合同管理",
+        path: "/dashboard/base/contracts",
+        icon: <FileSignature className="h-3.5 w-3.5" />,
         closable: true,
         group: "base",
       };
@@ -401,6 +442,9 @@ export default function DashboardLayout({
       badge: null,
       children: [
         { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
+        { name: "入驻申请", href: "/dashboard/base/applications", icon: FileText },
+        { name: "入驻流程", href: "/dashboard/base/processes", icon: GitBranch },
+        { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
         { name: "企业管理", href: "/dashboard/base/tenants", icon: Users },
         { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
       ]

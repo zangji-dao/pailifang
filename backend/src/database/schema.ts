@@ -324,6 +324,152 @@ export const enterprises = pgTable("enterprises", {
 	index("enterprises_type_idx").on(table.type),
 ]);
 
+// ============================================
+// 入驻管理相关表
+// ============================================
+
+// 注册地址表（地址资源池）
+export const registeredAddresses = pgTable("registered_addresses", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	code: varchar({ length: 50 }).notNull(), // 地址编码/注册号
+	fullAddress: varchar("full_address", { length: 500 }).notNull(), // 完整地址
+	building: varchar({ length: 100 }), // 所属楼宇
+	floor: varchar({ length: 20 }), // 楼层
+	room: varchar({ length: 50 }), // 房间号
+	area: decimal("area", { precision: 10, scale: 2 }), // 面积
+	status: varchar({ length: 20 }).default('available').notNull(), // available=可用, reserved=预留, assigned=已分配
+	enterpriseId: varchar("enterprise_id", { length: 36 }), // 分配的企业ID
+	assignedAt: timestamp("assigned_at"), // 分配时间
+	remarks: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("registered_addresses_code_idx").on(table.code),
+	index("registered_addresses_status_idx").on(table.status),
+	index("registered_addresses_enterprise_id_idx").on(table.enterpriseId),
+]);
+
+// 入驻申请表
+export const settlementApplications = pgTable("settlement_applications", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	// 申请企业信息
+	enterpriseName: varchar("enterprise_name", { length: 255 }).notNull(), // 申请企业名称
+	contactPerson: varchar("contact_person", { length: 100 }), // 联系人
+	contactPhone: varchar("contact_phone", { length: 20 }), // 联系电话
+	// 申请类型
+	applicationType: varchar("application_type", { length: 20 }).notNull(), // new=新建企业, migration=迁移企业
+	settlementType: varchar("settlement_type", { length: 20 }).notNull(), // free=免费入驻, paid=付费入驻, tax_commitment=承诺税收入驻
+	// 审批相关
+	approvalFormUrl: text("approval_form_url"), // 审批表文件URL
+	approvalStatus: varchar("approval_status", { length: 20 }).default('pending').notNull(), // pending=待提交, submitted=已提交, approved=已通过, rejected=已驳回
+	approvalDate: timestamp("approval_date"), // 审批日期
+	rejectionReason: text("rejection_reason"), // 驳回原因
+	// 分配地址
+	addressId: varchar("address_id", { length: 36 }), // 分配的地址ID
+	addressAssignedAt: timestamp("address_assigned_at"), // 地址分配时间
+	// 关联企业
+	enterpriseId: varchar("enterprise_id", { length: 36 }), // 审批通过后创建的企业ID
+	// 其他
+	remarks: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("settlement_applications_enterprise_name_idx").on(table.enterpriseName),
+	index("settlement_applications_approval_status_idx").on(table.approvalStatus),
+	index("settlement_applications_application_type_idx").on(table.applicationType),
+	index("settlement_applications_address_id_idx").on(table.addressId),
+	index("settlement_applications_enterprise_id_idx").on(table.enterpriseId),
+]);
+
+// 入驻流程表
+export const settlementProcesses = pgTable("settlement_processes", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	applicationId: varchar("application_id", { length: 36 }).notNull(), // 关联申请ID
+	enterpriseId: varchar("enterprise_id", { length: 36 }), // 关联企业ID
+	// 流程类型
+	processType: varchar("process_type", { length: 20 }).notNull(), // new=新建企业流程, migration=迁移企业流程
+	// 当前状态
+	currentStage: varchar("current_stage", { length: 50 }), // 当前阶段
+	// 流程进度 JSON
+	stageProgress: json("stage_progress").$type<{
+		stage: string;
+		status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+		startedAt?: string;
+		completedAt?: string;
+		attachments?: { name: string; url: string }[];
+		remarks?: string;
+	}[]>(),
+	// 时间节点
+	startedAt: timestamp("started_at"), // 流程开始时间
+	completedAt: timestamp("completed_at"), // 流程完成时间
+	// 其他
+	remarks: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("settlement_processes_application_id_idx").on(table.applicationId),
+	index("settlement_processes_enterprise_id_idx").on(table.enterpriseId),
+	index("settlement_processes_current_stage_idx").on(table.currentStage),
+]);
+
+// 合同表
+export const contracts = pgTable("contracts", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	enterpriseId: varchar("enterprise_id", { length: 36 }).notNull(), // 关联企业ID
+	applicationId: varchar("application_id", { length: 36 }), // 关联申请ID
+	// 合同基本信息
+	contractNo: varchar("contract_no", { length: 50 }), // 合同编号
+	contractType: varchar("contract_type", { length: 20 }).notNull(), // free=免费入驻, paid=付费入驻, tax_commitment=承诺税收入驻
+	// 费用相关
+	rentAmount: decimal("rent_amount", { precision: 12, scale: 2 }), // 租金金额
+	depositAmount: decimal("deposit_amount", { precision: 12, scale: 2 }), // 押金金额
+	taxCommitment: decimal("tax_commitment", { precision: 12, scale: 2 }), // 税收承诺额（承诺税收类型）
+	// 合同期限
+	startDate: date("start_date"), // 合同开始日期
+	endDate: date("end_date"), // 合同结束日期
+	signedDate: date("signed_date"), // 签署日期
+	// 合同状态
+	status: varchar({ length: 20 }).default('draft').notNull(), // draft=草稿, pending=待签, signed=已签, expired=已到期, terminated=已终止
+	// 合同文件
+	contractFileUrl: text("contract_file_url"), // 合同文件URL
+	// 其他
+	remarks: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("contracts_enterprise_id_idx").on(table.enterpriseId),
+	index("contracts_application_id_idx").on(table.applicationId),
+	index("contracts_contract_no_idx").on(table.contractNo),
+	index("contracts_status_idx").on(table.status),
+]);
+
+// 费用记录表
+export const settlementPayments = pgTable("settlement_payments", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	enterpriseId: varchar("enterprise_id", { length: 36 }), // 关联企业ID
+	applicationId: varchar("application_id", { length: 36 }), // 关联申请ID
+	contractId: varchar("contract_id", { length: 36 }), // 关联合同ID
+	// 费用信息
+	paymentType: varchar("payment_type", { length: 20 }).notNull(), // deposit=押金, rent=租金, service_fee=服务费, other=其他
+	amount: decimal("amount", { precision: 12, scale: 2 }).notNull(), // 金额
+	paidAmount: decimal("paid_amount", { precision: 12, scale: 2 }), // 实收金额
+	// 收款信息
+	paymentMethod: varchar("payment_method", { length: 20 }), // cash=现金, bank=银行转账, alipay=支付宝, wechat=微信
+	paymentDate: timestamp("payment_date"), // 收款日期
+	paymentVoucher: text("payment_voucher"), // 收款凭证URL
+	// 状态
+	status: varchar({ length: 20 }).default('pending').notNull(), // pending=待收, partial=部分收取, paid=已收, refunded=已退
+	// 其他
+	remarks: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("settlement_payments_enterprise_id_idx").on(table.enterpriseId),
+	index("settlement_payments_application_id_idx").on(table.applicationId),
+	index("settlement_payments_contract_id_idx").on(table.contractId),
+	index("settlement_payments_status_idx").on(table.status),
+]);
+
 // 物业表（独立水电计量单元）
 export const meters = pgTable("meters", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
