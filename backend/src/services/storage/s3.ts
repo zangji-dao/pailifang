@@ -251,6 +251,7 @@ export function getStorageService(): S3StorageService {
       );
     }
 
+    console.log('[存储] 使用腾讯云 COS 存储服务');
     storageInstance = new S3StorageService({
       accessKeyId,
       secretAccessKey,

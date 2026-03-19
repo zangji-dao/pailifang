@@ -13,6 +13,14 @@
  * - 其他情况 → 生产环境
  */
 
+// 加载环境变量（从 .env 文件）
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+// 尝试加载 .env 文件
+dotenvConfig({ path: resolve(__dirname, '../../.env') });
+dotenvConfig({ path: resolve(__dirname, '../../../.env.local') });
+
 // 环境类型
 export type Environment = 'sandbox' | 'production';
 
