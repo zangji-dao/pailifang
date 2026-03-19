@@ -13,6 +13,7 @@ import {
   FileImage,
   X,
   Upload,
+  Crop,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { ImageCropper } from "@/components/image-cropper";
 
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
@@ -117,6 +119,14 @@ export default function EditApplicationPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
+  
+  // 裁剪对话框状态
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string>("");
+  const [cropperTarget, setCropperTarget] = useState<{
+    type: 'front' | 'back';
+    personnelIndex: number;
+  } | null>(null);
 
   // 步骤配置
   const steps = [
@@ -376,14 +386,14 @@ export default function EditApplicationPage() {
     return formData.personnel.findIndex((p) => p.roles.includes(role));
   };
 
-  // 文件上传
-  const uploadFile = async (file: File, type: 'front' | 'back', personnelIndex: number): Promise<void> => {
+  // 文件上传和裁剪
+  const uploadFile = async (file: File | Blob, type: 'front' | 'back', personnelIndex: number): Promise<void> => {
     const uploadKey = `${personnelIndex}-${type}`;
     setUploadingFiles((prev) => ({ ...prev, [uploadKey]: true }));
 
     try {
       const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
+      formDataUpload.append('file', file, 'cropped-image.jpg');
       formDataUpload.append('type', 'id_card');
 
       const response = await fetch('/api/storage/upload', {
@@ -434,8 +444,35 @@ export default function EditApplicationPage() {
         alert('文件大小不能超过 5MB');
         return;
       }
-      uploadFile(file, type, personnelIndex);
+      
+      // 打开裁剪对话框
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setCropperImageSrc(event.target?.result as string);
+        setCropperTarget({ type, personnelIndex });
+        setCropperOpen(true);
+      };
+      reader.readAsDataURL(file);
     }
+    // 清空 input 以便重复选择同一文件
+    e.target.value = '';
+  };
+  
+  // 裁剪完成后的处理
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!cropperTarget) return;
+    
+    setCropperOpen(false);
+    await uploadFile(croppedBlob, cropperTarget.type, cropperTarget.personnelIndex);
+    setCropperTarget(null);
+    setCropperImageSrc("");
+  };
+  
+  // 取消裁剪
+  const handleCropCancel = () => {
+    setCropperOpen(false);
+    setCropperTarget(null);
+    setCropperImageSrc("");
   };
 
   const removeIdCard = (type: 'front' | 'back', personnelIndex: number) => {
@@ -1837,6 +1874,15 @@ export default function EditApplicationPage() {
           )}
         </div>
       </ScrollArea>
+      
+      {/* 图片裁剪对话框 */}
+      <ImageCropper
+        open={cropperOpen}
+        imageSrc={cropperImageSrc}
+        onCrop={handleCropComplete}
+        onCancel={handleCropCancel}
+        aspectRatio={1.58}
+      />
     </div>
   );
 }
