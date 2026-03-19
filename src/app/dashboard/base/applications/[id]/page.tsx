@@ -1059,56 +1059,75 @@ export default function EditApplicationPage() {
           {/* 地址信息 */}
           {currentStep === 1 && (
           <div className="space-y-6">
-              {/* 原注册地址 */}
+              {/* 迁移企业：原注册地址 */}
+              {formData.applicationType === "migration" && (
               <div className="rounded-lg border bg-card p-5">
                 <h3 className="text-base font-medium mb-4 flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">1</span>
                   原注册地址
-                  <Badge variant="outline" className="ml-2 text-xs font-normal">迁移企业必填</Badge>
+                  <Badge variant="outline" className="ml-2 text-xs font-normal bg-amber-50 text-amber-700 border-amber-200">迁移企业必填</Badge>
                 </h3>
                 <div className="space-y-2">
-                  <Input
+                  <Textarea
                     value={formData.originalRegisteredAddress}
                     onChange={(e) => updateField("originalRegisteredAddress", e.target.value)}
-                    placeholder="请输入原注册地址（如：北京市朝阳区某某街道某某号）"
-                    className="h-10"
+                    placeholder="请输入原注册地址，如：&#10;北京市朝阳区某某街道某某号某某大厦A座1001室"
+                    rows={3}
+                    className="resize-none"
                     disabled={!canEdit}
                   />
                   <p className="text-xs text-muted-foreground">
-                    仅迁移企业需要填写原注册地址，新建企业可跳过此项
+                    请填写迁移前的工商注册地址
                   </p>
                 </div>
               </div>
+              )}
 
               {/* 联系地址 */}
               <div className="rounded-lg border bg-card p-5">
                 <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">2</span>
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                    {formData.applicationType === "migration" ? "2" : "1"}
+                  </span>
                   联系地址
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className={formData.applicationType === "migration" ? "grid grid-cols-2 gap-4" : "space-y-4"}>
                   <div className="space-y-2">
                     <Label>邮寄地址</Label>
-                    <Input
+                    <Textarea
                       value={formData.mailingAddress}
                       onChange={(e) => updateField("mailingAddress", e.target.value)}
-                      placeholder="请输入邮寄地址"
-                      className="h-10"
+                      placeholder="请输入邮寄地址，用于接收重要文件"
+                      rows={3}
+                      className="resize-none"
                       disabled={!canEdit}
                     />
                     <p className="text-xs text-muted-foreground">用于接收重要文件和通知</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>实际经营地址</Label>
-                    <Input
-                      value={formData.businessAddress}
-                      onChange={(e) => updateField("businessAddress", e.target.value)}
-                      placeholder="请输入实际经营地址"
-                      className="h-10"
-                      disabled={!canEdit}
-                    />
-                    <p className="text-xs text-muted-foreground">企业实际开展业务的地址</p>
-                  </div>
+                  {formData.applicationType === "migration" ? (
+                    <div className="space-y-2">
+                      <Label>原实际经营地址</Label>
+                      <Textarea
+                        value={formData.businessAddress}
+                        onChange={(e) => updateField("businessAddress", e.target.value)}
+                        placeholder="请输入迁移前的实际经营地址"
+                        rows={3}
+                        className="resize-none"
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">迁移前企业实际开展业务的地址</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-muted/50 border border-dashed p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="text-sm text-muted-foreground">
+                          <p className="font-medium">实际经营地址</p>
+                          <p className="mt-1">新建企业的实际经营地址将在入园审批通过后，由系统根据分配的基地自动生成，无需填写。</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
