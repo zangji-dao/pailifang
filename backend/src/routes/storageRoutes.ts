@@ -16,6 +16,7 @@ const FILE_TYPE_MAP: Record<string, FileType> = {
   document: FileType.DOCUMENT,
   temp: FileType.TEMP,
   id_card: FileType.ID_CARD,
+  license: FileType.LICENSE,
 };
 
 /**

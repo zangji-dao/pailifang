@@ -358,9 +358,18 @@ export const registeredAddresses = pgTable("pi_registered_addresses", {
 
 // 股东信息类型
 export type Shareholder = {
+	type: 'natural' | 'enterprise'; // natural=自然人股东, enterprise=企业股东
 	name: string;
 	investment: number;
 	phone: string;
+	// 自然人股东 - 身份证
+	idCardFrontKey?: string;
+	idCardFrontUrl?: string;
+	idCardBackKey?: string;
+	idCardBackUrl?: string;
+	// 企业股东 - 营业执照
+	licenseKey?: string;
+	licenseUrl?: string;
 };
 
 // 附件信息类型

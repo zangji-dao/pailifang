@@ -36,10 +36,22 @@ type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
 type ApplicationType = "new" | "migration";
 type TaxType = "general" | "small_scale";
 
+// 股东类型
+type ShareholderType = "natural" | "enterprise";
+
 interface Shareholder {
+  type: ShareholderType; // natural=自然人股东, enterprise=企业股东
   name: string;
   investment: string;
   phone: string;
+  // 自然人股东 - 身份证
+  idCardFrontKey?: string;
+  idCardFrontUrl?: string;
+  idCardBackKey?: string;
+  idCardBackUrl?: string;
+  // 企业股东 - 营业执照
+  licenseKey?: string; // 营业执照存储key
+  licenseUrl?: string; // 营业执照预览URL
 }
 
 interface Personnel {
@@ -121,7 +133,18 @@ export default function EditApplicationPage() {
               { name: "", phone: "", email: "", address: "", roles: ["legal_person", "finance_manager"] },
               { name: "", phone: "", email: "", address: "", roles: ["supervisor"] },
             ],
-            shareholders: result.data.shareholders || [{ name: "", investment: "", phone: "" }],
+            shareholders: result.data.shareholders || [{ 
+              type: "natural", 
+              name: "", 
+              investment: "", 
+              phone: "",
+              idCardFrontKey: "",
+              idCardFrontUrl: "",
+              idCardBackKey: "",
+              idCardBackUrl: "",
+              licenseKey: "",
+              licenseUrl: "",
+            }],
           });
         } else {
           alert(result.error || "获取申请详情失败");
@@ -286,7 +309,18 @@ export default function EditApplicationPage() {
   const addShareholder = () => {
     setFormData((prev) => prev ? {
       ...prev,
-      shareholders: [...prev.shareholders, { name: "", investment: "", phone: "" }],
+      shareholders: [...prev.shareholders, { 
+        type: "natural" as ShareholderType, 
+        name: "", 
+        investment: "", 
+        phone: "",
+        idCardFrontKey: "",
+        idCardFrontUrl: "",
+        idCardBackKey: "",
+        idCardBackUrl: "",
+        licenseKey: "",
+        licenseUrl: "",
+      }],
     } : null);
   };
 
@@ -297,11 +331,120 @@ export default function EditApplicationPage() {
     } : null);
   };
 
-  const updateShareholder = (index: number, field: keyof Shareholder, value: string) => {
+  const updateShareholder = (index: number, field: keyof Shareholder, value: string | ShareholderType) => {
     setFormData((prev) => {
       if (!prev) return null;
       const newShareholders = [...prev.shareholders];
       newShareholders[index] = { ...newShareholders[index], [field]: value };
+      return { ...prev, shareholders: newShareholders };
+    });
+  };
+
+  // 股东文件上传状态
+  const [uploadingShareholderFiles, setUploadingShareholderFiles] = useState<Record<string, boolean>>({});
+
+  // 上传股东证件文件
+  const uploadShareholderFile = async (
+    file: File, 
+    fileType: 'idCardFront' | 'idCardBack' | 'license', 
+    shareholderIndex: number
+  ): Promise<void> => {
+    const uploadKey = `shareholder-${shareholderIndex}-${fileType}`;
+    setUploadingShareholderFiles((prev) => ({ ...prev, [uploadKey]: true }));
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('type', fileType === 'license' ? 'license' : 'id_card');
+
+      const response = await fetch('/api/storage/upload', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setFormData((prev) => {
+          if (!prev) return null;
+          const newShareholders = [...prev.shareholders];
+          if (fileType === 'idCardFront') {
+            newShareholders[shareholderIndex] = {
+              ...newShareholders[shareholderIndex],
+              idCardFrontKey: result.data.key,
+              idCardFrontUrl: result.data.url,
+            };
+          } else if (fileType === 'idCardBack') {
+            newShareholders[shareholderIndex] = {
+              ...newShareholders[shareholderIndex],
+              idCardBackKey: result.data.key,
+              idCardBackUrl: result.data.url,
+            };
+          } else if (fileType === 'license') {
+            newShareholders[shareholderIndex] = {
+              ...newShareholders[shareholderIndex],
+              licenseKey: result.data.key,
+              licenseUrl: result.data.url,
+            };
+          }
+          return { ...prev, shareholders: newShareholders };
+        });
+      } else {
+        alert(result.error || '上传失败');
+      }
+    } catch (err) {
+      console.error('上传失败:', err);
+      alert('上传失败');
+    } finally {
+      setUploadingShareholderFiles((prev) => ({ ...prev, [uploadKey]: false }));
+    }
+  };
+
+  const handleShareholderFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>, 
+    fileType: 'idCardFront' | 'idCardBack' | 'license', 
+    shareholderIndex: number
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+        alert('请上传 JPG 或 PNG 格式的图片');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('文件大小不能超过 5MB');
+        return;
+      }
+      uploadShareholderFile(file, fileType, shareholderIndex);
+    }
+  };
+
+  const removeShareholderFile = (
+    fileType: 'idCardFront' | 'idCardBack' | 'license', 
+    shareholderIndex: number
+  ) => {
+    setFormData((prev) => {
+      if (!prev) return null;
+      const newShareholders = [...prev.shareholders];
+      if (fileType === 'idCardFront') {
+        newShareholders[shareholderIndex] = {
+          ...newShareholders[shareholderIndex],
+          idCardFrontKey: '',
+          idCardFrontUrl: '',
+        };
+      } else if (fileType === 'idCardBack') {
+        newShareholders[shareholderIndex] = {
+          ...newShareholders[shareholderIndex],
+          idCardBackKey: '',
+          idCardBackUrl: '',
+        };
+      } else if (fileType === 'license') {
+        newShareholders[shareholderIndex] = {
+          ...newShareholders[shareholderIndex],
+          licenseKey: '',
+          licenseUrl: '',
+        };
+      }
       return { ...prev, shareholders: newShareholders };
     });
   };
@@ -962,7 +1105,12 @@ export default function EditApplicationPage() {
             {/* 股东信息 */}
             <TabsContent value="shareholder" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium">股东信息</h3>
+                <div>
+                  <h3 className="font-medium">股东信息</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    自然人股东需上传身份证，企业股东需上传营业执照
+                  </p>
+                </div>
                 {canEdit && (
                   <Button size="sm" variant="outline" onClick={addShareholder} className="gap-1">
                     <Plus className="h-4 w-4" />
@@ -986,13 +1134,33 @@ export default function EditApplicationPage() {
                       </Button>
                     )}
                   </div>
+
+                  {/* 股东类型选择 */}
+                  <div className="space-y-2">
+                    <Label>股东类型</Label>
+                    <Select
+                      value={shareholder.type || "natural"}
+                      onValueChange={(value: ShareholderType) => updateShareholder(index, "type", value)}
+                      disabled={!canEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择股东类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="natural">自然人股东</SelectItem>
+                        <SelectItem value="enterprise">企业股东</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 基本信息 */}
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>股东姓名</Label>
+                      <Label>{shareholder.type === "enterprise" ? "企业名称" : "股东姓名"}</Label>
                       <Input
                         value={shareholder.name}
                         onChange={(e) => updateShareholder(index, "name", e.target.value)}
-                        placeholder="请输入股东姓名"
+                        placeholder={shareholder.type === "enterprise" ? "请输入企业名称" : "请输入股东姓名"}
                         disabled={!canEdit}
                       />
                     </div>
@@ -1007,7 +1175,7 @@ export default function EditApplicationPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>联系电话</Label>
+                      <Label>{shareholder.type === "enterprise" ? "联系人电话" : "联系电话"}</Label>
                       <Input
                         value={shareholder.phone}
                         onChange={(e) => updateShareholder(index, "phone", e.target.value)}
@@ -1016,6 +1184,164 @@ export default function EditApplicationPage() {
                       />
                     </div>
                   </div>
+
+                  {/* 自然人股东 - 身份证上传 */}
+                  {(shareholder.type === "natural" || !shareholder.type) && (
+                    <div className="space-y-2">
+                      <Label>身份证照片</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* 正面 */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">正面（人像面）</p>
+                          {shareholder.idCardFrontUrl ? (
+                            <div className="relative group">
+                              <img
+                                src={shareholder.idCardFrontUrl}
+                                alt="身份证正面"
+                                className="w-full h-24 object-cover rounded border"
+                              />
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => removeShareholderFile('idCardFront', index)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
+                              uploadingShareholderFiles[`shareholder-${index}-idCardFront`] && "opacity-50 cursor-wait",
+                              !canEdit && "opacity-50 cursor-not-allowed"
+                            )}>
+                              {uploadingShareholderFiles[`shareholder-${index}-idCardFront`] ? (
+                                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                              ) : (
+                                <>
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground mt-1">上传正面</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                onChange={(e) => handleShareholderFileChange(e, 'idCardFront', index)}
+                                disabled={!canEdit || uploadingShareholderFiles[`shareholder-${index}-idCardFront`]}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* 反面 */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">反面（国徽面）</p>
+                          {shareholder.idCardBackUrl ? (
+                            <div className="relative group">
+                              <img
+                                src={shareholder.idCardBackUrl}
+                                alt="身份证反面"
+                                className="w-full h-24 object-cover rounded border"
+                              />
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => removeShareholderFile('idCardBack', index)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
+                              uploadingShareholderFiles[`shareholder-${index}-idCardBack`] && "opacity-50 cursor-wait",
+                              !canEdit && "opacity-50 cursor-not-allowed"
+                            )}>
+                              {uploadingShareholderFiles[`shareholder-${index}-idCardBack`] ? (
+                                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                              ) : (
+                                <>
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground mt-1">上传反面</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                onChange={(e) => handleShareholderFileChange(e, 'idCardBack', index)}
+                                disabled={!canEdit || uploadingShareholderFiles[`shareholder-${index}-idCardBack`]}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">支持JPG、PNG格式，单张不超过5MB</p>
+                    </div>
+                  )}
+
+                  {/* 企业股东 - 营业执照上传 */}
+                  {shareholder.type === "enterprise" && (
+                    <div className="space-y-2">
+                      <Label>营业执照</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">营业执照正本/副本</p>
+                          {shareholder.licenseUrl ? (
+                            <div className="relative group">
+                              <img
+                                src={shareholder.licenseUrl}
+                                alt="营业执照"
+                                className="w-full h-24 object-cover rounded border"
+                              />
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => removeShareholderFile('license', index)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
+                              uploadingShareholderFiles[`shareholder-${index}-license`] && "opacity-50 cursor-wait",
+                              !canEdit && "opacity-50 cursor-not-allowed"
+                            )}>
+                              {uploadingShareholderFiles[`shareholder-${index}-license`] ? (
+                                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                              ) : (
+                                <>
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground mt-1">上传营业执照</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                onChange={(e) => handleShareholderFileChange(e, 'license', index)}
+                                disabled={!canEdit || uploadingShareholderFiles[`shareholder-${index}-license`]}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">支持JPG、PNG格式，不超过5MB</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </TabsContent>
@@ -1091,7 +1417,18 @@ const initialFormData: ApplicationFormData = {
       idCardBackUrl: "",
     },
   ],
-  shareholders: [{ name: "", investment: "", phone: "" }],
+  shareholders: [{ 
+    type: "natural", 
+    name: "", 
+    investment: "", 
+    phone: "",
+    idCardFrontKey: "",
+    idCardFrontUrl: "",
+    idCardBackKey: "",
+    idCardBackUrl: "",
+    licenseKey: "",
+    licenseUrl: "",
+  }],
   ewtContactName: "",
   ewtContactPhone: "",
   intermediaryDepartment: "",
