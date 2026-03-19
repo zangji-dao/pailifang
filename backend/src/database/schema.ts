@@ -310,12 +310,14 @@ export const enterprises = pgTable("enterprises", {
 	legalPerson: varchar("legal_person", { length: 100 }),
 	phone: varchar({ length: 20 }),
 	industry: varchar({ length: 100 }),
+	type: varchar({ length: 20 }).default('tenant').notNull(), // tenant=入驻企业, service=服务企业
 	status: varchar({ length: 20 }).default('active').notNull(),
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("enterprises_credit_code_idx").on(table.creditCode),
 	index("enterprises_name_idx").on(table.name),
+	index("enterprises_type_idx").on(table.type),
 ]);
 
 // 物业表（独立水电计量单元）

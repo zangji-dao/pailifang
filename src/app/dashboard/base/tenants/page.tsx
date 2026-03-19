@@ -50,6 +50,9 @@ import { cn } from "@/lib/utils";
 // 企业状态
 type EnterpriseStatus = "active" | "inactive" | "pending";
 
+// 企业类型
+type EnterpriseType = "tenant" | "service";
+
 // 企业信息接口
 interface Enterprise {
   id: string;
@@ -62,6 +65,7 @@ interface Enterprise {
   industry: string;
  入驻Date: string;
   status: EnterpriseStatus;
+  type: EnterpriseType;
   remarks: string;
 }
 
@@ -70,6 +74,20 @@ const statusConfig: Record<EnterpriseStatus, { label: string; className: string 
   active: { label: "入驻中", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   inactive: { label: "已迁出", className: "bg-gray-50 text-gray-600 border-gray-200" },
   pending: { label: "待入驻", className: "bg-amber-50 text-amber-600 border-amber-200" },
+};
+
+// 企业类型配置
+const typeConfig: Record<EnterpriseType, { label: string; description: string; className: string }> = {
+  tenant: { 
+    label: "入驻企业", 
+    description: "在基地内注册的企业",
+    className: "bg-blue-50 text-blue-600 border-blue-200" 
+  },
+  service: { 
+    label: "服务企业", 
+    description: "不在基地内注册的企业",
+    className: "bg-purple-50 text-purple-600 border-purple-200" 
+  },
 };
 
 // 行业选项
@@ -102,6 +120,7 @@ const mockEnterprises: Enterprise[] = [
     industry: "制造业",
     入驻Date: "2023-03-15",
     status: "active",
+    type: "tenant",
     remarks: "",
   },
   {
@@ -115,6 +134,7 @@ const mockEnterprises: Enterprise[] = [
     industry: "批发和零售业",
     入驻Date: "2022-08-20",
     status: "active",
+    type: "tenant",
     remarks: "",
   },
   {
@@ -128,6 +148,7 @@ const mockEnterprises: Enterprise[] = [
     industry: "信息技术服务业",
     入驻Date: "2024-01-10",
     status: "active",
+    type: "tenant",
     remarks: "高新技术企业",
   },
   {
@@ -141,6 +162,7 @@ const mockEnterprises: Enterprise[] = [
     industry: "建筑业",
     入驻Date: "2021-05-08",
     status: "inactive",
+    type: "tenant",
     remarks: "2024年3月迁出",
   },
   {
@@ -154,7 +176,36 @@ const mockEnterprises: Enterprise[] = [
     industry: "住宿和餐饮业",
     入驻Date: "2024-06-01",
     status: "pending",
+    type: "tenant",
     remarks: "预计6月入驻",
+  },
+  {
+    id: "6",
+    name: "诚信会计师事务所",
+    creditCode: "91220100MA1234XX1A",
+    legalPerson: "周八",
+    phone: "138****1111",
+    registeredAddress: "吉林省长春市朝阳区解放大路888号",
+    businessAddress: "",
+    industry: "租赁和商务服务业",
+    入驻Date: "2024-01-01",
+    status: "active",
+    type: "service",
+    remarks: "合作会计师事务所",
+  },
+  {
+    id: "7",
+    name: "天成律师事务所",
+    creditCode: "91220100MA5678YY2B",
+    legalPerson: "吴九",
+    phone: "139****2222",
+    registeredAddress: "吉林省长春市南关区人民大街2000号",
+    businessAddress: "",
+    industry: "租赁和商务服务业",
+    入驻Date: "2024-02-15",
+    status: "active",
+    type: "service",
+    remarks: "合作律师事务所",
   },
 ];
 
@@ -178,6 +229,7 @@ export default function TenantsPage() {
     industry: "",
     入驻Date: new Date().toISOString().split("T")[0],
     status: "pending",
+    type: "tenant",
     remarks: "",
   });
 
@@ -195,6 +247,8 @@ export default function TenantsPage() {
   // 统计数据
   const stats = {
     total: enterprises.length,
+    tenant: enterprises.filter(e => e.type === "tenant").length,
+    service: enterprises.filter(e => e.type === "service").length,
     active: enterprises.filter(e => e.status === "active").length,
     inactive: enterprises.filter(e => e.status === "inactive").length,
     pending: enterprises.filter(e => e.status === "pending").length,
@@ -212,6 +266,7 @@ export default function TenantsPage() {
       industry: "",
       入驻Date: new Date().toISOString().split("T")[0],
       status: "pending",
+      type: "tenant",
       remarks: "",
     });
   };
@@ -256,6 +311,7 @@ export default function TenantsPage() {
         industry: formData.industry || "",
         入驻Date: formData.入驻Date || new Date().toISOString().split("T")[0],
         status: (formData.status as EnterpriseStatus) || "pending",
+        type: (formData.type as EnterpriseType) || "tenant",
         remarks: formData.remarks || "",
       };
       setEnterprises(prev => [newEnterprise, ...prev]);
@@ -297,7 +353,7 @@ export default function TenantsPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-4 gap-4 px-6 py-4">
+      <div className="grid grid-cols-5 gap-4 px-6 py-4">
         <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
@@ -309,16 +365,29 @@ export default function TenantsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl border border-blue-100 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">入驻中</p>
-              <p className="text-2xl font-semibold text-emerald-600 mt-1">{stats.active}</p>
+              <p className="text-sm text-blue-600">入驻企业</p>
+              <p className="text-2xl font-semibold text-blue-700 mt-1">{stats.tenant}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-emerald-500" />
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-blue-500" />
             </div>
           </div>
+          <p className="text-xs text-slate-400 mt-1">基地内注册</p>
+        </div>
+        <div className="bg-white rounded-xl border border-purple-100 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-purple-600">服务企业</p>
+              <p className="text-2xl font-semibold text-purple-700 mt-1">{stats.service}</p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-purple-500" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">基地外注册</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
@@ -398,6 +467,7 @@ export default function TenantsPage() {
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">法定代表人</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">联系电话</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">所属行业</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">企业类型</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">入驻日期</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">状态</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-slate-500">操作</th>
@@ -406,7 +476,7 @@ export default function TenantsPage() {
             <tbody>
               {filteredEnterprises.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
+                  <td colSpan={9} className="py-12 text-center text-slate-500">
                     <Building2 className="h-12 w-12 mx-auto text-slate-300 mb-3" />
                     <p>暂无企业数据</p>
                   </td>
@@ -419,8 +489,14 @@ export default function TenantsPage() {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <Building2 className="h-4 w-4 text-amber-600" />
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center",
+                          enterprise.type === "tenant" ? "bg-blue-100" : "bg-purple-100"
+                        )}>
+                          <Building2 className={cn(
+                            "h-4 w-4",
+                            enterprise.type === "tenant" ? "text-blue-600" : "text-purple-600"
+                          )} />
                         </div>
                         <span className="font-medium text-slate-900">{enterprise.name}</span>
                       </div>
@@ -436,6 +512,14 @@ export default function TenantsPage() {
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-600">
                       {enterprise.industry}
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge 
+                        variant="outline"
+                        className={cn("text-xs font-medium", typeConfig[enterprise.type].className)}
+                      >
+                        {typeConfig[enterprise.type].label}
+                      </Badge>
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-600">
                       {enterprise.入驻Date}
@@ -586,6 +670,35 @@ export default function TenantsPage() {
             </div>
             
             <div className="space-y-2">
+              <Label className="text-sm font-medium">企业类型 <span className="text-red-500">*</span></Label>
+              <Select 
+                value={formData.type || "tenant"} 
+                onValueChange={(value) => setFormData({ ...formData, type: value as EnterpriseType })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="请选择类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tenant">
+                    <div className="flex flex-col">
+                      <span>入驻企业</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="service">
+                    <div className="flex flex-col">
+                      <span>服务企业</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400">
+                {formData.type === "service" 
+                  ? "服务企业：不在基地内注册的企业，如合作会计师事务所、律师事务所等" 
+                  : "入驻企业：在基地内注册的企业"}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
               <Label className="text-sm font-medium">企业状态</Label>
               <Select 
                 value={formData.status || "pending"} 
@@ -637,19 +750,33 @@ export default function TenantsPage() {
           {viewingEnterprise && (
             <div className="py-4 space-y-4">
               <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
-                <div className="w-14 h-14 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <Building2 className="h-7 w-7 text-amber-600" />
+                <div className={cn(
+                  "w-14 h-14 rounded-xl flex items-center justify-center",
+                  viewingEnterprise.type === "tenant" ? "bg-blue-100" : "bg-purple-100"
+                )}>
+                  <Building2 className={cn(
+                    "h-7 w-7",
+                    viewingEnterprise.type === "tenant" ? "text-blue-600" : "text-purple-600"
+                  )} />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">{viewingEnterprise.name}</h3>
                   <p className="text-sm text-slate-500 font-mono">{viewingEnterprise.creditCode}</p>
                 </div>
-                <Badge 
-                  variant="outline"
-                  className={cn("ml-auto text-sm", statusConfig[viewingEnterprise.status].className)}
-                >
-                  {statusConfig[viewingEnterprise.status].label}
-                </Badge>
+                <div className="ml-auto flex gap-2">
+                  <Badge 
+                    variant="outline"
+                    className={cn("text-sm", typeConfig[viewingEnterprise.type].className)}
+                  >
+                    {typeConfig[viewingEnterprise.type].label}
+                  </Badge>
+                  <Badge 
+                    variant="outline"
+                    className={cn("text-sm", statusConfig[viewingEnterprise.status].className)}
+                  >
+                    {statusConfig[viewingEnterprise.status].label}
+                  </Badge>
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4 text-sm">
