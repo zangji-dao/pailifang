@@ -54,8 +54,8 @@ if [[ ! -d "node_modules" ]]; then
     pnpm install 2>/dev/null || npm install 2>/dev/null || true
 fi
 
-# 后台启动后端
-COZE_PROJECT_ENV=DEV PG_PASSWORD="${PG_PASSWORD}" npx tsx src/index.ts > /app/work/logs/bypass/backend.log 2>&1 &
+# 后台启动后端（显式指定后端端口）
+COZE_PROJECT_ENV=DEV PG_PASSWORD="${PG_PASSWORD}" PORT=${BACKEND_PORT} npx tsx src/index.ts > /app/work/logs/bypass/backend.log 2>&1 &
 BACKEND_PID=$!
 echo "Backend started with PID: ${BACKEND_PID}"
 
