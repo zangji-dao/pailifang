@@ -140,6 +140,7 @@ const roleConfig: Record<string, { label: string; description: string }> = {
   legal_person: { label: "法人代表", description: "公司法定代表人" },
   supervisor: { label: "监事", description: "负责监督公司运营" },
   finance_manager: { label: "财务负责人", description: "负责公司财务管理" },
+  ewt_contact: { label: "e窗通登录联系人", description: "负责登录e窗通办理业务" },
 };
 
 export default function NewApplicationPage() {
@@ -1302,38 +1303,11 @@ export default function NewApplicationPage() {
                 </div>
               ))}
 
-              {/* 其他联系人 */}
+              {/* 中介人信息 */}
               <div className="rounded-lg border bg-card p-4 space-y-4">
                 <h3 className="font-medium flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
                     {formData.personnel.length + 1}
-                  </span>
-                  登录e窗通联系人
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>联系人姓名</Label>
-                    <Input
-                      value={formData.ewtContactName}
-                      onChange={(e) => updateField("ewtContactName", e.target.value)}
-                      placeholder="请输入联系人姓名"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>联系人电话</Label>
-                    <Input
-                      value={formData.ewtContactPhone}
-                      onChange={(e) => updateField("ewtContactPhone", e.target.value)}
-                      placeholder="请输入联系人电话"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4 space-y-4">
-                <h3 className="font-medium flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
-                    {formData.personnel.length + 2}
                   </span>
                   中介人信息
                 </h3>
