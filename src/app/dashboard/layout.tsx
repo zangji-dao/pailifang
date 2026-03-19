@@ -100,33 +100,30 @@ export default function DashboardLayout({
     
     setTabs((prev) => {
       const existingTab = prev.find((t) => t.path === newTab.path || t.id === newTab.id);
-      if (existingTab) {
-        setActiveTab(existingTab.id);
-        return prev;
-      }
-      return [...prev, newTab];
+      return existingTab ? prev : [...prev, newTab];
     });
-    
+
+    // 在 state updater 外部调用导航
     setActiveTab(newTab.id);
     router.push(newTab.path);
   }, [router]);
 
   // 关闭标签页
   const closeTab = useCallback((tabId: string) => {
-    setTabs((prev) => {
-      const tabIndex = prev.findIndex((t) => t.id === tabId);
-      const newTabs = prev.filter((t) => t.id !== tabId);
+    // 先计算需要切换到的标签页
+    const tabIndex = tabs.findIndex((t) => t.id === tabId);
+    const newTabs = tabs.filter((t) => t.id !== tabId);
 
-      if (activeTab === tabId && newTabs.length > 0) {
-        const newActiveIndex = Math.min(tabIndex, newTabs.length - 1);
-        const newActiveTab = newTabs[newActiveIndex];
-        setActiveTab(newActiveTab.id);
-        router.push(newActiveTab.path);
-      }
+    setTabs(newTabs);
 
-      return newTabs;
-    });
-  }, [activeTab, router]);
+    // 如果关闭的是当前激活的标签页，切换到相邻标签页
+    if (activeTab === tabId && newTabs.length > 0) {
+      const newActiveIndex = Math.min(tabIndex, newTabs.length - 1);
+      const newActiveTab = newTabs[newActiveIndex];
+      setActiveTab(newActiveTab.id);
+      router.push(newActiveTab.path);
+    }
+  }, [activeTab, router, tabs]);
 
   // 切换标签页
   const switchTab = useCallback((tabId: string) => {
