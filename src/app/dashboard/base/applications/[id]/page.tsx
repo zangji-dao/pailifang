@@ -47,6 +47,8 @@ interface ApplicationFormData {
   taxType: TaxType | "";
   expectedAnnualRevenue: string;
   expectedAnnualTax: string;
+  introducerName: string;
+  introducerPhone: string;
   originalRegisteredAddress: string;
   mailingAddress: string;
   businessAddress: string;
@@ -415,6 +417,30 @@ export default function EditApplicationPage() {
                   />
                 </div>
               </div>
+
+              <div className="rounded-lg border p-4 space-y-4">
+                <h3 className="font-medium">介绍人信息</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>介绍人姓名</Label>
+                    <Input
+                      value={formData.introducerName}
+                      onChange={(e) => updateField("introducerName", e.target.value)}
+                      placeholder="请输入介绍人姓名"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>介绍人电话</Label>
+                    <Input
+                      value={formData.introducerPhone}
+                      onChange={(e) => updateField("introducerPhone", e.target.value)}
+                      placeholder="请输入介绍人电话"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                </div>
+              </div>
             </TabsContent>
 
             {/* 地址信息 */}
@@ -736,6 +762,8 @@ const initialFormData: ApplicationFormData = {
   taxType: "",
   expectedAnnualRevenue: "",
   expectedAnnualTax: "",
+  introducerName: "",
+  introducerPhone: "",
   originalRegisteredAddress: "",
   mailingAddress: "",
   businessAddress: "",
