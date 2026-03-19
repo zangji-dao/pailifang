@@ -93,7 +93,6 @@ const roleConfig: Record<string, { label: string; description: string }> = {
   legal_person: { label: "法人代表", description: "公司法定代表人" },
   supervisor: { label: "监事", description: "负责监督公司运营" },
   finance_manager: { label: "财务负责人", description: "负责公司财务管理" },
-  contact_person: { label: "实际联络人", description: "日常事务联系人" },
 };
 
 export default function EditApplicationPage() {
@@ -119,7 +118,7 @@ export default function EditApplicationPage() {
             ...initialFormData,
             ...result.data,
             personnel: result.data.personnel || [
-              { name: "", phone: "", email: "", address: "", roles: ["legal_person", "finance_manager", "contact_person"] },
+              { name: "", phone: "", email: "", address: "", roles: ["legal_person", "finance_manager"] },
               { name: "", phone: "", email: "", address: "", roles: ["supervisor"] },
             ],
             shareholders: result.data.shareholders || [{ name: "", investment: "", phone: "" }],
@@ -1074,7 +1073,7 @@ const initialFormData: ApplicationFormData = {
       phone: "", 
       email: "", 
       address: "", 
-      roles: ["legal_person", "finance_manager", "contact_person"],
+      roles: ["legal_person", "finance_manager"],
       idCardFrontKey: "",
       idCardFrontUrl: "",
       idCardBackKey: "",

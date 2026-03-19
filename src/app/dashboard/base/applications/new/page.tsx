@@ -45,7 +45,7 @@ interface Personnel {
   phone: string;
   email: string;
   address: string;
-  roles: string[]; // legal_person, supervisor, finance_manager, contact_person
+  roles: string[]; // legal_person, supervisor, finance_manager
   idCardFrontKey: string; // 身份证正面存储key
   idCardFrontUrl: string; // 身份证正面预览URL
   idCardBackKey: string; // 身份证反面存储key
@@ -96,7 +96,7 @@ const initialFormData: ApplicationFormData = {
       phone: "", 
       email: "", 
       address: "", 
-      roles: ["legal_person", "finance_manager", "contact_person"],
+      roles: ["legal_person", "finance_manager"],
       idCardFrontKey: "",
       idCardFrontUrl: "",
       idCardBackKey: "",
@@ -129,7 +129,6 @@ const roleConfig: Record<string, { label: string; description: string }> = {
   legal_person: { label: "法人代表", description: "公司法定代表人" },
   supervisor: { label: "监事", description: "负责监督公司运营" },
   finance_manager: { label: "财务负责人", description: "负责公司财务管理" },
-  contact_person: { label: "实际联络人", description: "日常事务联系人" },
 };
 
 export default function NewApplicationPage() {
