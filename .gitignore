@@ -27,6 +27,9 @@ coverage/
 !.env.example
 !.env.*.example
 
+# 敏感配置文档
+docs/ENV_SECRETS.md
+
 # Logs
 # logs/ 目录下的构建日志需要提交
 *.log
