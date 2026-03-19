@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 interface HLSPlayerProps {
   src: string;
+  srcHd?: string;  // 高清地址
   onError?: (error: string) => void;
 }
 
@@ -13,20 +14,24 @@ interface HLSPlayerProps {
 let globalHlsInstance: any = null;
 let HlsConstructor: any = null;
 
-export default function HLSPlayer({ src, onError }: HLSPlayerProps) {
+export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isHd, setIsHd] = useState(true);  // 默认高清
   const currentSrcRef = useRef<string>('');
 
+  // 优先使用高清地址
+  const playSrc = (isHd && srcHd) ? srcHd : src;
+
   useEffect(() => {
-    if (!src || !videoRef.current) return;
+    if (!playSrc || !videoRef.current) return;
 
     const video = videoRef.current;
     
     // 如果 src 没变，不重新加载
-    if (currentSrcRef.current === src) return;
-    currentSrcRef.current = src;
+    if (currentSrcRef.current === playSrc) return;
+    currentSrcRef.current = playSrc;
     
     setError(null);
     setLoading(true);
@@ -39,7 +44,7 @@ export default function HLSPlayer({ src, onError }: HLSPlayerProps) {
 
     // 检查 Safari 原生支持
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src;
+      video.src = playSrc;
       video.addEventListener('loadeddata', () => setLoading(false), { once: true });
       video.addEventListener('error', () => {
         setError('视频加载失败');
@@ -58,13 +63,19 @@ export default function HLSPlayer({ src, onError }: HLSPlayerProps) {
       }
 
       const hls = new HlsConstructor({
-        enableWorker: false,  // 禁用 worker 减少资源占用
-        lowLatencyMode: false,
-        maxBufferLength: 10,  // 减少缓冲
-        maxMaxBufferLength: 30,
+        enableWorker: true,
+        lowLatencyMode: true,
+        maxBufferLength: 30,           // 增加缓冲区
+        maxMaxBufferLength: 60,        // 最大缓冲
+        maxBufferSize: 60 * 1000 * 1000, // 60MB
+        maxBufferHole: 0.5,
+        startLevel: -1,                // 自动选择最佳画质
+        capLevelToPlayerSize: false,   // 不限制画质
+        abrEwmaDefaultEstimate: 500000, // 初始带宽估计
+        testBandwidth: true,           // 测试带宽
       });
 
-      hls.loadSource(src);
+      hls.loadSource(playSrc);
       hls.attachMedia(video);
 
       hls.on(HlsConstructor.Events.MANIFEST_PARSED, () => {
@@ -105,7 +116,7 @@ export default function HLSPlayer({ src, onError }: HLSPlayerProps) {
     return () => {
       // 组件卸载时不销毁全局实例，让下一个实例接管
     };
-  }, [src, onError]);
+  }, [playSrc, onError]);
 
   const handleRetry = () => {
     currentSrcRef.current = '';
@@ -115,8 +126,17 @@ export default function HLSPlayer({ src, onError }: HLSPlayerProps) {
     }
     setError(null);
     setLoading(true);
-    // 触发重新渲染
     window.location.reload();
+  };
+
+  const toggleQuality = () => {
+    currentSrcRef.current = '';
+    if (globalHlsInstance) {
+      globalHlsInstance.destroy();
+      globalHlsInstance = null;
+    }
+    setIsHd(!isHd);
+    setLoading(true);
   };
 
   return (
@@ -149,6 +169,20 @@ export default function HLSPlayer({ src, onError }: HLSPlayerProps) {
           >
             <RefreshCw className="h-4 w-4 mr-1.5" />
             重试
+          </Button>
+        </div>
+      )}
+      
+      {/* 画质切换按钮 */}
+      {srcHd && !loading && !error && (
+        <div className="absolute top-3 right-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-7 px-2 bg-black/50 hover:bg-black/70 text-white text-xs border-0"
+            onClick={toggleQuality}
+          >
+            {isHd ? '高清' : '标清'}
           </Button>
         </div>
       )}

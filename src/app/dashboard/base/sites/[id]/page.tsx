@@ -119,8 +119,10 @@ interface CameraInfo {
   status: number;
   liveAddress: {
     hls: string;
+    hlsHd: string;
     flv: string;
     rtmp: string;
+    rtmpHd: string;
   } | null;
 }
 
@@ -256,7 +258,10 @@ function VideoMonitorSection({ baseId }: { baseId: string }) {
       {/* 视频区域 */}
       <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
         {selectedCamera?.liveAddress?.hls ? (
-          <HLSPlayer src={selectedCamera.liveAddress.hls} />
+          <HLSPlayer 
+            src={selectedCamera.liveAddress.hls} 
+            srcHd={selectedCamera.liveAddress.hlsHd}
+          />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <VideoOff className="h-12 w-12 text-slate-600 mb-2" />
