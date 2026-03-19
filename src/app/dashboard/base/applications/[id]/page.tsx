@@ -480,7 +480,12 @@ export default function EditApplicationPage() {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData?.enterpriseName) newErrors.enterpriseName = "请输入企业名称";
+    if (!formData?.registeredCapital) newErrors.registeredCapital = "请输入注册资金";
+    if (!formData?.currencyType) newErrors.currencyType = "请选择币种";
+    if (!formData?.taxType) newErrors.taxType = "请选择缴税类型";
     if (!formData?.applicationType) newErrors.applicationType = "请选择申请类型";
+    if (!formData?.expectedAnnualRevenue) newErrors.expectedAnnualRevenue = "请输入预计主营收入";
+    if (!formData?.expectedAnnualTax) newErrors.expectedAnnualTax = "请输入预计全口径税收";
 
     const roleError = validatePersonnelRoles();
     if (roleError) newErrors.personnel = roleError;
@@ -619,169 +624,224 @@ export default function EditApplicationPage() {
             </TabsList>
 
             {/* 基本信息 */}
-            <TabsContent value="basic" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    申请名称 <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={formData.enterpriseName}
-                    onChange={(e) => updateField("enterpriseName", e.target.value)}
-                    placeholder="请输入企业名称"
-                    disabled={!canEdit}
-                  />
-                  {errors.enterpriseName && (
-                    <p className="text-xs text-destructive">{errors.enterpriseName}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>备用名</Label>
-                    {canEdit && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const backups = [...(formData.enterpriseNameBackups || []), ""];
-                          updateField("enterpriseNameBackups", backups);
-                        }}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        添加
-                      </Button>
+            <TabsContent value="basic" className="space-y-6">
+              {/* 企业名称 */}
+              <div className="rounded-lg border bg-card p-5">
+                <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">1</span>
+                  企业名称
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>
+                      申请名称 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={formData.enterpriseName}
+                      onChange={(e) => updateField("enterpriseName", e.target.value)}
+                      placeholder="请输入企业名称"
+                      disabled={!canEdit}
+                    />
+                    {errors.enterpriseName && (
+                      <p className="text-xs text-destructive">{errors.enterpriseName}</p>
                     )}
                   </div>
-                  {formData.enterpriseNameBackups && formData.enterpriseNameBackups.length > 0 ? (
-                    <div className="space-y-2">
-                      {formData.enterpriseNameBackups.map((backup, index) => (
-                        <div key={index} className="flex gap-2">
-                          <Input
-                            value={backup}
-                            onChange={(e) => {
-                              const newBackups = [...formData.enterpriseNameBackups];
-                              newBackups[index] = e.target.value;
-                              updateField("enterpriseNameBackups", newBackups);
-                            }}
-                            placeholder={`备用名 ${index + 1}`}
-                            className="flex-1"
-                            disabled={!canEdit}
-                          />
-                          {canEdit && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                const newBackups = formData.enterpriseNameBackups.filter((_, i) => i !== index);
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>备用名</Label>
+                      {canEdit && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const backups = [...(formData.enterpriseNameBackups || []), ""];
+                            updateField("enterpriseNameBackups", backups);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          添加
+                        </Button>
+                      )}
+                    </div>
+                    {formData.enterpriseNameBackups && formData.enterpriseNameBackups.length > 0 ? (
+                      <div className="space-y-2">
+                        {formData.enterpriseNameBackups.map((backup, index) => (
+                          <div key={index} className="flex gap-2">
+                            <Input
+                              value={backup}
+                              onChange={(e) => {
+                                const newBackups = [...formData.enterpriseNameBackups];
+                                newBackups[index] = e.target.value;
                                 updateField("enterpriseNameBackups", newBackups);
                               }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                              placeholder={`备用名 ${index + 1}`}
+                              className="flex-1"
+                              disabled={!canEdit}
+                            />
+                            {canEdit && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const newBackups = formData.enterpriseNameBackups.filter((_, i) => i !== index);
+                                  updateField("enterpriseNameBackups", newBackups);
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground pt-2">可选，点击"添加"按钮添加备用名</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 注册信息 */}
+              <div className="rounded-lg border bg-card p-5">
+                <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">2</span>
+                  注册信息
+                </h3>
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>
+                      注册资金 <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={formData.registeredCapital}
+                        onChange={(e) => updateField("registeredCapital", e.target.value)}
+                        placeholder="2000"
+                        className="pr-12"
+                        disabled={!canEdit}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">万元</span>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">可选，点击"添加"按钮添加备用名</p>
-                  )}
+                    {errors.registeredCapital && (
+                      <p className="text-xs text-destructive">{errors.registeredCapital}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
+                      币种 <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.currencyType}
+                      onValueChange={(v) => updateField("currencyType", v)}
+                      disabled={!canEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择币种" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CNY">人民币</SelectItem>
+                        <SelectItem value="USD">美元</SelectItem>
+                        <SelectItem value="EUR">欧元</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.currencyType && (
+                      <p className="text-xs text-destructive">{errors.currencyType}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
+                      缴税类型 <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.taxType}
+                      onValueChange={(v) => updateField("taxType", v as TaxType)}
+                      disabled={!canEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择缴税类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">一般纳税人</SelectItem>
+                        <SelectItem value="small_scale">小规模</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.taxType && (
+                      <p className="text-xs text-destructive">{errors.taxType}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
+                      申请类型 <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.applicationType}
+                      onValueChange={(v) => updateField("applicationType", v as ApplicationType)}
+                      disabled={!canEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择申请类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">新建企业</SelectItem>
+                        <SelectItem value="migration">迁移企业</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.applicationType && (
+                      <p className="text-xs text-destructive">{errors.applicationType}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>注册资金（万元）</Label>
-                  <Input
-                    type="number"
-                    value={formData.registeredCapital}
-                    onChange={(e) => updateField("registeredCapital", e.target.value)}
-                    placeholder="2000"
-                    disabled={!canEdit}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>币种</Label>
-                  <Select
-                    value={formData.currencyType}
-                    onValueChange={(v) => updateField("currencyType", v)}
-                    disabled={!canEdit}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择币种" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CNY">人民币</SelectItem>
-                      <SelectItem value="USD">美元</SelectItem>
-                      <SelectItem value="EUR">欧元</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>缴税类型</Label>
-                  <Select
-                    value={formData.taxType}
-                    onValueChange={(v) => updateField("taxType", v as TaxType)}
-                    disabled={!canEdit}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择缴税类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">一般纳税人</SelectItem>
-                      <SelectItem value="small_scale">小规模</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  申请类型 <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.applicationType}
-                  onValueChange={(v) => updateField("applicationType", v as ApplicationType)}
-                  disabled={!canEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择申请类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">新建企业</SelectItem>
-                    <SelectItem value="migration">迁移企业</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.applicationType && (
-                  <p className="text-xs text-destructive">{errors.applicationType}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>预计主营收入（年/万元）</Label>
-                  <Input
-                    type="number"
-                    value={formData.expectedAnnualRevenue}
-                    onChange={(e) => updateField("expectedAnnualRevenue", e.target.value)}
-                    placeholder="2000"
-                    disabled={!canEdit}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>预计全口径税收（年/万元）</Label>
-                  <Input
-                    type="number"
-                    value={formData.expectedAnnualTax}
-                    onChange={(e) => updateField("expectedAnnualTax", e.target.value)}
-                    placeholder="200"
-                    disabled={!canEdit}
-                  />
+              {/* 预计经营数据 */}
+              <div className="rounded-lg border bg-card p-5">
+                <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">3</span>
+                  预计经营数据
+                </h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>
+                      预计主营收入 <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={formData.expectedAnnualRevenue}
+                        onChange={(e) => updateField("expectedAnnualRevenue", e.target.value)}
+                        placeholder="2000"
+                        className="pr-16"
+                        disabled={!canEdit}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">万元/年</span>
+                    </div>
+                    {errors.expectedAnnualRevenue && (
+                      <p className="text-xs text-destructive">{errors.expectedAnnualRevenue}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
+                      预计全口径税收 <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={formData.expectedAnnualTax}
+                        onChange={(e) => updateField("expectedAnnualTax", e.target.value)}
+                        placeholder="200"
+                        className="pr-16"
+                        disabled={!canEdit}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">万元/年</span>
+                    </div>
+                    {errors.expectedAnnualTax && (
+                      <p className="text-xs text-destructive">{errors.expectedAnnualTax}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-
-
             </TabsContent>
 
             {/* 地址信息 */}
