@@ -190,6 +190,8 @@ export enum FileType {
   EXPORT = 'export',
   /** 临时文件 */
   TEMP = 'temp',
+  /** 身份证 */
+  ID_CARD = 'id_card',
 }
 
 /**
@@ -208,6 +210,7 @@ export function getStoragePrefix(type: FileType, ...parts: string[]): string {
     [FileType.CONTRACT]: 'contracts',
     [FileType.EXPORT]: 'exports',
     [FileType.TEMP]: 'temp',
+    [FileType.ID_CARD]: 'id-cards',
   };
 
   const parts_ = parts.filter(Boolean);
@@ -274,6 +277,7 @@ export const FILE_SIZE_LIMITS: Record<FileType, number> = {
   [FileType.CONTRACT]: 20 * 1024 * 1024,    // 20 MB
   [FileType.EXPORT]: 50 * 1024 * 1024,      // 50 MB
   [FileType.TEMP]: 50 * 1024 * 1024,        // 50 MB
+  [FileType.ID_CARD]: 5 * 1024 * 1024,      // 5 MB
 };
 
 /**

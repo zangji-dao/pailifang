@@ -10,7 +10,11 @@ import {
   Save,
   Send,
   AlertCircle,
+  FileImage,
+  X,
+  Upload,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -26,7 +30,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
@@ -45,6 +48,10 @@ interface Personnel {
   email: string;
   address: string;
   roles: string[];
+  idCardFrontKey: string;
+  idCardFrontUrl: string;
+  idCardBackKey: string;
+  idCardBackUrl: string;
 }
 
 interface ApplicationFormData {
@@ -98,6 +105,7 @@ export default function EditApplicationPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
 
   // 获取申请详情
   useEffect(() => {
@@ -148,7 +156,17 @@ export default function EditApplicationPage() {
   const addPersonnel = () => {
     setFormData((prev) => prev ? {
       ...prev,
-      personnel: [...prev.personnel, { name: "", phone: "", email: "", address: "", roles: [] }],
+      personnel: [...prev.personnel, { 
+        name: "", 
+        phone: "", 
+        email: "", 
+        address: "", 
+        roles: [],
+        idCardFrontKey: "",
+        idCardFrontUrl: "",
+        idCardBackKey: "",
+        idCardBackUrl: "",
+      }],
     } : null);
   };
 
@@ -177,6 +195,89 @@ export default function EditApplicationPage() {
         newPersonnel[index] = { ...newPersonnel[index], roles: roles.filter((r) => r !== role) };
       } else {
         newPersonnel[index] = { ...newPersonnel[index], roles: [...roles, role] };
+      }
+      return { ...prev, personnel: newPersonnel };
+    });
+  };
+
+  // 文件上传
+  const uploadFile = async (file: File, type: 'front' | 'back', personnelIndex: number): Promise<void> => {
+    const uploadKey = `${personnelIndex}-${type}`;
+    setUploadingFiles((prev) => ({ ...prev, [uploadKey]: true }));
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('type', 'id_card');
+
+      const response = await fetch('http://localhost:4001/api/storage/upload', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setFormData((prev) => {
+          if (!prev) return null;
+          const newPersonnel = [...prev.personnel];
+          if (type === 'front') {
+            newPersonnel[personnelIndex] = {
+              ...newPersonnel[personnelIndex],
+              idCardFrontKey: result.data.key,
+              idCardFrontUrl: result.data.url,
+            };
+          } else {
+            newPersonnel[personnelIndex] = {
+              ...newPersonnel[personnelIndex],
+              idCardBackKey: result.data.key,
+              idCardBackUrl: result.data.url,
+            };
+          }
+          return { ...prev, personnel: newPersonnel };
+        });
+      } else {
+        alert(result.error || '上传失败');
+      }
+    } catch (err) {
+      console.error('上传失败:', err);
+      alert('上传失败');
+    } finally {
+      setUploadingFiles((prev) => ({ ...prev, [uploadKey]: false }));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back', personnelIndex: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+        alert('请上传 JPG 或 PNG 格式的图片');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('文件大小不能超过 5MB');
+        return;
+      }
+      uploadFile(file, type, personnelIndex);
+    }
+  };
+
+  const removeIdCard = (type: 'front' | 'back', personnelIndex: number) => {
+    setFormData((prev) => {
+      if (!prev) return null;
+      const newPersonnel = [...prev.personnel];
+      if (type === 'front') {
+        newPersonnel[personnelIndex] = {
+          ...newPersonnel[personnelIndex],
+          idCardFrontKey: '',
+          idCardFrontUrl: '',
+        };
+      } else {
+        newPersonnel[personnelIndex] = {
+          ...newPersonnel[personnelIndex],
+          idCardBackKey: '',
+          idCardBackUrl: '',
+        };
       }
       return { ...prev, personnel: newPersonnel };
     });
@@ -692,6 +793,111 @@ export default function EditApplicationPage() {
                       })}
                     </div>
                   </div>
+
+                  {/* 身份证上传 */}
+                  <div className="space-y-2">
+                    <Label>身份证照片</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* 正面 */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">正面（人像面）</p>
+                        {person.idCardFrontUrl ? (
+                          <div className="relative group">
+                            <img
+                              src={person.idCardFrontUrl}
+                              alt="身份证正面"
+                              className="w-full h-24 object-cover rounded border"
+                            />
+                            {canEdit && (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeIdCard('front', index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <label
+                            className={cn(
+                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
+                              uploadingFiles[`${index}-front`] && "opacity-50 cursor-wait",
+                              !canEdit && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            {uploadingFiles[`${index}-front`] ? (
+                              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                            ) : (
+                              <>
+                                <Upload className="h-6 w-6 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground mt-1">上传正面</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(e, 'front', index)}
+                              disabled={!canEdit || uploadingFiles[`${index}-front`]}
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      {/* 反面 */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">反面（国徽面）</p>
+                        {person.idCardBackUrl ? (
+                          <div className="relative group">
+                            <img
+                              src={person.idCardBackUrl}
+                              alt="身份证反面"
+                              className="w-full h-24 object-cover rounded border"
+                            />
+                            {canEdit && (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeIdCard('back', index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <label
+                            className={cn(
+                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
+                              uploadingFiles[`${index}-back`] && "opacity-50 cursor-wait",
+                              !canEdit && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            {uploadingFiles[`${index}-back`] ? (
+                              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                            ) : (
+                              <>
+                                <Upload className="h-6 w-6 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground mt-1">上传反面</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(e, 'back', index)}
+                              disabled={!canEdit || uploadingFiles[`${index}-back`]}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">支持JPG、PNG格式，单张不超过5MB</p>
+                  </div>
                 </div>
               ))}
 
@@ -863,8 +1069,28 @@ const initialFormData: ApplicationFormData = {
   mailingAddress: "",
   businessAddress: "",
   personnel: [
-    { name: "", phone: "", email: "", address: "", roles: ["legal_person", "finance_manager", "contact_person"] },
-    { name: "", phone: "", email: "", address: "", roles: ["supervisor"] },
+    { 
+      name: "", 
+      phone: "", 
+      email: "", 
+      address: "", 
+      roles: ["legal_person", "finance_manager", "contact_person"],
+      idCardFrontKey: "",
+      idCardFrontUrl: "",
+      idCardBackKey: "",
+      idCardBackUrl: "",
+    },
+    { 
+      name: "", 
+      phone: "", 
+      email: "", 
+      address: "", 
+      roles: ["supervisor"],
+      idCardFrontKey: "",
+      idCardFrontUrl: "",
+      idCardBackKey: "",
+      idCardBackUrl: "",
+    },
   ],
   shareholders: [{ name: "", investment: "", phone: "" }],
   ewtContactName: "",

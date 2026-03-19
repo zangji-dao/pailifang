@@ -15,6 +15,7 @@ const FILE_TYPE_MAP: Record<string, FileType> = {
   export: FileType.EXPORT,
   document: FileType.DOCUMENT,
   temp: FileType.TEMP,
+  id_card: FileType.ID_CARD,
 };
 
 /**

@@ -370,6 +370,17 @@ export type Attachment = {
 	type?: string;
 };
 
+// 人员信息类型
+export type Personnel = {
+	name: string;
+	phone: string;
+	roles: string[]; // legal_person, supervisor, finance_manager, contact_person
+	idCardFrontKey?: string;
+	idCardFrontUrl?: string;
+	idCardBackKey?: string;
+	idCardBackUrl?: string;
+};
+
 // 入驻申请表（完整版）
 export const settlementApplications = pgTable("pi_settlement_applications", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
@@ -404,6 +415,9 @@ export const settlementApplications = pgTable("pi_settlement_applications", {
 	
 	// 股东信息
 	shareholders: json("shareholders").$type<Shareholder[]>(),
+	
+	// 人员信息（新版）
+	personnel: json("personnel").$type<Personnel[]>(),
 	
 	// 监事信息
 	supervisorName: varchar("supervisor_name", { length: 100 }),

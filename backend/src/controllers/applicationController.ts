@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { db } from '../database/client';
 import { settlementApplications, settlementProcesses, registeredAddresses, enterprises } from '../database/schema';
 import { eq, sql, desc, and, isNull } from 'drizzle-orm';
-import type { Shareholder, Attachment, StageProgress } from '../database/schema';
+import type { Shareholder, Attachment, StageProgress, Personnel } from '../database/schema';
 
 // 流程阶段定义
 const NEW_ENTERPRISE_STAGES: StageProgress[] = [
@@ -176,6 +176,9 @@ export const applicationController = {
         // 股东信息
         shareholders: data.shareholders || [],
         
+        // 人员信息（新版）
+        personnel: data.personnel || [],
+        
         // 监事信息
         supervisorName: data.supervisorName,
         supervisorPhone: data.supervisorPhone,
@@ -283,6 +286,9 @@ export const applicationController = {
           
           // 股东信息
           shareholders: data.shareholders,
+          
+          // 人员信息（新版）
+          personnel: data.personnel,
           
           // 监事信息
           supervisorName: data.supervisorName,
