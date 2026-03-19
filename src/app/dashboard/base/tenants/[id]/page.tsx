@@ -1,0 +1,350 @@
+"use client";
+
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Building2,
+  MapPin,
+  Phone,
+  User,
+  Calendar,
+  FileText,
+  Edit,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { useTabs } from "@/app/dashboard/tabs-context";
+
+// 企业状态
+type EnterpriseStatus = "active" | "inactive" | "pending";
+
+// 企业类型
+type EnterpriseType = "tenant" | "service";
+
+// 企业信息接口
+interface Enterprise {
+  id: string;
+  name: string;
+  creditCode: string;
+  legalPerson: string;
+  phone: string;
+  registeredAddress: string;
+  businessAddress: string;
+  industry: string;
+  入驻Date: string;
+  status: EnterpriseStatus;
+  type: EnterpriseType;
+  remarks: string;
+}
+
+// 状态配置
+const statusConfig: Record<EnterpriseStatus, { label: string; className: string }> = {
+  active: { label: "入驻中", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  inactive: { label: "已迁出", className: "bg-gray-50 text-gray-600 border-gray-200" },
+  pending: { label: "待入驻", className: "bg-amber-50 text-amber-600 border-amber-200" },
+};
+
+// 企业类型配置
+const typeConfig: Record<EnterpriseType, { label: string; description: string; className: string }> = {
+  tenant: {
+    label: "入驻企业",
+    description: "在基地内注册的企业",
+    className: "bg-blue-50 text-blue-600 border-blue-200",
+  },
+  service: {
+    label: "服务企业",
+    description: "不在基地内注册的企业",
+    className: "bg-purple-50 text-purple-600 border-purple-200",
+  },
+};
+
+// API响应类型
+interface ApiEnterprise {
+  id: string;
+  name: string;
+  creditCode: string | null;
+  legalPerson: string | null;
+  phone: string | null;
+  registeredAddress: string | null;
+  businessAddress: string | null;
+  industry: string | null;
+  settledDate: string | null;
+  status: string;
+  type: string;
+  remarks: string | null;
+}
+
+// 转换API数据到前端格式
+function transformEnterprise(api: ApiEnterprise): Enterprise {
+  return {
+    id: api.id,
+    name: api.name,
+    creditCode: api.creditCode || "",
+    legalPerson: api.legalPerson || "",
+    phone: api.phone || "",
+    registeredAddress: api.registeredAddress || "",
+    businessAddress: api.businessAddress || "",
+    industry: api.industry || "",
+    入驻Date: api.settledDate || "",
+    status: api.status as EnterpriseStatus,
+    type: api.type as EnterpriseType,
+    remarks: api.remarks || "",
+  };
+}
+
+export default function EnterpriseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const router = useRouter();
+  const tabsContext = useTabs();
+
+  const [enterprise, setEnterprise] = useState<Enterprise | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 获取企业详情
+  useEffect(() => {
+    const fetchEnterprise = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/enterprises/${resolvedParams.id}`);
+        if (!response.ok) {
+          throw new Error("获取企业数据失败");
+        }
+        const result = await response.json();
+        if (result.data) {
+          setEnterprise(transformEnterprise(result.data));
+        } else {
+          throw new Error("企业不存在");
+        }
+        setError(null);
+      } catch (err) {
+        console.error("获取企业数据失败:", err);
+        setError(err instanceof Error ? err.message : "获取企业数据失败");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEnterprise();
+  }, [resolvedParams.id]);
+
+  // 返回列表
+  const handleBack = () => {
+    if (tabsContext) {
+      tabsContext.closeTab(`enterprise-${resolvedParams.id}`);
+    } else {
+      router.push("/dashboard/base/tenants");
+    }
+  };
+
+  // 打开编辑页面
+  const handleEdit = () => {
+    if (tabsContext && enterprise) {
+      tabsContext.openTab({
+        id: `enterprise-edit-${resolvedParams.id}`,
+        label: `编辑 - ${enterprise.name}`,
+        path: `/dashboard/base/tenants/${resolvedParams.id}/edit`,
+      });
+    } else {
+      router.push(`/dashboard/base/tenants/${resolvedParams.id}/edit`);
+    }
+  };
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-slate-600">加载中...</span>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error || !enterprise) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+        <p className="text-red-600 mb-4">{error || "企业不存在"}</p>
+        <Button variant="outline" onClick={handleBack}>
+          返回列表
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
+      {/* 操作栏 */}
+      <div className="bg-white border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={handleBack}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              返回
+            </Button>
+            <div className="h-4 w-px bg-slate-200" />
+            <span className="text-sm text-slate-500">企业详情</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="text-slate-600">
+              <FileText className="h-4 w-4 mr-1.5" />
+              导出档案
+            </Button>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              onClick={handleEdit}
+            >
+              <Edit className="h-4 w-4 mr-1.5" />
+              编辑信息
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 详情内容 */}
+      <div className="flex-1 overflow-auto px-6 py-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* 企业基本信息 */}
+          <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-medium text-slate-500">基本信息</h3>
+            </div>
+            <div className="p-6">
+              <div className="flex items-start gap-6">
+                <div
+                  className={cn(
+                    "w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0",
+                    enterprise.type === "tenant" ? "bg-blue-100" : "bg-purple-100"
+                  )}
+                >
+                  <Building2
+                    className={cn(
+                      "h-8 w-8",
+                      enterprise.type === "tenant" ? "text-blue-600" : "text-purple-600"
+                    )}
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-xl font-semibold text-slate-900">{enterprise.name}</h2>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-sm", typeConfig[enterprise.type].className)}
+                    >
+                      {typeConfig[enterprise.type].label}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-sm", statusConfig[enterprise.status].className)}
+                    >
+                      {statusConfig[enterprise.status].label}
+                    </Badge>
+                  </div>
+                  <p className="text-slate-500 font-mono text-sm">{enterprise.creditCode}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 详细信息 */}
+          <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-medium text-slate-500">详细信息</h3>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm">法定代表人</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.legalPerson || "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Phone className="h-4 w-4" />
+                    <span className="text-sm">联系电话</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">{enterprise.phone || "—"}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Building2 className="h-4 w-4" />
+                    <span className="text-sm">所属行业</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.industry || "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">入驻日期</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.入驻Date || "—"}
+                  </p>
+                </div>
+
+                <div className="col-span-2 space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm">注册地址</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.registeredAddress || "—"}
+                  </p>
+                </div>
+
+                <div className="col-span-2 space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm">经营地址（入驻地址）</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.businessAddress || "—"}
+                  </p>
+                </div>
+
+                {enterprise.remarks && (
+                  <div className="col-span-2 space-y-1">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">备注</span>
+                    </div>
+                    <p className="text-slate-900 font-medium pl-6">{enterprise.remarks}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 企业类型说明 */}
+          <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-medium text-slate-500">类型说明</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 text-sm leading-relaxed">
+                {enterprise.type === "service"
+                  ? "服务企业：不在基地内注册的企业，如合作会计师事务所、律师事务所等专业服务机构。"
+                  : "入驻企业：在基地内注册的企业，享受基地提供的各项服务和支持。"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

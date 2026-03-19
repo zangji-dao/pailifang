@@ -309,9 +309,13 @@ export const enterprises = pgTable("enterprises", {
 	creditCode: varchar("credit_code", { length: 50 }),
 	legalPerson: varchar("legal_person", { length: 100 }),
 	phone: varchar({ length: 20 }),
+	registeredAddress: varchar("registered_address", { length: 500 }),
+	businessAddress: varchar("business_address", { length: 500 }),
 	industry: varchar({ length: 100 }),
+	settledDate: timestamp("settled_date"),
 	type: varchar({ length: 20 }).default('tenant').notNull(), // tenant=入驻企业, service=服务企业
 	status: varchar({ length: 20 }).default('active').notNull(),
+	remarks: text(),
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at"),
 }, (table) => [
