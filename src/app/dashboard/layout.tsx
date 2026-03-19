@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ import {
   X,
   FileText,
   ChevronDown,
-  ChevronRight,
   Building2,
   LogOut,
   Settings,
@@ -51,7 +50,9 @@ import {
   Calendar,
   MapPin,
   Building,
+  Home,
 } from "lucide-react";
+import { TabsContext, Tab } from "./tabs-context";
 
 interface User {
   id: string;
@@ -78,6 +79,244 @@ export default function DashboardLayout({
     "基地管理": pathname.startsWith("/dashboard/base"),
   });
 
+  // 全局标签页状态
+  const [tabs, setTabs] = useState<Tab[]>([
+    {
+      id: "dashboard",
+      label: "工作台",
+      path: "/dashboard",
+      icon: <LayoutDashboard className="h-3.5 w-3.5" />,
+      closable: false,
+    },
+  ]);
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  // 打开新标签页
+  const openTab = useCallback((tab: Omit<Tab, "closable"> & { closable?: boolean }) => {
+    const newTab: Tab = {
+      ...tab,
+      closable: tab.closable ?? true,
+    };
+    
+    setTabs((prev) => {
+      const existingTab = prev.find((t) => t.path === newTab.path || t.id === newTab.id);
+      if (existingTab) {
+        setActiveTab(existingTab.id);
+        return prev;
+      }
+      return [...prev, newTab];
+    });
+    
+    setActiveTab(newTab.id);
+    router.push(newTab.path);
+  }, [router]);
+
+  // 关闭标签页
+  const closeTab = useCallback((tabId: string) => {
+    setTabs((prev) => {
+      const tabIndex = prev.findIndex((t) => t.id === tabId);
+      const newTabs = prev.filter((t) => t.id !== tabId);
+
+      if (activeTab === tabId && newTabs.length > 0) {
+        const newActiveIndex = Math.min(tabIndex, newTabs.length - 1);
+        const newActiveTab = newTabs[newActiveIndex];
+        setActiveTab(newActiveTab.id);
+        router.push(newActiveTab.path);
+      }
+
+      return newTabs;
+    });
+  }, [activeTab, router]);
+
+  // 切换标签页
+  const switchTab = useCallback((tabId: string) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (tab) {
+      setActiveTab(tabId);
+      router.push(tab.path);
+    }
+  }, [tabs, router]);
+
+  // 更新标签页标题
+  const updateTabLabel = useCallback((tabId: string, label: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, label } : t))
+    );
+  }, []);
+
+  // 根据路径获取标签页配置
+  const getTabConfig = (path: string): Tab | null => {
+    // 基地管理
+    if (path === "/dashboard/base/sites") {
+      return {
+        id: "base-sites",
+        label: "物业运营中心",
+        path: "/dashboard/base/sites",
+        icon: <Building className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    if (path === "/dashboard/base/tenants") {
+      return {
+        id: "base-tenants",
+        label: "入驻企业",
+        path: "/dashboard/base/tenants",
+        icon: <Users className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    // 基地详情
+    const baseDetailMatch = path.match(/^\/dashboard\/base\/sites\/([^/]+)$/);
+    if (baseDetailMatch) {
+      return {
+        id: `base-${baseDetailMatch[1]}`,
+        label: "基地详情",
+        path: path,
+        icon: <Home className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    // 工单大厅
+    if (path === "/dashboard/orders") {
+      return {
+        id: "orders",
+        label: "工单大厅",
+        path: "/dashboard/orders",
+        icon: <ClipboardList className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "orders",
+      };
+    }
+    if (path === "/dashboard/orders/mine") {
+      return {
+        id: "orders-mine",
+        label: "我的工单",
+        path: "/dashboard/orders/mine",
+        icon: <Inbox className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "orders",
+      };
+    }
+    if (path === "/dashboard/orders/hall") {
+      return {
+        id: "orders-hall",
+        label: "去抢单",
+        path: "/dashboard/orders/hall",
+        icon: <Store className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "orders",
+      };
+    }
+    if (path === "/dashboard/orders/dispatch") {
+      return {
+        id: "orders-dispatch",
+        label: "去派单",
+        path: "/dashboard/orders/dispatch",
+        icon: <UserCheck className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "orders",
+      };
+    }
+    // 工单详情
+    const orderDetailMatch = path.match(/^\/dashboard\/orders\/([^/]+)$/);
+    if (orderDetailMatch) {
+      return {
+        id: `order-${orderDetailMatch[1]}`,
+        label: "工单详情",
+        path: path,
+        icon: <FileText className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "orders",
+      };
+    }
+    // 人力资源
+    if (path.startsWith("/dashboard/hr/")) {
+      const hrPages: Record<string, { label: string; icon: ReactNode }> = {
+        "recruitment": { label: "招聘管理", icon: <UserPlus className="h-3.5 w-3.5" /> },
+        "archives": { label: "员工档案", icon: <Users className="h-3.5 w-3.5" /> },
+        "contracts": { label: "合同管理", icon: <FileSignature className="h-3.5 w-3.5" /> },
+        "dispatch": { label: "派遣项目", icon: <FolderKanban className="h-3.5 w-3.5" /> },
+        "attendance": { label: "考勤管理", icon: <Clock className="h-3.5 w-3.5" /> },
+        "payroll": { label: "薪酬管理", icon: <DollarSign className="h-3.5 w-3.5" /> },
+        "training": { label: "培训管理", icon: <GraduationCap className="h-3.5 w-3.5" /> },
+        "reports": { label: "统计报表", icon: <BarChart3 className="h-3.5 w-3.5" /> },
+      };
+      const hrPath = path.replace("/dashboard/hr/", "");
+      const hrConfig = hrPages[hrPath];
+      if (hrConfig) {
+        return {
+          id: `hr-${hrPath}`,
+          label: hrConfig.label,
+          path: path,
+          icon: hrConfig.icon,
+          closable: true,
+          group: "hr",
+        };
+      }
+    }
+    // 销售中心
+    if (path.startsWith("/dashboard/sales/")) {
+      const salesPages: Record<string, { label: string; icon: ReactNode }> = {
+        "overview": { label: "营销概览", icon: <TrendingUp className="h-3.5 w-3.5" /> },
+        "leads": { label: "线索中心", icon: <Users className="h-3.5 w-3.5" /> },
+        "channels": { label: "渠道管理", icon: <Store className="h-3.5 w-3.5" /> },
+        "pool": { label: "客户公海", icon: <Inbox className="h-3.5 w-3.5" /> },
+        "customers": { label: "我的客户", icon: <Users className="h-3.5 w-3.5" /> },
+        "opportunities": { label: "商机管理", icon: <Target className="h-3.5 w-3.5" /> },
+        "payments": { label: "回款管理", icon: <Wallet className="h-3.5 w-3.5" /> },
+        "performance": { label: "销售业绩", icon: <DollarSign className="h-3.5 w-3.5" /> },
+      };
+      const salesPath = path.replace("/dashboard/sales/", "");
+      const salesConfig = salesPages[salesPath];
+      if (salesConfig) {
+        return {
+          id: `sales-${salesPath}`,
+          label: salesConfig.label,
+          path: path,
+          icon: salesConfig.icon,
+          closable: true,
+          group: "sales",
+        };
+      }
+    }
+    // 税务日历
+    if (path === "/dashboard/tax-calendar") {
+      return {
+        id: "tax-calendar",
+        label: "税务日历",
+        path: "/dashboard/tax-calendar",
+        icon: <Calendar className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "accounting",
+      };
+    }
+    // 客户管理
+    if (path === "/dashboard/customers") {
+      return {
+        id: "customers",
+        label: "客户管理",
+        path: "/dashboard/customers",
+        icon: <Users className="h-3.5 w-3.5" />,
+        closable: true,
+      };
+    }
+    // 分润结算
+    if (path === "/dashboard/profit-shares") {
+      return {
+        id: "profit-shares",
+        label: "分润结算",
+        path: "/dashboard/profit-shares",
+        icon: <Wallet className="h-3.5 w-3.5" />,
+        closable: true,
+      };
+    }
+    
+    return null;
+  };
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     const userData = localStorage.getItem("user");
@@ -93,6 +332,39 @@ export default function DashboardLayout({
       router.push("/login");
     }
   }, [router]);
+
+  // 监听路由变化，自动打开/切换标签页
+  useEffect(() => {
+    // 排除账务中心页面（它有自己的标签系统）
+    if (pathname.startsWith("/accounting") || pathname.startsWith("/dashboard/ledgers")) {
+      return;
+    }
+    
+    // 工作台
+    if (pathname === "/dashboard") {
+      setActiveTab("dashboard");
+      return;
+    }
+    
+    // 根据路径自动创建标签页
+    const tabConfig = getTabConfig(pathname);
+    if (tabConfig) {
+      setTabs((prev) => {
+        const existingTab = prev.find((t) => t.path === pathname);
+        if (!existingTab) {
+          return [...prev, tabConfig!];
+        }
+        return prev;
+      });
+      
+      const existingTab = tabs.find((t) => t.path === pathname);
+      if (existingTab) {
+        setActiveTab(existingTab.id);
+      } else if (tabConfig) {
+        setActiveTab(tabConfig.id);
+      }
+    }
+  }, [pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -198,7 +470,8 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30">
+    <TabsContext.Provider value={{ tabs, activeTab, openTab, closeTab, switchTab, updateTabLabel }}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30">
       {/* 顶部导航栏 */}
       <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
         <div className="flex items-center justify-between h-full px-4 lg:px-6">
@@ -313,6 +586,37 @@ export default function DashboardLayout({
           </div>
         </div>
       </header>
+
+      {/* 全局标签栏 */}
+      <div className="fixed left-56 right-0 top-14 z-30 h-10 bg-white border-b border-slate-200/60 flex items-center px-3 shrink-0">
+        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={`group flex items-center gap-1.5 px-3 py-2 text-sm cursor-pointer transition-all border-b-2 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "text-amber-600 border-amber-500 bg-amber-50/50"
+                  : "text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100/50"
+              }`}
+              onClick={() => switchTab(tab.id)}
+            >
+              {tab.icon}
+              <span className="max-w-[140px] truncate">{tab.label}</span>
+              {tab.closable && tabs.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTab(tab.id);
+                  }}
+                  className="ml-0.5 p-0.5 rounded hover:bg-slate-200/80 text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* 侧边栏 */}
       <aside
@@ -447,7 +751,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* 主内容区 */}
-      <main className="lg:pl-56 pt-14">
+      <main className="lg:pl-56 pt-[6rem]">
         <div className="p-4 lg:p-6">{children}</div>
       </main>
 
@@ -458,6 +762,7 @@ export default function DashboardLayout({
           onClick={() => setSidebarOpen(false)}
         />
       )}
-    </div>
+      </div>
+    </TabsContext.Provider>
   );
 }

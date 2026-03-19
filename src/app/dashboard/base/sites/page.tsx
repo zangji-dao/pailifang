@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTabs } from "../tabs-context";
+import { useTabs } from "../../tabs-context";
 
 interface Base {
   id: string;

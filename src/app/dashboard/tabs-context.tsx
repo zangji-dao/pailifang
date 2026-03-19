@@ -9,6 +9,7 @@ export interface Tab {
   path: string;
   icon?: ReactNode;
   closable?: boolean;
+  group?: string; // 所属模块分组，用于识别一级菜单
 }
 
 // 标签页上下文
