@@ -51,8 +51,10 @@ interface Shareholder {
   idCardBackKey?: string;
   idCardBackUrl?: string;
   // 企业股东 - 营业执照
-  licenseKey?: string; // 营业执照存储key
-  licenseUrl?: string; // 营业执照预览URL
+  licenseOriginalKey?: string; // 营业执照正本存储key
+  licenseOriginalUrl?: string; // 营业执照正本预览URL
+  licenseCopyKey?: string; // 营业执照副本存储key
+  licenseCopyUrl?: string; // 营业执照副本预览URL
 }
 
 interface Personnel {
@@ -533,11 +535,19 @@ export default function EditApplicationPage() {
 
   // 股东文件上传状态
   const [uploadingShareholderFiles, setUploadingShareholderFiles] = useState<Record<string, boolean>>({});
+  
+  // 股东文件裁剪状态
+  const [shareholderCropperOpen, setShareholderCropperOpen] = useState(false);
+  const [shareholderCropperImageSrc, setShareholderCropperImageSrc] = useState<string>("");
+  const [shareholderCropperTarget, setShareholderCropperTarget] = useState<{
+    fileType: 'idCardFront' | 'idCardBack' | 'licenseOriginal' | 'licenseCopy';
+    shareholderIndex: number;
+  } | null>(null);
 
   // 上传股东证件文件
   const uploadShareholderFile = async (
-    file: File, 
-    fileType: 'idCardFront' | 'idCardBack' | 'license', 
+    file: File | Blob, 
+    fileType: 'idCardFront' | 'idCardBack' | 'licenseOriginal' | 'licenseCopy', 
     shareholderIndex: number
   ): Promise<void> => {
     const uploadKey = `shareholder-${shareholderIndex}-${fileType}`;
@@ -545,8 +555,8 @@ export default function EditApplicationPage() {
 
     try {
       const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      formDataUpload.append('type', fileType === 'license' ? 'license' : 'id_card');
+      formDataUpload.append('file', file, 'cropped-image.jpg');
+      formDataUpload.append('type', fileType.startsWith('license') ? 'license' : 'id_card');
 
       const response = await fetch('/api/storage/upload', {
         method: 'POST',
@@ -571,11 +581,17 @@ export default function EditApplicationPage() {
               idCardBackKey: result.data.key,
               idCardBackUrl: result.data.url,
             };
-          } else if (fileType === 'license') {
+          } else if (fileType === 'licenseOriginal') {
             newShareholders[shareholderIndex] = {
               ...newShareholders[shareholderIndex],
-              licenseKey: result.data.key,
-              licenseUrl: result.data.url,
+              licenseOriginalKey: result.data.key,
+              licenseOriginalUrl: result.data.url,
+            };
+          } else if (fileType === 'licenseCopy') {
+            newShareholders[shareholderIndex] = {
+              ...newShareholders[shareholderIndex],
+              licenseCopyKey: result.data.key,
+              licenseCopyUrl: result.data.url,
             };
           }
           return { ...prev, shareholders: newShareholders };
@@ -593,7 +609,7 @@ export default function EditApplicationPage() {
 
   const handleShareholderFileChange = (
     e: React.ChangeEvent<HTMLInputElement>, 
-    fileType: 'idCardFront' | 'idCardBack' | 'license', 
+    fileType: 'idCardFront' | 'idCardBack' | 'licenseOriginal' | 'licenseCopy', 
     shareholderIndex: number
   ) => {
     const file = e.target.files?.[0];
@@ -606,12 +622,37 @@ export default function EditApplicationPage() {
         alert('文件大小不能超过 5MB');
         return;
       }
-      uploadShareholderFile(file, fileType, shareholderIndex);
+      
+      // 打开裁剪对话框
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setShareholderCropperImageSrc(event.target?.result as string);
+        setShareholderCropperTarget({ fileType, shareholderIndex });
+        setShareholderCropperOpen(true);
+      };
+      reader.readAsDataURL(file);
     }
+    e.target.value = '';
+  };
+  
+  // 股东文件裁剪完成
+  const handleShareholderCropComplete = async (croppedBlob: Blob) => {
+    if (!shareholderCropperTarget) return;
+    
+    setShareholderCropperOpen(false);
+    await uploadShareholderFile(croppedBlob, shareholderCropperTarget.fileType, shareholderCropperTarget.shareholderIndex);
+    setShareholderCropperTarget(null);
+    setShareholderCropperImageSrc("");
+  };
+  
+  const handleShareholderCropCancel = () => {
+    setShareholderCropperOpen(false);
+    setShareholderCropperTarget(null);
+    setShareholderCropperImageSrc("");
   };
 
   const removeShareholderFile = (
-    fileType: 'idCardFront' | 'idCardBack' | 'license', 
+    fileType: 'idCardFront' | 'idCardBack' | 'licenseOriginal' | 'licenseCopy', 
     shareholderIndex: number
   ) => {
     setFormData((prev) => {
@@ -629,11 +670,17 @@ export default function EditApplicationPage() {
           idCardBackKey: '',
           idCardBackUrl: '',
         };
-      } else if (fileType === 'license') {
+      } else if (fileType === 'licenseOriginal') {
         newShareholders[shareholderIndex] = {
           ...newShareholders[shareholderIndex],
-          licenseKey: '',
-          licenseUrl: '',
+          licenseOriginalKey: '',
+          licenseOriginalUrl: '',
+        };
+      } else if (fileType === 'licenseCopy') {
+        newShareholders[shareholderIndex] = {
+          ...newShareholders[shareholderIndex],
+          licenseCopyKey: '',
+          licenseCopyUrl: '',
         };
       }
       return { ...prev, shareholders: newShareholders };
@@ -1759,13 +1806,14 @@ export default function EditApplicationPage() {
                     <div className="space-y-2">
                       <Label>营业执照</Label>
                       <div className="grid grid-cols-2 gap-4">
+                        {/* 正本 */}
                         <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground">营业执照正本/副本</p>
-                          {shareholder.licenseUrl ? (
+                          <p className="text-xs text-muted-foreground">正本</p>
+                          {shareholder.licenseOriginalUrl ? (
                             <div className="relative group">
                               <img
-                                src={shareholder.licenseUrl}
-                                alt="营业执照"
+                                src={shareholder.licenseOriginalUrl}
+                                alt="营业执照正本"
                                 className="w-full h-24 object-cover rounded border"
                               />
                               {canEdit && (
@@ -1774,7 +1822,7 @@ export default function EditApplicationPage() {
                                   variant="destructive"
                                   size="sm"
                                   className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeShareholderFile('license', index)}
+                                  onClick={() => removeShareholderFile('licenseOriginal', index)}
                                 >
                                   <X className="h-3 w-3" />
                                 </Button>
@@ -1783,29 +1831,76 @@ export default function EditApplicationPage() {
                           ) : (
                             <label className={cn(
                               "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
-                              uploadingShareholderFiles[`shareholder-${index}-license`] && "opacity-50 cursor-wait",
+                              uploadingShareholderFiles[`shareholder-${index}-licenseOriginal`] && "opacity-50 cursor-wait",
                               !canEdit && "opacity-50 cursor-not-allowed"
                             )}>
-                              {uploadingShareholderFiles[`shareholder-${index}-license`] ? (
+                              {uploadingShareholderFiles[`shareholder-${index}-licenseOriginal`] ? (
                                 <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
                               ) : (
                                 <>
                                   <Upload className="h-6 w-6 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground mt-1">上传营业执照</span>
+                                  <span className="text-xs text-muted-foreground mt-1">上传正本</span>
                                 </>
                               )}
                               <input
                                 type="file"
                                 accept="image/jpeg,image/png,image/jpg"
                                 className="hidden"
-                                onChange={(e) => handleShareholderFileChange(e, 'license', index)}
-                                disabled={!canEdit || uploadingShareholderFiles[`shareholder-${index}-license`]}
+                                onChange={(e) => handleShareholderFileChange(e, 'licenseOriginal', index)}
+                                disabled={!canEdit || uploadingShareholderFiles[`shareholder-${index}-licenseOriginal`]}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        
+                        {/* 副本 */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">副本</p>
+                          {shareholder.licenseCopyUrl ? (
+                            <div className="relative group">
+                              <img
+                                src={shareholder.licenseCopyUrl}
+                                alt="营业执照副本"
+                                className="w-full h-24 object-cover rounded border"
+                              />
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => removeShareholderFile('licenseCopy', index)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary",
+                              uploadingShareholderFiles[`shareholder-${index}-licenseCopy`] && "opacity-50 cursor-wait",
+                              !canEdit && "opacity-50 cursor-not-allowed"
+                            )}>
+                              {uploadingShareholderFiles[`shareholder-${index}-licenseCopy`] ? (
+                                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                              ) : (
+                                <>
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground mt-1">上传副本</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="hidden"
+                                onChange={(e) => handleShareholderFileChange(e, 'licenseCopy', index)}
+                                disabled={!canEdit || uploadingShareholderFiles[`shareholder-${index}-licenseCopy`]}
                               />
                             </label>
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">支持JPG、PNG格式，不超过5MB</p>
+                      <p className="text-xs text-muted-foreground">支持JPG、PNG格式，单张不超过5MB</p>
                     </div>
                   )}
                 </div>
@@ -1875,13 +1970,22 @@ export default function EditApplicationPage() {
         </div>
       </ScrollArea>
       
-      {/* 图片裁剪对话框 */}
+      {/* 图片裁剪对话框 - 身份证 */}
       <ImageCropper
         open={cropperOpen}
         imageSrc={cropperImageSrc}
         onCrop={handleCropComplete}
         onCancel={handleCropCancel}
         aspectRatio={1.58}
+      />
+      
+      {/* 图片裁剪对话框 - 股东证件 */}
+      <ImageCropper
+        open={shareholderCropperOpen}
+        imageSrc={shareholderCropperImageSrc}
+        onCrop={handleShareholderCropComplete}
+        onCancel={handleShareholderCropCancel}
+        aspectRatio={shareholderCropperTarget?.fileType?.startsWith('license') ? 1.41 : 1.58}
       />
     </div>
   );
@@ -1936,8 +2040,10 @@ const initialFormData: ApplicationFormData = {
     idCardFrontUrl: "",
     idCardBackKey: "",
     idCardBackUrl: "",
-    licenseKey: "",
-    licenseUrl: "",
+    licenseOriginalKey: "",
+    licenseOriginalUrl: "",
+    licenseCopyKey: "",
+    licenseCopyUrl: "",
   }],
   ewtContactName: "",
   ewtContactPhone: "",
