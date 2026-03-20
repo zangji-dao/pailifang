@@ -153,17 +153,16 @@ try {
 
 ### 优先级 2（500-1000行）
 
-| 文件 | 行数 | 拆分建议 |
-|------|------|----------|
-| `accounting-subjects.ts` | 899 | 数据文件，可按科目类型拆分为多个文件 |
-| `accounting/page.tsx` | 859 | 拆分为 components/ 和 hooks/ |
-| `base/sites/[id]/page.tsx` | 847 | 拆分为 useSiteDetail.ts 和组件 |
-| `dashboard/layout.tsx` | 809 | 拆分为 Sidebar, Header 等组件 |
-| `hr/training/page.tsx` | 777 | 拆分为 components/ |
-| `currency/CurrencySettingsPage.tsx` | 777 | 拆分为 components/ 和 hooks/ |
-| `ApplicationFormDialog.tsx` | 766 | 拆分为子表单组件 |
-| `hr/recruitment/page.tsx` | 757 | 拆分为 components/ |
-| `hr/payroll/page.tsx` | 726 | 拆分为 components/ |
+| 文件 | 行数 | 拆分建议 | 状态 |
+|------|------|----------|------|
+| `base/sites/[id]/page.tsx` | 847 | 拆分为 useSiteDetail.ts 和组件 | ✅ 已完成 |
+| `accounting/page.tsx` | 859 | 拆分为 components/ 和 hooks/ | ⏳ 待重构 |
+| `dashboard/layout.tsx` | 809 | 拆分为 Sidebar, Header 等组件 | ⏳ 待重构 |
+| `hr/training/page.tsx` | 777 | 拆分为 components/ | ⏳ 待重构 |
+| `currency/CurrencySettingsPage.tsx` | 777 | 拆分为 components/ 和 hooks/ | ⏳ 待重构 |
+| `ApplicationFormDialog.tsx` | 766 | 拆分为子表单组件 | ⏳ 待重构 |
+| `hr/recruitment/page.tsx` | 757 | 拆分为 components/ | ⏳ 待重构 |
+| `hr/payroll/page.tsx` | 726 | 拆分为 components/ | ⏳ 待重构 |
 
 ### 拆分策略
 
