@@ -151,33 +151,72 @@ export function ShareholderStep({
             <div className="space-y-2">
               <Label>身份证照片 <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-4">
-                {['idCardFront', 'idCardBack'].map((type) => (
-                  <div key={type} className="space-y-2">
-                    <p className="text-xs text-muted-foreground">{type === 'idCardFront' ? '正面（人像面）' : '反面（国徽面）'}</p>
-                    {shareholder[`${type}Url` as keyof Shareholder] ? (
-                      <div className="relative group">
-                        <img src={shareholder[`${type}Url` as keyof Shareholder] as string} alt={`身份证${type === 'idCardFront' ? '正面' : '反面'}`} className="w-full h-40 object-contain rounded border bg-muted/50" />
-                        {canEdit && (
-                          <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeFile(type as 'idCardFront' | 'idCardBack', index)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
+                {/* 正面 */}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">正面（人像面）<span className="text-destructive">*</span></p>
+                  {shareholder.idCardFrontUrl ? (
+                    <div className="relative group">
+                      <div className="aspect-[1.58/1] rounded-lg border overflow-hidden bg-muted/50">
+                        <img src={shareholder.idCardFrontUrl} alt="身份证正面" className="w-full h-full object-contain" />
                       </div>
-                    ) : (
-                      <label className={cn("flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded cursor-pointer hover:border-primary", uploadingFiles[getUploadKey(type, index)] && "opacity-50 cursor-wait", !canEdit && "opacity-50 cursor-not-allowed")}>
-                        {uploadingFiles[getUploadKey(type, index)] ? (
-                          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground mt-1">上传{type === 'idCardFront' ? '正面' : '反面'}</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/jpeg,image/png,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, type as 'idCardFront' | 'idCardBack', index)} disabled={!canEdit || uploadingFiles[getUploadKey(type, index)]} />
-                      </label>
-                    )}
-                  </div>
-                ))}
+                      {canEdit && (
+                        <button type="button" onClick={() => removeFile('idCardFront', index)} className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <label className={cn("flex flex-col items-center justify-center aspect-[1.58/1] rounded-lg border-2 border-dashed transition-all", canEdit ? "border-muted-foreground/25 hover:border-primary/50 cursor-pointer" : "border-muted-foreground/25 opacity-50 cursor-not-allowed", uploadingFiles[getUploadKey('idCardFront', index)] && "opacity-50 cursor-wait")}>
+                      {uploadingFiles[getUploadKey('idCardFront', index)] ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+                          <span className="text-xs text-muted-foreground">上传中...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                            <Upload className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">点击上传正面</span>
+                        </div>
+                      )}
+                      <input type="file" accept="image/jpeg,image/png,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, 'idCardFront', index)} disabled={!canEdit || uploadingFiles[getUploadKey('idCardFront', index)]} />
+                    </label>
+                  )}
+                </div>
+                {/* 反面 */}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">反面（国徽面）<span className="text-destructive">*</span></p>
+                  {shareholder.idCardBackUrl ? (
+                    <div className="relative group">
+                      <div className="aspect-[1.58/1] rounded-lg border overflow-hidden bg-muted/50">
+                        <img src={shareholder.idCardBackUrl} alt="身份证反面" className="w-full h-full object-contain" />
+                      </div>
+                      {canEdit && (
+                        <button type="button" onClick={() => removeFile('idCardBack', index)} className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <label className={cn("flex flex-col items-center justify-center aspect-[1.58/1] rounded-lg border-2 border-dashed transition-all", canEdit ? "border-muted-foreground/25 hover:border-primary/50 cursor-pointer" : "border-muted-foreground/25 opacity-50 cursor-not-allowed", uploadingFiles[getUploadKey('idCardBack', index)] && "opacity-50 cursor-wait")}>
+                      {uploadingFiles[getUploadKey('idCardBack', index)] ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+                          <span className="text-xs text-muted-foreground">上传中...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                            <Upload className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">点击上传反面</span>
+                        </div>
+                      )}
+                      <input type="file" accept="image/jpeg,image/png,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, 'idCardBack', index)} disabled={!canEdit || uploadingFiles[getUploadKey('idCardBack', index)]} />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -187,33 +226,72 @@ export function ShareholderStep({
             <div className="space-y-2">
               <Label>营业执照 <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-4">
-                {['licenseOriginal', 'licenseCopy'].map((type) => (
-                  <div key={type} className="space-y-2">
-                    <p className="text-xs text-muted-foreground">{type === 'licenseOriginal' ? '正本' : '副本'}</p>
-                    {shareholder[`${type}Url` as keyof Shareholder] ? (
-                      <div className="relative group">
-                        <img src={shareholder[`${type}Url` as keyof Shareholder] as string} alt={`营业执照${type === 'licenseOriginal' ? '正本' : '副本'}`} className="w-full h-40 object-contain rounded border bg-muted/50" />
-                        {canEdit && (
-                          <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeFile(type as 'licenseOriginal' | 'licenseCopy', index)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
+                {/* 正本 */}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">正本<span className="text-destructive">*</span></p>
+                  {shareholder.licenseOriginalUrl ? (
+                    <div className="relative group">
+                      <div className="aspect-[1.4/1] rounded-lg border overflow-hidden bg-muted/50">
+                        <img src={shareholder.licenseOriginalUrl} alt="营业执照正本" className="w-full h-full object-contain" />
                       </div>
-                    ) : (
-                      <label className={cn("flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded cursor-pointer hover:border-primary", uploadingFiles[getUploadKey(type, index)] && "opacity-50 cursor-wait", !canEdit && "opacity-50 cursor-not-allowed")}>
-                        {uploadingFiles[getUploadKey(type, index)] ? (
-                          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground mt-1">上传{type === 'licenseOriginal' ? '正本' : '副本'}</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/jpeg,image/png,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, type as 'licenseOriginal' | 'licenseCopy', index)} disabled={!canEdit || uploadingFiles[getUploadKey(type, index)]} />
-                      </label>
-                    )}
-                  </div>
-                ))}
+                      {canEdit && (
+                        <button type="button" onClick={() => removeFile('licenseOriginal', index)} className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <label className={cn("flex flex-col items-center justify-center aspect-[1.4/1] rounded-lg border-2 border-dashed transition-all", canEdit ? "border-muted-foreground/25 hover:border-primary/50 cursor-pointer" : "border-muted-foreground/25 opacity-50 cursor-not-allowed", uploadingFiles[getUploadKey('licenseOriginal', index)] && "opacity-50 cursor-wait")}>
+                      {uploadingFiles[getUploadKey('licenseOriginal', index)] ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+                          <span className="text-xs text-muted-foreground">上传中...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                            <Upload className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">点击上传正本</span>
+                        </div>
+                      )}
+                      <input type="file" accept="image/jpeg,image/png,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, 'licenseOriginal', index)} disabled={!canEdit || uploadingFiles[getUploadKey('licenseOriginal', index)]} />
+                    </label>
+                  )}
+                </div>
+                {/* 副本 */}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">副本<span className="text-destructive">*</span></p>
+                  {shareholder.licenseCopyUrl ? (
+                    <div className="relative group">
+                      <div className="aspect-[1.4/1] rounded-lg border overflow-hidden bg-muted/50">
+                        <img src={shareholder.licenseCopyUrl} alt="营业执照副本" className="w-full h-full object-contain" />
+                      </div>
+                      {canEdit && (
+                        <button type="button" onClick={() => removeFile('licenseCopy', index)} className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <label className={cn("flex flex-col items-center justify-center aspect-[1.4/1] rounded-lg border-2 border-dashed transition-all", canEdit ? "border-muted-foreground/25 hover:border-primary/50 cursor-pointer" : "border-muted-foreground/25 opacity-50 cursor-not-allowed", uploadingFiles[getUploadKey('licenseCopy', index)] && "opacity-50 cursor-wait")}>
+                      {uploadingFiles[getUploadKey('licenseCopy', index)] ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+                          <span className="text-xs text-muted-foreground">上传中...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                            <Upload className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">点击上传副本</span>
+                        </div>
+                      )}
+                      <input type="file" accept="image/jpeg,image/png,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, 'licenseCopy', index)} disabled={!canEdit || uploadingFiles[getUploadKey('licenseCopy', index)]} />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           )}
