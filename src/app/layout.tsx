@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inspector } from 'react-dev-inspector';
+import { Toaster } from '@/components/ui/sonner';
+import { ConfirmProvider } from '@/components/confirm-dialog';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -44,7 +46,10 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body className="antialiased">
         {isDev && <Inspector />}
-        {children}
+        <ConfirmProvider>
+          {children}
+        </ConfirmProvider>
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

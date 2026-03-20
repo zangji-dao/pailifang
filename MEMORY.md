@@ -100,6 +100,52 @@ try {
 - **大列表（>100条）使用虚拟滚动**
 - **图片必须设置尺寸**，避免布局抖动
 
+### 0.9 弹窗规范
+
+> **禁止使用原生弹窗**（`alert`、`confirm`、`prompt`），必须使用自定义弹窗组件。
+
+**Toast 提示（轻量级通知）**：
+```typescript
+import { toast } from '@/lib/notify';
+
+// 使用方式
+toast.success('操作成功');
+toast.error('操作失败，请稍后重试');
+toast.warning('请注意核对信息');
+toast.info('提示信息');
+toast.loading('加载中...');
+
+// Promise 自动处理
+toast.promise(saveData(), {
+  loading: '保存中...',
+  success: '保存成功',
+  error: '保存失败',
+});
+```
+
+**确认弹窗（需要用户确认的操作）**：
+```typescript
+import { useConfirm } from '@/components/confirm-dialog';
+
+function MyComponent() {
+  const confirm = useConfirm();
+
+  const handleDelete = async () => {
+    const confirmed = await confirm({
+      title: '确认删除',
+      description: '删除后将无法恢复，确定要删除吗？',
+      confirmText: '删除',
+      cancelText: '取消',
+      variant: 'destructive', // 危险操作样式
+    });
+
+    if (confirmed) {
+      // 执行删除
+    }
+  };
+}
+```
+
 ---
 
 ## 📌 待办事项
@@ -321,6 +367,7 @@ interface Shareholder {
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2026-03-20 | 创建全局弹窗系统：toast（sonner）+ ConfirmProvider，禁止使用原生弹窗 |
 | 2026-03-20 | 完成 dashboard/layout.tsx 重构：拆分为 types.tsx, constants.tsx, tab-config.tsx, useDashboardLayout.tsx, Header/TabBar/Sidebar 组件 |
 | 2026-03-20 | 完成 base/sites/[id]/page.tsx 重构：拆分为 types.ts, useSiteDetail.ts, MeterIcon/TypeTag/MeterBillCard/MeterCard/MeterDetailPanel/StatsCards 组件 |
 | 2026-03-20 | 重构配置系统：创建 types.ts，统一配置类型，添加 backend 配置 |
