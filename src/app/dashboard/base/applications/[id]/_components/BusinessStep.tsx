@@ -1,7 +1,6 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { BusinessScopeSelector } from "./BusinessScopeSelector";
 import type { ApplicationFormData } from "../types";
 
@@ -23,25 +22,13 @@ export function BusinessStep({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 经营范围选择器 */}
       <div className="space-y-2">
         <Label>经营范围 <span className="text-destructive">*</span></Label>
         <BusinessScopeSelector
           selectedIds={formData.businessScopeIds || []}
           onChange={handleScopeChange}
-          disabled={!canEdit}
-        />
-      </div>
-
-      {/* 备注 */}
-      <div className="space-y-2">
-        <Label>备注</Label>
-        <Textarea
-          value={formData.remarks}
-          onChange={(e) => updateField("remarks", e.target.value)}
-          placeholder="请输入备注信息"
-          rows={3}
           disabled={!canEdit}
         />
       </div>
