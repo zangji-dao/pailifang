@@ -108,7 +108,7 @@ try {
 
 | 状态 | 任务 | 备注 |
 |------|------|------|
-| ⏳ | 重构超长文件 | 已分析完成，待执行拆分 |
+| ✅ | 重构超长文件 | 已完成：applications/[id]/page.tsx 拆分为多个文件 |
 | ✅ | 修复 any 类型 | 已完成：定义具体类型替代 |
 | ✅ | 补充 try-catch | 已确认：大部分已有错误处理 |
 
@@ -145,11 +145,11 @@ try {
 
 ### 优先级 1（>1000行）
 
-| 文件 | 行数 | 拆分建议 |
-|------|------|----------|
-| `applications/[id]/page.tsx` | 2056 | 拆分为 types.ts, constants.ts, useApplicationForm.ts, 表单组件 |
-| `applications/new/page.tsx` | 1837 | 同上，可复用 types.ts 和 constants.ts |
-| `marketing/publish/page.tsx` | 1008 | 拆分为 components/ 目录，按功能模块拆分 |
+| 文件 | 行数 | 拆分建议 | 状态 |
+|------|------|----------|------|
+| `applications/[id]/page.tsx` | 2056 | 拆分为 types.ts, constants.ts, useApplicationForm.ts, 表单组件 | ✅ 已完成 |
+| `applications/new/page.tsx` | 1837 | 同上，可复用 types.ts 和 constants.ts | ⏳ 待重构 |
+| `marketing/publish/page.tsx` | 1008 | 拆分为 components/ 目录，按功能模块拆分 | ⏳ 待重构 |
 
 ### 优先级 2（500-1000行）
 
