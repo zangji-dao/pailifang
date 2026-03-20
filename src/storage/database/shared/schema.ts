@@ -324,6 +324,22 @@ export const piSettlementApplications = pgTable("pi_settlement_applications", {
 	index("idx_ssa_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
 ]);
 
+// 分享链接表
+export const shareLinks = pgTable("pi_share_links", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	token: varchar({ length: 64 }).notNull().unique(),
+	applicationId: varchar("application_id", { length: 36 }).notNull(),
+	createdBy: varchar("created_by", { length: 36 }).notNull(),
+	expiresAt: timestamp("expires_at", { mode: 'string' }),
+	isUsed: boolean("is_used").default(false).notNull(),
+	usedAt: timestamp("used_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("idx_share_links_token").using("btree", table.token.asc().nullsLast().op("text_ops")),
+	index("idx_share_links_application_id").using("btree", table.applicationId.asc().nullsLast().op("text_ops")),
+	index("idx_share_links_created_by").using("btree", table.createdBy.asc().nullsLast().op("text_ops")),
+]);
+
 export const auxiliaryBalances = pgTable("auxiliary_balances", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
 	ledgerId: varchar("ledger_id", { length: 36 }).notNull(),

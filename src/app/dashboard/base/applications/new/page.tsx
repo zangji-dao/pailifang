@@ -1,9 +1,16 @@
 "use client";
 
-import { ArrowLeft, Loader2, Save, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Send, ChevronLeft, ChevronRight, Share2, Copy, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ImageCropper } from "@/components/image-cropper";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useNewApplicationForm } from "./useNewApplicationForm";
 import { formSteps } from "../[id]/constants";
 import { BasicInfoStep } from "../[id]/_components/BasicInfoStep";
@@ -51,6 +58,12 @@ export default function NewApplicationPage() {
     saveDraft,
     handleSubmit,
     handleGoBack,
+    shareDialogOpen,
+    setShareDialogOpen,
+    shareUrl,
+    creatingShare,
+    handleShare,
+    copyShareUrl,
   } = useNewApplicationForm();
 
   const formDataForComponents = formData as unknown as ApplicationFormData;
@@ -93,20 +106,20 @@ export default function NewApplicationPage() {
               )}
             </div>
             
-            {/* 右侧：保存按钮 */}
+            {/* 右侧：转发按钮 */}
             <div className="w-[100px] flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={saveDraft}
-                disabled={saving}
+                onClick={handleShare}
+                disabled={saving || creatingShare}
               >
-                {saving ? (
+                {saving || creatingShare ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-1" />
-                    保存
+                    <Share2 className="h-4 w-4 mr-1" />
+                    转发
                   </>
                 )}
               </Button>
@@ -223,7 +236,7 @@ export default function NewApplicationPage() {
             </div>
             
             {/* 中间：步骤提示 */}
-            <div className="flex-1 flex justify-center items-center gap-2">
+            <div className="flex-1 flex justify-center items-center gap-3">
               <span className="text-sm text-muted-foreground">
                 第 {currentStep + 1} 步，共 {formSteps.length} 步
               </span>
@@ -285,6 +298,40 @@ export default function NewApplicationPage() {
         onCancel={handleShareholderCropCancel}
         aspectRatio={1.58}
       />
+
+      {/* 分享弹窗 */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>分享申请表单</DialogTitle>
+            <DialogDescription>
+              将此链接发送给客户，客户可在微信中直接填写表单
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <div className="grid flex-1 gap-2">
+                <div className="px-3 py-2 bg-muted rounded-md text-sm break-all">
+                  {shareUrl}
+                </div>
+              </div>
+              <Button type="button" size="sm" onClick={copyShareUrl} className="px-3">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                💡 提示：链接有效期为7天，客户填写后数据将自动保存到您的账号下
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={() => setShareDialogOpen(false)}>
+                关闭
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
