@@ -59,6 +59,7 @@ export default function ApplicationDetailPage() {
     handleShareholderCropCancel,
     goToNextStep,
     goToPrevStep,
+    handleGoBack,
   } = useApplicationForm(applicationId);
 
   useEffect(() => {
@@ -95,8 +96,12 @@ export default function ApplicationDetailPage() {
           <div className="flex items-center">
             {/* 左侧：返回按钮 */}
             <div className="w-[100px]">
-              <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/applications")}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+              <Button variant="ghost" size="sm" onClick={handleGoBack} disabled={saving}>
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                )}
                 返回
               </Button>
             </div>

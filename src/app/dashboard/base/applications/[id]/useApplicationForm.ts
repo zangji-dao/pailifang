@@ -574,6 +574,26 @@ export function useApplicationForm(id: string) {
   // 计算属性
   const canEdit = formData?.approvalStatus === "draft";
 
+  // ========== 返回并保存 ==========
+  const handleGoBack = useCallback(async () => {
+    // 如果有表单数据，先保存再跳转
+    if (formData && canEdit) {
+      setSaving(true);
+      try {
+        await fetch(`/api/applications/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+      } catch (error) {
+        console.error("保存失败:", error);
+      } finally {
+        setSaving(false);
+      }
+    }
+    router.push("/dashboard/base/applications");
+  }, [id, formData, canEdit, router]);
+
   return {
     // 状态
     formData,
@@ -635,5 +655,6 @@ export function useApplicationForm(id: string) {
     
     // 保存提交
     handleSubmit,
+    handleGoBack,
   };
 }

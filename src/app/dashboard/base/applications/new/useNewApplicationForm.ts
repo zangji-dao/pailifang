@@ -544,6 +544,35 @@ export function useNewApplicationForm() {
     }
   }, [formData, applicationId, validateForm, router]);
 
+  // ========== 返回并保存 ==========
+  const handleGoBack = useCallback(async () => {
+    // 如果有数据，先保存再跳转
+    if (formData) {
+      setSaving(true);
+      try {
+        const response = await fetch('/api/applications/draft', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            id: applicationId,
+            ...formData, 
+            status: 'draft' 
+          }),
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          toast.success("已保存");
+        }
+      } catch (error) {
+        console.error("保存失败:", error);
+      } finally {
+        setSaving(false);
+      }
+    }
+    router.push("/dashboard/base/applications");
+  }, [formData, applicationId, router]);
+
   return {
     // 状态
     formData,
@@ -602,5 +631,6 @@ export function useNewApplicationForm() {
     
     // 提交
     handleSubmit,
+    handleGoBack,
   };
 }
