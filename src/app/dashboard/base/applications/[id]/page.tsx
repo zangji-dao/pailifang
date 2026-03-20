@@ -92,11 +92,13 @@ export default function ApplicationDetailPage() {
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* 页面标题 */}
       <div className="flex items-center px-6 py-4 border-b bg-card">
-        {/* 左侧：返回按钮 */}
-        <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/applications")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          返回
-        </Button>
+        {/* 左侧：返回按钮（固定宽度） */}
+        <div className="w-[80px]">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/applications")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            返回
+          </Button>
+        </div>
         
         {/* 中间：标题居中 */}
         <div className="flex-1 text-center">
@@ -104,8 +106,8 @@ export default function ApplicationDetailPage() {
           <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
         </div>
         
-        {/* 右侧：保存按钮（仅草稿状态可编辑） */}
-        <div className="flex items-center gap-2 min-w-[100px] justify-end">
+        {/* 右侧：保存按钮（固定宽度，右对齐） */}
+        <div className="w-[100px] flex justify-end items-center gap-2">
           {canEdit && (
             <Button
               variant="outline"
@@ -216,15 +218,15 @@ export default function ApplicationDetailPage() {
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
           <div className="px-6 py-4">
             <div className="flex items-center">
-              {/* 左侧：上一步按钮 */}
-              {currentStep > 0 ? (
-                <Button type="button" variant="outline" onClick={goToPrevStep}>
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  上一步
-                </Button>
-              ) : (
-                <div className="min-w-[80px]" />
-              )}
+              {/* 左侧：上一步按钮（与返回按钮同宽） */}
+              <div className="w-[80px]">
+                {currentStep > 0 && (
+                  <Button type="button" variant="outline" onClick={goToPrevStep}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    上一步
+                  </Button>
+                )}
+              </div>
               
               {/* 中间：步骤提示 */}
               <div className="flex-1 flex justify-center items-center gap-2">
@@ -238,8 +240,8 @@ export default function ApplicationDetailPage() {
                 )}
               </div>
               
-              {/* 右侧：下一步/提交审核按钮 */}
-              <div className="min-w-[100px] flex justify-end">
+              {/* 右侧：下一步/提交审核按钮（与保存按钮同宽） */}
+              <div className="w-[100px] flex justify-end">
                 {isLastStep ? (
                   <Button
                     type="button"
