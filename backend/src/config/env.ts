@@ -23,6 +23,7 @@ export interface EnvironmentConfig {
   // 服务配置
   server: {
     port: number;
+    bodyLimit: string; // 请求体大小限制
   };
   
   // 支付宝配置
@@ -94,6 +95,7 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     
     server: {
       port: parseInt(process.env.PORT || '4001', 10),
+      bodyLimit: process.env.BODY_LIMIT || '50mb', // 请求体大小限制，可通过环境变量配置
     },
     
     alipay: {
