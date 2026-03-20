@@ -313,7 +313,7 @@ export default function EditApplicationPage() {
   }, [id, router]);
 
   // 更新字段
-  const updateField = (field: keyof ApplicationFormData, value: any) => {
+  const updateField = (field: keyof ApplicationFormData, value: string | string[] | Shareholder[] | Personnel[]) => {
     setFormData((prev) => prev ? { ...prev, [field]: value } : null);
     if (errors[field]) {
       setErrors((prev) => {
@@ -349,7 +349,7 @@ export default function EditApplicationPage() {
     } : null);
   };
 
-  const updatePersonnel = (index: number, field: keyof Personnel, value: any) => {
+  const updatePersonnel = (index: number, field: keyof Personnel, value: string | string[]) => {
     setFormData((prev) => {
       if (!prev) return null;
       const newPersonnel = [...prev.personnel];

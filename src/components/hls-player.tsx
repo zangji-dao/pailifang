@@ -4,24 +4,69 @@ import { useEffect, useRef, useState } from "react";
 import { VideoOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// HLS.js 类型定义
+interface HlsErrorData {
+  type: string;
+  details: string;
+  fatal: boolean;
+  url?: string;
+  response?: {
+    code: number;
+    text: string;
+  };
+  reason?: string;
+  level?: string;
+  parent?: string;
+}
+
+interface HlsConfig {
+  enableWorker?: boolean;
+  lowLatencyMode?: boolean;
+  maxBufferLength?: number;
+  maxMaxBufferLength?: number;
+  maxBufferSize?: number;
+  maxBufferHole?: number;
+  startLevel?: number;
+  capLevelToPlayerSize?: boolean;
+  abrEwmaDefaultEstimate?: number;
+  testBandwidth?: boolean;
+}
+
+interface HlsEvents {
+  MANIFEST_PARSED: string;
+  ERROR: string;
+}
+
+interface HlsInstance {
+  loadSource(url: string): void;
+  attachMedia(media: HTMLMediaElement): void;
+  on(event: string, callback: (event: string, data: HlsErrorData) => void): void;
+  destroy(): void;
+}
+
+interface HlsConstructor {
+  isSupported(): boolean;
+  Events: HlsEvents;
+  new (config: HlsConfig): HlsInstance;
+}
+
 interface HLSPlayerProps {
   src: string;
-  srcHd?: string;  // 高清地址
+  srcHd?: string;
   onError?: (error: string) => void;
 }
 
-// 全局 HLS 实例管理（确保只有一个实例在运行）
-let globalHlsInstance: any = null;
-let HlsConstructor: any = null;
+// 全局 HLS 实例管理
+let globalHlsInstance: HlsInstance | null = null;
+let HlsConstructor: HlsConstructor | null = null;
 
 export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isHd, setIsHd] = useState(true);  // 默认高清
+  const [isHd, setIsHd] = useState(true);
   const currentSrcRef = useRef<string>('');
 
-  // 优先使用高清地址
   const playSrc = (isHd && srcHd) ? srcHd : src;
 
   useEffect(() => {
@@ -29,20 +74,18 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
 
     const video = videoRef.current;
     
-    // 如果 src 没变，不重新加载
     if (currentSrcRef.current === playSrc) return;
     currentSrcRef.current = playSrc;
     
     setError(null);
     setLoading(true);
 
-    // 先销毁全局实例
     if (globalHlsInstance) {
       globalHlsInstance.destroy();
       globalHlsInstance = null;
     }
 
-    // 检查 Safari 原生支持
+    // Safari 原生支持
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = playSrc;
       video.addEventListener('loadeddata', () => setLoading(false), { once: true });
@@ -54,7 +97,7 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
       return;
     }
 
-    // 动态加载 HLS.js
+    // 初始化 HLS.js
     const initHls = () => {
       if (!HlsConstructor || !HlsConstructor.isSupported()) {
         setError('浏览器不支持 HLS 播放');
@@ -65,14 +108,14 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
       const hls = new HlsConstructor({
         enableWorker: true,
         lowLatencyMode: true,
-        maxBufferLength: 30,           // 增加缓冲区
-        maxMaxBufferLength: 60,        // 最大缓冲
-        maxBufferSize: 60 * 1000 * 1000, // 60MB
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1000 * 1000,
         maxBufferHole: 0.5,
-        startLevel: -1,                // 自动选择最佳画质
-        capLevelToPlayerSize: false,   // 不限制画质
-        abrEwmaDefaultEstimate: 500000, // 初始带宽估计
-        testBandwidth: true,           // 测试带宽
+        startLevel: -1,
+        capLevelToPlayerSize: false,
+        abrEwmaDefaultEstimate: 500000,
+        testBandwidth: true,
       });
 
       hls.loadSource(playSrc);
@@ -83,7 +126,7 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
         video.play().catch(() => {});
       });
 
-      hls.on(HlsConstructor.Events.ERROR, (_event: any, data: any) => {
+      hls.on(HlsConstructor.Events.ERROR, (_event: string, data: HlsErrorData) => {
         if (data.fatal) {
           setLoading(false);
           const errorMsg = data.details || '视频加载失败';
@@ -100,8 +143,7 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
       script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
       script.async = true;
       script.onload = () => {
-        // @ts-ignore
-        HlsConstructor = window.Hls;
+        HlsConstructor = (window as unknown as { Hls: HlsConstructor }).Hls;
         initHls();
       };
       script.onerror = () => {
@@ -112,10 +154,6 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
     } else {
       initHls();
     }
-
-    return () => {
-      // 组件卸载时不销毁全局实例，让下一个实例接管
-    };
   }, [playSrc, onError]);
 
   const handleRetry = () => {
@@ -173,7 +211,6 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
         </div>
       )}
       
-      {/* 画质切换按钮 */}
       {srcHd && !loading && !error && (
         <div className="absolute top-3 right-3">
           <Button

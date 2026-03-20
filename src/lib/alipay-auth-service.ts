@@ -1,6 +1,18 @@
 import { getSupabaseClient } from '@/storage/database/client';
 import { refreshAccessToken } from './alipay';
 
+// 支付宝授权令牌数据类型
+interface AlipayAuthTokenRow {
+  id: string;
+  user_id: string;
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+  refresh_expires_at: string;
+  status: 'active' | 'expired' | 'revoked';
+  alipay_user_id?: string;
+}
+
 /**
  * 授权令牌状态
  */
@@ -25,11 +37,13 @@ export async function getValidAccessToken(userId: string): Promise<{
   const supabase = getSupabaseClient();
 
   // 查询用户的授权信息
-  const { data: authData, error: dbError } = await supabase
+  const { data: authDataRaw, error: dbError } = await supabase
     .from('alipay_auth_tokens')
     .select('*')
     .eq('user_id', userId)
     .single();
+
+  const authData = authDataRaw as AlipayAuthTokenRow | null;
 
   if (dbError || !authData) {
     return {
@@ -122,11 +136,13 @@ export async function getValidAccessToken(userId: string): Promise<{
 export async function getAuthStatus(userId: string): Promise<AuthTokenStatus> {
   const supabase = getSupabaseClient();
 
-  const { data: authData, error } = await supabase
+  const { data: authDataRaw, error } = await supabase
     .from('alipay_auth_tokens')
     .select('*')
     .eq('user_id', userId)
     .single();
+
+  const authData = authDataRaw as AlipayAuthTokenRow | null;
 
   if (error || !authData) {
     return {
@@ -155,31 +171,5 @@ export async function getAuthStatus(userId: string): Promise<AuthTokenStatus> {
     expiresAt,
     refreshExpiresAt,
     alipayUserId: authData.alipay_user_id,
-  };
-}
-
-/**
- * 撤销用户的支付宝授权
- */
-export async function revokeAuth(userId: string): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const supabase = getSupabaseClient();
-
-  const { error } = await supabase
-    .from('alipay_auth_tokens')
-    .update({ status: 'revoked' })
-    .eq('user_id', userId);
-
-  if (error) {
-    return {
-      success: false,
-      error: '撤销授权失败',
-    };
-  }
-
-  return {
-    success: true,
   };
 }

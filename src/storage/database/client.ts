@@ -3,8 +3,28 @@
  * 模拟 Supabase 风格 API，通过 fetch 调用后端 API
  */
 
-// 查询构建器
-class QueryBuilder {
+// 类型定义
+export interface DbError {
+  message: string;
+  code?: string;
+  details?: unknown;
+}
+
+export interface QueryResult<T> {
+  data: T[] | null;
+  error: DbError | null;
+}
+
+export interface SingleResult<T> {
+  data: T | null;
+  error: DbError | null;
+}
+
+export type TableRow = Record<string, unknown>;
+export type UpdateValues = Record<string, unknown>;
+
+// 基础查询参数构建器
+class QueryParamsBuilder {
   protected table: string;
   protected params: URLSearchParams;
 
@@ -17,13 +37,13 @@ class QueryBuilder {
     return this;
   }
 
-  eq(column: string, value: any): this {
-    this.params.append(column, value);
+  eq(column: string, value: string | number | boolean): this {
+    this.params.append(column, String(value));
     return this;
   }
 
-  neq(column: string, value: any): this {
-    this.params.append(`${column}_neq`, value);
+  neq(column: string, value: string | number | boolean): this {
+    this.params.append(`${column}_neq`, String(value));
     return this;
   }
 
@@ -40,19 +60,25 @@ class QueryBuilder {
     this.params.append('limit', String(n));
     return this;
   }
+}
 
-  async then(resolve: (value: { data: any[] | null; error: any | null }) => void) {
+// 查询构建器
+class QueryBuilder<T extends TableRow = TableRow> extends QueryParamsBuilder {
+  async then(resolve: (value: QueryResult<T>) => void): Promise<void> {
     try {
       const url = `/api/${this.table}?${this.params.toString()}`;
       const response = await fetch(url);
       const result = await response.json();
       resolve({ data: result.data || null, error: result.error || null });
     } catch (error) {
-      resolve({ data: null, error });
+      resolve({
+        data: null,
+        error: { message: error instanceof Error ? error.message : '请求失败' }
+      });
     }
   }
 
-  async single(): Promise<{ data: any | null; error: any | null }> {
+  async single(): Promise<SingleResult<T>> {
     this.limit(1);
     try {
       const url = `/api/${this.table}?${this.params.toString()}`;
@@ -60,21 +86,24 @@ class QueryBuilder {
       const result = await response.json();
       return { data: result.data?.[0] || null, error: result.error || null };
     } catch (error) {
-      return { data: null, error };
+      return {
+        data: null,
+        error: { message: error instanceof Error ? error.message : '请求失败' }
+      };
     }
   }
 }
 
-// 更新构建器（支持 .update().eq() 链式调用）
-class UpdateBuilder extends QueryBuilder {
-  private values: any;
+// 更新构建器
+class UpdateBuilder<T extends TableRow = TableRow> extends QueryParamsBuilder {
+  private values: UpdateValues;
 
-  constructor(table: string, values: any) {
+  constructor(table: string, values: UpdateValues) {
     super(table);
     this.values = values;
   }
 
-  async then(resolve: (value: { data: any | null; error: any | null }) => void) {
+  async then(resolve: (value: SingleResult<T>) => void): Promise<void> {
     try {
       const url = `/api/${this.table}?${this.params.toString()}`;
       const response = await fetch(url, {
@@ -85,14 +114,17 @@ class UpdateBuilder extends QueryBuilder {
       const result = await response.json();
       resolve({ data: result.data || null, error: result.error || null });
     } catch (error) {
-      resolve({ data: null, error });
+      resolve({
+        data: null,
+        error: { message: error instanceof Error ? error.message : '请求失败' }
+      });
     }
   }
 }
 
 // 删除构建器
-class DeleteBuilder extends QueryBuilder {
-  async then(resolve: (value: { data: any | null; error: any | null }) => void) {
+class DeleteBuilder<T extends TableRow = TableRow> extends QueryParamsBuilder {
+  async then(resolve: (value: SingleResult<T>) => void): Promise<void> {
     try {
       const url = `/api/${this.table}?${this.params.toString()}`;
       const response = await fetch(url, {
@@ -101,34 +133,37 @@ class DeleteBuilder extends QueryBuilder {
       const result = await response.json();
       resolve({ data: result.data || null, error: result.error || null });
     } catch (error) {
-      resolve({ data: null, error });
+      resolve({
+        data: null,
+        error: { message: error instanceof Error ? error.message : '请求失败' }
+      });
     }
   }
 }
 
 // 表客户端
-class TableClient {
+class TableClient<T extends TableRow = TableRow> {
   private table: string;
 
   constructor(table: string) {
     this.table = table;
   }
 
-  select(fields?: string): QueryBuilder {
-    const builder = new QueryBuilder(this.table);
+  select(fields?: string): QueryBuilder<T> {
+    const builder = new QueryBuilder<T>(this.table);
     builder.select(fields);
     return builder;
   }
 
-  update(values: any): UpdateBuilder {
-    return new UpdateBuilder(this.table, values);
+  update(values: UpdateValues): UpdateBuilder<T> {
+    return new UpdateBuilder<T>(this.table, values);
   }
 
-  delete(): DeleteBuilder {
-    return new DeleteBuilder(this.table);
+  delete(): DeleteBuilder<T> {
+    return new DeleteBuilder<T>(this.table);
   }
 
-  async insert(values: any): Promise<{ data: any | null; error: any | null }> {
+  async insert(values: UpdateValues): Promise<SingleResult<T>> {
     try {
       const response = await fetch(`/api/${this.table}`, {
         method: 'POST',
@@ -138,19 +173,22 @@ class TableClient {
       const result = await response.json();
       return { data: result.data || null, error: result.error || null };
     } catch (error) {
-      return { data: null, error };
+      return {
+        data: null,
+        error: { message: error instanceof Error ? error.message : '请求失败' }
+      };
     }
   }
 
-  async upsert(values: any): Promise<{ data: any | null; error: any | null }> {
+  async upsert(values: UpdateValues): Promise<SingleResult<T>> {
     return this.insert(values);
   }
 }
 
 // 数据库客户端
 class DatabaseClient {
-  from(table: string): TableClient {
-    return new TableClient(table);
+  from<T extends TableRow = TableRow>(table: string): TableClient<T> {
+    return new TableClient<T>(table);
   }
 }
 

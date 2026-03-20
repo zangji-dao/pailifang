@@ -41,6 +41,23 @@ interface EnterpriseStats {
   active: number;
 }
 
+// 数据库返回的原始类型
+interface Meter {
+  spaces?: Space[];
+}
+
+interface Space {
+  regNumbers?: RegNumber[];
+}
+
+interface RegNumber {
+  status: string;
+}
+
+interface BaseDetail {
+  meters?: Meter[];
+}
+
 export default function BaseListPage() {
   const router = useRouter();
   const tabs = useTabs();
@@ -73,14 +90,14 @@ export default function BaseListPage() {
             const detailResponse = await fetch(`/api/bases/${base.id}`);
             const detailResult = await detailResponse.json();
             if (detailResult.success && detailResult.data.meters) {
-              const meters = detailResult.data.meters;
+              const meters: Meter[] = detailResult.data.meters;
               stats[base.id] = {
-                totalSpaces: meters.reduce((sum: number, m: any) => sum + (m.spaces?.length || 0), 0),
-                totalRegNumbers: meters.reduce((sum: number, m: any) => 
-                  sum + (m.spaces?.reduce((s: number, sp: any) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
-                allocatedRegNumbers: meters.reduce((sum: number, m: any) => 
-                  sum + (m.spaces?.reduce((s: number, sp: any) => 
-                    s + (sp.regNumbers?.filter((r: any) => r.status === "allocated")?.length || 0), 0) || 0), 0),
+                totalSpaces: meters.reduce((sum: number, m: Meter) => sum + (m.spaces?.length || 0), 0),
+                totalRegNumbers: meters.reduce((sum: number, m: Meter) => 
+                  sum + (m.spaces?.reduce((s: number, sp: Space) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
+                allocatedRegNumbers: meters.reduce((sum: number, m: Meter) => 
+                  sum + (m.spaces?.reduce((s: number, sp: Space) => 
+                    s + (sp.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0), 0) || 0), 0),
               };
             }
           } catch (e) {

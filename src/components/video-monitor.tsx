@@ -51,8 +51,9 @@ export default function VideoMonitor({ meterId, meterCode }: VideoMonitorProps) 
       } else {
         setError(result.error || '获取摄像头列表失败');
       }
-    } catch (e: any) {
-      setError(e.message || '获取摄像头列表失败');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '获取摄像头列表失败';
+      setError(message);
     } finally {
       setLoading(false);
     }

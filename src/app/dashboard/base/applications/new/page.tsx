@@ -154,7 +154,7 @@ export default function NewApplicationPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // 更新字段
-  const updateField = (field: keyof ApplicationFormData, value: any) => {
+  const updateField = (field: keyof ApplicationFormData, value: string | string[] | Shareholder[] | Personnel[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -190,7 +190,7 @@ export default function NewApplicationPage() {
     }));
   };
 
-  const updatePersonnel = (index: number, field: keyof Personnel, value: any) => {
+  const updatePersonnel = (index: number, field: keyof Personnel, value: string | string[]) => {
     setFormData((prev) => {
       const newPersonnel = [...prev.personnel];
       newPersonnel[index] = { ...newPersonnel[index], [field]: value };

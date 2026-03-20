@@ -42,8 +42,8 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(response.data));
       localStorage.setItem("isLoggedIn", "true");
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '登录失败');
     } finally {
       setLoading(false);
     }
@@ -67,8 +67,8 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(response.data));
       localStorage.setItem("isLoggedIn", "true");
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '登录失败');
     } finally {
       setLoading(false);
     }

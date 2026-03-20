@@ -83,7 +83,15 @@ const MIGRATION_STAGES = [
   { stage: "completed", name: "入驻完成" },
 ];
 
-const stageStatusConfig: Record<string, { label: string; className: string; icon: any }> = {
+// 阶段状态配置类型
+type StageStatusIcon = React.ComponentType<{ className?: string }>;
+interface StageStatusConfig {
+  label: string;
+  className: string;
+  icon: StageStatusIcon;
+}
+
+const stageStatusConfig: Record<string, StageStatusConfig> = {
   pending: { label: "待处理", className: "bg-muted/50 text-muted-foreground border-border", icon: Clock },
   in_progress: { label: "进行中", className: "bg-blue-50 text-blue-600 border-blue-200", icon: Loader2 },
   completed: { label: "已完成", className: "bg-emerald-50 text-emerald-600 border-emerald-200", icon: CheckCircle },

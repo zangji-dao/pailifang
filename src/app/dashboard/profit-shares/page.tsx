@@ -98,6 +98,27 @@ interface Ledger {
   customerId: string;
 }
 
+// 数据库返回的原始行类型
+interface LedgerRow {
+  id: string;
+  name: string;
+  customer_id: string;
+}
+
+// 状态更新数据类型
+interface StatusUpdateData extends Record<string, unknown> {
+  status: string;
+  paidAt?: string;
+}
+
+// 状态徽章配置类型
+type StatusIcon = React.ComponentType<{ className?: string }>;
+interface StatusConfig {
+  text: string;
+  bg: string;
+  icon: StatusIcon | null;
+}
+
 export default function ProfitSharesPage() {
   const [profitShares, setProfitShares] = useState<ProfitShare[]>([]);
   const [profitRules, setProfitRules] = useState<ProfitRule[]>([]);
@@ -149,7 +170,7 @@ export default function ProfitSharesPage() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setProfitShares(data || []);
+      setProfitShares((data as unknown as ProfitShare[]) || []);
     } catch (error) {
       console.error("获取分润列表失败:", error);
     } finally {
@@ -166,7 +187,7 @@ export default function ProfitSharesPage() {
         .eq("is_active", true);
 
       if (error) throw error;
-      setProfitRules(data || []);
+      setProfitRules((data as unknown as ProfitRule[]) || []);
     } catch (error) {
       console.error("获取分润规则失败:", error);
     }
@@ -181,7 +202,7 @@ export default function ProfitSharesPage() {
         .eq("is_active", true);
 
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data as unknown as User[]) || []);
     } catch (error) {
       console.error("获取用户列表失败:", error);
     }
@@ -195,7 +216,7 @@ export default function ProfitSharesPage() {
         .select("id, name");
 
       if (error) throw error;
-      setCustomers(data || []);
+      setCustomers((data as unknown as Customer[]) || []);
     } catch (error) {
       console.error("获取客户列表失败:", error);
     }
@@ -209,7 +230,7 @@ export default function ProfitSharesPage() {
         .select("id, name, customer_id");
 
       if (error) throw error;
-      const ledgers = (data || []).map((ledger: any) => ({
+      const ledgers = ((data || []) as unknown as LedgerRow[]).map((ledger) => ({
         id: ledger.id,
         name: ledger.name,
         customerId: ledger.customer_id,
@@ -271,7 +292,7 @@ export default function ProfitSharesPage() {
   const updateStatus = async (profitShareId: string, newStatus: string) => {
     try {
       const client = getSupabaseClient();
-      const updateData: any = { status: newStatus };
+      const updateData: StatusUpdateData = { status: newStatus };
       if (newStatus === "paid") {
         updateData.paidAt = new Date().toISOString();
       }
@@ -290,7 +311,7 @@ export default function ProfitSharesPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { text: string; bg: string; icon: any }> = {
+    const statusMap: Record<string, StatusConfig> = {
       pending: { text: "待确认", bg: "bg-yellow-100 text-yellow-800", icon: Clock },
       confirmed: { text: "已确认", bg: "bg-blue-100 text-blue-800", icon: CheckCircle2 },
       paid: { text: "已支付", bg: "bg-green-100 text-green-800", icon: DollarSign },

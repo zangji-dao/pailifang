@@ -129,7 +129,7 @@ const initialFormData: ApplicationFormData = {
 interface ApplicationFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  application: any | null;
+  application: ApplicationFormData | null;
   onSuccess: () => void;
 }
 
@@ -158,7 +158,7 @@ export function ApplicationFormDialog({
   }, [application, open]);
 
   // 更新字段
-  const updateField = (field: keyof ApplicationFormData, value: any) => {
+  const updateField = (field: keyof ApplicationFormData, value: string | string[] | Shareholder[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // 清除错误
     if (errors[field]) {
