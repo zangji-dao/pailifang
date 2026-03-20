@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2, Save, Send, ChevronLeft } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -245,7 +245,10 @@ export default function NewApplicationPage() {
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    "下一步"
+                    <>
+                      下一步
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </>
                   )}
                 </Button>
               )}
