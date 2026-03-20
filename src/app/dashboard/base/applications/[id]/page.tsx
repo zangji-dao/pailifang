@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Loader2, Save, Send, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, AlertCircle, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -261,7 +261,6 @@ export default function ApplicationDetailPage() {
                 ) : (
                   <Button type="button" onClick={goToNextStep}>
                     下一步
-                    <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 )}
               </div>
