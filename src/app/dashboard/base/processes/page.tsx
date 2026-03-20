@@ -230,79 +230,70 @@ export default function ApprovalPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-semibold text-slate-900">
             入驻审批
           </h1>
-          <p className="text-slate-500 mt-1.5">
+          <p className="text-slate-500 mt-1">
             审批企业入驻申请
           </p>
         </div>
-        <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-full border border-amber-100">
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          <span className="text-sm font-semibold text-amber-700">{stats.pending}</span>
-          <span className="text-sm text-amber-600/80">待审批</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full border border-amber-200">
+          <div className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="text-sm font-medium text-amber-700">{stats.pending}</span>
+          <span className="text-sm text-amber-600">待审批</span>
         </div>
       </div>
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-xl border-0 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-md hover:shadow-lg transition-shadow">
-          <div className="text-sm font-medium text-slate-500">总计</div>
-          <div className="text-3xl font-bold text-slate-900 mt-2">{stats.total}</div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">总计</div>
+          <div className="text-2xl font-semibold mt-1">{stats.total}</div>
         </div>
-        <div className="rounded-xl border-0 bg-gradient-to-br from-amber-50 to-orange-50 p-5 shadow-md hover:shadow-lg transition-shadow">
-          <div className="text-sm font-medium text-amber-600">待审批</div>
-          <div className="text-3xl font-bold text-amber-700 mt-2">{stats.pending}</div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">待审批</div>
+          <div className="text-2xl font-semibold mt-1 text-amber-600">{stats.pending}</div>
         </div>
-        <div className="rounded-xl border-0 bg-gradient-to-br from-emerald-50 to-green-50 p-5 shadow-md hover:shadow-lg transition-shadow">
-          <div className="text-sm font-medium text-emerald-600">已通过</div>
-          <div className="text-3xl font-bold text-emerald-700 mt-2">{stats.approved}</div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">已通过</div>
+          <div className="text-2xl font-semibold mt-1 text-emerald-600">{stats.approved}</div>
         </div>
-        <div className="rounded-xl border-0 bg-gradient-to-br from-red-50 to-orange-50 p-5 shadow-md hover:shadow-lg transition-shadow">
-          <div className="text-sm font-medium text-red-600">已驳回</div>
-          <div className="text-3xl font-bold text-red-700 mt-2">{stats.rejected}</div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="text-sm text-muted-foreground">已驳回</div>
+          <div className="text-2xl font-semibold mt-1 text-red-600">{stats.rejected}</div>
         </div>
       </div>
 
       {/* 搜索和筛选 */}
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm group">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="搜索企业名称、编号或法人..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm ring-offset-background placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent transition-all"
+            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-        <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
+        <div className="flex items-center gap-1">
           {[
-            { value: "pending", label: "待审批", count: stats.pending, color: "amber" },
-            { value: "approved", label: "已通过", count: stats.approved, color: "emerald" },
-            { value: "rejected", label: "已驳回", count: stats.rejected, color: "red" },
+            { value: "pending", label: "待审批", count: stats.pending },
+            { value: "approved", label: "已通过", count: stats.approved },
+            { value: "rejected", label: "已驳回", count: stats.rejected },
           ].map((item) => (
             <Button
               key={item.value}
               size="sm"
               variant={statusFilter === item.value ? "default" : "ghost"}
               onClick={() => setStatusFilter(item.value)}
-              className={cn(
-                "gap-1.5 px-4 rounded-lg transition-all",
-                statusFilter === item.value && "shadow-md"
-              )}
+              className="gap-1"
             >
               {item.label}
               {item.count > 0 && (
                 <span className={cn(
-                  "px-2 py-0.5 rounded-full text-xs font-semibold",
-                  statusFilter === item.value 
-                    ? "bg-white/20 text-white" 
-                    : item.color === "amber" 
-                      ? "bg-amber-100 text-amber-700"
-                      : item.color === "emerald"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-red-100 text-red-700"
+                  "px-1.5 py-0.5 rounded text-xs",
+                  statusFilter === item.value ? "bg-primary-foreground/20" : "bg-muted"
                 )}>
                   {item.count}
                 </span>
@@ -313,60 +304,53 @@ export default function ApprovalPage() {
       </div>
 
       {/* 申请列表 */}
-      <div className="rounded-2xl border-0 bg-white shadow-lg overflow-hidden">
+      <div className="rounded-lg border bg-card">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50">
-              <th className="p-4 text-left text-sm font-semibold text-slate-700">申请编号</th>
-              <th className="p-4 text-left text-sm font-semibold text-slate-700">企业名称</th>
-              <th className="p-4 text-left text-sm font-semibold text-slate-700">申请类型</th>
-              <th className="p-4 text-left text-sm font-semibold text-slate-700">法人/电话</th>
-              <th className="p-4 text-left text-sm font-semibold text-slate-700">状态</th>
-              <th className="p-4 text-left text-sm font-semibold text-slate-700">申请时间</th>
-              <th className="p-4 text-right text-sm font-semibold text-slate-700">操作</th>
+            <tr className="border-b bg-muted/50">
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">申请编号</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">企业名称</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">申请类型</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">法人/电话</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">状态</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">申请时间</th>
+              <th className="p-4 text-right text-sm font-medium text-muted-foreground">操作</th>
             </tr>
           </thead>
           <tbody>
             {filteredApplications.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-12 text-center">
-                  <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                      <FileText className="h-8 w-8 text-slate-400" />
-                    </div>
-                    <p className="text-slate-500 font-medium">
-                      {statusFilter === "pending" ? "暂无待审批申请" : "暂无申请记录"}
-                    </p>
-                  </div>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  {statusFilter === "pending" ? "暂无待审批申请" : "暂无申请记录"}
                 </td>
               </tr>
             ) : (
               filteredApplications.map((app) => (
-                <tr key={app.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
-                  <td className="p-4 text-sm font-mono text-slate-600">{app.applicationNo}</td>
+                <tr key={app.id} className="border-b last:border-b-0 hover:bg-muted/50">
+                  <td className="p-4 text-sm font-mono">{app.applicationNo}</td>
                   <td className="p-4">
-                    <div className="font-semibold text-slate-900">{app.enterpriseName}</div>
+                    <div className="font-medium">{app.enterpriseName}</div>
                     {app.enterpriseNameBackups && app.enterpriseNameBackups.length > 0 && (
-                      <div className="text-xs text-slate-400 mt-1">
+                      <div className="text-xs text-muted-foreground">
                         备用名: {app.enterpriseNameBackups.join("、")}
                       </div>
                     )}
                   </td>
                   <td className="p-4">
-                    <Badge variant="outline" className={cn("font-medium border", applicationTypeConfig[app.applicationType].className)}>
+                    <Badge variant="outline" className={cn("font-normal", applicationTypeConfig[app.applicationType].className)}>
                       {applicationTypeConfig[app.applicationType].label}
                     </Badge>
                   </td>
                   <td className="p-4 text-sm">
-                    <div className="font-medium text-slate-900">{app.legalPersonName || "-"}</div>
-                    <div className="text-slate-500">{app.legalPersonPhone || "-"}</div>
+                    <div>{app.legalPersonName || "-"}</div>
+                    <div className="text-muted-foreground">{app.legalPersonPhone || "-"}</div>
                   </td>
                   <td className="p-4">
-                    <Badge variant="outline" className={cn("font-medium border", statusConfig[app.approvalStatus].className)}>
+                    <Badge variant="outline" className={cn("font-normal", statusConfig[app.approvalStatus].className)}>
                       {statusConfig[app.approvalStatus].label}
                     </Badge>
                   </td>
-                  <td className="p-4 text-sm text-slate-500">
+                  <td className="p-4 text-sm text-muted-foreground">
                     {new Date(app.createdAt).toLocaleDateString("zh-CN")}
                   </td>
                   <td className="p-4">
@@ -375,7 +359,7 @@ export default function ApprovalPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleViewDetail(app)}
-                        className="gap-1.5 hover:bg-slate-100"
+                        className="gap-1"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         查看
@@ -389,14 +373,13 @@ export default function ApprovalPage() {
                               setSelectedApp(app);
                               setRejectDialogOpen(true);
                             }}
-                            className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="gap-1 text-destructive hover:text-destructive"
                           >
                             <XCircle className="h-3.5 w-3.5" />
                             驳回
                           </Button>
                           <Button
                             size="sm"
-                            variant="default"
                             onClick={async () => {
                               setSelectedApp(app);
                               try {
@@ -421,7 +404,7 @@ export default function ApprovalPage() {
                               }
                             }}
                             disabled={actionLoading}
-                            className="gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-sm"
+                            className="gap-1"
                           >
                             {actionLoading ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -445,56 +428,53 @@ export default function ApprovalPage() {
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">申请详情</DialogTitle>
+            <DialogTitle>申请详情</DialogTitle>
           </DialogHeader>
           {selectedApp && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 py-4">
               {/* 基本信息 */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <div className="w-1 h-4 bg-blue-500 rounded-full" />
-                  基本信息
-                </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 rounded-xl p-4">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">基本信息</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-slate-500">企业名称</span>
-                    <p className="font-semibold text-slate-900 mt-1">{selectedApp.enterpriseName}</p>
+                    <span className="text-muted-foreground">企业名称</span>
+                    <p className="font-medium mt-0.5">{selectedApp.enterpriseName}</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">申请编号</span>
-                    <p className="font-mono text-slate-900 mt-1">{selectedApp.applicationNo}</p>
+                    <span className="text-muted-foreground">申请编号</span>
+                    <p className="font-mono mt-0.5">{selectedApp.applicationNo}</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">申请类型</span>
-                    <p className="mt-1">
-                      <Badge variant="outline" className={cn("font-medium border", applicationTypeConfig[selectedApp.applicationType].className)}>
+                    <span className="text-muted-foreground">申请类型</span>
+                    <p className="mt-0.5">
+                      <Badge variant="outline" className={cn("font-normal", applicationTypeConfig[selectedApp.applicationType].className)}>
                         {applicationTypeConfig[selectedApp.applicationType].label}
                       </Badge>
                     </p>
                   </div>
                   <div>
-                    <span className="text-slate-500">审批状态</span>
-                    <p className="mt-1">
-                      <Badge variant="outline" className={cn("font-medium border", statusConfig[selectedApp.approvalStatus].className)}>
+                    <span className="text-muted-foreground">审批状态</span>
+                    <p className="mt-0.5">
+                      <Badge variant="outline" className={cn("font-normal", statusConfig[selectedApp.approvalStatus].className)}>
                         {statusConfig[selectedApp.approvalStatus].label}
                       </Badge>
                     </p>
                   </div>
                   {selectedApp.registeredCapital && (
                     <div>
-                      <span className="text-slate-500">注册资本</span>
-                      <p className="font-semibold text-blue-600 mt-1">{selectedApp.registeredCapital} 万元</p>
+                      <span className="text-muted-foreground">注册资本</span>
+                      <p className="font-medium mt-0.5">{selectedApp.registeredCapital} 万元</p>
                     </div>
                   )}
                   {selectedApp.businessTerm && (
                     <div>
-                      <span className="text-slate-500">经营期限</span>
-                      <p className="font-medium text-slate-900 mt-1">{selectedApp.businessTerm}</p>
+                      <span className="text-muted-foreground">经营期限</span>
+                      <p className="font-medium mt-0.5">{selectedApp.businessTerm}</p>
                     </div>
                   )}
                   <div className="col-span-2">
-                    <span className="text-slate-500">申请时间</span>
-                    <p className="font-medium text-slate-900 mt-1">
+                    <span className="text-muted-foreground">申请时间</span>
+                    <p className="font-medium mt-0.5">
                       {new Date(selectedApp.createdAt).toLocaleString("zh-CN")}
                     </p>
                   </div>
@@ -502,34 +482,31 @@ export default function ApprovalPage() {
               </div>
 
               {/* 联系信息 */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <div className="w-1 h-4 bg-emerald-500 rounded-full" />
-                  联系信息
-                </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 rounded-xl p-4">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">联系信息</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   {selectedApp.legalPersonName && (
                     <div>
-                      <span className="text-slate-500">法人代表</span>
-                      <p className="font-medium text-slate-900 mt-1">{selectedApp.legalPersonName}</p>
+                      <span className="text-muted-foreground">法人代表</span>
+                      <p className="font-medium mt-0.5">{selectedApp.legalPersonName}</p>
                     </div>
                   )}
                   {selectedApp.legalPersonPhone && (
                     <div>
-                      <span className="text-slate-500">法人电话</span>
-                      <p className="font-mono text-slate-900 mt-1">{selectedApp.legalPersonPhone}</p>
+                      <span className="text-muted-foreground">法人电话</span>
+                      <p className="font-mono mt-0.5">{selectedApp.legalPersonPhone}</p>
                     </div>
                   )}
                   {selectedApp.contactPersonName && (
                     <div>
-                      <span className="text-slate-500">联系人</span>
-                      <p className="font-medium text-slate-900 mt-1">{selectedApp.contactPersonName}</p>
+                      <span className="text-muted-foreground">联系人</span>
+                      <p className="font-medium mt-0.5">{selectedApp.contactPersonName}</p>
                     </div>
                   )}
                   {selectedApp.contactPersonPhone && (
                     <div>
-                      <span className="text-slate-500">联系电话</span>
-                      <p className="font-mono text-slate-900 mt-1">{selectedApp.contactPersonPhone}</p>
+                      <span className="text-muted-foreground">联系电话</span>
+                      <p className="font-mono mt-0.5">{selectedApp.contactPersonPhone}</p>
                     </div>
                   )}
                 </div>
@@ -537,32 +514,27 @@ export default function ApprovalPage() {
 
               {/* 经营范围 */}
               {selectedApp.businessScope && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <div className="w-1 h-4 bg-violet-500 rounded-full" />
-                    经营范围
-                  </h3>
-                  <div className="text-sm bg-slate-50 rounded-xl p-4 leading-relaxed text-slate-700">
-                    {selectedApp.businessScope}
-                  </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">经营范围</h3>
+                  <p className="text-sm leading-relaxed">{selectedApp.businessScope}</p>
                 </div>
               )}
 
               {/* 驳回原因 */}
               {selectedApp.approvalStatus === "rejected" && selectedApp.rejectionReason && (
-                <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200">
-                  <div className="flex items-center gap-2 text-red-600 text-sm font-semibold">
+                <div className="space-y-2 p-3 rounded-md bg-red-50 border border-red-200">
+                  <div className="flex items-center gap-2 text-red-600 text-sm font-medium">
                     <XCircle className="h-4 w-4" />
                     驳回原因
                   </div>
-                  <p className="text-sm text-red-700 leading-relaxed">{selectedApp.rejectionReason}</p>
+                  <p className="text-sm text-red-700">{selectedApp.rejectionReason}</p>
                 </div>
               )}
 
               {/* 审批通过信息 */}
               {selectedApp.approvalStatus === "approved" && selectedApp.approvedAt && (
-                <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200">
-                  <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
+                <div className="space-y-2 p-3 rounded-md bg-emerald-50 border border-emerald-200">
+                  <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
                     <CheckCircle className="h-4 w-4" />
                     审批通过
                   </div>
@@ -585,7 +557,7 @@ export default function ApprovalPage() {
                 <Button
                   variant="outline"
                   onClick={handleOpenReject}
-                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  className="text-destructive hover:bg-destructive/10"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   驳回
@@ -593,7 +565,6 @@ export default function ApprovalPage() {
                 <Button
                   onClick={handleApprove}
                   disabled={actionLoading}
-                  className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
                 >
                   {actionLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
