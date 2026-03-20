@@ -198,7 +198,7 @@ export default function NewApplicationPage() {
             {/* 左侧：上一步按钮（与返回按钮同宽） */}
             <div className="w-[80px]">
               {currentStep > 0 && (
-                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                <Button type="button" variant="outline" size="sm" onClick={goToPrevStep}>
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   上一步
                 </Button>
@@ -222,6 +222,7 @@ export default function NewApplicationPage() {
               {isLastStep ? (
                 <Button
                   type="button"
+                  size="sm"
                   onClick={handleSubmit}
                   disabled={submitting}
                   className="bg-primary hover:bg-primary/90"
@@ -236,7 +237,7 @@ export default function NewApplicationPage() {
                   )}
                 </Button>
               ) : (
-                <Button type="button" onClick={goToNextStep} disabled={saving}>
+                <Button type="button" size="sm" onClick={goToNextStep} disabled={saving}>
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
