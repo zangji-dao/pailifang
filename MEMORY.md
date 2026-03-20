@@ -10,30 +10,83 @@
 
 **Π立方**是企业服务平台，提供代理记账、工商注册、税务申报、人力资源等一站式企业服务。
 
-### 1.2 技术栈
+### 1.2 系统架构
 
-| 类型 | 技术 |
-|------|------|
-| 框架 | Next.js 16 (App Router) |
-| 前端 | React 19 + TypeScript 5 |
-| UI | shadcn/ui + Tailwind CSS 4 |
-| 数据库 | PostgreSQL (Supabase) + Drizzle ORM |
-| 存储 | S3 兼容对象存储 |
-| 包管理 | pnpm (禁止 npm/yarn) |
+采用 **BFF (Backend for Frontend)** 架构，前后端分离部署。
 
-### 1.3 目录结构
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        用户浏览器                            │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  前端层 (Next.js) - 端口 5000                               │
+│  ├── 页面组件 (React)                                       │
+│  ├── API Routes (代理层)                                    │
+│  │   └── createApiProxy() → 转发请求到 BFF                  │
+│  └── 静态资源                                               │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ HTTP
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BFF 层 (Express.js) - 端口 4001                           │
+│  ├── Routes (路由层)                                        │
+│  ├── Controllers (控制器层)                                 │
+│  ├── Services (服务层)                                      │
+│  │   ├── 存储服务 (S3)                                      │
+│  │   └── 支付服务 (支付宝)                                  │
+│  └── Middleware (中间件)                                    │
+│      ├── CORS 跨域处理                                      │
+│      └── Auth 认证鉴权                                      │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+    ┌──────────┐    ┌──────────┐    ┌──────────┐
+    │ PostgreSQL│    │   S3     │    │ 第三方API │
+    │ (Supabase)│    │  对象存储 │    │ (支付宝等) │
+    └──────────┘    └──────────┘    └──────────┘
+```
+
+**架构优势**：
+- 前后端独立开发、独立部署
+- API Routes 作为统一入口，便于鉴权和日志
+- BFF 层专注业务逻辑，不关心 UI
+- 服务层可复用，支持多端接入
+
+### 1.3 技术栈
+
+| 层级 | 技术 | 端口 |
+|------|------|------|
+| **前端** | Next.js 16 + React 19 + TypeScript 5 | 5000 |
+| **BFF** | Express.js + TypeScript | 4001 |
+| **数据库** | PostgreSQL (Supabase) + Drizzle ORM | - |
+| **存储** | S3 兼容对象存储 | - |
+| **包管理** | pnpm (禁止 npm/yarn) | - |
+
+### 1.4 目录结构
 
 ```
 /workspace/projects/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (auth)/            # 认证相关页面
-│   │   ├── dashboard/         # 仪表盘页面
-│   │   └── api/               # API 路由
-│   ├── components/            # 公共组件
-│   │   └── ui/               # shadcn/ui 组件
-│   ├── lib/                   # 工具库
-│   └── config/               # 配置文件
+├── src/                       # 前端代码
+│   ├── app/                   # Next.js App Router
+│   │   ├── (auth)/           # 认证相关页面
+│   │   ├── dashboard/        # 仪表盘页面
+│   │   └── api/              # API Routes (代理层)
+│   ├── components/           # 公共组件
+│   │   └── ui/              # shadcn/ui 组件
+│   ├── lib/                  # 工具库
+│   │   ├── api-proxy.ts     # API 代理工具
+│   │   └── notify.ts        # 全局提示
+│   └── config/              # 配置文件
+├── backend/                   # BFF 后端代码
+│   └── src/
+│       ├── routes/           # 路由定义
+│       ├── controllers/      # 控制器
+│       ├── services/         # 服务层
+│       ├── middleware/       # 中间件
+│       └── database/         # 数据库客户端
 ├── public/                    # 静态资源
 ├── MEMORY.md                  # 项目记忆文档
 └── .coze                      # Coze 配置
@@ -245,25 +298,61 @@ const result = await confirm({
 
 ```
 src/config/
-  ├── config.dev.ts    # 开发环境配置
-  ├── config.prod.ts   # 生产环境配置
-  └── index.ts         # 配置入口，自动切换
+  ├── types.ts          # 配置类型定义
+  ├── config.dev.ts     # 开发环境配置
+  ├── config.prod.ts    # 生产环境配置
+  └── index.ts          # 配置入口，自动切换
 ```
 
-### 4.3 核心原则
-
-- **API 地址、请求前缀必须按环境自动切换**
-- **禁止写死地址，全部走配置文件**
-- **敏感信息必须通过环境变量注入**
+### 4.3 关键配置项
 
 ```typescript
-// ✅ 正确
-import config from '@/config';
-const apiBaseUrl = config.api.baseUrl;
+// config.dev.ts 示例
+{
+  // 前端 API（Next.js API Routes 代理层）
+  api: {
+    baseUrl: 'http://localhost:5000',
+    prefix: '/api',
+  },
 
-// ❌ 禁止
-const apiBaseUrl = 'https://api.example.com';
+  // 后端 BFF 服务
+  backend: {
+    baseUrl: 'http://localhost:4001',
+    prefix: '/api',
+  },
+
+  // 存储
+  storage: {
+    uploadUrl: '/api/storage/upload',
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+  },
+}
 ```
+
+### 4.4 API 代理机制
+
+前端通过 `createApiProxy` 将请求代理到 BFF 层：
+
+```typescript
+// src/app/api/settlement/[[...path]]/route.ts
+import { createApiProxy } from '@/lib/api-proxy';
+
+// 自动代理所有 /api/settlement/* 请求到 backend:4001
+export const { GET, POST, PUT, DELETE } = createApiProxy({
+  routePrefix: '/api/settlement',
+});
+```
+
+**请求流程**：
+```
+浏览器 → Next.js API Route → createApiProxy → BFF (4001) → 数据库/存储
+```
+
+### 4.5 核心原则
+
+- **所有 API 地址必须通过配置文件获取**
+- **禁止在代码中硬编码后端地址**
+- **敏感信息必须通过环境变量注入**
 
 ---
 
