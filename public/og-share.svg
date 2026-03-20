@@ -1,0 +1,24 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Logo 圆角矩形 -->
+  <rect x="510" y="80" width="180" height="180" rx="36" fill="rgba(255,255,255,0.2)"/>
+  <text x="600" y="200" text-anchor="middle" fill="white" font-size="72" font-weight="bold" font-family="system-ui, sans-serif">π³</text>
+  
+  <!-- 主标题 -->
+  <text x="600" y="340" text-anchor="middle" fill="white" font-size="56" font-weight="bold" font-family="system-ui, sans-serif">入驻申请表单</text>
+  
+  <!-- 副标题 -->
+  <text x="600" y="400" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="28" font-family="system-ui, sans-serif">Π立方企业服务 · 专业企业入驻服务</text>
+  
+  <!-- 底部提示 -->
+  <text x="600" y="520" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="22" font-family="system-ui, sans-serif">📋 点击填写您的企业入驻信息</text>
+</svg>

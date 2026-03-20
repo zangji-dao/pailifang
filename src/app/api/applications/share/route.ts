@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 生成完整的分享URL
+    // 生成完整的分享URL（环境变量已包含 https:// 前缀）
     const baseUrl = process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'http://localhost:5000';
     const shareUrl = `${baseUrl}/share/${token}`;
 

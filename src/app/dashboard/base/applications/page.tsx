@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -16,6 +16,8 @@ import {
   Share2,
   Copy,
   Check,
+  ChevronUp,
+  X,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,18 @@ import {
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
 import { toast } from "sonner";
+
+// 检测是否在微信内
+const isWechat = (): boolean => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return ua.includes("micromessenger");
+};
+
+// 检测是否支持 Web Share API
+const canWebShare = (): boolean => {
+  return typeof navigator !== "undefined" && typeof navigator.share === "function";
+};
 
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
@@ -88,6 +102,16 @@ export default function ApplicationsPage() {
   const [shareUrl, setShareUrl] = useState<string>("");
   const [creatingShare, setCreatingShare] = useState(false);
   const [sharingAppId, setSharingAppId] = useState<string | null>(null);
+  const [showWechatGuide, setShowWechatGuide] = useState(false);
+  
+  // 环境检测
+  const [isWechatEnv, setIsWechatEnv] = useState(false);
+  const [supportWebShare, setSupportWebShare] = useState(false);
+
+  useEffect(() => {
+    setIsWechatEnv(isWechat());
+    setSupportWebShare(canWebShare());
+  }, []);
 
   // 获取申请列表
   const fetchApplications = async () => {
