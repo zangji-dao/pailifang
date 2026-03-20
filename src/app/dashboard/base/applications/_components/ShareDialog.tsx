@@ -1,6 +1,7 @@
 "use client";
 
-import { Copy } from "lucide-react";
+import { useState } from "react";
+import { Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,14 @@ interface ShareDialogProps {
 }
 
 export function ShareDialog({ open, onOpenChange, shareUrl, onCopy }: ShareDialogProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
@@ -60,10 +69,10 @@ export function ShareDialog({ open, onOpenChange, shareUrl, onCopy }: ShareDialo
               <Button
                 type="button"
                 size="sm"
-                onClick={onCopy}
-                className="shrink-0 px-3"
+                onClick={handleCopy}
+                className={copied ? "shrink-0 px-3 bg-emerald-600 hover:bg-emerald-600" : "shrink-0 px-3"}
               >
-                <Copy className="h-4 w-4" />
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
           </div>
