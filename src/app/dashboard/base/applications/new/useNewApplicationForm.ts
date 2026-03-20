@@ -221,8 +221,8 @@ export function useNewApplicationForm() {
         toast.error('请上传 JPG 或 PNG 格式的图片');
         return;
       }
-      if (file.size > 3 * 1024 * 1024) {
-        toast.error('文件大小不能超过 3MB');
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('文件大小不能超过 5MB');
         return;
       }
       const reader = new FileReader();
@@ -247,8 +247,8 @@ export function useNewApplicationForm() {
         toast.error('请上传 JPG 或 PNG 格式的图片');
         return;
       }
-      if (file.size > 3 * 1024 * 1024) {
-        toast.error('文件大小不能超过 3MB');
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('文件大小不能超过 5MB');
         return;
       }
       const reader = new FileReader();

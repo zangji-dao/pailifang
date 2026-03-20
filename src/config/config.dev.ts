@@ -29,7 +29,7 @@ const devConfig: AppConfig = {
   storage: {
     uploadUrl: '/api/storage/upload',
     presignedUrlExpiry: 3600,
-    maxFileSize: 3 * 1024 * 1024, // 3MB
+    maxFileSize: 5 * 1024 * 1024, // 5MB
     allowedTypes: ['image/jpeg', 'image/png', 'image/jpg'],
   },
 
