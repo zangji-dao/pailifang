@@ -303,18 +303,6 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-amber-700">{stats.pending}</div>
         </button>
         <button
-          onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
-          className={cn(
-            "rounded-lg border p-4 text-left transition-all",
-            statusFilter === "approved" 
-              ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-400" 
-              : "bg-card hover:border-emerald-300 hover:bg-emerald-50/50"
-          )}
-        >
-          <div className="text-sm text-muted-foreground">已通过</div>
-          <div className="text-2xl font-semibold mt-1 text-emerald-600">{stats.approved}</div>
-        </button>
-        <button
           onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
@@ -325,6 +313,18 @@ export default function ApplicationsPage() {
         >
           <div className="text-sm text-muted-foreground">已驳回</div>
           <div className="text-2xl font-semibold mt-1 text-red-600">{stats.rejected}</div>
+        </button>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
+          className={cn(
+            "rounded-lg border p-4 text-left transition-all",
+            statusFilter === "approved" 
+              ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-400" 
+              : "bg-card hover:border-emerald-300 hover:bg-emerald-50/50"
+          )}
+        >
+          <div className="text-sm text-muted-foreground">已通过</div>
+          <div className="text-2xl font-semibold mt-1 text-emerald-600">{stats.approved}</div>
         </button>
       </div>
 
