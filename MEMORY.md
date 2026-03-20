@@ -108,7 +108,7 @@ try {
 
 | 状态 | 任务 | 备注 |
 |------|------|------|
-| ⏳ | 重构超长文件 | 15+文件超过500行，已完成分析 |
+| ⏳ | 重构超长文件 | 已分析完成，待执行拆分 |
 | ✅ | 修复 any 类型 | 已完成：定义具体类型替代 |
 | ✅ | 补充 try-catch | 已确认：大部分已有错误处理 |
 
@@ -133,9 +133,45 @@ try {
 | ✅ | 数据库密码硬编码 | 安全风险 | 已修复：db.ts 必须用环境变量 |
 | ✅ | 配置文件未使用 | 环境切换风险 | 已修复：API 路由已重构 |
 | ✅ | 硬编码 API 地址 | 9处 | 已修复：使用配置文件 |
-| ⏳ | 文件超长（>500行） | 15+文件 | 分析完成，待执行重构 |
+| ⏳ | 文件超长（>500行） | 15+文件 | 已分析，建议拆分策略见下方 |
 | ✅ | any 类型 | 30+处 | 已修复：定义具体类型替代 |
 | ✅ | 缺少 try-catch | 32处 | 已确认：大部分已有错误处理 |
+
+---
+
+## 🔄 超长文件重构建议
+
+> 以下文件超过500行，建议拆分以提高可维护性
+
+### 优先级 1（>1000行）
+
+| 文件 | 行数 | 拆分建议 |
+|------|------|----------|
+| `applications/[id]/page.tsx` | 2056 | 拆分为 types.ts, constants.ts, useApplicationForm.ts, 表单组件 |
+| `applications/new/page.tsx` | 1837 | 同上，可复用 types.ts 和 constants.ts |
+| `marketing/publish/page.tsx` | 1008 | 拆分为 components/ 目录，按功能模块拆分 |
+
+### 优先级 2（500-1000行）
+
+| 文件 | 行数 | 拆分建议 |
+|------|------|----------|
+| `accounting-subjects.ts` | 899 | 数据文件，可按科目类型拆分为多个文件 |
+| `accounting/page.tsx` | 859 | 拆分为 components/ 和 hooks/ |
+| `base/sites/[id]/page.tsx` | 847 | 拆分为 useSiteDetail.ts 和组件 |
+| `dashboard/layout.tsx` | 809 | 拆分为 Sidebar, Header 等组件 |
+| `hr/training/page.tsx` | 777 | 拆分为 components/ |
+| `currency/CurrencySettingsPage.tsx` | 777 | 拆分为 components/ 和 hooks/ |
+| `ApplicationFormDialog.tsx` | 766 | 拆分为子表单组件 |
+| `hr/recruitment/page.tsx` | 757 | 拆分为 components/ |
+| `hr/payroll/page.tsx` | 726 | 拆分为 components/ |
+
+### 拆分策略
+
+1. **类型定义** → `types.ts`
+2. **常量配置** → `constants.ts`
+3. **状态和逻辑** → `useXxxForm.ts` hook
+4. **UI 组件** → `_components/` 目录
+5. **工具函数** → `utils.ts`
 
 ---
 
