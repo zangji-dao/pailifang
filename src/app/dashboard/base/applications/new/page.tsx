@@ -67,9 +67,9 @@ export default function NewApplicationPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* 页面标题 */}
-      <div className="bg-card border-b">
+    <div className="flex flex-col h-[calc(100vh-7rem)] -m-4 lg:-m-6">
+      {/* 页面标题 - 固定不滚动 */}
+      <div className="bg-card border-b shrink-0">
         <div className="px-6 py-4">
           <div className="flex items-center">
             {/* 左侧：返回按钮 */}
@@ -111,8 +111,8 @@ export default function NewApplicationPage() {
         </div>
       </div>
 
-      {/* 步骤指示器 */}
-      <div className="px-6 py-3 border-b bg-muted/30">
+      {/* 步骤指示器 - 固定不滚动 */}
+      <div className="px-6 py-3 border-b bg-muted/30 shrink-0">
         <div className="flex items-center justify-center gap-2">
           {formSteps.map((step, index) => (
             <div key={step.id} className="flex items-center">
