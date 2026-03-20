@@ -40,7 +40,7 @@ interface TabConfig {
 const BASE_TAB_CONFIGS: Record<string, TabConfig> = {
   sites: { id: "base-sites", label: "物业运营中心", icon: <Building className="h-3.5 w-3.5" />, group: "base" },
   applications: { id: "base-applications", label: "入驻申请", icon: <FileText className="h-3.5 w-3.5" />, group: "base" },
-  processes: { id: "base-processes", label: "入驻流程", icon: <GitBranch className="h-3.5 w-3.5" />, group: "base" },
+  processes: { id: "base-processes", label: "入驻审批", icon: <GitBranch className="h-3.5 w-3.5" />, group: "base" },
   addresses: { id: "base-addresses", label: "地址管理", icon: <MapPin className="h-3.5 w-3.5" />, group: "base" },
   tenants: { id: "base-tenants", label: "企业管理", icon: <Users className="h-3.5 w-3.5" />, group: "base" },
   contracts: { id: "base-contracts", label: "合同管理", icon: <FileSignature className="h-3.5 w-3.5" />, group: "base" },

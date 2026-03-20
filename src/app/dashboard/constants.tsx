@@ -55,7 +55,7 @@ export const BASE_NAVIGATION: NavItem[] = [
 export const BASE_MANAGEMENT_CHILDREN = [
   { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
   { name: "入驻申请", href: "/dashboard/base/applications", icon: FileText },
-  { name: "入驻流程", href: "/dashboard/base/processes", icon: GitBranch },
+  { name: "入驻审批", href: "/dashboard/base/processes", icon: GitBranch },
   { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "企业管理", href: "/dashboard/base/tenants", icon: Users },
   { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
