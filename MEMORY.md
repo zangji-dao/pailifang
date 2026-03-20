@@ -245,11 +245,44 @@ try {
 
 ### 3.4 字体
 
+**字体族：**
+
 | 类型 | 字体 |
 |------|------|
 | 中文 | `Noto Sans SC` |
 | 英文/数字 | `Inter` |
 | 代码/金额 | 系统等宽字体 |
+
+**字号规范：**
+
+| 用途 | 字号 | 样式类 |
+|------|------|--------|
+| 页面标题 | 24px / 1.5rem | `text-2xl font-semibold` |
+| 页面副标题 | 14px / 0.875rem | `text-sm text-slate-500` |
+| 区块标题 | 18px / 1.125rem | `text-lg font-medium` |
+| 卡片标题 | 16px / 1rem | `text-base font-medium` |
+| 正文内容 | 14px / 0.875rem | `text-sm` |
+| 辅助文字 | 12px / 0.75rem | `text-xs text-muted-foreground` |
+| 统计数字 | 24px / 1.5rem | `text-2xl font-semibold` |
+| 表格内容 | 14px / 0.875rem | `text-sm` |
+| 按钮文字 | 14px / 0.875rem | `text-sm` |
+
+**字重规范：**
+
+| 用途 | 字重 | 样式类 |
+|------|------|--------|
+| 页面标题 | 600 | `font-semibold` |
+| 区块/卡片标题 | 500 | `font-medium` |
+| 正文内容 | 400 | `font-normal` |
+| 强调内容 | 500-600 | `font-medium` / `font-semibold` |
+
+**行高规范：**
+
+| 用途 | 行高 | 样式类 |
+|------|------|--------|
+| 标题 | 1.25 | `leading-tight` |
+| 正文 | 1.5 | `leading-normal` |
+| 紧凑文本 | 1.375 | `leading-snug` |
 
 ### 3.5 圆角
 

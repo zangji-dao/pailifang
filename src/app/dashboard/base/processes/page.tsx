@@ -233,11 +233,11 @@ export default function ApprovalPage() {
           <h1 className="text-2xl font-semibold text-slate-900">
             入驻审批
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             审批企业入驻申请
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full border border-amber-200">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-full border border-amber-200">
           <div className="w-2 h-2 rounded-full bg-amber-500" />
           <span className="text-sm font-medium text-amber-700">{stats.pending}</span>
           <span className="text-sm text-amber-600">待审批</span>
@@ -250,9 +250,9 @@ export default function ApprovalPage() {
           <div className="text-sm text-muted-foreground">总计</div>
           <div className="text-2xl font-semibold mt-1">{stats.total}</div>
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm text-muted-foreground">待审批</div>
-          <div className="text-2xl font-semibold mt-1 text-amber-600">{stats.pending}</div>
+        <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+          <div className="text-sm text-amber-600">待审批</div>
+          <div className="text-2xl font-semibold mt-1 text-amber-700">{stats.pending}</div>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <div className="text-sm text-muted-foreground">已通过</div>
@@ -329,7 +329,7 @@ export default function ApprovalPage() {
                 <tr key={app.id} className="border-b last:border-b-0 hover:bg-muted/50">
                   <td className="p-4 text-sm font-mono">{app.applicationNo}</td>
                   <td className="p-4">
-                    <div className="font-medium">{app.enterpriseName}</div>
+                    <div className="text-sm font-medium">{app.enterpriseName}</div>
                     {app.enterpriseNameBackups && app.enterpriseNameBackups.length > 0 && (
                       <div className="text-xs text-muted-foreground">
                         备用名: {app.enterpriseNameBackups.join("、")}
@@ -404,7 +404,7 @@ export default function ApprovalPage() {
                               }
                             }}
                             disabled={actionLoading}
-                            className="gap-1"
+                            className="gap-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                           >
                             {actionLoading ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -565,6 +565,7 @@ export default function ApprovalPage() {
                 <Button
                   onClick={handleApprove}
                   disabled={actionLoading}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                 >
                   {actionLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
