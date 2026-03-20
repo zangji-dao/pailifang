@@ -16,13 +16,6 @@ import {
   MessageSquareWarning,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -283,31 +276,71 @@ export default function ApplicationsPage() {
         </Button>
       </div>
 
-      {/* 统计卡片 */}
+      {/* 统计卡片 - 可点击筛选 */}
       <div className="grid grid-cols-5 gap-4">
-        <div className="rounded-lg border bg-card p-4">
+        <button
+          onClick={() => setStatusFilter("all")}
+          className={cn(
+            "rounded-lg border p-4 text-left transition-all",
+            statusFilter === "all" 
+              ? "border-primary bg-primary/5 ring-1 ring-primary" 
+              : "bg-card hover:border-primary/50 hover:bg-muted/50"
+          )}
+        >
           <div className="text-sm text-muted-foreground">总计</div>
           <div className="text-2xl font-semibold mt-1">{stats.total}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
+        </button>
+        <button
+          onClick={() => setStatusFilter("draft")}
+          className={cn(
+            "rounded-lg border p-4 text-left transition-all",
+            statusFilter === "draft" 
+              ? "border-slate-400 bg-slate-50 ring-1 ring-slate-400" 
+              : "bg-card hover:border-slate-300 hover:bg-muted/50"
+          )}
+        >
           <div className="text-sm text-muted-foreground">草稿</div>
           <div className="text-2xl font-semibold mt-1 text-slate-600">{stats.draft}</div>
-        </div>
-        <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+        </button>
+        <button
+          onClick={() => setStatusFilter("pending")}
+          className={cn(
+            "rounded-lg border p-4 text-left transition-all",
+            statusFilter === "pending" 
+              ? "border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50 ring-1 ring-amber-400" 
+              : "bg-card hover:border-amber-300 hover:bg-amber-50/50"
+          )}
+        >
           <div className="text-sm text-amber-600">待审批</div>
           <div className="text-2xl font-semibold mt-1 text-amber-700">{stats.pending}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
+        </button>
+        <button
+          onClick={() => setStatusFilter("approved")}
+          className={cn(
+            "rounded-lg border p-4 text-left transition-all",
+            statusFilter === "approved" 
+              ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-400" 
+              : "bg-card hover:border-emerald-300 hover:bg-emerald-50/50"
+          )}
+        >
           <div className="text-sm text-muted-foreground">已通过</div>
           <div className="text-2xl font-semibold mt-1 text-emerald-600">{stats.approved}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
+        </button>
+        <button
+          onClick={() => setStatusFilter("rejected")}
+          className={cn(
+            "rounded-lg border p-4 text-left transition-all",
+            statusFilter === "rejected" 
+              ? "border-red-400 bg-red-50 ring-1 ring-red-400" 
+              : "bg-card hover:border-red-300 hover:bg-red-50/50"
+          )}
+        >
           <div className="text-sm text-muted-foreground">已驳回</div>
           <div className="text-2xl font-semibold mt-1 text-red-600">{stats.rejected}</div>
-        </div>
+        </button>
       </div>
 
-      {/* 搜索和筛选 */}
+      {/* 搜索 */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -319,18 +352,16 @@ export default function ApplicationsPage() {
             className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="全部状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="draft">草稿</SelectItem>
-            <SelectItem value="pending">待审批</SelectItem>
-            <SelectItem value="approved">已通过</SelectItem>
-            <SelectItem value="rejected">已驳回</SelectItem>
-          </SelectContent>
-        </Select>
+        {statusFilter !== "all" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+            className="text-muted-foreground"
+          >
+            清除筛选
+          </Button>
+        )}
       </div>
 
       {/* 申请列表 */}
