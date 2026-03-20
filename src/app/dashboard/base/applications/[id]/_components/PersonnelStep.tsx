@@ -138,7 +138,13 @@ export function PersonnelStep({
                     (role === "supervisor" && (person.roles.includes("legal_person") || person.roles.includes("finance_manager"))) ||
                     (role === "legal_person" && person.roles.includes("supervisor")) ||
                     (role === "finance_manager" && person.roles.includes("supervisor"));
-                  const isDisabled = !canEdit || isTakenByOther || hasConflict;
+                  
+                  // 已被其他人员选择的角色不显示（当前人员已选择的除外）
+                  if (isTakenByOther && !isSelected) {
+                    return null;
+                  }
+
+                  const isDisabled = !canEdit || hasConflict;
 
                   return (
                     <button
@@ -156,7 +162,6 @@ export function PersonnelStep({
                       </div>
                       <div className="text-left">
                         <div className="text-sm font-medium">{config.label}</div>
-                        {isTakenByOther && !isSelected && <div className="text-xs text-muted-foreground">已被占用</div>}
                       </div>
                     </button>
                   );
