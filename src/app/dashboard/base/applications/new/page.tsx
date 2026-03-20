@@ -196,10 +196,10 @@ export default function NewApplicationPage() {
       </ScrollArea>
 
       {/* 底部操作栏 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
-        <div className="px-6 py-4">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-56 bg-card border-t shadow-lg">
+        <div className="px-10 lg:px-12 py-4">
           <div className="flex items-center">
-            {/* 左侧：上一步按钮（与返回按钮同宽） */}
+            {/* 左侧：上一步按钮 */}
             <div className="w-[80px]">
               {currentStep > 0 && (
                 <Button type="button" variant="outline" size="sm" onClick={goToPrevStep}>
