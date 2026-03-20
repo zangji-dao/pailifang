@@ -383,8 +383,8 @@ export default function ApplicationsPage() {
                     <div className="text-muted-foreground">{app.legalPersonPhone || "-"}</div>
                   </td>
                   <td className="p-4">
-                    <div className="flex flex-col gap-1.5">
-                      <Badge variant="outline" className={cn("font-normal w-fit", statusConfig[app.approvalStatus].className)}>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn("font-normal", statusConfig[app.approvalStatus].className)}>
                         {statusConfig[app.approvalStatus].label}
                       </Badge>
                       {app.approvalStatus === "rejected" && app.rejectionReason && (
@@ -392,7 +392,7 @@ export default function ApplicationsPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleViewRejectReason(app)}
-                          className="h-auto px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 w-fit"
+                          className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1"
                         >
                           <MessageSquareWarning className="h-3 w-3" />
                           查看原因
