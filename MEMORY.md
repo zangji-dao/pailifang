@@ -253,26 +253,51 @@ try {
 | 英文/数字 | `Inter` |
 | 代码/金额 | 系统等宽字体 |
 
-**字号规范：**
+**语义化字体类（推荐）：**
+
+| 类名 | 用途 | 等效样式 |
+|------|------|----------|
+| `text-page-title` | 页面标题 | `text-2xl font-semibold` (24px) |
+| `text-section-title` | 区块标题 | `text-lg font-medium` (18px) |
+| `text-card-title` | 卡片标题 | `text-base font-medium` (16px) |
+| `text-body` | 正文内容 | `text-sm` (14px) |
+| `text-caption` | 辅助文字 | `text-xs` (12px) |
+| `text-stat-number` | 统计数字 | `text-2xl font-semibold` (24px) |
+
+**使用示例：**
+
+```tsx
+// ✅ 推荐：使用语义化类名
+<h1 className="text-page-title text-slate-900">入驻申请</h1>
+<p className="text-caption text-muted-foreground">填写入园审批表</p>
+<div className="text-stat-number">{stats.total}</div>
+
+// ❌ 不推荐：硬编码原子类
+<h1 className="text-2xl font-semibold">入驻申请</h1>
+<p className="text-xs text-muted-foreground">填写入园审批表</p>
+<div className="text-2xl font-semibold">{stats.total}</div>
+```
+
+**字号规范（参考）：**
 
 | 用途 | 字号 | 样式类 |
 |------|------|--------|
-| 页面标题 | 24px / 1.5rem | `text-2xl font-semibold` |
-| 页面副标题 | 14px / 0.875rem | `text-sm text-slate-500` |
-| 区块标题 | 18px / 1.125rem | `text-lg font-medium` |
-| 卡片标题 | 16px / 1rem | `text-base font-medium` |
-| 正文内容 | 14px / 0.875rem | `text-sm` |
-| 辅助文字 | 12px / 0.75rem | `text-xs text-muted-foreground` |
-| 统计数字 | 24px / 1.5rem | `text-2xl font-semibold` |
-| 表格内容 | 14px / 0.875rem | `text-sm` |
-| 按钮文字 | 14px / 0.875rem | `text-sm` |
+| 页面标题 | 24px / 1.5rem | `text-page-title` |
+| 页面副标题 | 14px / 0.875rem | `text-body text-muted-foreground` |
+| 区块标题 | 18px / 1.125rem | `text-section-title` |
+| 卡片标题 | 16px / 1rem | `text-card-title` |
+| 正文内容 | 14px / 0.875rem | `text-body` |
+| 辅助文字 | 12px / 0.75rem | `text-caption text-muted-foreground` |
+| 统计数字 | 24px / 1.5rem | `text-stat-number` |
+| 表格内容 | 14px / 0.875rem | `text-body` |
+| 按钮文字 | 14px / 0.875rem | `text-body` |
 
 **字重规范：**
 
 | 用途 | 字重 | 样式类 |
 |------|------|--------|
-| 页面标题 | 600 | `font-semibold` |
-| 区块/卡片标题 | 500 | `font-medium` |
+| 页面标题 | 600 | `font-semibold` (已包含在 text-page-title) |
+| 区块/卡片标题 | 500 | `font-medium` (已包含在 text-section-title/text-card-title) |
 | 正文内容 | 400 | `font-normal` |
 | 强调内容 | 500-600 | `font-medium` / `font-semibold` |
 
