@@ -345,6 +345,40 @@ export function useNewApplicationForm() {
       return false;
     }
     
+    // 验证每个人员的信息是否完整
+    for (let i = 0; i < formData.personnel.length; i++) {
+      const person = formData.personnel[i];
+      if (!person.name?.trim()) {
+        setErrors({ personnel: `第${i + 1}位人员姓名不能为空` });
+        return false;
+      }
+      if (!person.phone?.trim()) {
+        setErrors({ personnel: `第${i + 1}位人员电话不能为空` });
+        return false;
+      }
+      if (!person.email?.trim()) {
+        setErrors({ personnel: `第${i + 1}位人员邮箱不能为空` });
+        return false;
+      }
+      if (!person.address?.trim()) {
+        setErrors({ personnel: `第${i + 1}位人员住址不能为空` });
+        return false;
+      }
+      if (!person.idCardFrontUrl) {
+        setErrors({ personnel: `第${i + 1}位人员身份证正面未上传` });
+        return false;
+      }
+      if (!person.idCardBackUrl) {
+        setErrors({ personnel: `第${i + 1}位人员身份证反面未上传` });
+        return false;
+      }
+      if (person.roles.length === 0) {
+        setErrors({ personnel: `第${i + 1}位人员请至少选择一个职务` });
+        return false;
+      }
+    }
+    
+    // 验证必填职务
     for (const role of requiredRoles) {
       const hasRole = formData.personnel.some(p => p.roles.includes(role.key));
       if (!hasRole) {

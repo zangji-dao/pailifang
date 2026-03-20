@@ -107,29 +107,29 @@ export function PersonnelStep({
             {/* 基本信息 */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>姓名</Label>
+                <Label>姓名 <span className="text-destructive">*</span></Label>
                 <Input value={person.name} onChange={(e) => updatePersonnel(index, "name", e.target.value)} placeholder="请输入姓名" disabled={!canEdit} />
               </div>
               <div className="space-y-2">
-                <Label>电话</Label>
+                <Label>电话 <span className="text-destructive">*</span></Label>
                 <Input value={person.phone} onChange={(e) => updatePersonnel(index, "phone", e.target.value)} placeholder="请输入电话" disabled={!canEdit} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>邮箱</Label>
+                <Label>邮箱 <span className="text-destructive">*</span></Label>
                 <Input type="email" value={person.email} onChange={(e) => updatePersonnel(index, "email", e.target.value)} placeholder="请输入邮箱" disabled={!canEdit} />
               </div>
               <div className="space-y-2">
-                <Label>住址</Label>
+                <Label>住址 <span className="text-destructive">*</span></Label>
                 <Input value={person.address} onChange={(e) => updatePersonnel(index, "address", e.target.value)} placeholder="请输入住址" disabled={!canEdit} />
               </div>
             </div>
 
             {/* 职务选择 */}
             <div className="space-y-2">
-              <Label>担任职务</Label>
+              <Label>担任职务 <span className="text-destructive">*</span></Label>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(roleConfig).map(([role, config]) => {
                   const isSelected = person.roles.includes(role);
@@ -171,11 +171,11 @@ export function PersonnelStep({
 
             {/* 身份证上传 */}
             <div className="space-y-3">
-              <Label>身份证照片</Label>
+              <Label>身份证照片 <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-6">
                 {/* 正面 */}
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">正面（人像面）</p>
+                  <p className="text-xs text-muted-foreground">正面（人像面）<span className="text-destructive">*</span></p>
                   {person.idCardFrontUrl ? (
                     <div className="relative group">
                       <div className="aspect-[1.58/1] rounded-lg border overflow-hidden bg-slate-100">
@@ -208,7 +208,7 @@ export function PersonnelStep({
                 </div>
                 {/* 反面 */}
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">反面（国徽面）</p>
+                  <p className="text-xs text-muted-foreground">反面（国徽面）<span className="text-destructive">*</span></p>
                   {person.idCardBackUrl ? (
                     <div className="relative group">
                       <div className="aspect-[1.58/1] rounded-lg border overflow-hidden bg-slate-100">
