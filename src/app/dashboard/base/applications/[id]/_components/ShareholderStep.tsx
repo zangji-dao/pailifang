@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Trash2, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Upload, X, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import type { ApplicationFormData, Shareholder, ShareholderType } from "../types
 
 interface ShareholderStepProps {
   formData: ApplicationFormData;
+  errors: Record<string, string>;
   canEdit: boolean;
   uploadingFiles: Record<string, boolean>;
   addShareholder: () => void;
@@ -27,6 +29,7 @@ interface ShareholderStepProps {
 
 export function ShareholderStep({
   formData,
+  errors,
   canEdit,
   uploadingFiles,
   addShareholder,
@@ -35,10 +38,62 @@ export function ShareholderStep({
   handleFileChange,
   removeFile,
 }: ShareholderStepProps) {
+  // 错误弹窗状态
+  const [showError, setShowError] = useState(false);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevErrorRef = useRef<string | null>(null);
+
+  // 当 errors.shareholder 变化时显示弹窗，1秒后自动消失
+  useEffect(() => {
+    if (errors.shareholder && errors.shareholder !== prevErrorRef.current) {
+      setShowError(true);
+      prevErrorRef.current = errors.shareholder;
+      
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+      
+      hideTimerRef.current = setTimeout(() => {
+        setShowError(false);
+      }, 1000);
+    }
+    
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, [errors.shareholder]);
+
+  // 点击任意位置隐藏弹窗
+  useEffect(() => {
+    const handleClick = () => setShowError(false);
+    if (showError) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [showError]);
+
+  // 进入输入状态时隐藏弹窗
+  const handleFocus = () => setShowError(false);
+
   const getUploadKey = (fileType: string, index: number) => `shareholder-${index}-${fileType}`;
 
   return (
     <div className="space-y-4">
+      {/* 错误提示弹窗 */}
+      {showError && errors.shareholder && (
+        <div 
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-destructive/95 border border-destructive px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-300 cursor-pointer"
+          onClick={() => setShowError(false)}
+        >
+          <div className="flex items-center gap-2 text-white">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">{errors.shareholder}</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-medium">股东信息</h3>
@@ -65,9 +120,9 @@ export function ShareholderStep({
 
           {/* 股东类型选择 */}
           <div className="space-y-2">
-            <Label>股东类型</Label>
+            <Label>股东类型 <span className="text-destructive">*</span></Label>
             <Select value={shareholder.type || "natural"} onValueChange={(value: ShareholderType) => updateShareholder(index, "type", value)} disabled={!canEdit}>
-              <SelectTrigger><SelectValue placeholder="请选择股东类型" /></SelectTrigger>
+              <SelectTrigger onFocus={handleFocus}><SelectValue placeholder="请选择股东类型" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="natural">自然人股东</SelectItem>
                 <SelectItem value="enterprise">企业股东</SelectItem>
@@ -78,30 +133,30 @@ export function ShareholderStep({
           {/* 基本信息 */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>{shareholder.type === "enterprise" ? "企业名称" : "股东姓名"}</Label>
-              <Input value={shareholder.name} onChange={(e) => updateShareholder(index, "name", e.target.value)} placeholder={shareholder.type === "enterprise" ? "请输入企业名称" : "请输入股东姓名"} disabled={!canEdit} />
+              <Label>{shareholder.type === "enterprise" ? "企业名称" : "股东姓名"} <span className="text-destructive">*</span></Label>
+              <Input value={shareholder.name} onChange={(e) => updateShareholder(index, "name", e.target.value)} onFocus={handleFocus} placeholder={shareholder.type === "enterprise" ? "请输入企业名称" : "请输入股东姓名"} disabled={!canEdit} />
             </div>
             <div className="space-y-2">
-              <Label>出资额（万元）</Label>
-              <Input type="number" value={shareholder.investment} onChange={(e) => updateShareholder(index, "investment", e.target.value)} placeholder="请输入出资额" disabled={!canEdit} />
+              <Label>出资额（万元） <span className="text-destructive">*</span></Label>
+              <Input type="number" value={shareholder.investment} onChange={(e) => updateShareholder(index, "investment", e.target.value)} onFocus={handleFocus} placeholder="请输入出资额" disabled={!canEdit} />
             </div>
             <div className="space-y-2">
-              <Label>联系电话</Label>
-              <Input value={shareholder.phone} onChange={(e) => updateShareholder(index, "phone", e.target.value)} placeholder="请输入联系电话" disabled={!canEdit} />
+              <Label>联系电话 <span className="text-destructive">*</span></Label>
+              <Input value={shareholder.phone} onChange={(e) => updateShareholder(index, "phone", e.target.value)} onFocus={handleFocus} placeholder="请输入联系电话" disabled={!canEdit} />
             </div>
           </div>
 
           {/* 自然人股东 - 身份证上传 */}
           {(shareholder.type === "natural" || !shareholder.type) && (
             <div className="space-y-2">
-              <Label>身份证照片</Label>
+              <Label>身份证照片 <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-4">
                 {['idCardFront', 'idCardBack'].map((type) => (
                   <div key={type} className="space-y-2">
                     <p className="text-xs text-muted-foreground">{type === 'idCardFront' ? '正面（人像面）' : '反面（国徽面）'}</p>
                     {shareholder[`${type}Url` as keyof Shareholder] ? (
                       <div className="relative group">
-                        <img src={shareholder[`${type}Url` as keyof Shareholder] as string} alt={`身份证${type === 'idCardFront' ? '正面' : '反面'}`} className="w-full h-24 object-cover rounded border" />
+                        <img src={shareholder[`${type}Url` as keyof Shareholder] as string} alt={`身份证${type === 'idCardFront' ? '正面' : '反面'}`} className="w-full h-40 object-contain rounded border bg-muted/50" />
                         {canEdit && (
                           <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeFile(type as 'idCardFront' | 'idCardBack', index)}>
                             <X className="h-3 w-3" />
@@ -109,7 +164,7 @@ export function ShareholderStep({
                         )}
                       </div>
                     ) : (
-                      <label className={cn("flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary", uploadingFiles[getUploadKey(type, index)] && "opacity-50 cursor-wait", !canEdit && "opacity-50 cursor-not-allowed")}>
+                      <label className={cn("flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded cursor-pointer hover:border-primary", uploadingFiles[getUploadKey(type, index)] && "opacity-50 cursor-wait", !canEdit && "opacity-50 cursor-not-allowed")}>
                         {uploadingFiles[getUploadKey(type, index)] ? (
                           <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
                         ) : (
@@ -130,14 +185,14 @@ export function ShareholderStep({
           {/* 企业股东 - 营业执照上传 */}
           {shareholder.type === "enterprise" && (
             <div className="space-y-2">
-              <Label>营业执照</Label>
+              <Label>营业执照 <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-4">
                 {['licenseOriginal', 'licenseCopy'].map((type) => (
                   <div key={type} className="space-y-2">
                     <p className="text-xs text-muted-foreground">{type === 'licenseOriginal' ? '正本' : '副本'}</p>
                     {shareholder[`${type}Url` as keyof Shareholder] ? (
                       <div className="relative group">
-                        <img src={shareholder[`${type}Url` as keyof Shareholder] as string} alt={`营业执照${type === 'licenseOriginal' ? '正本' : '副本'}`} className="w-full h-24 object-cover rounded border" />
+                        <img src={shareholder[`${type}Url` as keyof Shareholder] as string} alt={`营业执照${type === 'licenseOriginal' ? '正本' : '副本'}`} className="w-full h-40 object-contain rounded border bg-muted/50" />
                         {canEdit && (
                           <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeFile(type as 'licenseOriginal' | 'licenseCopy', index)}>
                             <X className="h-3 w-3" />
@@ -145,7 +200,7 @@ export function ShareholderStep({
                         )}
                       </div>
                     ) : (
-                      <label className={cn("flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded cursor-pointer hover:border-primary", uploadingFiles[getUploadKey(type, index)] && "opacity-50 cursor-wait", !canEdit && "opacity-50 cursor-not-allowed")}>
+                      <label className={cn("flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded cursor-pointer hover:border-primary", uploadingFiles[getUploadKey(type, index)] && "opacity-50 cursor-wait", !canEdit && "opacity-50 cursor-not-allowed")}>
                         {uploadingFiles[getUploadKey(type, index)] ? (
                           <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
                         ) : (

@@ -418,6 +418,68 @@ export function useNewApplicationForm() {
     return { isValid: true, errors: {} };
   }, [formData]);
 
+  // ========== 股东信息验证 ==========
+  const validateShareholderStep = useCallback((): { isValid: boolean; errors: Record<string, string> } => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData?.shareholders || formData.shareholders.length === 0) {
+      newErrors.shareholder = "至少需要1名股东";
+      setErrors(newErrors);
+      return { isValid: false, errors: newErrors };
+    }
+    
+    // 验证每个股东的信息是否完整
+    for (let i = 0; i < formData.shareholders.length; i++) {
+      const shareholder = formData.shareholders[i];
+      if (!shareholder.name?.trim()) {
+        newErrors.shareholder = `第${i + 1}位股东名称不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
+      }
+      if (!shareholder.investment?.trim()) {
+        newErrors.shareholder = `第${i + 1}位股东出资额不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
+      }
+      if (!shareholder.phone?.trim()) {
+        newErrors.shareholder = `第${i + 1}位股东联系电话不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
+      }
+      
+      // 自然人股东需要身份证
+      if (shareholder.type === "natural" || !shareholder.type) {
+        if (!shareholder.idCardFrontUrl) {
+          newErrors.shareholder = `第${i + 1}位股东身份证正面未上传`;
+          setErrors(newErrors);
+          return { isValid: false, errors: newErrors };
+        }
+        if (!shareholder.idCardBackUrl) {
+          newErrors.shareholder = `第${i + 1}位股东身份证反面未上传`;
+          setErrors(newErrors);
+          return { isValid: false, errors: newErrors };
+        }
+      }
+      
+      // 企业股东需要营业执照
+      if (shareholder.type === "enterprise") {
+        if (!shareholder.licenseOriginalUrl) {
+          newErrors.shareholder = `第${i + 1}位股东营业执照正本未上传`;
+          setErrors(newErrors);
+          return { isValid: false, errors: newErrors };
+        }
+        if (!shareholder.licenseCopyUrl) {
+          newErrors.shareholder = `第${i + 1}位股东营业执照副本未上传`;
+          setErrors(newErrors);
+          return { isValid: false, errors: newErrors };
+        }
+      }
+    }
+    
+    setErrors({});
+    return { isValid: true, errors: {} };
+  }, [formData]);
+
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData?.enterpriseName) newErrors.enterpriseName = "请输入企业名称";
@@ -503,6 +565,14 @@ export function useNewApplicationForm() {
           firstError = errorValues[0];
         }
       }
+      else if (currentStep === 3) {
+        const result = validateShareholderStep();
+        isValid = result.isValid;
+        const errorValues = Object.values(result.errors);
+        if (errorValues.length > 0) {
+          firstError = errorValues[0];
+        }
+      }
       
       if (!isValid) {
         return;
@@ -513,7 +583,7 @@ export function useNewApplicationForm() {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [currentStep, validateBasicStep, validatePersonnelStep, saveDraft]);
+  }, [currentStep, validateBasicStep, validatePersonnelStep, validateShareholderStep, saveDraft]);
 
   const goToPrevStep = useCallback(() => {
     if (currentStep > 0) {

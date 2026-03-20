@@ -224,6 +224,7 @@ export default function ApplicationDetailPage() {
           {currentStep === 3 && (
             <ShareholderStep
               formData={formData}
+              errors={errors}
               canEdit={canEdit}
               uploadingFiles={uploadingShareholderFiles}
               addShareholder={addShareholder}

@@ -188,6 +188,7 @@ export default function NewApplicationPage() {
           {currentStep === 3 && (
             <ShareholderStep
               formData={formDataForComponents}
+              errors={errors}
               canEdit={true}
               uploadingFiles={uploadingShareholderFiles}
               addShareholder={addShareholder}
