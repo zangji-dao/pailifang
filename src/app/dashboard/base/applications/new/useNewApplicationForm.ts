@@ -328,7 +328,7 @@ export function useNewApplicationForm() {
   }, []);
 
   // ========== 验证 ==========
-  const validateBasicStep = useCallback((): boolean => {
+  const validateBasicStep = useCallback((): { isValid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
     if (!formData?.enterpriseName?.trim()) newErrors.enterpriseName = "请输入企业名称";
     if (!formData?.registeredCapital?.trim()) newErrors.registeredCapital = "请输入注册资金";
@@ -336,45 +336,55 @@ export function useNewApplicationForm() {
     if (!formData?.expectedAnnualRevenue?.trim()) newErrors.expectedAnnualRevenue = "请输入预计主营收入";
     if (!formData?.expectedAnnualTax?.trim()) newErrors.expectedAnnualTax = "请输入预计全口径税收";
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return { isValid: Object.keys(newErrors).length === 0, errors: newErrors };
   }, [formData]);
 
-  const validatePersonnelStep = useCallback((): boolean => {
+  const validatePersonnelStep = useCallback((): { isValid: boolean; errors: Record<string, string> } => {
+    const newErrors: Record<string, string> = {};
+    
     if (!formData?.personnel || formData.personnel.length < 2) {
-      setErrors({ personnel: "至少需要2名人员（法人代表和监事）" });
-      return false;
+      newErrors.personnel = "至少需要2名人员（法人代表和监事）";
+      setErrors(newErrors);
+      return { isValid: false, errors: newErrors };
     }
     
     // 验证每个人员的信息是否完整
     for (let i = 0; i < formData.personnel.length; i++) {
       const person = formData.personnel[i];
       if (!person.name?.trim()) {
-        setErrors({ personnel: `第${i + 1}位人员姓名不能为空` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员姓名不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
       if (!person.phone?.trim()) {
-        setErrors({ personnel: `第${i + 1}位人员电话不能为空` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员电话不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
       if (!person.email?.trim()) {
-        setErrors({ personnel: `第${i + 1}位人员邮箱不能为空` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员邮箱不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
       if (!person.address?.trim()) {
-        setErrors({ personnel: `第${i + 1}位人员住址不能为空` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员住址不能为空`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
       if (!person.idCardFrontUrl) {
-        setErrors({ personnel: `第${i + 1}位人员身份证正面未上传` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员身份证正面未上传`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
       if (!person.idCardBackUrl) {
-        setErrors({ personnel: `第${i + 1}位人员身份证反面未上传` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员身份证反面未上传`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
       if (person.roles.length === 0) {
-        setErrors({ personnel: `第${i + 1}位人员请至少选择一个职务` });
-        return false;
+        newErrors.personnel = `第${i + 1}位人员请至少选择一个职务`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
     }
     
@@ -382,8 +392,9 @@ export function useNewApplicationForm() {
     for (const role of requiredRoles) {
       const hasRole = formData.personnel.some(p => p.roles.includes(role.key));
       if (!hasRole) {
-        setErrors({ personnel: `请指定${role.label}` });
-        return false;
+        newErrors.personnel = `请指定${role.label}`;
+        setErrors(newErrors);
+        return { isValid: false, errors: newErrors };
       }
     }
     
@@ -391,18 +402,20 @@ export function useNewApplicationForm() {
     const supervisorIndex = formData.personnel.findIndex(p => p.roles.includes("supervisor"));
     
     if (legalPersonIndex === supervisorIndex) {
-      setErrors({ personnel: "法人代表和监事不能是同一人" });
-      return false;
+      newErrors.personnel = "法人代表和监事不能是同一人";
+      setErrors(newErrors);
+      return { isValid: false, errors: newErrors };
     }
     
     const financeIndex = formData.personnel.findIndex(p => p.roles.includes("finance_manager"));
     if (supervisorIndex === financeIndex) {
-      setErrors({ personnel: "监事和财务负责人不能是同一人" });
-      return false;
+      newErrors.personnel = "监事和财务负责人不能是同一人";
+      setErrors(newErrors);
+      return { isValid: false, errors: newErrors };
     }
     
     setErrors({});
-    return true;
+    return { isValid: true, errors: {} };
   }, [formData]);
 
   const validateForm = useCallback((): boolean => {
@@ -472,15 +485,34 @@ export function useNewApplicationForm() {
   const goToNextStep = useCallback(async () => {
     if (currentStep < formSteps.length - 1) {
       let isValid = true;
-      if (currentStep === 0) isValid = validateBasicStep();
-      else if (currentStep === 2) isValid = validatePersonnelStep();
+      let firstError = "";
       
-      if (isValid) {
-        // 自动保存当前步骤数据
-        await saveDraft();
-        setCurrentStep(currentStep + 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (currentStep === 0) {
+        const result = validateBasicStep();
+        isValid = result.isValid;
+        const errorValues = Object.values(result.errors);
+        if (errorValues.length > 0) {
+          firstError = errorValues[0];
+        }
       }
+      else if (currentStep === 2) {
+        const result = validatePersonnelStep();
+        isValid = result.isValid;
+        const errorValues = Object.values(result.errors);
+        if (errorValues.length > 0) {
+          firstError = errorValues[0];
+        }
+      }
+      
+      if (!isValid) {
+        toast.error(firstError || "请填写必填信息");
+        return;
+      }
+      
+      // 自动保存当前步骤数据
+      await saveDraft();
+      setCurrentStep(currentStep + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [currentStep, validateBasicStep, validatePersonnelStep, saveDraft]);
 

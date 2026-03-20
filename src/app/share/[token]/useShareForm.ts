@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import type { FormData, Personnel, Shareholder } from "./types";
 import { initialFormData, formSteps } from "./types";
 import { validateForm, validateStep } from "./utils/validation";
@@ -324,6 +325,9 @@ export function useShareForm(token: string) {
     const validation = validateStep(currentStep, formData);
     if (!validation.isValid) {
       setErrors(validation.errors);
+      // 提示用户有必填信息未填写
+      const firstError = Object.values(validation.errors)[0];
+      toast.error(firstError || "请填写必填信息");
       return;
     }
 
