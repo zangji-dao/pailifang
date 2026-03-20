@@ -161,6 +161,186 @@ function MyComponent() {
 
 ---
 
+## 🎨 设计规范
+
+> 系统的视觉风格和组件使用规范
+
+### 品牌色
+
+系统采用 **Amber（琥珀色）+ Orange（橙色）** 渐变作为品牌主色调，传达专业、温暖、可信赖的企业服务形象。
+
+| 用途 | 样式类 | 说明 |
+|------|--------|------|
+| **主按钮/高亮** | `bg-gradient-to-r from-amber-500 to-orange-500` | 品牌渐变背景 |
+| **主按钮悬停** | `hover:from-amber-600 hover:to-orange-600` | 加深渐变 |
+| **浅色背景** | `bg-gradient-to-br from-amber-50 to-orange-50` | 卡片/区域背景 |
+| **强调文字** | `text-amber-600` | 重要文字、金额等 |
+| **图标/装饰** | `text-amber-500` | 图标颜色 |
+| **边框/分割** | `border-amber-100`, `border-amber-200` | 边框颜色 |
+| **阴影** | `shadow-amber-500/20`, `shadow-amber-500/25` | 按钮阴影 |
+
+**示例**：
+```tsx
+// 主按钮
+<Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+  确认提交
+</Button>
+
+// Logo/头像
+<div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white">
+  Π
+</div>
+
+// 强调卡片
+<div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100">
+  专业版
+</div>
+```
+
+### 中性色
+
+采用 **Slate（蓝灰）** 色系作为中性色，保持界面简洁专业。
+
+| 用途 | 样式类 | 色值参考 |
+|------|--------|----------|
+| 页面背景 | `bg-white`, `bg-slate-50` | 白/浅灰 |
+| 卡片背景 | `bg-white`, `bg-card` | 白色 |
+| 主文字 | `text-slate-900` | 深灰 |
+| 次要文字 | `text-slate-600`, `text-slate-700` | 中灰 |
+| 辅助文字 | `text-slate-400`, `text-slate-500` | 浅灰 |
+| 边框 | `border-slate-200`, `border-slate-100` | 浅灰 |
+| 分割线 | `border-slate-200/60` | 半透明 |
+
+### 功能色
+
+| 类型 | 颜色 | 使用场景 |
+|------|------|----------|
+| **成功** | `emerald-*` | 成功状态、已完成、通过 |
+| **警告** | `amber-*` | 待处理、警告、注意 |
+| **错误** | `red-*`, `destructive` | 错误、失败、删除 |
+| **信息** | `blue-*` | 信息提示、进行中 |
+
+**状态标签示例**：
+```tsx
+// 成功
+<Badge className="bg-emerald-50 text-emerald-600">已完成</Badge>
+
+// 进行中
+<Badge className="bg-blue-50 text-blue-600">进行中</Badge>
+
+// 待处理
+<Badge className="bg-amber-50 text-amber-600">待审批</Badge>
+
+// 错误/失败
+<Badge className="bg-red-50 text-red-600">已驳回</Badge>
+```
+
+### 字体
+
+| 类型 | 字体 | 说明 |
+|------|------|------|
+| **主字体** | `Noto Sans SC` | 中文正文 |
+| **英文** | `Inter` | 英文/数字 |
+| **等宽** | 系统默认 monospace | 代码、金额 |
+
+字体加载：
+```css
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+```
+
+### 圆角
+
+系统统一使用 `--radius: 0.625rem`（10px）作为基础圆角值。
+
+| 样式类 | 实际值 | 使用场景 |
+|--------|--------|----------|
+| `rounded-sm` | 6px | 小元素、标签 |
+| `rounded-md` | 8px | 按钮、输入框 |
+| `rounded-lg` | 10px | 卡片、弹窗 |
+| `rounded-xl` | 14px | 大卡片 |
+| `rounded-full` | 50% | 头像、圆形按钮 |
+
+### 弹窗规范
+
+> **禁止使用原生弹窗**（`alert`、`confirm`、`prompt`），必须使用自定义弹窗组件。
+
+#### Toast 提示（轻量级通知）
+
+用于操作反馈，自动消失。
+
+```typescript
+import { toast } from '@/lib/notify';
+
+// 基础用法
+toast.success('操作成功');
+toast.error('操作失败，请稍后重试');
+toast.warning('请注意核对信息');
+toast.info('提示信息');
+
+// 加载状态
+const loadingId = toast.loading('保存中...');
+// 完成后关闭
+toast.dismiss(loadingId);
+
+// Promise 自动处理
+toast.promise(saveData(), {
+  loading: '保存中...',
+  success: '保存成功',
+  error: '保存失败',
+});
+```
+
+#### 确认弹窗（需要用户确认）
+
+用于重要操作前的二次确认，如删除、提交等。
+
+```typescript
+import { useConfirm } from '@/components/confirm-dialog';
+
+function MyComponent() {
+  const confirm = useConfirm();
+
+  const handleDelete = async () => {
+    const confirmed = await confirm({
+      title: '确认删除',
+      description: '删除后将无法恢复，确定要删除吗？',
+      confirmText: '删除',
+      cancelText: '取消',
+      variant: 'destructive', // 危险操作样式（红色按钮）
+    });
+
+    if (confirmed) {
+      // 执行删除操作
+      await deleteItem();
+      toast.success('删除成功');
+    }
+  };
+}
+```
+
+### UI 组件库
+
+系统使用 **shadcn/ui** 组件库，基于 Radix UI 构建。
+
+| 组件 | 路径 | 说明 |
+|------|------|------|
+| Button | `@/components/ui/button` | 按钮 |
+| Dialog | `@/components/ui/dialog` | 普通弹窗 |
+| AlertDialog | `@/components/ui/alert-dialog` | 警告弹窗 |
+| Select | `@/components/ui/select` | 下拉选择 |
+| Input | `@/components/ui/input` | 输入框 |
+| Badge | `@/components/ui/badge` | 标签 |
+| Card | `@/components/ui/card` | 卡片 |
+| Toast/Sonner | `@/components/ui/sonner` | 消息提示 |
+
+**使用原则**：
+1. 优先使用 shadcn/ui 组件
+2. 通过 `className` 传入自定义样式
+3. 遵循语义化变量（`bg-background`, `text-foreground`）
+4. 禁止硬编码颜色值（如 `#fff`, `rgb()`）
+
+---
+
 ## ⚡ 临时决策
 
 > 本轮对话中达成的共识
@@ -367,6 +547,7 @@ interface Shareholder {
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2026-03-20 | 新增设计规范章节：品牌色（amber-orange渐变）、中性色、功能色、字体、圆角、弹窗规范、UI组件库 |
 | 2026-03-20 | 创建全局弹窗系统：toast（sonner）+ ConfirmProvider，禁止使用原生弹窗 |
 | 2026-03-20 | 完成 dashboard/layout.tsx 重构：拆分为 types.tsx, constants.tsx, tab-config.tsx, useDashboardLayout.tsx, Header/TabBar/Sidebar 组件 |
 | 2026-03-20 | 完成 base/sites/[id]/page.tsx 重构：拆分为 types.ts, useSiteDetail.ts, MeterIcon/TypeTag/MeterBillCard/MeterCard/MeterDetailPanel/StatsCards 组件 |
