@@ -153,3 +153,41 @@ export async function PUT(
     );
   }
 }
+
+/**
+ * DELETE /api/applications/[id]
+ * 删除入驻申请
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const client = getSupabaseClient();
+
+    const { error } = await client
+      .from('pi_settlement_applications')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('删除申请失败:', error);
+      return NextResponse.json(
+        { success: false, error: error.message || '删除申请失败' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: '删除成功',
+    });
+  } catch (error) {
+    console.error('删除申请异常:', error);
+    return NextResponse.json(
+      { success: false, error: '删除申请失败' },
+      { status: 500 }
+    );
+  }
+}

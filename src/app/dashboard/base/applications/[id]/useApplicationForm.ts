@@ -437,18 +437,33 @@ export function useApplicationForm(id: string) {
   }, [formData]);
 
   // ========== 步骤切换 ==========
-  const goToNextStep = useCallback(() => {
+  const goToNextStep = useCallback(async () => {
     if (currentStep < formSteps.length - 1) {
       let isValid = true;
       if (currentStep === 0) isValid = validateBasicStep();
       else if (currentStep === 2) isValid = validatePersonnelStep();
       
-      if (isValid) {
+      if (isValid && formData) {
+        // 自动保存当前步骤数据
+        try {
+          const response = await fetch(`/api/applications/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+          });
+          const result = await response.json();
+          if (result.success) {
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 2000);
+          }
+        } catch (error) {
+          console.error("自动保存失败:", error);
+        }
         setCurrentStep(currentStep + 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
-  }, [currentStep, validateBasicStep, validatePersonnelStep]);
+  }, [currentStep, validateBasicStep, validatePersonnelStep, formData, id]);
 
   const goToPrevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -462,14 +477,15 @@ export function useApplicationForm(id: string) {
     if (!validateForm() || !formData) return;
     setSaving(true);
     try {
-      const response = await fetch(`/api/settlement/applications/${id}`, {
+      const response = await fetch(`/api/applications/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
       const result = await response.json();
       if (result.success) {
-        alert("保存成功");
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 2000);
       } else {
         alert(result.error || "保存失败");
       }
