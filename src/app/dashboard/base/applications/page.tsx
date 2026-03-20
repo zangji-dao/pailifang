@@ -54,6 +54,7 @@ interface Application {
   applicationType: ApplicationType;
   approvalStatus: ApprovalStatus;
   approvedAt: string | null;
+  rejectionReason: string | null;
   assignedAddress: string | null;
   legalPersonName: string | null;
   legalPersonPhone: string | null;
@@ -364,9 +365,16 @@ export default function ApplicationsPage() {
                     <div className="text-muted-foreground">{app.legalPersonPhone || "-"}</div>
                   </td>
                   <td className="p-4">
-                    <Badge variant="outline" className={cn("font-normal", statusConfig[app.approvalStatus].className)}>
-                      {statusConfig[app.approvalStatus].label}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant="outline" className={cn("font-normal w-fit", statusConfig[app.approvalStatus].className)}>
+                        {statusConfig[app.approvalStatus].label}
+                      </Badge>
+                      {app.approvalStatus === "rejected" && app.rejectionReason && (
+                        <span className="text-xs text-red-600 max-w-[200px] truncate" title={app.rejectionReason}>
+                          原因：{app.rejectionReason}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4 text-sm text-muted-foreground">
                     {new Date(app.createdAt).toLocaleDateString("zh-CN")}
