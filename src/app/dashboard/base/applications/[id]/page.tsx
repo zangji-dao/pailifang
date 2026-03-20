@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Save, Send, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ImageCropper } from "@/components/image-cropper";
 import { useApplicationForm } from "./useApplicationForm";
 import { formSteps } from "./constants";
@@ -89,7 +88,7 @@ export default function ApplicationDetailPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] -m-4 lg:-m-6">
+    <div className="flex flex-col h-[calc(100vh-7rem)] -m-4 lg:-m-6 overflow-hidden">
       {/* 页面标题 - 固定不滚动 */}
       <div className="bg-card border-b shrink-0">
         <div className="px-6 py-4">
@@ -156,8 +155,8 @@ export default function ApplicationDetailPage() {
         </div>
       </div>
 
-      {/* 表单内容 */}
-      <ScrollArea className="flex-1 px-6 py-4">
+      {/* 表单内容 - 滚动区域 */}
+      <div className="flex-1 overflow-auto px-6 py-4">
         <div className="max-w-5xl mx-auto pb-24">
           {currentStep === 0 && (
             <BasicInfoStep
@@ -215,7 +214,7 @@ export default function ApplicationDetailPage() {
             />
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* 底部操作栏（仅草稿状态显示） */}
       {canEdit && (
