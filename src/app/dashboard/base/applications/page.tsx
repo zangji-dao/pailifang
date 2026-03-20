@@ -13,6 +13,8 @@ import {
   Loader2,
   AlertCircle,
   Building2,
+  Share2,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +25,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
+import { toast } from "sonner";
 
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
@@ -70,6 +80,12 @@ export default function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  
+  // 分享相关状态
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string>("");
+  const [creatingShare, setCreatingShare] = useState(false);
+  const [sharingAppId, setSharingAppId] = useState<string | null>(null);
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -149,6 +165,39 @@ export default function ApplicationsPage() {
   // 查看流程
   const handleViewProcess = (application: Application) => {
     router.push(`/dashboard/base/processes?applicationId=${application.id}`);
+  };
+
+  // 转发分享
+  const handleShare = async (application: Application) => {
+    setCreatingShare(true);
+    setSharingAppId(application.id);
+    try {
+      const response = await fetch("/api/applications/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId: application.id }),
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        setShareUrl(result.data.shareUrl);
+        setShareDialogOpen(true);
+      } else {
+        toast.error(result.error || "创建分享链接失败");
+      }
+    } catch (err) {
+      console.error("创建分享链接失败:", err);
+      toast.error("创建分享链接失败");
+    } finally {
+      setCreatingShare(false);
+      setSharingAppId(null);
+    }
+  };
+
+  // 复制分享链接
+  const copyShareUrl = () => {
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("链接已复制到剪贴板");
   };
 
   // 过滤申请列表
@@ -317,6 +366,20 @@ export default function ApplicationsPage() {
                           </Button>
                           <Button
                             size="sm"
+                            variant="ghost"
+                            onClick={() => handleShare(app)}
+                            disabled={creatingShare && sharingAppId === app.id}
+                            className="gap-1 text-primary hover:text-primary"
+                          >
+                            {creatingShare && sharingAppId === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Share2 className="h-3.5 w-3.5" />
+                            )}
+                            转发
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="default"
                             onClick={() => handleSubmit(app.id)}
                             className="gap-1"
@@ -386,6 +449,40 @@ export default function ApplicationsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* 分享弹窗 */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>分享申请表单</DialogTitle>
+            <DialogDescription>
+              将此链接发送给客户，客户可在微信中直接填写表单
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <div className="grid flex-1 gap-2">
+                <div className="px-3 py-2 bg-muted rounded-md text-sm break-all">
+                  {shareUrl}
+                </div>
+              </div>
+              <Button type="button" size="sm" onClick={copyShareUrl} className="px-3">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                💡 提示：链接有效期为7天，客户填写后数据将自动保存到您的账号下
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={() => setShareDialogOpen(false)}>
+                关闭
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

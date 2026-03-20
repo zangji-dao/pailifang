@@ -47,11 +47,6 @@ export function useNewApplicationForm() {
   const [shareholderCropperOpen, setShareholderCropperOpen] = useState(false);
   const [shareholderCropperImageSrc, setShareholderCropperImageSrc] = useState<string>("");
   const [shareholderCropperTarget, setShareholderCropperTarget] = useState<ShareholderCropperTarget | null>(null);
-  
-  // 分享状态
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string>("");
-  const [creatingShare, setCreatingShare] = useState(false);
 
   // 更新字段
   const updateField = useCallback((field: keyof NewApplicationFormData, value: string | string[] | Shareholder[] | Personnel[]) => {
@@ -578,79 +573,6 @@ export function useNewApplicationForm() {
     router.push("/dashboard/base/applications");
   }, [formData, applicationId, router]);
 
-  // ========== 创建分享链接 ==========
-  const handleShare = useCallback(async () => {
-    // 先保存草稿
-    if (!applicationId) {
-      // 如果还没有保存过，先保存
-      setSaving(true);
-      try {
-        const response = await fetch('/api/applications/draft', {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            ...formData, 
-            status: 'draft' 
-          }),
-        });
-        const result = await response.json();
-        
-        if (result.success && result.data.id) {
-          setApplicationId(result.data.id);
-          
-          // 创建分享链接
-          const shareResponse = await fetch('/api/applications/share', {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ applicationId: result.data.id }),
-          });
-          const shareResult = await shareResponse.json();
-          
-          if (shareResult.success) {
-            setShareUrl(shareResult.data.shareUrl);
-            setShareDialogOpen(true);
-          } else {
-            toast.error("创建分享链接失败");
-          }
-        }
-      } catch (error) {
-        console.error("保存或分享失败:", error);
-        toast.error("操作失败");
-      } finally {
-        setSaving(false);
-      }
-    } else {
-      // 已有applicationId，直接创建分享链接
-      setCreatingShare(true);
-      try {
-        const response = await fetch('/api/applications/share', {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ applicationId }),
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-          setShareUrl(result.data.shareUrl);
-          setShareDialogOpen(true);
-        } else {
-          toast.error("创建分享链接失败");
-        }
-      } catch (error) {
-        console.error("创建分享链接失败:", error);
-        toast.error("操作失败");
-      } finally {
-        setCreatingShare(false);
-      }
-    }
-  }, [formData, applicationId]);
-
-  // 复制分享链接
-  const copyShareUrl = useCallback(() => {
-    navigator.clipboard.writeText(shareUrl);
-    toast.success("链接已复制到剪贴板");
-  }, [shareUrl]);
-
   return {
     // 状态
     formData,
@@ -710,13 +632,5 @@ export function useNewApplicationForm() {
     // 提交
     handleSubmit,
     handleGoBack,
-    
-    // 分享
-    shareDialogOpen,
-    setShareDialogOpen,
-    shareUrl,
-    creatingShare,
-    handleShare,
-    copyShareUrl,
   };
 }
