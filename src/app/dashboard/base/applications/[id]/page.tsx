@@ -137,18 +137,27 @@ export default function ApplicationDetailPage() {
         <div className="flex items-center justify-center gap-2">
           {formSteps.map((step, index) => (
             <div key={step.id} className="flex items-center">
-              <button
-                onClick={() => setCurrentStep(index)}
+              <div
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                  currentStep === index ? "bg-primary text-primary-foreground" : index < currentStep ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium",
+                  currentStep === index 
+                    ? "bg-primary text-primary-foreground" 
+                    : index < currentStep 
+                      ? "bg-primary/10 text-primary cursor-pointer hover:bg-primary/20" 
+                      : "text-muted-foreground"
                 )}
+                onClick={() => {
+                  // 只能返回已完成的步骤
+                  if (index < currentStep) {
+                    setCurrentStep(index);
+                  }
+                }}
               >
                 <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs", currentStep === index ? "bg-primary-foreground text-primary" : index < currentStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                   {index < currentStep ? "✓" : index + 1}
                 </span>
                 {step.title}
-              </button>
+              </div>
               {index < formSteps.length - 1 && <div className={cn("w-12 h-0.5 mx-2", index < currentStep ? "bg-primary" : "bg-muted")} />}
             </div>
           ))}
