@@ -6,10 +6,9 @@ import { ArrowLeft, Loader2, Save, Send, AlertCircle, ChevronLeft, ChevronRight 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { ImageCropper } from "@/components/image-cropper";
 import { useApplicationForm } from "./useApplicationForm";
-import { statusConfig, formSteps } from "./constants";
+import { formSteps } from "./constants";
 import { BasicInfoStep } from "./_components/BasicInfoStep";
 import { AddressStep } from "./_components/AddressStep";
 import { PersonnelStep } from "./_components/PersonnelStep";
@@ -22,7 +21,6 @@ export default function ApplicationDetailPage() {
   const router = useRouter();
   const applicationId = params.id as string;
 
-  // 使用自定义 Hook 管理表单状态
   const {
     formData,
     currentStep,
@@ -68,7 +66,6 @@ export default function ApplicationDetailPage() {
     loadApplication();
   }, [loadApplication]);
 
-  // 是否为最后一步
   const isLastStep = currentStep === formSteps.length - 1;
 
   if (loading || !formData) {
@@ -93,22 +90,24 @@ export default function ApplicationDetailPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* 页面标题 */}
+      {/* 页面标题 - 三栏布局：返回 | 标题居中 | 保存 */}
       <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
-        <div className="flex items-center gap-4">
+        {/* 左侧：返回按钮 */}
+        <div className="w-24">
           <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/applications")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             返回
           </Button>
-          <div>
-            <h1 className="text-xl font-semibold">入驻申请详情</h1>
-            <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
-          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className={cn("px-3 py-1", statusConfig[formData.approvalStatus].className)}>
-            {statusConfig[formData.approvalStatus].label}
-          </Badge>
+        
+        {/* 中间：标题居中 */}
+        <div className="text-center">
+          <h1 className="text-xl font-semibold">入驻申请详情</h1>
+          <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
+        </div>
+        
+        {/* 右侧：保存按钮（仅草稿状态可编辑） */}
+        <div className="w-24 flex justify-end items-center gap-2">
           {canEdit && (
             <Button
               variant="outline"
@@ -117,19 +116,16 @@ export default function ApplicationDetailPage() {
               disabled={saving || submitting}
             >
               {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  保存中...
-                </>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4 mr-1" />
                   保存
                 </>
               )}
             </Button>
           )}
-          {success && <div className="text-sm text-green-600">保存成功</div>}
+          {success && <span className="text-xs text-green-600 hidden sm:inline">已保存</span>}
         </div>
       </div>
 
@@ -159,7 +155,6 @@ export default function ApplicationDetailPage() {
       {/* 表单内容 */}
       <ScrollArea className="flex-1 px-6 py-4">
         <div className="max-w-5xl mx-auto pb-24">
-          {/* 基本信息 */}
           {currentStep === 0 && (
             <BasicInfoStep
               formData={formData}
@@ -169,7 +164,6 @@ export default function ApplicationDetailPage() {
             />
           )}
 
-          {/* 地址信息 */}
           {currentStep === 1 && (
             <AddressStep
               formData={formData}
@@ -178,7 +172,6 @@ export default function ApplicationDetailPage() {
             />
           )}
 
-          {/* 人员信息 */}
           {currentStep === 2 && (
             <PersonnelStep
               formData={formData}
@@ -197,7 +190,6 @@ export default function ApplicationDetailPage() {
             />
           )}
 
-          {/* 股东信息 */}
           {currentStep === 3 && (
             <ShareholderStep
               formData={formData}
@@ -211,7 +203,6 @@ export default function ApplicationDetailPage() {
             />
           )}
 
-          {/* 经营信息 */}
           {currentStep === 4 && (
             <BusinessStep
               formData={formData}
@@ -222,19 +213,15 @@ export default function ApplicationDetailPage() {
         </div>
       </ScrollArea>
 
-      {/* 底部操作栏 - 固定在底部 */}
+      {/* 底部操作栏 - 三栏布局对齐（仅草稿状态显示） */}
       {canEdit && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
           <div className="max-w-5xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center">
               {/* 左侧：上一步按钮 */}
-              <div className="w-32">
+              <div className="w-28">
                 {currentStep > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={goToPrevStep}
-                  >
+                  <Button type="button" variant="outline" onClick={goToPrevStep}>
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     上一步
                   </Button>
@@ -242,7 +229,7 @@ export default function ApplicationDetailPage() {
               </div>
               
               {/* 中间：步骤提示 */}
-              <div className="flex items-center gap-2">
+              <div className="flex-1 flex justify-center items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   第 {currentStep + 1} 步，共 {formSteps.length} 步
                 </span>
@@ -254,7 +241,7 @@ export default function ApplicationDetailPage() {
               </div>
               
               {/* 右侧：下一步/提交审核按钮 */}
-              <div className="w-32 flex justify-end">
+              <div className="w-28 flex justify-end">
                 {isLastStep ? (
                   <Button
                     type="button"
@@ -263,22 +250,16 @@ export default function ApplicationDetailPage() {
                     className="bg-primary hover:bg-primary/90"
                   >
                     {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        提交中...
-                      </>
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <Send className="h-4 w-4 mr-2" />
+                        <Send className="h-4 w-4 mr-1" />
                         提交审核
                       </>
                     )}
                   </Button>
                 ) : (
-                  <Button
-                    type="button"
-                    onClick={goToNextStep}
-                  >
+                  <Button type="button" onClick={goToNextStep}>
                     下一步
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
@@ -289,7 +270,6 @@ export default function ApplicationDetailPage() {
         </div>
       )}
 
-      {/* 图片裁剪对话框 - 身份证 */}
       <ImageCropper
         open={cropperOpen}
         imageSrc={cropperImageSrc}
@@ -298,7 +278,6 @@ export default function ApplicationDetailPage() {
         aspectRatio={1.58}
       />
       
-      {/* 图片裁剪对话框 - 股东证件 */}
       <ImageCropper
         open={shareholderCropperOpen}
         imageSrc={shareholderCropperImageSrc}

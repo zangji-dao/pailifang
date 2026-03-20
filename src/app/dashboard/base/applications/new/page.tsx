@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2, Save, Send, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,13 +53,9 @@ export default function NewApplicationPage() {
     handleSubmit,
   } = useNewApplicationForm();
 
-  // 类型断言：NewApplicationFormData 字段是 ApplicationFormData 的子集，组件中使用的字段都兼容
   const formDataForComponents = formData as unknown as ApplicationFormData;
-  
-  // 是否为最后一步
   const isLastStep = currentStep === formSteps.length - 1;
   
-  // 格式化保存时间
   const formatLastSaved = (date: Date | null): string => {
     if (!date) return "";
     const now = new Date();
@@ -72,21 +68,26 @@ export default function NewApplicationPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* 页面标题 */}
+      {/* 页面标题 - 三栏布局：返回 | 标题居中 | 保存 */}
       <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
-        <div className="flex items-center gap-4">
+        {/* 左侧：返回按钮 */}
+        <div className="w-24">
           <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             返回
           </Button>
-          <div>
-            <h1 className="text-xl font-semibold">新建入驻申请</h1>
-            <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
-          </div>
         </div>
-        <div className="flex items-center gap-3">
+        
+        {/* 中间：标题居中 */}
+        <div className="text-center">
+          <h1 className="text-xl font-semibold">新建入驻申请</h1>
+          <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
+        </div>
+        
+        {/* 右侧：保存按钮 */}
+        <div className="w-24 flex justify-end items-center gap-2">
           {lastSavedAt && (
-            <span className="text-xs text-muted-foreground">{formatLastSaved(lastSavedAt)}</span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">{formatLastSaved(lastSavedAt)}</span>
           )}
           <Button
             variant="outline"
@@ -95,13 +96,10 @@ export default function NewApplicationPage() {
             disabled={saving}
           >
             {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                保存中...
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4 mr-1" />
                 保存
               </>
             )}
@@ -135,7 +133,6 @@ export default function NewApplicationPage() {
       {/* 表单内容 */}
       <ScrollArea className="flex-1 px-6 py-4">
         <div className="max-w-5xl mx-auto pb-24">
-          {/* 基本信息 */}
           {currentStep === 0 && (
             <BasicInfoStep
               formData={formDataForComponents}
@@ -145,7 +142,6 @@ export default function NewApplicationPage() {
             />
           )}
 
-          {/* 地址信息 */}
           {currentStep === 1 && (
             <AddressStep
               formData={formDataForComponents}
@@ -154,7 +150,6 @@ export default function NewApplicationPage() {
             />
           )}
 
-          {/* 人员信息 */}
           {currentStep === 2 && (
             <PersonnelStep
               formData={formDataForComponents}
@@ -173,7 +168,6 @@ export default function NewApplicationPage() {
             />
           )}
 
-          {/* 股东信息 */}
           {currentStep === 3 && (
             <ShareholderStep
               formData={formDataForComponents}
@@ -187,7 +181,6 @@ export default function NewApplicationPage() {
             />
           )}
 
-          {/* 经营信息 */}
           {currentStep === 4 && (
             <BusinessStep
               formData={formDataForComponents}
@@ -198,18 +191,14 @@ export default function NewApplicationPage() {
         </div>
       </ScrollArea>
 
-      {/* 底部操作栏 - 固定在底部 */}
+      {/* 底部操作栏 - 三栏布局对齐 */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
         <div className="max-w-5xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             {/* 左侧：上一步按钮 */}
-            <div className="w-32">
+            <div className="w-28">
               {currentStep > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={goToPrevStep}
-                >
+                <Button type="button" variant="outline" onClick={goToPrevStep}>
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   上一步
                 </Button>
@@ -217,7 +206,7 @@ export default function NewApplicationPage() {
             </div>
             
             {/* 中间：步骤提示 */}
-            <div className="flex items-center gap-2">
+            <div className="flex-1 flex justify-center items-center gap-2">
               <span className="text-sm text-muted-foreground">
                 第 {currentStep + 1} 步，共 {formSteps.length} 步
               </span>
@@ -229,7 +218,7 @@ export default function NewApplicationPage() {
             </div>
             
             {/* 右侧：下一步/提交审核按钮 */}
-            <div className="w-32 flex justify-end">
+            <div className="w-28 flex justify-end">
               {isLastStep ? (
                 <Button
                   type="button"
@@ -238,28 +227,18 @@ export default function NewApplicationPage() {
                   className="bg-primary hover:bg-primary/90"
                 >
                   {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      提交中...
-                    </>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      <Send className="h-4 w-4 mr-2" />
+                      <Send className="h-4 w-4 mr-1" />
                       提交审核
                     </>
                   )}
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={goToNextStep}
-                  disabled={saving}
-                >
+                <Button type="button" onClick={goToNextStep} disabled={saving}>
                   {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      保存中...
-                    </>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
                       下一步
@@ -273,7 +252,6 @@ export default function NewApplicationPage() {
         </div>
       </div>
 
-      {/* 图片裁剪对话框 - 身份证 */}
       <ImageCropper
         open={cropperOpen}
         imageSrc={cropperImageSrc}
@@ -282,7 +260,6 @@ export default function NewApplicationPage() {
         aspectRatio={1.58}
       />
       
-      {/* 图片裁剪对话框 - 股东证件 */}
       <ImageCropper
         open={shareholderCropperOpen}
         imageSrc={shareholderCropperImageSrc}
