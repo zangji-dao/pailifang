@@ -149,7 +149,7 @@ try {
 |------|------|----------|------|
 | `applications/[id]/page.tsx` | 2056 | 拆分为 types.ts, constants.ts, useApplicationForm.ts, 表单组件 | ✅ 已完成 |
 | `applications/new/page.tsx` | 1837 | 同上，可复用 types.ts 和 constants.ts | ✅ 已完成 |
-| `marketing/publish/page.tsx` | 1008 | 拆分为 components/ 目录，按功能模块拆分 | ⏳ 待重构 |
+| `marketing/publish/page.tsx` | 1008 | 拆分为 components/ 目录，按功能模块拆分 | ✅ 已完成 |
 
 ### 优先级 2（500-1000行）
 
