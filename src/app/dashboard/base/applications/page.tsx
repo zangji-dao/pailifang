@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   Share2,
+  MessageSquareWarning,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -93,6 +101,16 @@ export default function ApplicationsPage() {
   const [shareUrl, setShareUrl] = useState<string>("");
   const [creatingShare, setCreatingShare] = useState(false);
   const [sharingAppId, setSharingAppId] = useState<string | null>(null);
+
+  // 驳回原因弹窗状态
+  const [rejectReasonDialogOpen, setRejectReasonDialogOpen] = useState(false);
+  const [selectedRejectApp, setSelectedRejectApp] = useState<Application | null>(null);
+
+  // 查看驳回原因
+  const handleViewRejectReason = (app: Application) => {
+    setSelectedRejectApp(app);
+    setRejectReasonDialogOpen(true);
+  };
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -365,14 +383,20 @@ export default function ApplicationsPage() {
                     <div className="text-muted-foreground">{app.legalPersonPhone || "-"}</div>
                   </td>
                   <td className="p-4">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                       <Badge variant="outline" className={cn("font-normal w-fit", statusConfig[app.approvalStatus].className)}>
                         {statusConfig[app.approvalStatus].label}
                       </Badge>
                       {app.approvalStatus === "rejected" && app.rejectionReason && (
-                        <span className="text-xs text-red-600 max-w-[200px] truncate" title={app.rejectionReason}>
-                          原因：{app.rejectionReason}
-                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleViewRejectReason(app)}
+                          className="h-auto px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 w-fit"
+                        >
+                          <MessageSquareWarning className="h-3 w-3" />
+                          查看原因
+                        </Button>
                       )}
                     </div>
                   </td>
@@ -483,6 +507,36 @@ export default function ApplicationsPage() {
         shareUrl={shareUrl}
         onCopy={copyShareUrl}
       />
+
+      {/* 驳回原因弹窗 */}
+      <Dialog open={rejectReasonDialogOpen} onOpenChange={setRejectReasonDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <MessageSquareWarning className="h-5 w-5" />
+              驳回原因
+            </DialogTitle>
+            <DialogDescription>
+              申请编号：{selectedRejectApp?.applicationNo}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+              <p className="text-sm text-red-700 leading-relaxed whitespace-pre-wrap">
+                {selectedRejectApp?.rejectionReason}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setRejectReasonDialogOpen(false)}
+            >
+              我知道了
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
