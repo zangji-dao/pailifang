@@ -1,7 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { BusinessScopeSelector } from "./BusinessScopeSelector";
+import { Textarea } from "@/components/ui/textarea";
 import type { ApplicationFormData } from "../types";
 
 interface BusinessStepProps {
@@ -15,22 +15,19 @@ export function BusinessStep({
   canEdit,
   updateField,
 }: BusinessStepProps) {
-  // 处理经营范围选择变化
-  const handleScopeChange = (ids: string[], names: string[]) => {
-    updateField("businessScopeIds", ids);
-    updateField("businessScope", names.join("、"));
-  };
-
   return (
     <div className="space-y-4">
-      {/* 经营范围选择器 */}
+      {/* 经营范围 */}
       <div className="space-y-2">
         <Label>经营范围 <span className="text-destructive">*</span></Label>
-        <BusinessScopeSelector
-          selectedIds={formData.businessScopeIds || []}
-          onChange={handleScopeChange}
+        <Textarea
+          value={formData.businessScope || ""}
+          onChange={(e) => updateField("businessScope", e.target.value)}
+          placeholder="请输入经营范围，例如：技术开发、技术咨询、技术服务"
+          rows={5}
           disabled={!canEdit}
         />
+        <p className="text-xs text-muted-foreground">请详细描述企业的经营范围，将用于工商注册</p>
       </div>
     </div>
   );
