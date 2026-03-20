@@ -1,6 +1,7 @@
 import type { 
   ApprovalStatus, 
   ApplicationFormData, 
+  NewApplicationFormData,
   StatusConfigItem, 
   RoleConfigItem 
 } from "./types";
@@ -104,3 +105,48 @@ export const applicationTypeOptions = [
   { value: "new", label: "新建企业" },
   { value: "migration", label: "迁移企业" },
 ];
+
+// 新建申请初始数据（不含申请编号、日期、状态）
+export const initialNewFormData: NewApplicationFormData = {
+  enterpriseName: "",
+  enterpriseNameBackups: [],
+  registeredCapital: "",
+  currencyType: "CNY",
+  taxType: "",
+  expectedAnnualRevenue: "",
+  expectedAnnualTax: "",
+  introducerName: "",
+  introducerPhone: "",
+  originalRegisteredAddress: "",
+  mailingAddress: "",
+  businessAddress: "",
+  personnel: [
+    { 
+      name: "", phone: "", email: "", address: "", 
+      roles: ["legal_person", "finance_manager"],
+      idCardFrontKey: "", idCardFrontUrl: "", 
+      idCardBackKey: "", idCardBackUrl: "",
+    },
+    { 
+      name: "", phone: "", email: "", address: "", 
+      roles: ["supervisor"],
+      idCardFrontKey: "", idCardFrontUrl: "", 
+      idCardBackKey: "", idCardBackUrl: "",
+    },
+  ],
+  shareholders: [{ 
+    type: "natural", name: "", investment: "", phone: "",
+    idCardFrontKey: "", idCardFrontUrl: "", 
+    idCardBackKey: "", idCardBackUrl: "",
+    licenseOriginalKey: "", licenseOriginalUrl: "", 
+    licenseCopyKey: "", licenseCopyUrl: "",
+  }],
+  ewtContactName: "",
+  ewtContactPhone: "",
+  intermediaryDepartment: "",
+  intermediaryName: "",
+  intermediaryPhone: "",
+  businessScope: "",
+  applicationType: "",
+  remarks: "",
+};

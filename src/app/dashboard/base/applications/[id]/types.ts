@@ -70,6 +70,9 @@ export interface ApplicationFormData {
   remarks: string;
 }
 
+// 新建申请表单数据（不含申请编号、日期、状态）
+export type NewApplicationFormData = Omit<ApplicationFormData, 'applicationNo' | 'applicationDate' | 'approvalStatus'>;
+
 // 状态配置
 export interface StatusConfigItem {
   label: string;
