@@ -695,8 +695,8 @@ export function useApplicationForm(id: string) {
     }
   }, [id, formData, validateForm, router]);
 
-  // 计算属性
-  const canEdit = formData?.approvalStatus === "draft";
+  // 计算属性：草稿和驳回状态可编辑
+  const canEdit = formData?.approvalStatus === "draft" || formData?.approvalStatus === "rejected";
 
   // ========== 返回并保存 ==========
   const handleGoBack = useCallback(async () => {
