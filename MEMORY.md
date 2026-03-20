@@ -108,9 +108,10 @@ try {
 
 | 状态 | 任务 | 备注 |
 |------|------|------|
-| ✅ | 重构超长文件 | 已完成：applications/[id]/page.tsx 拆分为多个文件 |
+| ✅ | 重构超长文件 | 已完成：applications/[id]、applications/new、marketing/publish、base/sites/[id]、dashboard/layout |
 | ✅ | 修复 any 类型 | 已完成：定义具体类型替代 |
 | ✅ | 补充 try-catch | 已确认：大部分已有错误处理 |
+| ⏳ | 开发入驻申请流程 | 待开始 |
 
 ---
 
@@ -157,7 +158,7 @@ try {
 |------|------|----------|------|
 | `base/sites/[id]/page.tsx` | 847 | 拆分为 useSiteDetail.ts 和组件 | ✅ 已完成 |
 | `accounting/page.tsx` | 859 | 拆分为 components/ 和 hooks/ | ⏳ 待重构 |
-| `dashboard/layout.tsx` | 809 | 拆分为 Sidebar, Header 等组件 | ⏳ 待重构 |
+| `dashboard/layout.tsx` | 809 | 拆分为 Sidebar, Header 等组件 | ✅ 已完成 |
 | `hr/training/page.tsx` | 777 | 拆分为 components/ | ⏳ 待重构 |
 | `currency/CurrencySettingsPage.tsx` | 777 | 拆分为 components/ 和 hooks/ | ⏳ 待重构 |
 | `ApplicationFormDialog.tsx` | 766 | 拆分为子表单组件 | ⏳ 待重构 |
@@ -320,6 +321,8 @@ interface Shareholder {
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2026-03-20 | 完成 dashboard/layout.tsx 重构：拆分为 types.tsx, constants.tsx, tab-config.tsx, useDashboardLayout.tsx, Header/TabBar/Sidebar 组件 |
+| 2026-03-20 | 完成 base/sites/[id]/page.tsx 重构：拆分为 types.ts, useSiteDetail.ts, MeterIcon/TypeTag/MeterBillCard/MeterCard/MeterDetailPanel/StatsCards 组件 |
 | 2026-03-20 | 重构配置系统：创建 types.ts，统一配置类型，添加 backend 配置 |
 | 2026-03-20 | 创建 api-proxy.ts：统一 API 代理逻辑，消除重复代码 |
 | 2026-03-20 | 重构 apiClient.ts：使用配置文件，修复 any 类型 |
