@@ -90,24 +90,22 @@ export default function ApplicationDetailPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* 页面标题 - 三栏布局：返回 | 标题居中 | 保存 */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
+      {/* 页面标题 */}
+      <div className="flex items-center px-6 py-4 border-b bg-card">
         {/* 左侧：返回按钮 */}
-        <div className="w-24">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/applications")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            返回
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/applications")}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          返回
+        </Button>
         
         {/* 中间：标题居中 */}
-        <div className="text-center">
+        <div className="flex-1 text-center">
           <h1 className="text-xl font-semibold">入驻申请详情</h1>
           <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
         </div>
         
         {/* 右侧：保存按钮（仅草稿状态可编辑） */}
-        <div className="w-24 flex justify-end items-center gap-2">
+        <div className="flex items-center gap-2">
           {canEdit && (
             <Button
               variant="outline"
@@ -213,20 +211,20 @@ export default function ApplicationDetailPage() {
         </div>
       </ScrollArea>
 
-      {/* 底部操作栏 - 三栏布局对齐（仅草稿状态显示） */}
+      {/* 底部操作栏（仅草稿状态显示） */}
       {canEdit && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
           <div className="max-w-5xl mx-auto px-6 py-4">
             <div className="flex items-center">
               {/* 左侧：上一步按钮 */}
-              <div className="w-28">
-                {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={goToPrevStep}>
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    上一步
-                  </Button>
-                )}
-              </div>
+              {currentStep > 0 ? (
+                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  上一步
+                </Button>
+              ) : (
+                <div />
+              )}
               
               {/* 中间：步骤提示 */}
               <div className="flex-1 flex justify-center items-center gap-2">
@@ -241,30 +239,28 @@ export default function ApplicationDetailPage() {
               </div>
               
               {/* 右侧：下一步/提交审核按钮 */}
-              <div className="w-28 flex justify-end">
-                {isLastStep ? (
-                  <Button
-                    type="button"
-                    onClick={() => handleSubmit("pending")}
-                    disabled={submitting}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    {submitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-1" />
-                        提交审核
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={goToNextStep}>
-                    下一步
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                )}
-              </div>
+              {isLastStep ? (
+                <Button
+                  type="button"
+                  onClick={() => handleSubmit("pending")}
+                  disabled={submitting}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-1" />
+                      提交审核
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button type="button" onClick={goToNextStep}>
+                  下一步
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
