@@ -79,16 +79,16 @@ export default function NewApplicationPage() {
         </div>
         
         {/* 中间：标题居中 */}
-        <div className="flex-1 text-center">
+        <div className="flex-1 text-center relative">
           <h1 className="text-xl font-semibold">新建入驻申请</h1>
           <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
+          {lastSavedAt && (
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hidden sm:inline">{formatLastSaved(lastSavedAt)}</span>
+          )}
         </div>
         
-        {/* 右侧：保存按钮（固定宽度，右对齐） */}
-        <div className="w-[100px] flex justify-end">
-          {lastSavedAt && (
-            <span className="text-xs text-muted-foreground hidden sm:inline mr-2">{formatLastSaved(lastSavedAt)}</span>
-          )}
+        {/* 右侧：保存按钮 */}
+        <div className="w-[80px] flex justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -217,8 +217,8 @@ export default function NewApplicationPage() {
               )}
             </div>
             
-            {/* 右侧：下一步/提交审核按钮（与保存按钮同宽） */}
-            <div className="w-[100px] flex justify-end">
+            {/* 右侧：下一步/提交审核按钮 */}
+            <div className="w-[80px] flex justify-end">
               {isLastStep ? (
                 <Button
                   type="button"

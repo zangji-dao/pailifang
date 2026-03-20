@@ -101,13 +101,14 @@ export default function ApplicationDetailPage() {
         </div>
         
         {/* 中间：标题居中 */}
-        <div className="flex-1 text-center">
+        <div className="flex-1 text-center relative">
           <h1 className="text-xl font-semibold">入驻申请详情</h1>
           <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
+          {success && <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-green-600 hidden sm:inline">已保存</span>}
         </div>
         
-        {/* 右侧：保存按钮（固定宽度，右对齐） */}
-        <div className="w-[100px] flex justify-end items-center gap-2">
+        {/* 右侧：保存按钮 */}
+        <div className="w-[80px] flex justify-end">
           {canEdit && (
             <Button
               variant="outline"
@@ -125,7 +126,6 @@ export default function ApplicationDetailPage() {
               )}
             </Button>
           )}
-          {success && <span className="text-xs text-green-600 hidden sm:inline">已保存</span>}
         </div>
       </div>
 
@@ -240,8 +240,8 @@ export default function ApplicationDetailPage() {
                 )}
               </div>
               
-              {/* 右侧：下一步/提交审核按钮（与保存按钮同宽） */}
-              <div className="w-[100px] flex justify-end">
+              {/* 右侧：下一步/提交审核按钮 */}
+              <div className="w-[80px] flex justify-end">
                 {isLastStep ? (
                   <Button
                     type="button"
