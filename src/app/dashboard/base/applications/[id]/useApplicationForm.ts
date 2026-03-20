@@ -508,7 +508,6 @@ export function useApplicationForm(id: string) {
       }
       
       if (!isValid) {
-        toast.error(firstError || "请填写必填信息");
         return;
       }
       
