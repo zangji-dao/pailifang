@@ -58,10 +58,10 @@ export function PersonnelStep({
       </div>
 
       {errors.personnel && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4">
-          <div className="flex items-center gap-2 text-destructive">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-destructive/95 border border-destructive px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-2 text-white">
             <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">{errors.personnel}</span>
+            <span className="text-sm font-medium">{errors.personnel}</span>
           </div>
         </div>
       )}
