@@ -183,7 +183,7 @@ export default function MyOrdersPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">我的工单</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">我的工单</h1>
           <p className="text-sm text-slate-500 mt-0.5">查看和处理分配给我的工单任务</p>
         </div>
         <div className="flex items-center gap-2">

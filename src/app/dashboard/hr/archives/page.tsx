@@ -319,13 +319,13 @@ export default function EmployeesPage() {
               {/* 头部信息 */}
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                  <span className="text-white text-xl font-medium">
+                  <span className="text-white text-2xl font-medium">
                     {selectedEmployee.name.charAt(0)}
                   </span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-semibold">{selectedEmployee.name}</h3>
+                    <h3 className="text-2xl font-semibold">{selectedEmployee.name}</h3>
                     <Badge className={EMPLOYEE_STATUS[selectedEmployee.status as keyof typeof EMPLOYEE_STATUS].color}>
                       {EMPLOYEE_STATUS[selectedEmployee.status as keyof typeof EMPLOYEE_STATUS].label}
                     </Badge>

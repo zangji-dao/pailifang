@@ -152,7 +152,7 @@ export default function DispatchPage() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-xl font-semibold text-green-800 mb-2">发单成功</h2>
+            <h2 className="text-2xl font-semibold text-green-800 mb-2">发单成功</h2>
             <p className="text-green-600 mb-6">
               订单 {foundOrder?.orderNo} 已成功发布
               {dispatchType === "hall" ? "到工单大厅" : `给 ${selectedEmployee?.name}`}

@@ -339,7 +339,7 @@ export default function WorkOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">工单管理</h2>
+          <h2 className="text-2xl font-semibold text-slate-900">工单管理</h2>
           <p className="text-gray-600 mt-1">分配和跟踪工作任务</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

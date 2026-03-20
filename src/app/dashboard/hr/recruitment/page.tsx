@@ -604,16 +604,16 @@ export default function RecruitmentPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-center py-4">
-                  <p className="text-3xl font-bold text-slate-900">15</p>
+                  <p className="text-2xl font-semibold text-slate-900">15</p>
                   <p className="text-sm text-slate-500">场面试安排</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100">
                   <div className="text-center">
-                    <p className="text-xl font-bold text-emerald-600">8</p>
+                    <p className="text-2xl font-semibold text-emerald-600">8</p>
                     <p className="text-xs text-slate-500">已通过</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xl font-bold text-red-500">3</p>
+                    <p className="text-2xl font-semibold text-red-500">3</p>
                     <p className="text-xs text-slate-500">未通过</p>
                   </div>
                 </div>
@@ -661,15 +661,15 @@ export default function RecruitmentPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-slate-500">整体转化率</p>
-                    <p className="text-xl font-bold text-slate-900">3.8%</p>
+                    <p className="text-2xl font-semibold text-slate-900">3.8%</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">平均招聘周期</p>
-                    <p className="text-xl font-bold text-slate-900">18天</p>
+                    <p className="text-2xl font-semibold text-slate-900">18天</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">人均招聘成本</p>
-                    <p className="text-xl font-bold text-slate-900">¥2,080</p>
+                    <p className="text-2xl font-semibold text-slate-900">¥2,080</p>
                   </div>
                 </div>
               </div>

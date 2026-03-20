@@ -86,7 +86,7 @@ export default function NewApplicationPage() {
             
             {/* 中间：标题居中 */}
             <div className="flex-1 text-center relative">
-              <h1 className="text-xl font-semibold">新建入驻申请</h1>
+              <h1 className="text-2xl font-semibold">新建入驻申请</h1>
               <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
               {lastSavedAt && (
                 <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hidden sm:inline">{formatLastSaved(lastSavedAt)}</span>

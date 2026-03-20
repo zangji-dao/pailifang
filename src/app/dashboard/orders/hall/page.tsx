@@ -166,7 +166,7 @@ export default function OrderHallPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">去抢单</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">去抢单</h1>
           <p className="text-sm text-slate-500 mt-0.5">查看可抢单的工单，选择合适的任务</p>
         </div>
         <Button className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/25 border-0">

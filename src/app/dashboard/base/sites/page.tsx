@@ -212,7 +212,7 @@ export default function BaseListPage() {
             </div>
             <span className="text-xs sm:text-sm text-slate-500">基地总数</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{bases.length}</p>
+          <p className="text-2xl font-semibold text-slate-900">{bases.length}</p>
         </div>
 
         {/* 物业总数 */}
@@ -223,7 +223,7 @@ export default function BaseListPage() {
             </div>
             <span className="text-xs sm:text-sm text-slate-500">物业总数</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalMeters}</p>
+          <p className="text-2xl font-semibold text-slate-900">{totalMeters}</p>
         </div>
 
         {/* 物理空间 */}
@@ -234,7 +234,7 @@ export default function BaseListPage() {
             </div>
             <span className="text-xs sm:text-sm text-slate-500">物理空间</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalSpaces}</p>
+          <p className="text-2xl font-semibold text-slate-900">{totalSpaces}</p>
         </div>
 
         {/* 注册号 */}
@@ -245,7 +245,7 @@ export default function BaseListPage() {
             </div>
             <span className="text-xs sm:text-sm text-slate-500">注册号</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">{totalRegNumbers}</p>
+          <p className="text-2xl font-semibold text-slate-900">{totalRegNumbers}</p>
         </div>
 
         {/* 入驻企业 */}
@@ -256,7 +256,7 @@ export default function BaseListPage() {
             </div>
             <span className="text-xs sm:text-sm text-blue-600">入驻企业</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-blue-700">{enterpriseStats.tenant}</p>
+          <p className="text-2xl font-semibold text-blue-700">{enterpriseStats.tenant}</p>
           <p className="text-xs text-slate-400 mt-1">基地内注册</p>
         </div>
 
@@ -268,7 +268,7 @@ export default function BaseListPage() {
             </div>
             <span className="text-xs sm:text-sm text-purple-600">服务企业</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-purple-700">{enterpriseStats.service}</p>
+          <p className="text-2xl font-semibold text-purple-700">{enterpriseStats.service}</p>
           <p className="text-xs text-slate-400 mt-1">基地外注册</p>
         </div>
       </div>
@@ -329,25 +329,25 @@ export default function BaseListPage() {
                   <div className="hidden lg:flex items-center gap-8">
                     {/* 物业 */}
                     <div className="text-center min-w-[60px]">
-                      <p className="text-xl font-bold text-slate-900">{base.meterCount}</p>
+                      <p className="text-2xl font-semibold text-slate-900">{base.meterCount}</p>
                       <p className="text-xs text-slate-500">物业</p>
                     </div>
                     
                     {/* 物理空间 */}
                     <div className="text-center min-w-[60px]">
-                      <p className="text-xl font-bold text-slate-900">{stats.totalSpaces}</p>
+                      <p className="text-2xl font-semibold text-slate-900">{stats.totalSpaces}</p>
                       <p className="text-xs text-slate-500">空间</p>
                     </div>
                     
                     {/* 注册号 */}
                     <div className="text-center min-w-[60px]">
-                      <p className="text-xl font-bold text-slate-900">{stats.totalRegNumbers}</p>
+                      <p className="text-2xl font-semibold text-slate-900">{stats.totalRegNumbers}</p>
                       <p className="text-xs text-slate-500">注册号</p>
                     </div>
                     
                     {/* 入驻企业 */}
                     <div className="text-center min-w-[80px]">
-                      <p className="text-xl font-bold text-violet-600">{stats.allocatedRegNumbers}</p>
+                      <p className="text-2xl font-semibold text-violet-600">{stats.allocatedRegNumbers}</p>
                       <p className="text-xs text-slate-500">入驻企业</p>
                     </div>
                   </div>

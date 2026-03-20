@@ -17,7 +17,7 @@ export function MeterCard({ meter, isExpanded, onClick }: MeterCardProps) {
         {/* 物业编号和面积 */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-xl font-bold" style={{ color: "#1C1917" }}>{meter.code}</h3>
+            <h3 className="text-2xl font-semibold text-slate-900">{meter.code}</h3>
             {meter.area && (
               <p className="text-sm mt-0.5" style={{ color: "#78716C" }}>{meter.area} ㎡</p>
             )}

@@ -207,7 +207,7 @@ export default function OrdersHallPage() {
                     <item.icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xl font-bold text-slate-900">{item.count}</p>
+                    <p className="text-2xl font-semibold text-slate-900">{item.count}</p>
                     <p className="text-xs text-slate-500">{item.label}</p>
                   </div>
                 </div>

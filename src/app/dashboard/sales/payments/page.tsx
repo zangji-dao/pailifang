@@ -435,7 +435,7 @@ export default function PaymentsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">计划回款</span>
-                    <span className="text-xl font-bold text-slate-900">¥{plan.amount.toLocaleString()}</span>
+                    <span className="text-2xl font-semibold text-slate-900">¥{plan.amount.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">回款笔数</span>

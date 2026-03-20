@@ -122,7 +122,7 @@ export default function ApplicationDetailPage() {
             
             {/* 中间：标题居中 */}
             <div className="flex-1 text-center relative">
-              <h1 className="text-xl font-semibold">入驻申请详情</h1>
+              <h1 className="text-2xl font-semibold">入驻申请详情</h1>
               <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
               {success && <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-green-600 hidden sm:inline">已保存</span>}
             </div>

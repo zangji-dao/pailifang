@@ -176,7 +176,7 @@ export default function LeadsPage() {
             }`}
           >
             <p className="text-sm text-slate-500">{stat.label}</p>
-            <p className={`text-xl font-bold mt-1 ${stat.color}`}>{stat.count}</p>
+            <p className={`text-2xl font-semibold mt-1 ${stat.count}`}>{stat.count}</p>
           </button>
         ))}
       </div>

@@ -232,7 +232,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-xl font-semibold text-slate-900">{enterprise.name}</h2>
+                    <h2 className="text-2xl font-semibold text-slate-900">{enterprise.name}</h2>
                     <Badge
                       variant="outline"
                       className={cn("text-sm", typeConfig[enterprise.type].className)}

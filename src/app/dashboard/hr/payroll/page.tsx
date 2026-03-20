@@ -220,23 +220,23 @@ export default function SalaryPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-white/60 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">应发总额</p>
-              <p className="text-xl font-bold text-slate-900">¥{MONTHLY_SUMMARY.totalGross.toLocaleString()}</p>
+              <p className="text-2xl font-semibold text-slate-900">¥{MONTHLY_SUMMARY.totalGross.toLocaleString()}</p>
             </div>
             <div className="bg-white/60 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">实发总额</p>
-              <p className="text-xl font-bold text-emerald-600">¥{MONTHLY_SUMMARY.totalNet.toLocaleString()}</p>
+              <p className="text-2xl font-semibold text-emerald-600">¥{MONTHLY_SUMMARY.totalNet.toLocaleString()}</p>
             </div>
             <div className="bg-white/60 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">社保总额</p>
-              <p className="text-xl font-bold text-blue-600">¥{MONTHLY_SUMMARY.totalSocial.toLocaleString()}</p>
+              <p className="text-2xl font-semibold text-blue-600">¥{MONTHLY_SUMMARY.totalSocial.toLocaleString()}</p>
             </div>
             <div className="bg-white/60 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">公积金总额</p>
-              <p className="text-xl font-bold text-purple-600">¥{MONTHLY_SUMMARY.totalFund.toLocaleString()}</p>
+              <p className="text-2xl font-semibold text-purple-600">¥{MONTHLY_SUMMARY.totalFund.toLocaleString()}</p>
             </div>
             <div className="bg-white/60 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">个税总额</p>
-              <p className="text-xl font-bold text-amber-600">¥{MONTHLY_SUMMARY.totalTax.toLocaleString()}</p>
+              <p className="text-2xl font-semibold text-amber-600">¥{MONTHLY_SUMMARY.totalTax.toLocaleString()}</p>
             </div>
           </div>
 
@@ -266,7 +266,7 @@ export default function SalaryPage() {
                 <DollarSign className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">¥{stats.totalGross.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-slate-900">¥{stats.totalGross.toLocaleString()}</p>
                 <p className="text-xs text-slate-500">应发工资</p>
               </div>
             </div>
@@ -279,7 +279,7 @@ export default function SalaryPage() {
                 <Wallet className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">¥{stats.totalNet.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-slate-900">¥{stats.totalNet.toLocaleString()}</p>
                 <p className="text-xs text-slate-500">实发工资</p>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function SalaryPage() {
                 <Building2 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">¥{stats.totalSocial.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-slate-900">¥{stats.totalSocial.toLocaleString()}</p>
                 <p className="text-xs text-slate-500">社保扣除</p>
               </div>
             </div>
@@ -305,7 +305,7 @@ export default function SalaryPage() {
                 <Percent className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">¥{stats.totalTax.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-slate-900">¥{stats.totalTax.toLocaleString()}</p>
                 <p className="text-xs text-slate-500">个税扣除</p>
               </div>
             </div>
@@ -318,7 +318,7 @@ export default function SalaryPage() {
                 <TrendingUp className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">¥{stats.averageSalary.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-slate-900">¥{stats.averageSalary.toLocaleString()}</p>
                 <p className="text-xs text-slate-500">平均工资</p>
               </div>
             </div>

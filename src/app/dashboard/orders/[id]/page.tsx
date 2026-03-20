@@ -185,7 +185,7 @@ export default function OrderDetailPage() {
                 进行中
               </Badge>
             </div>
-            <h1 className="text-xl font-semibold text-slate-900">{orderDetail.title}</h1>
+            <h1 className="text-2xl font-semibold text-slate-900">{orderDetail.title}</h1>
             <p className="text-sm text-slate-500 mt-1">{orderDetail.customer.name}</p>
           </div>
         </div>
@@ -344,7 +344,7 @@ export default function OrderDetailPage() {
             <CardContent className="p-4">
               <div className="text-center mb-4">
                 <p className="text-sm text-slate-500 mb-1">工单金额</p>
-                <p className="text-3xl font-bold text-slate-900">¥{orderDetail.amount.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-slate-900">¥{orderDetail.amount.toLocaleString()}</p>
               </div>
               <Separator className="my-3" />
               <div className="space-y-2">

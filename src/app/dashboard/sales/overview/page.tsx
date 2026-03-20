@@ -173,7 +173,7 @@ export default function SalesOverviewPage() {
             <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-500">整体转化率</p>
-                <p className="text-xl font-bold text-slate-900">7.7%</p>
+                <p className="text-2xl font-semibold text-slate-900">7.7%</p>
               </div>
               <Button variant="ghost" size="sm" className="text-amber-600">
                 查看详情 <ArrowRight className="h-4 w-4 ml-1" />
@@ -323,7 +323,7 @@ export default function SalesOverviewPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-500">本月成交总额</p>
-                  <p className="text-xl font-bold text-slate-900">¥128,500</p>
+                  <p className="text-2xl font-semibold text-slate-900">¥128,500</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-500">成交笔数</p>

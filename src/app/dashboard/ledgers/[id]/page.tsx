@@ -39,7 +39,7 @@ export default function LedgerHomePage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">资产总额</p>
-                  <p className="text-xl font-bold text-slate-900">¥243,500</p>
+                  <p className="text-2xl font-semibold text-slate-900">¥243,500</p>
                 </div>
               </div>
             </CardContent>
@@ -53,7 +53,7 @@ export default function LedgerHomePage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">本月凭证</p>
-                  <p className="text-xl font-bold text-slate-900">12 张</p>
+                  <p className="text-2xl font-semibold text-slate-900">12 张</p>
                 </div>
               </div>
             </CardContent>
@@ -67,7 +67,7 @@ export default function LedgerHomePage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">已结账月份</p>
-                  <p className="text-xl font-bold text-slate-900">11 个月</p>
+                  <p className="text-2xl font-semibold text-slate-900">11 个月</p>
                 </div>
               </div>
             </CardContent>
@@ -81,7 +81,7 @@ export default function LedgerHomePage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">待处理</p>
-                  <p className="text-xl font-bold text-slate-900">3 项</p>
+                  <p className="text-2xl font-semibold text-slate-900">3 项</p>
                 </div>
               </div>
             </CardContent>
