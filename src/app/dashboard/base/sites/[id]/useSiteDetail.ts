@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { BaseDetail, StatsInfo } from "./types";
 
 export function useSiteDetail(baseId: string) {
@@ -72,11 +73,11 @@ export function useSiteDetail(baseId: string) {
       if (result.success) {
         router.push('/dashboard/base/sites');
       } else {
-        alert(result.error || '删除失败');
+        toast.error(result.error || '删除失败');
       }
     } catch (error) {
       console.error('删除基地失败:', error);
-      alert('删除失败，请稍后重试');
+      toast.error('删除失败，请稍后重试');
     } finally {
       setDeleting(false);
       setShowDeleteDialog(false);

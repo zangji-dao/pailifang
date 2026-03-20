@@ -159,11 +159,11 @@ export function useNewApplicationForm() {
           return { ...prev, personnel: newPersonnel };
         });
       } else {
-        alert(result.error || '上传失败');
+        toast.error(result.error || '上传失败');
       }
     } catch (error) {
       console.error('上传失败:', error);
-      alert('上传失败');
+      toast.error('上传失败');
     } finally {
       setUploadingFiles((prev) => ({ ...prev, [uploadKey]: false }));
     }
@@ -203,11 +203,11 @@ export function useNewApplicationForm() {
           return { ...prev, shareholders: newShareholders };
         });
       } else {
-        alert(result.error || '上传失败');
+        toast.error(result.error || '上传失败');
       }
     } catch (error) {
       console.error('上传失败:', error);
-      alert('上传失败');
+      toast.error('上传失败');
     } finally {
       setUploadingShareholderFiles((prev) => ({ ...prev, [uploadKey]: false }));
     }
@@ -218,11 +218,11 @@ export function useNewApplicationForm() {
     const file = e.target.files?.[0];
     if (file) {
       if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-        alert('请上传 JPG 或 PNG 格式的图片');
+        toast.error('请上传 JPG 或 PNG 格式的图片');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('文件大小不能超过 5MB');
+        toast.error('文件大小不能超过 5MB');
         return;
       }
       const reader = new FileReader();
@@ -244,11 +244,11 @@ export function useNewApplicationForm() {
     const file = e.target.files?.[0];
     if (file) {
       if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-        alert('请上传 JPG 或 PNG 格式的图片');
+        toast.error('请上传 JPG 或 PNG 格式的图片');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('文件大小不能超过 5MB');
+        toast.error('文件大小不能超过 5MB');
         return;
       }
       const reader = new FileReader();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import type { ContentType, PublishFormData } from "./types";
 
 export function usePublishForm() {
@@ -94,15 +95,15 @@ export function usePublishForm() {
   // 发布内容
   const handlePublish = useCallback(async () => {
     if (!formData.title.trim()) {
-      alert("请输入标题");
+      toast.error("请输入标题");
       return;
     }
     if (!formData.content.trim()) {
-      alert("请输入内容");
+      toast.error("请输入内容");
       return;
     }
     if (formData.selectedPlatforms.length === 0) {
-      alert("请选择发布平台");
+      toast.error("请选择发布平台");
       return;
     }
 
@@ -111,7 +112,7 @@ export function usePublishForm() {
     try {
       // 模拟发布过程
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      alert("发布成功！内容已提交至各平台审核。");
+      toast.success("发布成功！内容已提交至各平台审核。");
 
       // 重置表单
       setFormData({
@@ -128,7 +129,7 @@ export function usePublishForm() {
       });
     } catch (error) {
       console.error("发布失败:", error);
-      alert("发布失败");
+      toast.error("发布失败");
     } finally {
       setIsPublishing(false);
     }
@@ -136,7 +137,7 @@ export function usePublishForm() {
 
   // 保存草稿
   const handleSaveDraft = useCallback(() => {
-    alert("草稿已保存");
+    toast.success("草稿已保存");
   }, []);
 
   return {

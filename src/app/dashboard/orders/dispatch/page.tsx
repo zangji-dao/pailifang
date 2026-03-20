@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,7 +128,7 @@ export default function DispatchPage() {
     if (!foundOrder) return;
 
     if (dispatchType === "assign" && !selectedEmployee) {
-      alert("请选择执行人员");
+      toast.error("请选择执行人员");
       return;
     }
 

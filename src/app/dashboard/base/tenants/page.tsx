@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Search,
   Plus,
@@ -238,7 +239,7 @@ export default function TenantsPage() {
       setEnterprises((prev) => prev.filter((e) => e.id !== enterprise.id));
     } catch (err) {
       console.error("删除失败:", err);
-      alert(err instanceof Error ? err.message : "删除失败");
+      toast.error(err instanceof Error ? err.message : "删除失败");
     }
   };
 

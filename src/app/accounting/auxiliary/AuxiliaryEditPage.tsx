@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -221,7 +222,7 @@ export function AuxiliaryEditPage({ typeId, itemId, initialData }: AuxiliaryEdit
     for (const group of fieldGroups) {
       const requiredField = group.fields.find(f => f.required && !formData[f.key]?.trim());
       if (requiredField) {
-        alert(`请填写${requiredField.label}`);
+        toast.error(`请填写${requiredField.label}`);
         return;
       }
     }

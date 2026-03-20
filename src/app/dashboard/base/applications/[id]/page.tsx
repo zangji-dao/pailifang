@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ImageCropper } from "@/components/image-cropper";
 import { useApplicationForm } from "./useApplicationForm";
+import { useConfirm } from "@/components/confirm-dialog";
 import { formSteps } from "./constants";
 import { BasicInfoStep } from "./_components/BasicInfoStep";
 import { AddressStep } from "./_components/AddressStep";
@@ -62,11 +63,24 @@ export default function ApplicationDetailPage() {
     handleGoBack,
   } = useApplicationForm(applicationId);
 
+  const confirm = useConfirm();
+
   useEffect(() => {
     loadApplication();
   }, [loadApplication]);
 
   const isLastStep = currentStep === formSteps.length - 1;
+
+  // 提交审核（需要确认）
+  const handleSubmitForApproval = async () => {
+    const confirmed = await confirm({
+      title: "提交审批",
+      description: "确认提交此申请进行审批？",
+    });
+    if (confirmed) {
+      handleSubmit("pending");
+    }
+  };
 
   if (loading || !formData) {
     return (
@@ -263,7 +277,7 @@ export default function ApplicationDetailPage() {
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => handleSubmit("pending")}
+                    onClick={handleSubmitForApproval}
                     disabled={submitting}
                     className="bg-primary hover:bg-primary/90"
                   >

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { getSupabaseClient } from "@/storage/database/client";
 import {
   Plus,
@@ -251,7 +252,7 @@ export default function WorkOrdersPage() {
       fetchWorkOrders();
     } catch (error) {
       console.error("创建工单失败:", error);
-      alert("创建工单失败");
+      toast.error("创建工单失败");
     }
   };
 
@@ -272,7 +273,7 @@ export default function WorkOrdersPage() {
       fetchWorkOrders();
     } catch (error) {
       console.error("更新工单状态失败:", error);
-      alert("更新失败");
+      toast.error("更新失败");
     }
   };
 

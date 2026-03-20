@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Building2,
   MapPin,
@@ -131,7 +132,7 @@ export default function BaseListPage() {
   // 创建基地
   const handleCreateBase = async () => {
     if (!formData.name.trim()) {
-      alert("请输入基地名称");
+      toast.error("请输入基地名称");
       return;
     }
     
@@ -152,11 +153,11 @@ export default function BaseListPage() {
         // 刷新列表
         fetchData();
       } else {
-        alert(result.error || "创建失败");
+        toast.error(result.error || "创建失败");
       }
     } catch (error) {
       console.error("创建基地失败:", error);
-      alert("创建失败，请重试");
+      toast.error("创建失败，请重试");
     } finally {
       setSubmitting(false);
     }

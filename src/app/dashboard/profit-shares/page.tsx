@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { getSupabaseClient } from "@/storage/database/client";
 import {
   Plus,
@@ -248,7 +249,7 @@ export default function ProfitSharesPage() {
       const rule = profitRules.find((r) => r.id === formData.profitRuleId);
 
       if (!rule) {
-        alert("请选择分润规则");
+        toast.error("请选择分润规则");
         return;
       }
 
@@ -285,7 +286,7 @@ export default function ProfitSharesPage() {
       fetchProfitShares();
     } catch (error) {
       console.error("创建分润记录失败:", error);
-      alert("创建分润记录失败");
+      toast.error("创建分润记录失败");
     }
   };
 
@@ -306,7 +307,7 @@ export default function ProfitSharesPage() {
       fetchProfitShares();
     } catch (error) {
       console.error("更新分润状态失败:", error);
-      alert("更新失败");
+      toast.error("更新失败");
     }
   };
 
