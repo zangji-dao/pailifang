@@ -277,21 +277,9 @@ export default function ApplicationsPage() {
       </div>
 
       {/* 统计卡片 - 可点击筛选 */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <button
-          onClick={() => setStatusFilter("all")}
-          className={cn(
-            "rounded-lg border p-4 text-left transition-all",
-            statusFilter === "all" 
-              ? "border-primary bg-primary/5 ring-1 ring-primary" 
-              : "bg-card hover:border-primary/50 hover:bg-muted/50"
-          )}
-        >
-          <div className="text-sm text-muted-foreground">总计</div>
-          <div className="text-2xl font-semibold mt-1">{stats.total}</div>
-        </button>
-        <button
-          onClick={() => setStatusFilter("draft")}
+          onClick={() => setStatusFilter(statusFilter === "draft" ? "all" : "draft")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "draft" 
@@ -303,7 +291,7 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-slate-600">{stats.draft}</div>
         </button>
         <button
-          onClick={() => setStatusFilter("pending")}
+          onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "pending" 
@@ -315,7 +303,7 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-amber-700">{stats.pending}</div>
         </button>
         <button
-          onClick={() => setStatusFilter("approved")}
+          onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "approved" 
@@ -327,7 +315,7 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-emerald-600">{stats.approved}</div>
         </button>
         <button
-          onClick={() => setStatusFilter("rejected")}
+          onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "rejected" 
@@ -489,6 +477,20 @@ export default function ApplicationsPage() {
                           >
                             <Edit className="h-3.5 w-3.5" />
                             修改
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleShare(app)}
+                            disabled={creatingShare && sharingAppId === app.id}
+                            className="gap-1 text-amber-600 hover:text-amber-700"
+                          >
+                            {creatingShare && sharingAppId === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Share2 className="h-3.5 w-3.5" />
+                            )}
+                            转发
                           </Button>
                           <Button
                             size="sm"
