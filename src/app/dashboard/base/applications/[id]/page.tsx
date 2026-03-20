@@ -239,7 +239,7 @@ export default function ApplicationDetailPage() {
             <BusinessStep
               formData={formData}
               canEdit={canEdit}
-              updateField={updateField as (field: keyof ApplicationFormData, value: string) => void}
+              updateField={updateField as (field: keyof ApplicationFormData, value: string | string[]) => void}
             />
           )}
         </div>

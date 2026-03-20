@@ -65,7 +65,8 @@ export interface ApplicationFormData {
   intermediaryDepartment: string;
   intermediaryName: string;
   intermediaryPhone: string;
-  businessScope: string;
+  businessScope: string;           // 经营范围文本（逗号分隔）
+  businessScopeIds: string[];      // 经营范围ID列表
   applicationType: ApplicationType | "";
   remarks: string;
 }

@@ -480,6 +480,20 @@ export function useNewApplicationForm() {
     return { isValid: true, errors: {} };
   }, [formData]);
 
+  // ========== 经营信息验证 ==========
+  const validateBusinessStep = useCallback((): { isValid: boolean; errors: Record<string, string> } => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData?.businessScopeIds || formData.businessScopeIds.length === 0) {
+      newErrors.businessScope = "请至少选择一项经营范围";
+      setErrors(newErrors);
+      return { isValid: false, errors: newErrors };
+    }
+    
+    setErrors({});
+    return { isValid: true, errors: {} };
+  }, [formData]);
+
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData?.enterpriseName) newErrors.enterpriseName = "请输入企业名称";
@@ -573,6 +587,14 @@ export function useNewApplicationForm() {
           firstError = errorValues[0];
         }
       }
+      else if (currentStep === 4) {
+        const result = validateBusinessStep();
+        isValid = result.isValid;
+        const errorValues = Object.values(result.errors);
+        if (errorValues.length > 0) {
+          firstError = errorValues[0];
+        }
+      }
       
       if (!isValid) {
         return;
@@ -583,7 +605,7 @@ export function useNewApplicationForm() {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [currentStep, validateBasicStep, validatePersonnelStep, validateShareholderStep, saveDraft]);
+  }, [currentStep, validateBasicStep, validatePersonnelStep, validateShareholderStep, validateBusinessStep, saveDraft]);
 
   const goToPrevStep = useCallback(() => {
     if (currentStep > 0) {

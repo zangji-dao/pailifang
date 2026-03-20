@@ -83,6 +83,7 @@ export const initialFormData: ApplicationFormData = {
   intermediaryName: "",
   intermediaryPhone: "",
   businessScope: "",
+  businessScopeIds: [],
   applicationType: "",
   remarks: "",
 };
@@ -147,6 +148,7 @@ export const initialNewFormData: NewApplicationFormData = {
   intermediaryName: "",
   intermediaryPhone: "",
   businessScope: "",
+  businessScopeIds: [],
   applicationType: "",
   remarks: "",
 };
