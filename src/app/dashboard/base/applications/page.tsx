@@ -248,12 +248,14 @@ export default function ApplicationsPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">入驻申请</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            入驻申请
+          </h1>
+          <p className="text-slate-500 mt-1.5">
             填写入园审批表，管理企业入驻申请
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <Button onClick={handleCreate} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
           <Plus className="h-4 w-4" />
           填写申请表
         </Button>
@@ -261,42 +263,42 @@ export default function ApplicationsPage() {
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-5 gap-4">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm text-muted-foreground">总计</div>
-          <div className="text-2xl font-semibold">{stats.total}</div>
+        <div className="rounded-xl border-0 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-md hover:shadow-lg transition-shadow">
+          <div className="text-sm font-medium text-slate-500">总计</div>
+          <div className="text-3xl font-bold text-slate-900 mt-2">{stats.total}</div>
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm text-muted-foreground">草稿</div>
-          <div className="text-2xl font-semibold text-slate-600">{stats.draft}</div>
+        <div className="rounded-xl border-0 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-md hover:shadow-lg transition-shadow">
+          <div className="text-sm font-medium text-slate-500">草稿</div>
+          <div className="text-3xl font-bold text-slate-600 mt-2">{stats.draft}</div>
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm text-muted-foreground">待审批</div>
-          <div className="text-2xl font-semibold text-blue-600">{stats.pending}</div>
+        <div className="rounded-xl border-0 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-md hover:shadow-lg transition-shadow">
+          <div className="text-sm font-medium text-blue-600">待审批</div>
+          <div className="text-3xl font-bold text-blue-700 mt-2">{stats.pending}</div>
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm text-muted-foreground">已通过</div>
-          <div className="text-2xl font-semibold text-emerald-600">{stats.approved}</div>
+        <div className="rounded-xl border-0 bg-gradient-to-br from-emerald-50 to-green-50 p-5 shadow-md hover:shadow-lg transition-shadow">
+          <div className="text-sm font-medium text-emerald-600">已通过</div>
+          <div className="text-3xl font-bold text-emerald-700 mt-2">{stats.approved}</div>
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm text-muted-foreground">已驳回</div>
-          <div className="text-2xl font-semibold text-red-600">{stats.rejected}</div>
+        <div className="rounded-xl border-0 bg-gradient-to-br from-red-50 to-orange-50 p-5 shadow-md hover:shadow-lg transition-shadow">
+          <div className="text-sm font-medium text-red-600">已驳回</div>
+          <div className="text-3xl font-bold text-red-700 mt-2">{stats.rejected}</div>
         </div>
       </div>
 
       {/* 搜索和筛选 */}
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative flex-1 max-w-sm group">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
           <input
             type="text"
             placeholder="搜索企业名称、编号或法人..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm ring-offset-background placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent transition-all"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[140px] rounded-xl border-slate-200">
             <SelectValue placeholder="全部状态" />
           </SelectTrigger>
           <SelectContent>
@@ -311,59 +313,65 @@ export default function ApplicationsPage() {
 
       {/* 申请列表 */}
       {error && (
-        <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-4 text-destructive">
+        <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 p-4 text-red-700">
           <AlertCircle className="h-4 w-4" />
           {error}
         </div>
       )}
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-2xl border-0 bg-white shadow-lg overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="p-4 text-left text-sm font-medium">申请编号</th>
-              <th className="p-4 text-left text-sm font-medium">企业名称</th>
-              <th className="p-4 text-left text-sm font-medium">申请类型</th>
-              <th className="p-4 text-left text-sm font-medium">法人/电话</th>
-              <th className="p-4 text-left text-sm font-medium">状态</th>
-              <th className="p-4 text-left text-sm font-medium">创建时间</th>
-              <th className="p-4 text-right text-sm font-medium">操作</th>
+            <tr className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50">
+              <th className="p-4 text-left text-sm font-semibold text-slate-700">申请编号</th>
+              <th className="p-4 text-left text-sm font-semibold text-slate-700">企业名称</th>
+              <th className="p-4 text-left text-sm font-semibold text-slate-700">申请类型</th>
+              <th className="p-4 text-left text-sm font-semibold text-slate-700">法人/电话</th>
+              <th className="p-4 text-left text-sm font-semibold text-slate-700">状态</th>
+              <th className="p-4 text-left text-sm font-semibold text-slate-700">创建时间</th>
+              <th className="p-4 text-right text-sm font-semibold text-slate-700">操作</th>
             </tr>
           </thead>
           <tbody>
             {filteredApplications.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                  暂无申请记录，点击"填写申请表"开始
+                <td colSpan={7} className="p-12 text-center">
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                      <AlertCircle className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <p className="text-slate-500 font-medium">暂无申请记录</p>
+                    <p className="text-slate-400 text-sm mt-1">点击"填写申请表"开始</p>
+                  </div>
                 </td>
               </tr>
             ) : (
               filteredApplications.map((app) => (
-                <tr key={app.id} className="border-b last:border-b-0 hover:bg-muted/50">
-                  <td className="p-4 text-sm font-mono">{app.applicationNo}</td>
+                <tr key={app.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
+                  <td className="p-4 text-sm font-mono text-slate-600">{app.applicationNo}</td>
                   <td className="p-4">
-                    <div className="font-medium">{app.enterpriseName}</div>
+                    <div className="font-semibold text-slate-900">{app.enterpriseName}</div>
                     {app.enterpriseNameBackups && app.enterpriseNameBackups.length > 0 && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-slate-400 mt-1">
                         备用名: {app.enterpriseNameBackups.join("、")}
                       </div>
                     )}
                   </td>
                   <td className="p-4">
-                    <Badge variant="outline" className={cn("font-normal", applicationTypeConfig[app.applicationType].className)}>
+                    <Badge variant="outline" className={cn("font-medium border", applicationTypeConfig[app.applicationType].className)}>
                       {applicationTypeConfig[app.applicationType].label}
                     </Badge>
                   </td>
                   <td className="p-4 text-sm">
-                    <div>{app.legalPersonName || "-"}</div>
-                    <div className="text-muted-foreground">{app.legalPersonPhone || "-"}</div>
+                    <div className="font-medium text-slate-900">{app.legalPersonName || "-"}</div>
+                    <div className="text-slate-500">{app.legalPersonPhone || "-"}</div>
                   </td>
                   <td className="p-4">
-                    <Badge variant="outline" className={cn("font-normal", statusConfig[app.approvalStatus].className)}>
+                    <Badge variant="outline" className={cn("font-medium border", statusConfig[app.approvalStatus].className)}>
                       {statusConfig[app.approvalStatus].label}
                     </Badge>
                   </td>
-                  <td className="p-4 text-sm text-muted-foreground">
+                  <td className="p-4 text-sm text-slate-500">
                     {new Date(app.createdAt).toLocaleDateString("zh-CN")}
                   </td>
                   <td className="p-4">
@@ -374,7 +382,7 @@ export default function ApplicationsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleEdit(app)}
-                            className="gap-1"
+                            className="gap-1.5 hover:bg-slate-100"
                           >
                             <Edit className="h-3.5 w-3.5" />
                             编辑
@@ -384,7 +392,7 @@ export default function ApplicationsPage() {
                             variant="ghost"
                             onClick={() => handleShare(app)}
                             disabled={creatingShare && sharingAppId === app.id}
-                            className="gap-1 text-primary hover:text-primary"
+                            className="gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           >
                             {creatingShare && sharingAppId === app.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -397,7 +405,7 @@ export default function ApplicationsPage() {
                             size="sm"
                             variant="default"
                             onClick={() => handleSubmit(app.id)}
-                            className="gap-1"
+                            className="gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-sm"
                           >
                             <Send className="h-3.5 w-3.5" />
                             提交
@@ -406,7 +414,7 @@ export default function ApplicationsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleDelete(app.id)}
-                            className="gap-1 text-destructive hover:text-destructive"
+                            className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -418,7 +426,7 @@ export default function ApplicationsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleEdit(app)}
-                            className="gap-1"
+                            className="gap-1.5 hover:bg-slate-100"
                           >
                             <Edit className="h-3.5 w-3.5" />
                             修改
@@ -427,7 +435,7 @@ export default function ApplicationsPage() {
                             size="sm"
                             variant="default"
                             onClick={() => handleSubmit(app.id)}
-                            className="gap-1"
+                            className="gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-sm"
                           >
                             <Send className="h-3.5 w-3.5" />
                             重新提交
@@ -439,7 +447,7 @@ export default function ApplicationsPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleEdit(app)}
-                          className="gap-1"
+                          className="gap-1.5 hover:bg-slate-100"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           查看
@@ -450,7 +458,7 @@ export default function ApplicationsPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleViewProcess(app)}
-                          className="gap-1"
+                          className="gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         >
                           <GitBranch className="h-3.5 w-3.5" />
                           查看流程
