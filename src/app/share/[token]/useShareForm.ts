@@ -403,9 +403,7 @@ export function useShareForm(token: string) {
       });
 
       const result = await response.json();
-      if (result.success) {
-        setSuccess(true);
-      } else {
+      if (!result.success) {
         setError(result.error || "保存失败");
       }
     } catch (err) {
@@ -416,6 +414,75 @@ export function useShareForm(token: string) {
     }
   }, [token, formData]);
 
+  // ========== 验证当前步骤 ==========
+  const validateCurrentStep = useCallback((): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    switch (currentStep) {
+      case 0: // 基本信息
+        if (!formData.enterpriseName.trim()) {
+          newErrors.enterpriseName = "请输入企业名称";
+        }
+        if (!formData.applicationType) {
+          newErrors.applicationType = "请选择申请类型";
+        }
+        if (!formData.taxType) {
+          newErrors.taxType = "请选择纳税人类型";
+        }
+        break;
+
+      case 1: // 地址信息 - 非必填
+        break;
+
+      case 2: // 人员信息
+        // 检查必填职务
+        const missingRoles = requiredRoles.filter(
+          (role) => !formData.personnel.some((p) => p.roles.includes(role.key))
+        );
+        if (missingRoles.length > 0) {
+          newErrors.role_missing = `请指定：${missingRoles.map((r) => r.label).join("、")}`;
+        }
+        
+        formData.personnel.forEach((person, index) => {
+          if (person.roles.length > 0) {
+            if (!person.name.trim()) newErrors[`personnel_${index}_name`] = "请输入姓名";
+            if (!person.phone.trim()) newErrors[`personnel_${index}_phone`] = "请输入电话";
+            if (!person.email.trim()) newErrors[`personnel_${index}_email`] = "请输入邮箱";
+            if (!person.address.trim()) newErrors[`personnel_${index}_address`] = "请输入住址";
+            if (!person.idCardFrontUrl) newErrors[`personnel_${index}_idCardFront`] = "请上传身份证正面";
+            if (!person.idCardBackUrl) newErrors[`personnel_${index}_idCardBack`] = "请上传身份证背面";
+          }
+        });
+        break;
+
+      case 3: // 股东信息
+        formData.shareholders.forEach((shareholder, index) => {
+          if (!shareholder.name.trim()) newErrors[`shareholder_${index}_name`] = "请输入股东名称";
+          if (!shareholder.investment.trim()) newErrors[`shareholder_${index}_investment`] = "请输入出资额";
+          if (!shareholder.phone.trim()) newErrors[`shareholder_${index}_phone`] = "请输入联系电话";
+          if (shareholder.type === "natural") {
+            if (!shareholder.idCardFrontUrl) newErrors[`shareholder_${index}_idCardFront`] = "请上传身份证正面";
+            if (!shareholder.idCardBackUrl) newErrors[`shareholder_${index}_idCardBack`] = "请上传身份证背面";
+          } else {
+            if (!shareholder.licenseOriginalUrl) newErrors[`shareholder_${index}_licenseOriginal`] = "请上传营业执照正本";
+            if (!shareholder.licenseCopyUrl) newErrors[`shareholder_${index}_licenseCopy`] = "请上传营业执照副本";
+          }
+        });
+        break;
+    }
+
+    setErrors(newErrors);
+    
+    // 如果有错误，显示第一个错误
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      // 可以通过 toast 或者其他方式提示
+      console.log("验证失败:", firstError);
+    }
+    
+    return Object.keys(newErrors).length === 0;
+  }, [currentStep, formData]);
+
   // ========== 提交 ==========
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
@@ -424,25 +491,40 @@ export function useShareForm(token: string) {
 
     try {
       setSubmitting(true);
-      await handleSave();
-      setSuccess(true);
+      const response = await fetch(`/api/share/${token}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setSuccess(true);
+      } else {
+        setError(result.error || "提交失败");
+      }
     } catch (err) {
       console.error("提交失败:", err);
       setError("提交失败，请稍后重试");
     } finally {
       setSubmitting(false);
     }
-  }, [validateForm, handleSave]);
+  }, [validateForm, token, formData]);
 
   // ========== 步骤导航 ==========
   const goToNextStep = useCallback(async () => {
-    // 先保存数据
+    // 先验证当前步骤
+    if (!validateCurrentStep()) {
+      return;
+    }
+    
+    // 保存数据
     await handleSave();
     
     if (currentStep < formSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
-  }, [currentStep, handleSave]);
+  }, [currentStep, validateCurrentStep, handleSave]);
 
   const goToPrevStep = useCallback(() => {
     if (currentStep > 0) {
