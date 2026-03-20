@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+// 增加 API 路由的最大运行时间
+export const maxDuration = 60;
+
 interface RouteParams {
   params: Promise<{ token: string }>;
 }
