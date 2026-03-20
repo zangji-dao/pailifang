@@ -73,7 +73,7 @@ export default function NewApplicationPage() {
         <div className="px-6 py-4">
           <div className="flex items-center">
             {/* 左侧：返回按钮 */}
-            <div className="w-[80px]">
+            <div className="w-[100px]">
               <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 返回
@@ -90,7 +90,7 @@ export default function NewApplicationPage() {
             </div>
             
             {/* 右侧：保存按钮 */}
-            <div className="w-[80px] flex justify-end">
+            <div className="w-[100px] flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -200,7 +200,7 @@ export default function NewApplicationPage() {
         <div className="px-10 lg:px-12 py-4">
           <div className="flex items-center">
             {/* 左侧：上一步按钮 */}
-            <div className="w-[80px]">
+            <div className="w-[100px]">
               {currentStep > 0 && (
                 <Button type="button" variant="outline" size="sm" onClick={goToPrevStep}>
                   <ChevronLeft className="h-4 w-4 mr-1" />
@@ -222,7 +222,7 @@ export default function NewApplicationPage() {
             </div>
             
             {/* 右侧：下一步/提交审核按钮 */}
-            <div className="w-[80px] flex justify-end">
+            <div className="w-[100px] flex justify-end">
               {isLastStep ? (
                 <Button
                   type="button"
