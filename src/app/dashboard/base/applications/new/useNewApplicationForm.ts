@@ -27,6 +27,7 @@ export function useNewApplicationForm() {
   
   // 基础状态
   const [formData, setFormData] = useState<NewApplicationFormData>(initialNewFormData);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -401,14 +402,22 @@ export function useNewApplicationForm() {
   const saveDraft = useCallback(async (): Promise<boolean> => {
     setSaving(true);
     try {
-      const response = await fetch('/api/settlement/applications/draft', {
+      const response = await fetch('/api/applications/draft', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, status: 'draft' }),
+        body: JSON.stringify({ 
+          id: applicationId,
+          ...formData, 
+          status: 'draft' 
+        }),
       });
       const result = await response.json();
       
       if (result.success) {
+        // 保存申请ID，用于后续更新
+        if (result.data?.id && !applicationId) {
+          setApplicationId(result.data.id);
+        }
         setLastSavedAt(new Date());
         toast.success("草稿保存成功");
         return true;
@@ -423,7 +432,7 @@ export function useNewApplicationForm() {
     } finally {
       setSaving(false);
     }
-  }, [formData]);
+  }, [formData, applicationId]);
 
   // ========== 步骤切换 ==========
   const goToNextStep = useCallback(async () => {
@@ -454,18 +463,44 @@ export function useNewApplicationForm() {
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/settlement/applications', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, status: 'pending' }),
-      });
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success("提交成功");
-        router.push("/dashboard/base/applications");
+      // 如果已有申请ID，则更新状态为 pending
+      if (applicationId) {
+        const response = await fetch(`/api/applications/${applicationId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            ...formData, 
+            status: 'pending',
+            approvalStatus: 'pending'
+          }),
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          toast.success("提交成功");
+          router.push("/dashboard/base/applications");
+        } else {
+          toast.error(result.error || "提交失败");
+        }
       } else {
-        toast.error(result.error || "提交失败");
+        // 没有申请ID，创建新申请并直接提交
+        const response = await fetch('/api/applications/draft', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            ...formData, 
+            status: 'pending',
+            approvalStatus: 'pending'
+          }),
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          toast.success("提交成功");
+          router.push("/dashboard/base/applications");
+        } else {
+          toast.error(result.error || "提交失败");
+        }
       }
     } catch (error) {
       console.error("提交失败:", error);
@@ -473,7 +508,7 @@ export function useNewApplicationForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateForm, router]);
+  }, [formData, applicationId, validateForm, router]);
 
   return {
     // 状态

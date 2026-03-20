@@ -53,7 +53,7 @@ export function useApplicationForm(id: string) {
     try {
       setLoading(true);
       setPageError("");
-      const response = await fetch(`/api/settlement/applications/${id}`);
+      const response = await fetch(`/api/applications/${id}`);
       const result = await response.json();
       if (result.success) {
         setFormData({
@@ -489,11 +489,15 @@ export function useApplicationForm(id: string) {
     setSubmitting(true);
     setSuccess(false);
     try {
-      // 保存数据
-      const saveResponse = await fetch(`/api/settlement/applications/${id}`, {
+      // 保存数据并更新状态
+      const saveResponse = await fetch(`/api/applications/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          status: status || 'draft',
+          approvalStatus: status === "pending" ? "pending" : formData.approvalStatus,
+        }),
       });
       const saveResult = await saveResponse.json();
       
@@ -502,18 +506,10 @@ export function useApplicationForm(id: string) {
         return;
       }
 
-      // 如果是提交审批
       if (status === "pending") {
-        const submitResponse = await fetch(`/api/settlement/applications/${id}/submit`, { method: "POST" });
-        const submitResult = await submitResponse.json();
-        
-        if (submitResult.success) {
-          setSuccess(true);
-          alert("提交成功");
-          router.push("/dashboard/base/applications");
-        } else {
-          alert(submitResult.error || "提交失败");
-        }
+        setSuccess(true);
+        alert("提交成功");
+        router.push("/dashboard/base/applications");
       } else {
         setSuccess(true);
       }
