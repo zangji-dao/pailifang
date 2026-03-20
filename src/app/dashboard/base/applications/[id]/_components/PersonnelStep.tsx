@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Plus, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,47 @@ export function PersonnelStep({
   handleFileChange,
   removeIdCard,
 }: PersonnelStepProps) {
+  // 错误弹窗状态
+  const [showError, setShowError] = useState(false);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevErrorRef = useRef<string | null>(null);
+
+  // 当 errors.personnel 变化时显示弹窗，1秒后自动消失
+  useEffect(() => {
+    if (errors.personnel && errors.personnel !== prevErrorRef.current) {
+      setShowError(true);
+      prevErrorRef.current = errors.personnel;
+      
+      // 清除之前的定时器
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+      
+      // 1秒后自动隐藏
+      hideTimerRef.current = setTimeout(() => {
+        setShowError(false);
+      }, 1000);
+    }
+    
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, [errors.personnel]);
+
+  // 点击任意位置隐藏弹窗
+  useEffect(() => {
+    const handleClick = () => setShowError(false);
+    if (showError) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [showError]);
+
+  // 进入输入状态时隐藏弹窗
+  const handleFocus = () => setShowError(false);
+
   return (
     <div className="space-y-6">
       {/* 提示信息 */}
@@ -57,8 +99,11 @@ export function PersonnelStep({
         </div>
       </div>
 
-      {errors.personnel && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-destructive/95 border border-destructive px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+      {showError && errors.personnel && (
+        <div 
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-destructive/95 border border-destructive px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-300 cursor-pointer"
+          onClick={() => setShowError(false)}
+        >
           <div className="flex items-center gap-2 text-white">
             <AlertCircle className="h-4 w-4" />
             <span className="text-sm font-medium">{errors.personnel}</span>
@@ -108,22 +153,22 @@ export function PersonnelStep({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>姓名 <span className="text-destructive">*</span></Label>
-                <Input value={person.name} onChange={(e) => updatePersonnel(index, "name", e.target.value)} placeholder="请输入姓名" disabled={!canEdit} />
+                <Input value={person.name} onChange={(e) => updatePersonnel(index, "name", e.target.value)} onFocus={handleFocus} placeholder="请输入姓名" disabled={!canEdit} />
               </div>
               <div className="space-y-2">
                 <Label>电话 <span className="text-destructive">*</span></Label>
-                <Input value={person.phone} onChange={(e) => updatePersonnel(index, "phone", e.target.value)} placeholder="请输入电话" disabled={!canEdit} />
+                <Input value={person.phone} onChange={(e) => updatePersonnel(index, "phone", e.target.value)} onFocus={handleFocus} placeholder="请输入电话" disabled={!canEdit} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>邮箱 <span className="text-destructive">*</span></Label>
-                <Input type="email" value={person.email} onChange={(e) => updatePersonnel(index, "email", e.target.value)} placeholder="请输入邮箱" disabled={!canEdit} />
+                <Input type="email" value={person.email} onChange={(e) => updatePersonnel(index, "email", e.target.value)} onFocus={handleFocus} placeholder="请输入邮箱" disabled={!canEdit} />
               </div>
               <div className="space-y-2">
                 <Label>住址 <span className="text-destructive">*</span></Label>
-                <Input value={person.address} onChange={(e) => updatePersonnel(index, "address", e.target.value)} placeholder="请输入住址" disabled={!canEdit} />
+                <Input value={person.address} onChange={(e) => updatePersonnel(index, "address", e.target.value)} onFocus={handleFocus} placeholder="请输入住址" disabled={!canEdit} />
               </div>
             </div>
 
