@@ -58,7 +58,9 @@ export function createApiProxy(options: ProxyOptions) {
       // 处理请求体 - 直接使用流式转发，绕过 Next.js 大小限制
       if (method !== 'GET' && method !== 'DELETE' && request.body) {
         // 直接转发请求体流，不读取整个内容
+        // 使用 duplex: 'half' 支持流式请求体
         fetchOptions.body = request.body;
+        (fetchOptions as Record<string, unknown>).duplex = 'half';
       }
 
       // 发送请求
