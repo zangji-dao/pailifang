@@ -163,11 +163,14 @@ export default function ApplicationDetailPage() {
                     ? "bg-primary text-primary-foreground" 
                     : index < currentStep 
                       ? "bg-primary/10 text-primary cursor-pointer hover:bg-primary/20" 
-                      : "text-muted-foreground"
+                      : canEdit 
+                        ? "text-muted-foreground cursor-not-allowed" 
+                        : "text-muted-foreground bg-muted/50 cursor-pointer hover:bg-muted"
                 )}
                 onClick={() => {
-                  // 只能返回已完成的步骤
-                  if (index < currentStep) {
+                  // 查看模式下可以自由切换所有步骤
+                  // 编辑模式下只能返回已完成的步骤
+                  if (!canEdit || index <= currentStep) {
                     setCurrentStep(index);
                   }
                 }}
