@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { 
   NewApplicationFormData, 
   Personnel, 
@@ -27,8 +28,10 @@ export function useNewApplicationForm() {
   // 基础状态
   const [formData, setFormData] = useState<NewApplicationFormData>(initialNewFormData);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentStep, setCurrentStep] = useState(0);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   
   // 文件上传状态
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
@@ -394,19 +397,49 @@ export function useNewApplicationForm() {
     return Object.keys(newErrors).length === 0;
   }, [formData]);
 
+  // ========== 保存草稿 ==========
+  const saveDraft = useCallback(async (): Promise<boolean> => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/settlement/applications/draft', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, status: 'draft' }),
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        setLastSavedAt(new Date());
+        toast.success("草稿保存成功");
+        return true;
+      } else {
+        toast.error(result.error || "保存失败");
+        return false;
+      }
+    } catch (error) {
+      console.error("保存草稿失败:", error);
+      toast.error("保存失败，请稍后重试");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, [formData]);
+
   // ========== 步骤切换 ==========
-  const goToNextStep = useCallback(() => {
+  const goToNextStep = useCallback(async () => {
     if (currentStep < formSteps.length - 1) {
       let isValid = true;
       if (currentStep === 0) isValid = validateBasicStep();
       else if (currentStep === 2) isValid = validatePersonnelStep();
       
       if (isValid) {
+        // 自动保存当前步骤数据
+        await saveDraft();
         setCurrentStep(currentStep + 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
-  }, [currentStep, validateBasicStep, validatePersonnelStep]);
+  }, [currentStep, validateBasicStep, validatePersonnelStep, saveDraft]);
 
   const goToPrevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -424,19 +457,19 @@ export function useNewApplicationForm() {
       const response = await fetch('/api/settlement/applications', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, status: 'pending' }),
       });
       const result = await response.json();
       
       if (result.success) {
-        alert("创建成功");
+        toast.success("提交成功");
         router.push("/dashboard/base/applications");
       } else {
-        alert(result.error || "创建失败");
+        toast.error(result.error || "提交失败");
       }
     } catch (error) {
-      console.error("创建失败:", error);
-      alert("创建失败");
+      console.error("提交失败:", error);
+      toast.error("提交失败，请稍后重试");
     } finally {
       setSubmitting(false);
     }
@@ -446,6 +479,8 @@ export function useNewApplicationForm() {
     // 状态
     formData,
     submitting,
+    saving,
+    lastSavedAt,
     errors,
     currentStep,
     setCurrentStep,
@@ -492,6 +527,9 @@ export function useNewApplicationForm() {
     // 步骤操作
     goToNextStep,
     goToPrevStep,
+    
+    // 保存草稿
+    saveDraft,
     
     // 提交
     handleSubmit,

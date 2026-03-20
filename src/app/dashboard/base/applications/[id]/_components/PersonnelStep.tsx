@@ -23,8 +23,6 @@ interface PersonnelStepProps {
   getRoleHolderIndex: (role: string) => number;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back', personnelIndex: number) => void;
   removeIdCard: (type: 'front' | 'back', personnelIndex: number) => void;
-  onPrev: () => void;
-  onNext: () => void;
 }
 
 export function PersonnelStep({
@@ -41,8 +39,6 @@ export function PersonnelStep({
   getRoleHolderIndex,
   handleFileChange,
   removeIdCard,
-  onPrev,
-  onNext,
 }: PersonnelStepProps) {
   return (
     <div className="space-y-6">
@@ -266,23 +262,6 @@ export function PersonnelStep({
             <Input value={formData.intermediaryPhone} onChange={(e) => updateField("intermediaryPhone", e.target.value)} placeholder="请输入电话" disabled={!canEdit} />
           </div>
         </div>
-      </div>
-
-      {/* 步骤导航 */}
-      <div className="flex items-center justify-between pt-4 border-t">
-        <Button type="button" variant="outline" onClick={onPrev}>
-          <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          上一步：地址信息
-        </Button>
-        <div className="text-sm text-muted-foreground">第 3 步，共 5 步</div>
-        <Button type="button" onClick={onNext}>
-          下一步：股东信息
-          <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Button>
       </div>
     </div>
   );

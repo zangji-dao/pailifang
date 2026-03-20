@@ -18,7 +18,6 @@ interface BasicInfoStepProps {
   errors: Record<string, string>;
   canEdit: boolean;
   updateField: (field: keyof ApplicationFormData, value: string | string[]) => void;
-  onNext: () => void;
 }
 
 export function BasicInfoStep({ 
@@ -26,7 +25,6 @@ export function BasicInfoStep({
   errors, 
   canEdit, 
   updateField,
-  onNext 
 }: BasicInfoStepProps) {
   return (
     <div className="space-y-6">
@@ -224,18 +222,6 @@ export function BasicInfoStep({
             {errors.expectedAnnualTax && <p className="text-xs text-destructive">{errors.expectedAnnualTax}</p>}
           </div>
         </div>
-      </div>
-
-      {/* 步骤导航 */}
-      <div className="flex items-center justify-between pt-4 border-t">
-        <div className="w-24"></div>
-        <div className="text-sm text-muted-foreground">第 1 步，共 5 步</div>
-        <Button type="button" onClick={onNext}>
-          下一步：地址信息
-          <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Button>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Loader2, Save, Send, AlertCircle, FileImage, X, Crop } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +15,7 @@ import { AddressStep } from "./_components/AddressStep";
 import { PersonnelStep } from "./_components/PersonnelStep";
 import { ShareholderStep } from "./_components/ShareholderStep";
 import { BusinessStep } from "./_components/BusinessStep";
-import type { ApplicationFormData } from "./types";
+import type { ApplicationFormData, Personnel, Shareholder, ShareholderType } from "./types";
 
 export default function ApplicationDetailPage() {
   const params = useParams();
@@ -29,11 +29,11 @@ export default function ApplicationDetailPage() {
     setCurrentStep,
     loading,
     submitting,
+    saving,
     pageError,
     success,
     canEdit,
     errors,
-    uploadingFiles,
     uploadingPersonnelFiles,
     uploadingShareholderFiles,
     cropperOpen,
@@ -67,6 +67,9 @@ export default function ApplicationDetailPage() {
   useEffect(() => {
     loadApplication();
   }, [loadApplication]);
+
+  // 是否为最后一步
+  const isLastStep = currentStep === formSteps.length - 1;
 
   if (loading || !formData) {
     return (
@@ -106,6 +109,26 @@ export default function ApplicationDetailPage() {
           <Badge variant="outline" className={cn("px-3 py-1", statusConfig[formData.approvalStatus].className)}>
             {statusConfig[formData.approvalStatus].label}
           </Badge>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSubmit("draft")}
+              disabled={saving || submitting}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  保存中...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  保存
+                </>
+              )}
+            </Button>
+          )}
           {success && <div className="text-sm text-green-600">保存成功</div>}
         </div>
       </div>
@@ -135,15 +158,14 @@ export default function ApplicationDetailPage() {
 
       {/* 表单内容 */}
       <ScrollArea className="flex-1 px-6 py-4">
-        <div className="max-w-5xl mx-auto pb-20">
+        <div className="max-w-5xl mx-auto pb-24">
           {/* 基本信息 */}
           {currentStep === 0 && (
             <BasicInfoStep
               formData={formData}
               errors={errors}
               canEdit={canEdit}
-              updateField={updateField}
-              onNext={goToNextStep}
+              updateField={updateField as (field: keyof ApplicationFormData, value: string | string[]) => void}
             />
           )}
 
@@ -152,9 +174,7 @@ export default function ApplicationDetailPage() {
             <AddressStep
               formData={formData}
               canEdit={canEdit}
-              updateField={updateField}
-              onPrev={goToPrevStep}
-              onNext={goToNextStep}
+              updateField={updateField as (field: keyof ApplicationFormData, value: string) => void}
             />
           )}
 
@@ -165,17 +185,15 @@ export default function ApplicationDetailPage() {
               errors={errors}
               canEdit={canEdit}
               uploadingFiles={uploadingPersonnelFiles}
-              updateField={updateField}
+              updateField={updateField as (field: keyof ApplicationFormData, value: string) => void}
               addPersonnel={addPersonnel}
               removePersonnel={removePersonnel}
-              updatePersonnel={updatePersonnel}
+              updatePersonnel={updatePersonnel as (index: number, field: keyof Personnel, value: string | string[]) => void}
               togglePersonnelRole={togglePersonnelRole}
               isRoleTakenByOthers={isRoleTakenByOthers}
               getRoleHolderIndex={getRoleHolderIndex}
               handleFileChange={handlePersonnelFileChange}
               removeIdCard={removePersonnelFile}
-              onPrev={goToPrevStep}
-              onNext={goToNextStep}
             />
           )}
 
@@ -187,11 +205,9 @@ export default function ApplicationDetailPage() {
               uploadingFiles={uploadingShareholderFiles}
               addShareholder={addShareholder}
               removeShareholder={removeShareholder}
-              updateShareholder={updateShareholder}
+              updateShareholder={updateShareholder as (index: number, field: keyof Shareholder, value: string | ShareholderType) => void}
               handleFileChange={handleShareholderFileChange}
               removeFile={removeShareholderFile}
-              onPrev={goToPrevStep}
-              onNext={goToNextStep}
             />
           )}
 
@@ -200,24 +216,76 @@ export default function ApplicationDetailPage() {
             <BusinessStep
               formData={formData}
               canEdit={canEdit}
-              updateField={updateField}
-              onPrev={goToPrevStep}
+              updateField={updateField as (field: keyof ApplicationFormData, value: string) => void}
             />
           )}
         </div>
       </ScrollArea>
 
-      {/* 底部操作栏 */}
+      {/* 底部操作栏 - 固定在底部 */}
       {canEdit && (
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-card">
-          <Button type="button" variant="outline" onClick={() => handleSubmit("draft")} disabled={submitting}>
-            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            保存草稿
-          </Button>
-          <Button type="button" onClick={() => handleSubmit("pending")} disabled={submitting}>
-            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-            提交审核
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
+          <div className="max-w-5xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              {/* 左侧：上一步按钮 */}
+              <div className="w-32">
+                {currentStep > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={goToPrevStep}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    上一步
+                  </Button>
+                )}
+              </div>
+              
+              {/* 中间：步骤提示 */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  第 {currentStep + 1} 步，共 {formSteps.length} 步
+                </span>
+                {isLastStep && (
+                  <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    最后一步
+                  </span>
+                )}
+              </div>
+              
+              {/* 右侧：下一步/提交审核按钮 */}
+              <div className="w-32 flex justify-end">
+                {isLastStep ? (
+                  <Button
+                    type="button"
+                    onClick={() => handleSubmit("pending")}
+                    disabled={submitting}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        提交中...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        提交审核
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={goToNextStep}
+                  >
+                    下一步
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

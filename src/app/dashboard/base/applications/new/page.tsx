@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,8 +20,9 @@ export default function NewApplicationPage() {
     currentStep,
     setCurrentStep,
     submitting,
+    saving,
+    lastSavedAt,
     errors,
-    uploadingFiles,
     uploadingPersonnelFiles,
     uploadingShareholderFiles,
     cropperOpen,
@@ -48,11 +49,26 @@ export default function NewApplicationPage() {
     handleShareholderCropCancel,
     goToNextStep,
     goToPrevStep,
+    saveDraft,
     handleSubmit,
   } = useNewApplicationForm();
 
   // 类型断言：NewApplicationFormData 字段是 ApplicationFormData 的子集，组件中使用的字段都兼容
   const formDataForComponents = formData as unknown as ApplicationFormData;
+  
+  // 是否为最后一步
+  const isLastStep = currentStep === formSteps.length - 1;
+  
+  // 格式化保存时间
+  const formatLastSaved = (date: Date | null): string => {
+    if (!date) return "";
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "刚刚保存";
+    if (diffMins < 60) return `${diffMins}分钟前保存`;
+    return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) + " 保存";
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -67,6 +83,29 @@ export default function NewApplicationPage() {
             <h1 className="text-xl font-semibold">新建入驻申请</h1>
             <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastSavedAt && (
+            <span className="text-xs text-muted-foreground">{formatLastSaved(lastSavedAt)}</span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={saveDraft}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                保存
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -95,7 +134,7 @@ export default function NewApplicationPage() {
 
       {/* 表单内容 */}
       <ScrollArea className="flex-1 px-6 py-4">
-        <div className="max-w-5xl mx-auto pb-20">
+        <div className="max-w-5xl mx-auto pb-24">
           {/* 基本信息 */}
           {currentStep === 0 && (
             <BasicInfoStep
@@ -103,7 +142,6 @@ export default function NewApplicationPage() {
               errors={errors}
               canEdit={true}
               updateField={updateField as (field: keyof ApplicationFormData, value: string | string[]) => void}
-              onNext={goToNextStep}
             />
           )}
 
@@ -113,8 +151,6 @@ export default function NewApplicationPage() {
               formData={formDataForComponents}
               canEdit={true}
               updateField={updateField as (field: keyof ApplicationFormData, value: string) => void}
-              onPrev={goToPrevStep}
-              onNext={goToNextStep}
             />
           )}
 
@@ -134,8 +170,6 @@ export default function NewApplicationPage() {
               getRoleHolderIndex={getRoleHolderIndex}
               handleFileChange={handlePersonnelFileChange}
               removeIdCard={removePersonnelFile}
-              onPrev={goToPrevStep}
-              onNext={goToNextStep}
             />
           )}
 
@@ -150,8 +184,6 @@ export default function NewApplicationPage() {
               updateShareholder={updateShareholder as (index: number, field: keyof Shareholder, value: string | ShareholderType) => void}
               handleFileChange={handleShareholderFileChange}
               removeFile={removeShareholderFile}
-              onPrev={goToPrevStep}
-              onNext={goToNextStep}
             />
           )}
 
@@ -161,18 +193,84 @@ export default function NewApplicationPage() {
               formData={formDataForComponents}
               canEdit={true}
               updateField={updateField as (field: keyof ApplicationFormData, value: string) => void}
-              onPrev={goToPrevStep}
             />
           )}
         </div>
       </ScrollArea>
 
-      {/* 底部操作栏 */}
-      <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-card">
-        <Button type="button" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          提交申请
-        </Button>
+      {/* 底部操作栏 - 固定在底部 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg">
+        <div className="max-w-5xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* 左侧：上一步按钮 */}
+            <div className="w-32">
+              {currentStep > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goToPrevStep}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  上一步
+                </Button>
+              )}
+            </div>
+            
+            {/* 中间：步骤提示 */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                第 {currentStep + 1} 步，共 {formSteps.length} 步
+              </span>
+              {isLastStep && (
+                <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  最后一步
+                </span>
+              )}
+            </div>
+            
+            {/* 右侧：下一步/提交审核按钮 */}
+            <div className="w-32 flex justify-end">
+              {isLastStep ? (
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      提交中...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      提交审核
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={goToNextStep}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      保存中...
+                    </>
+                  ) : (
+                    <>
+                      下一步
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 图片裁剪对话框 - 身份证 */}
