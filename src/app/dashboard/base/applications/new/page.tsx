@@ -69,41 +69,45 @@ export default function NewApplicationPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* 页面标题 */}
-      <div className="flex items-center px-6 py-4 border-b bg-card">
-        {/* 左侧：返回按钮（固定宽度） */}
-        <div className="w-[80px]">
-          <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            返回
-          </Button>
-        </div>
-        
-        {/* 中间：标题居中 */}
-        <div className="flex-1 text-center relative">
-          <h1 className="text-xl font-semibold">新建入驻申请</h1>
-          <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
-          {lastSavedAt && (
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hidden sm:inline">{formatLastSaved(lastSavedAt)}</span>
-          )}
-        </div>
-        
-        {/* 右侧：保存按钮 */}
-        <div className="w-[80px] flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={saveDraft}
-            disabled={saving}
-          >
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-1" />
-                保存
-              </>
-            )}
-          </Button>
+      <div className="bg-card border-b">
+        <div className="px-6 py-4">
+          <div className="flex items-center">
+            {/* 左侧：返回按钮 */}
+            <div className="w-[80px]">
+              <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                返回
+              </Button>
+            </div>
+            
+            {/* 中间：标题居中 */}
+            <div className="flex-1 text-center relative">
+              <h1 className="text-xl font-semibold">新建入驻申请</h1>
+              <p className="text-sm text-muted-foreground">填写企业信息提交入驻申请</p>
+              {lastSavedAt && (
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hidden sm:inline">{formatLastSaved(lastSavedAt)}</span>
+              )}
+            </div>
+            
+            {/* 右侧：保存按钮 */}
+            <div className="w-[80px] flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={saveDraft}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    保存
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
