@@ -35,9 +35,13 @@ export function createApiProxy(options: ProxyOptions) {
       const url = `${backendUrl}/api${routePrefix.replace('/api', '')}${path}${searchParams ? `?${searchParams}` : ''}`;
 
       // 构建请求头
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
+      const headers: HeadersInit = {};
+      
+      // 转发 Content-Type（对文件上传很重要）
+      const contentType = request.headers.get('Content-Type');
+      if (contentType) {
+        headers['Content-Type'] = contentType;
+      }
 
       // 转发 Authorization 头
       const authHeader = request.headers.get('Authorization');
@@ -51,12 +55,10 @@ export function createApiProxy(options: ProxyOptions) {
         headers,
       };
 
-      // 处理请求体
-      if (method !== 'GET' && method !== 'DELETE') {
-        const body = await request.text();
-        if (body) {
-          fetchOptions.body = body;
-        }
+      // 处理请求体 - 直接使用流式转发，绕过 Next.js 大小限制
+      if (method !== 'GET' && method !== 'DELETE' && request.body) {
+        // 直接转发请求体流，不读取整个内容
+        fetchOptions.body = request.body;
       }
 
       // 发送请求
@@ -64,8 +66,8 @@ export function createApiProxy(options: ProxyOptions) {
 
       // 解析响应
       let data: unknown;
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
+      const responseContentType = response.headers.get('content-type');
+      if (responseContentType?.includes('application/json')) {
         data = await response.json();
       } else {
         data = await response.text();
