@@ -69,11 +69,11 @@ export default function ShareFormPage() {
         <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-6">
           <CheckCircle className="w-10 h-10 text-emerald-600" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">提交成功</h1>
-        <p className="text-gray-600 text-center mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">提交成功</h1>
+        <p className="text-muted-foreground text-center mb-8">
           您的入驻申请信息已提交，我们会尽快处理。
         </p>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-muted-foreground">
           申请编号：{formData.applicationNo}
         </div>
       </div>
@@ -87,8 +87,8 @@ export default function ShareFormPage() {
         <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mb-6">
           <AlertCircle className="w-10 h-10 text-red-600" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">出错了</h1>
-        <p className="text-gray-600 text-center mb-8">{error}</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">出错了</h1>
+        <p className="text-muted-foreground text-center mb-8">{error}</p>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function ShareFormPage() {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-gray-600">加载中...</p>
+        <p className="text-muted-foreground">加载中...</p>
       </div>
     );
   }
@@ -167,12 +167,12 @@ export default function ShareFormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-muted/30 flex flex-col">
       {/* 顶部标题栏 */}
       <header className="bg-white border-b shrink-0 sticky top-0 z-10">
         <div className="px-4 py-3">
-          <h1 className="text-lg font-semibold text-gray-900">入驻申请</h1>
-          <p className="text-xs text-gray-500 mt-0.5">申请编号：{formData.applicationNo}</p>
+          <h1 className="text-lg font-semibold text-foreground">入驻申请</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">申请编号：{formData.applicationNo}</p>
         </div>
       </header>
 
@@ -202,7 +202,7 @@ export default function ShareFormPage() {
                       ? "bg-primary text-white shadow-md"
                       : index < currentStep
                       ? "bg-primary text-white"
-                      : "bg-gray-200 text-gray-400"
+                      : "bg-muted text-muted-foreground"
                   )}
                 >
                   {index < currentStep ? (
@@ -218,7 +218,7 @@ export default function ShareFormPage() {
                       ? "text-primary font-medium"
                       : index < currentStep
                       ? "text-primary"
-                      : "text-gray-400"
+                      : "text-muted-foreground"
                   )}
                 >
                   {step.title}
@@ -230,7 +230,7 @@ export default function ShareFormPage() {
                 <div
                   className={cn(
                     "flex-1 h-0.5 mx-2 mt-[-12px]",
-                    index < currentStep ? "bg-primary" : "bg-gray-200"
+                    index < currentStep ? "bg-primary" : "bg-muted"
                   )}
                 />
               )}

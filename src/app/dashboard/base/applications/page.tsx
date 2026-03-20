@@ -12,14 +12,8 @@ import {
   GitBranch,
   Loader2,
   AlertCircle,
-  Building2,
   Share2,
-  Copy,
-  Check,
-  ChevronUp,
-  X,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -29,16 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
+import { useConfirm } from "@/components/confirm-dialog";
 import { toast } from "sonner";
+import { ShareDialog } from "./_components/ShareDialog";
 
 // 检测是否在微信内
 const isWechat = (): boolean => {
@@ -76,7 +65,7 @@ interface Application {
 
 // 状态配置
 const statusConfig: Record<ApprovalStatus, { label: string; className: string }> = {
-  draft: { label: "草稿", className: "bg-gray-50 text-gray-600 border-gray-200" },
+  draft: { label: "草稿", className: "bg-slate-50 text-slate-600 border-slate-200" },
   pending: { label: "待审批", className: "bg-blue-50 text-blue-600 border-blue-200" },
   approved: { label: "已通过", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   rejected: { label: "已驳回", className: "bg-red-50 text-red-600 border-red-200" },
@@ -90,28 +79,19 @@ const applicationTypeConfig: Record<ApplicationType, { label: string; className:
 export default function ApplicationsPage() {
   const router = useRouter();
   const tabsContext = useTabs();
+  const confirm = useConfirm();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  
+
   // 分享相关状态
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>("");
   const [creatingShare, setCreatingShare] = useState(false);
   const [sharingAppId, setSharingAppId] = useState<string | null>(null);
-  const [showWechatGuide, setShowWechatGuide] = useState(false);
-  
-  // 环境检测
-  const [isWechatEnv, setIsWechatEnv] = useState(false);
-  const [supportWebShare, setSupportWebShare] = useState(false);
-
-  useEffect(() => {
-    setIsWechatEnv(isWechat());
-    setSupportWebShare(canWebShare());
-  }, []);
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -148,7 +128,11 @@ export default function ApplicationsPage() {
 
   // 提交审批
   const handleSubmit = async (id: string) => {
-    if (!confirm("确认提交此申请进行审批？")) return;
+    const confirmed = await confirm({
+      title: "提交审批",
+      description: "确认提交此申请进行审批？",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/settlement/applications/${id}/submit`, {
@@ -157,19 +141,24 @@ export default function ApplicationsPage() {
       const result = await response.json();
       if (result.success) {
         fetchApplications();
-        alert("申请已提交审批");
+        toast.success("申请已提交审批");
       } else {
-        alert(result.error || "提交失败");
+        toast.error(result.error || "提交失败");
       }
     } catch (err) {
       console.error("提交审批失败:", err);
-      alert("提交审批失败");
+      toast.error("提交审批失败");
     }
   };
 
   // 删除申请
   const handleDelete = async (id: string) => {
-    if (!confirm("确认删除此申请？删除后无法恢复。")) return;
+    const confirmed = await confirm({
+      title: "删除申请",
+      description: "确认删除此申请？删除后无法恢复。",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/settlement/applications/${id}`, {
@@ -178,13 +167,13 @@ export default function ApplicationsPage() {
       const result = await response.json();
       if (result.success) {
         fetchApplications();
-        alert("申请已删除");
+        toast.success("申请已删除");
       } else {
-        alert(result.error || "删除失败");
+        toast.error(result.error || "删除失败");
       }
     } catch (err) {
       console.error("删除申请失败:", err);
-      alert("删除申请失败");
+      toast.error("删除申请失败");
     }
   };
 
@@ -204,7 +193,7 @@ export default function ApplicationsPage() {
         body: JSON.stringify({ applicationId: application.id }),
       });
       const result = await response.json();
-      
+
       if (result.success) {
         setShareUrl(result.data.shareUrl);
         setShareDialogOpen(true);
@@ -278,7 +267,7 @@ export default function ApplicationsPage() {
         </div>
         <div className="rounded-lg border bg-card p-4">
           <div className="text-sm text-muted-foreground">草稿</div>
-          <div className="text-2xl font-semibold text-gray-600">{stats.draft}</div>
+          <div className="text-2xl font-semibold text-slate-600">{stats.draft}</div>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <div className="text-sm text-muted-foreground">待审批</div>
@@ -477,73 +466,12 @@ export default function ApplicationsPage() {
       </div>
 
       {/* 分享弹窗 */}
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center">分享申请表单</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* 二维码区域 */}
-            <div className="flex flex-col items-center py-4">
-              <div className="p-4 bg-white rounded-2xl shadow-lg border">
-                <QRCodeSVG
-                  value={shareUrl}
-                  size={180}
-                  level="H"
-                  includeMargin={false}
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-4 text-center">
-                扫描二维码填写表单
-              </p>
-            </div>
-
-            {/* 分隔线 */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-muted-foreground">或者</span>
-              </div>
-            </div>
-
-            {/* 链接复制 */}
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600 text-center">复制链接发送给客户</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 bg-gray-50 rounded-md text-xs text-gray-600 break-all max-h-16 overflow-y-auto">
-                  {shareUrl}
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={copyShareUrl}
-                  className="shrink-0 px-3"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* 提示信息 */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-xs text-amber-800 text-center">
-                💡 链接有效期7天，客户填写后数据将保存到您的账号
-              </p>
-            </div>
-
-            {/* 操作按钮 */}
-            <Button
-              type="button"
-              onClick={() => setShareDialogOpen(false)}
-              className="w-full"
-            >
-              完成
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        shareUrl={shareUrl}
+        onCopy={copyShareUrl}
+      />
     </div>
   );
 }
