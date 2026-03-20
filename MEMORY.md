@@ -4,6 +4,104 @@
 
 ---
 
+## 🔒 第零章：强制准则
+
+> ⚠️ **不可修改，任何项目都必须严格遵守**
+
+### 0.1 核心设计原则
+
+| 原则 | 全称 | 说明 |
+|------|------|------|
+| **DRY** | Don't Repeat Yourself | 相同代码出现2次必须提取 |
+| **KISS** | Keep It Simple, Stupid | 保持简单，避免过度设计 |
+| **YAGNI** | You Aren't Gonna Need It | 只实现当前需要的功能 |
+| **SRP** | Single Responsibility | 一个函数/类只做一件事 |
+
+### 0.2 代码质量底线
+
+| 类型 | 上限 | 超限处理 |
+|------|------|----------|
+| 函数长度 | **50 行** | 拆分为子函数 |
+| 文件长度 | **500 行** | 拆分为多个模块 |
+| 参数数量 | **4 个** | 用对象封装 |
+| 嵌套层级 | **3 层** | 提取函数 |
+
+### 0.3 命名规范
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 变量/函数 | camelCase | `getUserById` |
+| 常量 | UPPER_SNAKE | `MAX_RETRY_COUNT` |
+| 类/组件 | PascalCase | `UserService` |
+| 文件(工具) | kebab-case | `user-service.ts` |
+| 布尔值 | is/has/can 前缀 | `isValid`, `hasPermission` |
+| 事件处理 | handle 前缀 | `handleClick` |
+
+### 0.4 类型安全
+
+```typescript
+// ❌ 禁止
+const data: any = fetchData();
+function process(input) { ... }
+
+// ✅ 必须
+interface UserData { id: string; name: string; }
+const data: UserData = fetchData();
+function process(input: string): void { ... }
+```
+
+- **禁止 `any` 类型** - 不确定时用 `unknown`
+- **所有函数参数和返回值必须声明类型**
+- **API 响应必须定义 interface/type**
+- **对象用 interface，联合用 type**
+
+### 0.5 错误处理
+
+```typescript
+// 所有异步操作必须 try-catch
+try {
+  const result = await fetchData();
+  return result;
+} catch (error) {
+  showToast('操作失败，请稍后重试'); // 用户友好提示
+  console.error(error);              // 记录错误
+  throw error;
+}
+```
+
+- **所有 async 必须 try-catch**
+- **用户操作失败必须友好提示**
+- **禁止向前端暴露技术错误信息**
+
+### 0.6 安全红线
+
+| 规则 | 说明 |
+|------|------|
+| 禁止硬编码密钥 | Token/密码/API Key 必须走环境变量 |
+| 用户输入必须校验 | 长度、格式、类型都要验证 |
+| 敏感数据禁止存前端 | 不用 localStorage 存 token |
+| 权限必须后端验证 | 前端校验只是体验优化 |
+
+### 0.7 注释规范
+
+**必须注释**：
+- 复杂业务逻辑说明"为什么"
+- 公共函数必须有 JSDoc
+- TODO 必须带日期和说明
+
+**禁止注释**：
+- 显而易见的代码说明
+- 注释掉的代码（直接删除）
+
+### 0.8 性能原则
+
+- **列表渲染必须使用唯一 key**（禁止用 index）
+- **避免内联函数和对象**（导致不必要的重渲染）
+- **大列表（>100条）使用虚拟滚动**
+- **图片必须设置尺寸**，避免布局抖动
+
+---
+
 ## 📌 待办事项
 
 > 当前正在处理或待处理的任务，完成后移至变更记录
@@ -180,6 +278,7 @@ interface Shareholder {
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2026-03-20 | 新增第零章"强制准则"：通用编程规范（不可修改） |
 | 2026-03-20 | 删除编程规范章节（编程规范是通用的，不属于项目记忆） |
 | 2026-03-20 | 完善记忆文档结构，增加待办/临时决策/已知问题区域 |
 | 2026-03-20 | 企业股东营业执照支持正本和副本上传 |
