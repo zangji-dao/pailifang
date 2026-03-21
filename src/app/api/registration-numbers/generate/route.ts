@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/registration-numbers/generate
- * 为指定的物理空间生成注册号
+ * 为指定的物理空间生成注册号（每个空间可生成多个）
  * 
  * 请求体：
  * - space_id: 物理空间ID
@@ -53,29 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 检查是否已有注册号
-    const { data: existingReg, error: regCheckError } = await supabase
-      .from('registration_numbers')
-      .select('*')
-      .eq('space_id', space_id)
-      .single();
-
-    if (existingReg) {
-      // 如果已有注册号，直接返回
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: existingReg.id,
-          code: existingReg.code,
-          space_id: existingReg.space_id,
-          enterprise_id: existingReg.enterprise_id,
-          available: existingReg.available,
-          message: '该空间已有注册号',
-        },
-      });
-    }
-
-    // 3. 生成新的注册号
+    // 2. 生成新的注册号
     // 规则：REG-年份-月份-序号（如 REG-2026-03-001）
     const now = new Date();
     const year = now.getFullYear();
@@ -100,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const newCode = `REG-${year}-${month}-${String(sequence).padStart(3, '0')}`;
 
-    // 4. 插入新注册号
+    // 3. 插入新注册号
     const { data: newReg, error: insertError } = await supabase
       .from('registration_numbers')
       .insert({
@@ -150,7 +128,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/registration-numbers/generate
- * 获取指定空间的注册号信息
+ * 获取指定空间的注册号列表
  */
 export async function GET(request: NextRequest) {
   try {
@@ -165,13 +143,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data: regNumber, error } = await supabase
+    const { data: regNumbers, error } = await supabase
       .from('registration_numbers')
       .select('*')
-      .eq('space_id', spaceId)
-      .single();
+      .eq('space_id', spaceId);
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('查询注册号失败:', error);
       return NextResponse.json(
         { success: false, error: '查询注册号失败' },
@@ -181,7 +158,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: regNumber || null,
+      data: regNumbers || [],
     });
   } catch (error) {
     console.error('查询注册号失败:', error);

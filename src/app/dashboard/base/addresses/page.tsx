@@ -173,7 +173,7 @@ export default function AddressManagementPage() {
       const res = await fetch("/api/registration-numbers/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spaceId: selectedSpaceId }),
+        body: JSON.stringify({ space_id: selectedSpaceId }),
       });
       const result = await res.json();
       if (result.success) {
@@ -353,19 +353,12 @@ export default function AddressManagementPage() {
                     <SelectValue placeholder={selectedMeterId ? "选择空间" : "请先选物业"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedMeter?.spaces
-                      .filter((space) => space.regNumbers.length === 0)
-                      .map((space) => (
-                        <SelectItem key={space.id} value={space.id}>
-                          {space.name || space.code}
-                          {space.area && ` (${space.area}㎡)`}
-                        </SelectItem>
-                      ))}
-                    {selectedMeter?.spaces.every((s) => s.regNumbers.length > 0) && (
-                      <div className="px-2 py-4 text-center text-muted-foreground text-sm">
-                        该物业所有空间已生成注册号
-                      </div>
-                    )}
+                    {selectedMeter?.spaces.map((space) => (
+                      <SelectItem key={space.id} value={space.id}>
+                        {space.name || space.code}
+                        {space.area && ` (${space.area}㎡)`}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -392,9 +385,14 @@ export default function AddressManagementPage() {
 
             {/* 选中空间信息提示 */}
             {selectedSpace && (
-              <div className="mt-3 p-2 bg-slate-50 rounded-lg text-xs text-muted-foreground">
-                <span className="font-medium">已选择：</span>
-                {selectedBase?.name} → {selectedMeter?.name || selectedMeter?.code} → {selectedSpace.name || selectedSpace.code}
+              <div className="mt-3 p-2 bg-slate-50 rounded-lg text-xs text-muted-foreground flex items-center justify-between">
+                <div>
+                  <span className="font-medium">已选择：</span>
+                  {selectedBase?.name} → {selectedMeter?.name || selectedMeter?.code} → {selectedSpace.name || selectedSpace.code}
+                </div>
+                {selectedSpace.regNumbers.length > 0 && (
+                  <span className="text-amber-600">已有 {selectedSpace.regNumbers.length} 个注册号</span>
+                )}
               </div>
             )}
           </CardContent>
