@@ -80,52 +80,44 @@ function createApplicationHtml(application: ApplicationData): string {
   const enterpriseNameBackups = application.enterpriseNameBackups || [];
 
   return `
-    <div style="font-family: SimSun, 宋体, serif; font-size: 14px; line-height: 1.6; color: rgb(0,0,0); background: rgb(255,255,255); padding: 30px 40px; width: 800px;">
+    <div style="font-family: SimSun, 宋体, serif; font-size: 14px; line-height: 1.8; color: rgb(0,0,0); background: rgb(255,255,255); padding: 40px; width: 800px;">
       <!-- 标题 -->
-      <div style="text-align: center; margin-bottom: 20px;">
-        <h1 style="font-size: 22px; font-weight: bold; margin: 0 0 8px 0; color: rgb(0,0,0);">企业入驻申请表</h1>
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="font-size: 24px; font-weight: bold; margin: 0 0 10px 0; color: rgb(0,0,0);">企业入驻申请表</h1>
         <div style="font-size: 14px; color: rgb(102,102,102);">Π立方企业服务中心</div>
       </div>
 
       <!-- 基本信息 -->
-      <div style="margin-bottom: 15px; page-break-inside: avoid;">
-        <div style="font-size: 15px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 4px; margin-bottom: 10px; color: rgb(0,0,0);">一、基本信息</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 30px;">
-          <div style="display: flex; margin-bottom: 4px;">
-            <span style="width: 130px; flex-shrink: 0; font-weight: bold;">申请编号：</span>
-            <span style="flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 18px; padding-left: 5px;">${application.applicationNo}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 4px;">
-            <span style="width: 130px; flex-shrink: 0; font-weight: bold;">申请日期：</span>
-            <span style="flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 18px; padding-left: 5px;">${application.applicationDate ? new Date(application.applicationDate).toLocaleDateString("zh-CN") : "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 4px;">
-            <span style="width: 130px; flex-shrink: 0; font-weight: bold;">企业名称：</span>
-            <span style="flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 18px; padding-left: 5px;">${application.enterpriseName}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 4px;">
-            <span style="width: 130px; flex-shrink: 0; font-weight: bold;">申请类型：</span>
-            <span style="flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 18px; padding-left: 5px;">${applicationTypeMap[application.applicationType || ""] || "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 4px;">
-            <span style="width: 130px; flex-shrink: 0; font-weight: bold;">注册资本：</span>
-            <span style="flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 18px; padding-left: 5px;">${application.registeredCapital || "-"} ${application.currencyType || "万元"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 4px;">
-            <span style="width: 130px; flex-shrink: 0; font-weight: bold;">纳税人类型：</span>
-            <span style="flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 18px; padding-left: 5px;">${taxTypeMap[application.taxType || ""] || "-"}</span>
-          </div>
-        </div>
+      <div style="margin-bottom: 25px;">
+        <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; color: rgb(0,0,0);">一、基本信息</div>
+        <table style="width: 100%; border-collapse: collapse; color: rgb(0,0,0);">
+          <tr>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("申请编号：", application.applicationNo)}
+                ${createInfoRow("企业名称：", application.enterpriseName)}
+                ${createInfoRow("注册资本：", `${application.registeredCapital || "-"} ${application.currencyType || "万元"}`)}
+              </table>
+            </td>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("申请日期：", application.applicationDate ? new Date(application.applicationDate).toLocaleDateString("zh-CN") : "-")}
+                ${createInfoRow("申请类型：", applicationTypeMap[application.applicationType || ""] || "-")}
+                ${createInfoRow("纳税人类型：", taxTypeMap[application.taxType || ""] || "-")}
+              </table>
+            </td>
+          </tr>
+        </table>
         ${enterpriseNameBackups.length > 0 ? `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
           ${createInfoRow("备选名称：", enterpriseNameBackups.join("、"))}
         </table>
         ` : ""}
       </div>
 
       <!-- 地址信息 -->
-      <div style="margin-bottom: 15px; page-break-inside: avoid;">
-        <div style="font-size: 15px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 4px; margin-bottom: 10px; color: rgb(0,0,0);">二、地址信息</div>
+      <div style="margin-bottom: 25px;">
+        <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; color: rgb(0,0,0);">二、地址信息</div>
         <table style="width: 100%; border-collapse: collapse;">
           ${createInfoRow("原注册地址：", application.originalRegisteredAddress)}
           ${createInfoRow("通讯地址：", application.mailingAddress)}
@@ -134,64 +126,64 @@ function createApplicationHtml(application: ApplicationData): string {
       </div>
 
       <!-- 人员信息 -->
-      <div style="margin-bottom: 15px; page-break-inside: avoid;">
-        <div style="font-size: 15px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 4px; margin-bottom: 10px; color: rgb(0,0,0);">三、人员信息</div>
+      <div style="margin-bottom: 25px;">
+        <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; color: rgb(0,0,0);">三、人员信息</div>
         ${personnel.length > 0 ? `
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; color: rgb(0,0,0);">
           <thead>
             <tr style="background: rgb(245,245,245);">
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 100px; color: rgb(0,0,0);">姓名</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 120px; color: rgb(0,0,0);">职务</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 130px; color: rgb(0,0,0);">手机号</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; color: rgb(0,0,0);">邮箱</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 100px; color: rgb(0,0,0);">姓名</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 120px; color: rgb(0,0,0);">职务</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 130px; color: rgb(0,0,0);">手机号</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; color: rgb(0,0,0);">邮箱</th>
             </tr>
           </thead>
           <tbody>
             ${personnel.map((p: any) => `
               <tr>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${p.name || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${(p.roles || []).map((r: string) => roleMap[r] || r).join("、") || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${p.phone || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${p.email || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${p.name || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${(p.roles || []).map((r: string) => roleMap[r] || r).join("、") || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${p.phone || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${p.email || "-"}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
-        ` : '<p style="color: rgb(153,153,153); margin: 0; font-size: 13px;">暂无人员信息</p>'}
+        ` : '<p style="color: rgb(153,153,153); margin: 0;">暂无人员信息</p>'}
       </div>
 
       <!-- 股东信息 -->
-      <div style="margin-bottom: 15px; page-break-inside: avoid;">
-        <div style="font-size: 15px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 4px; margin-bottom: 10px; color: rgb(0,0,0);">四、股东信息</div>
+      <div style="margin-bottom: 25px;">
+        <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; color: rgb(0,0,0);">四、股东信息</div>
         ${shareholders.length > 0 ? `
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; color: rgb(0,0,0);">
           <thead>
             <tr style="background: rgb(245,245,245);">
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 80px; color: rgb(0,0,0);">类型</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 120px; color: rgb(0,0,0);">姓名/名称</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 100px; color: rgb(0,0,0);">投资额(万元)</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; width: 130px; color: rgb(0,0,0);">手机号</th>
-              <th style="border: 1px solid rgb(0,0,0); padding: 6px 8px; text-align: left; color: rgb(0,0,0);">备注</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 80px; color: rgb(0,0,0);">类型</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 120px; color: rgb(0,0,0);">姓名/名称</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 100px; color: rgb(0,0,0);">投资额(万元)</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; width: 130px; color: rgb(0,0,0);">手机号</th>
+              <th style="border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; color: rgb(0,0,0);">备注</th>
             </tr>
           </thead>
           <tbody>
             ${shareholders.map((s: any) => `
               <tr>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${shareholderTypeMap[s.type] || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${s.name || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${s.investment || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${s.phone || "-"}</td>
-                <td style="border: 1px solid rgb(0,0,0); padding: 6px 8px; color: rgb(0,0,0);">${s.type === "enterprise" ? "企业股东" : ""}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${shareholderTypeMap[s.type] || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${s.name || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${s.investment || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${s.phone || "-"}</td>
+                <td style="border: 1px solid rgb(0,0,0); padding: 8px 10px; color: rgb(0,0,0);">${s.type === "enterprise" ? "企业股东" : ""}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
-        ` : '<p style="color: rgb(153,153,153); margin: 0; font-size: 13px;">暂无股东信息</p>'}
+        ` : '<p style="color: rgb(153,153,153); margin: 0;">暂无股东信息</p>'}
       </div>
 
       <!-- 经营信息 -->
-      <div style="margin-bottom: 15px; page-break-inside: avoid;">
-        <div style="font-size: 15px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 4px; margin-bottom: 10px; color: rgb(0,0,0);">五、经营信息</div>
+      <div style="margin-bottom: 25px;">
+        <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; color: rgb(0,0,0);">五、经营信息</div>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
             <td style="width: 50%; padding: 0;">
@@ -207,15 +199,15 @@ function createApplicationHtml(application: ApplicationData): string {
           </tr>
         </table>
         ${application.businessScope ? `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
           ${createInfoRow("经营范围：", application.businessScope)}
         </table>
         ` : ""}
       </div>
 
       <!-- 其他信息 -->
-      <div style="margin-bottom: 15px; page-break-inside: avoid;">
-        <div style="font-size: 15px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 4px; margin-bottom: 10px; color: rgb(0,0,0);">六、其他信息</div>
+      <div style="margin-bottom: 25px;">
+        <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; color: rgb(0,0,0);">六、其他信息</div>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
             <td style="width: 50%; padding: 0;">
@@ -233,14 +225,14 @@ function createApplicationHtml(application: ApplicationData): string {
           </tr>
         </table>
         ${application.remarks ? `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
           ${createInfoRow("备注：", application.remarks)}
         </table>
         ` : ""}
       </div>
 
       <!-- 签名区域 -->
-      <div style="margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid;">
+      <div style="margin-top: 50px; display: flex; justify-content: space-between;">
         <div style="width: 220px; text-align: center;">
           <div style="border-bottom: 1px solid rgb(0,0,0); height: 80px; margin-bottom: 10px;"></div>
           <div style="font-weight: bold; color: rgb(0,0,0); margin-bottom: 15px;">申请人签字（盖章）</div>
@@ -254,7 +246,7 @@ function createApplicationHtml(application: ApplicationData): string {
       </div>
 
       <!-- 页脚 -->
-      <div style="margin-top: 30px; text-align: right; font-size: 12px; color: rgb(102,102,102);">
+      <div style="margin-top: 40px; text-align: right; font-size: 12px; color: rgb(102,102,102);">
         <div>申请编号：${application.applicationNo}</div>
         <div>打印时间：${new Date().toLocaleString("zh-CN")}</div>
       </div>
