@@ -12,7 +12,7 @@ export async function GET() {
     // 1. 查询所有注册号
     const { data: regNumbers, error: regError } = await supabase
       .from('registration_numbers')
-      .select('id, code, available, space_id, enterprise_id, created_at')
+      .select('id, code, manual_code, property_owner, management_company, available, space_id, enterprise_id, created_at')
       .order('created_at', { ascending: false });
 
     if (regError) {
@@ -56,7 +56,7 @@ export async function GET() {
     // 7. 查询基地信息
     const { data: bases, error: baseError } = await supabase
       .from('bases')
-      .select('id, name')
+      .select('id, name, address')
       .in('id', baseIds);
 
     if (baseError) {
@@ -72,8 +72,12 @@ export async function GET() {
       return {
         id: reg.id,
         code: reg.code,
+        manual_code: reg.manual_code,
+        property_owner: reg.property_owner,
+        management_company: reg.management_company,
         available: reg.available,
         enterprise_id: reg.enterprise_id,
+        created_at: reg.created_at,
         space: {
           id: space?.id || '',
           code: space?.code || '',
@@ -86,6 +90,7 @@ export async function GET() {
             base: {
               id: base?.id || '',
               name: base?.name || '',
+              address: base?.address || null,
             },
           },
         },

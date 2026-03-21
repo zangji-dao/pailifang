@@ -2,10 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Hash, Plus, Loader2, RefreshCw, Building2, Home, DoorOpen } from "lucide-react";
+import {
+  Hash,
+  Plus,
+  Loader2,
+  RefreshCw,
+  Building2,
+  Home,
+  DoorOpen,
+  Pencil,
+  Download,
+  Printer,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -14,7 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // 类型定义
 interface Space {
@@ -24,7 +44,7 @@ interface Space {
   area: number | null;
   status: string;
   isOccupied: boolean;
-  regNumbers: { id: string; code: string; available: boolean }[];
+  regNumbers: RegNumber[];
 }
 
 interface Meter {
@@ -44,12 +64,16 @@ interface Base {
   meters: Meter[];
 }
 
-// 注册号类型（列表用）
+// 注册号类型
 interface RegNumber {
   id: string;
   code: string;
+  manual_code: string | null;
+  property_owner: string | null;
+  management_company: string | null;
   available: boolean;
   enterprise_id: string | null;
+  created_at: string;
   space: {
     id: string;
     code: string;
@@ -61,12 +85,13 @@ interface RegNumber {
       base: {
         id: string;
         name: string;
+        address: string | null;
       };
     };
   };
 }
 
-// 状态配置（参考 tenants 页面风格）
+// 状态配置
 const statusConfig = {
   all: {
     label: "全部",
@@ -102,6 +127,16 @@ export default function AddressManagementPage() {
   const [selectedBaseId, setSelectedBaseId] = useState<string>("");
   const [selectedMeterId, setSelectedMeterId] = useState<string>("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
+
+  // 编辑弹窗状态
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRegNumber, setEditingRegNumber] = useState<RegNumber | null>(null);
+  const [editForm, setEditForm] = useState({
+    manual_code: "",
+    property_owner: "",
+    management_company: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   // 获取级联数据
   const fetchCascadeData = async () => {
@@ -154,11 +189,7 @@ export default function AddressManagementPage() {
 
   // 获取当前选中的基地
   const selectedBase = cascadeData.find((b) => b.id === selectedBaseId);
-
-  // 获取当前选中的物业
   const selectedMeter = selectedBase?.meters.find((m) => m.id === selectedMeterId);
-
-  // 获取当前选中的空间
   const selectedSpace = selectedMeter?.spaces.find((s) => s.id === selectedSpaceId);
 
   // 生成注册号
@@ -178,9 +209,7 @@ export default function AddressManagementPage() {
       const result = await res.json();
       if (result.success) {
         toast.success("注册号生成成功");
-        // 重置选择
         setSelectedSpaceId("");
-        // 刷新数据
         await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
       } else {
         toast.error(result.error || "生成失败");
@@ -193,12 +222,45 @@ export default function AddressManagementPage() {
     }
   };
 
-  // 分类统计
-  const stats = {
-    all: regNumbers.length,
-    available: regNumbers.filter((r) => r.available).length,
-    used: regNumbers.filter((r) => !r.available).length,
+  // 打开编辑弹窗
+  const openEditDialog = (reg: RegNumber) => {
+    setEditingRegNumber(reg);
+    setEditForm({
+      manual_code: reg.manual_code || "",
+      property_owner: reg.property_owner || "",
+      management_company: reg.management_company || "",
+    });
+    setEditDialogOpen(true);
   };
+
+  // 保存编辑
+  const saveEdit = async () => {
+    if (!editingRegNumber) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/registration-numbers/${editingRegNumber.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("保存成功");
+        setEditDialogOpen(false);
+        await fetchRegNumbers();
+      } else {
+        toast.error(result.error || "保存失败");
+      }
+    } catch (error) {
+      console.error("保存失败:", error);
+      toast.error("保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 获取显示的注册号（优先人工编号）
+  const getDisplayCode = (reg: RegNumber) => reg.manual_code || reg.code;
 
   // 获取地址显示名称
   const getAddressName = (reg: RegNumber) => {
@@ -208,6 +270,12 @@ export default function AddressManagementPage() {
     return `${base?.name || "-"} · ${meter?.name || meter?.code || "-"} · ${space?.name || space?.code || "-"}`;
   };
 
+  // 格式化日期
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, "0")}月${String(date.getDate()).padStart(2, "0")}日`;
+  };
+
   // 过滤列表
   const filteredRegNumbers = regNumbers.filter((r) => {
     if (statusFilter === "all" || !statusFilter) return true;
@@ -215,6 +283,50 @@ export default function AddressManagementPage() {
     if (statusFilter === "used") return !r.available;
     return true;
   });
+
+  // 分类统计
+  const stats = {
+    all: regNumbers.length,
+    available: regNumbers.filter((r) => r.available).length,
+    used: regNumbers.filter((r) => !r.available).length,
+  };
+
+  // 下载授权函
+  const handleDownload = async (reg: RegNumber) => {
+    try {
+      const res = await fetch(`/api/registration-numbers/${reg.id}/authorization-letter`);
+      const result = await res.json();
+      if (result.success && result.data?.url) {
+        window.open(result.data.url, "_blank");
+      } else {
+        toast.error(result.error || "生成授权函失败");
+      }
+    } catch (error) {
+      console.error("下载失败:", error);
+      toast.error("下载失败");
+    }
+  };
+
+  // 打印授权函
+  const handlePrint = async (reg: RegNumber) => {
+    try {
+      const res = await fetch(`/api/registration-numbers/${reg.id}/authorization-letter`);
+      const result = await res.json();
+      if (result.success && result.data?.url) {
+        const printWindow = window.open(result.data.url, "_blank");
+        if (printWindow) {
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+        }
+      } else {
+        toast.error(result.error || "生成授权函失败");
+      }
+    } catch (error) {
+      console.error("打印失败:", error);
+      toast.error("打印失败");
+    }
+  };
 
   // 加载状态
   if (loading) {
@@ -227,7 +339,7 @@ export default function AddressManagementPage() {
 
   return (
     <div className="space-y-0">
-      {/* 页面标题和操作按钮 */}
+      {/* 页面标题 */}
       <div className="py-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">地址管理</h1>
@@ -286,7 +398,7 @@ export default function AddressManagementPage() {
       {/* 分割线 */}
       <div className="border-b" />
 
-      {/* 生成新地址 - 三级联动 */}
+      {/* 生成新地址 */}
       <div className="py-4">
         <Card>
           <CardHeader className="pb-3">
@@ -294,7 +406,6 @@ export default function AddressManagementPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-4 gap-4 items-end">
-              {/* 基地选择 */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Building2 className="h-3 w-3" />
@@ -314,7 +425,6 @@ export default function AddressManagementPage() {
                 </Select>
               </div>
 
-              {/* 物业选择 */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Home className="h-3 w-3" />
@@ -338,7 +448,6 @@ export default function AddressManagementPage() {
                 </Select>
               </div>
 
-              {/* 物理空间选择 */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <DoorOpen className="h-3 w-3" />
@@ -356,14 +465,12 @@ export default function AddressManagementPage() {
                     {selectedMeter?.spaces.map((space) => (
                       <SelectItem key={space.id} value={space.id}>
                         {space.name || space.code}
-                        {space.area && ` (${space.area}㎡)`}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* 生成按钮 */}
               <Button
                 onClick={generateRegNumber}
                 disabled={generating || !selectedSpaceId}
@@ -382,59 +489,151 @@ export default function AddressManagementPage() {
                 )}
               </Button>
             </div>
-
-            {/* 选中空间信息提示 */}
-            {selectedSpace && (
-              <div className="mt-3 p-2 bg-slate-50 rounded-lg text-xs text-muted-foreground flex items-center justify-between">
-                <div>
-                  <span className="font-medium">已选择：</span>
-                  {selectedBase?.name} → {selectedMeter?.name || selectedMeter?.code} → {selectedSpace.name || selectedSpace.code}
-                </div>
-                {selectedSpace.regNumbers.length > 0 && (
-                  <span className="text-amber-600">已有 {selectedSpace.regNumbers.length} 个注册号</span>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* 地址列表 */}
-      <div className="border-t">
+      {/* 分割线 */}
+      <div className="border-b" />
+
+      {/* 注册号列表 */}
+      <div className="py-4">
         {filteredRegNumbers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Hash className="h-12 w-12 text-slate-300 mb-3" />
             <p>暂无数据</p>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="border rounded-lg overflow-hidden">
+            {/* 表头 */}
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-50 border-b text-xs font-medium text-muted-foreground">
+              <div className="col-span-2">注册号</div>
+              <div className="col-span-3">地址</div>
+              <div className="col-span-2">产权单位</div>
+              <div className="col-span-2">管理单位</div>
+              <div className="col-span-1">生成日期</div>
+              <div className="col-span-1">状态</div>
+              <div className="col-span-1 text-right">操作</div>
+            </div>
+
+            {/* 表体 */}
             {filteredRegNumbers.map((reg) => (
               <div
                 key={reg.id}
-                className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
+                className="grid grid-cols-12 gap-2 px-4 py-3 border-b last:border-b-0 hover:bg-slate-50 items-center"
               >
-                <div className="flex items-center gap-3">
-                  <Hash className="h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="font-medium">{reg.code}</p>
-                    <p className="text-xs text-muted-foreground">{getAddressName(reg)}</p>
-                  </div>
+                <div className="col-span-2 font-medium text-sm">
+                  {getDisplayCode(reg)}
+                  {reg.manual_code && (
+                    <span className="ml-1 text-xs text-slate-400">({reg.code})</span>
+                  )}
                 </div>
-                <Badge
-                  variant="secondary"
-                  className={
-                    reg.available
-                      ? "bg-amber-50 text-amber-600"
-                      : "bg-emerald-50 text-emerald-600"
-                  }
-                >
-                  {reg.available ? "待使用" : "已使用"}
-                </Badge>
+                <div className="col-span-3 text-sm text-muted-foreground truncate" title={getAddressName(reg)}>
+                  {getAddressName(reg)}
+                </div>
+                <div className="col-span-2 text-sm truncate" title={reg.property_owner || "-"}>
+                  {reg.property_owner || <span className="text-slate-300">-</span>}
+                </div>
+                <div className="col-span-2 text-sm truncate" title={reg.management_company || "-"}>
+                  {reg.management_company || <span className="text-slate-300">-</span>}
+                </div>
+                <div className="col-span-1 text-sm text-muted-foreground">
+                  {formatDate(reg.created_at)}
+                </div>
+                <div className="col-span-1">
+                  <Badge
+                    variant="secondary"
+                    className={
+                      reg.available
+                        ? "bg-amber-50 text-amber-600"
+                        : "bg-emerald-50 text-emerald-600"
+                    }
+                  >
+                    {reg.available ? "待使用" : "已使用"}
+                  </Badge>
+                </div>
+                <div className="col-span-1 flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => openEditDialog(reg)}
+                    title="编辑"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleDownload(reg)}
+                    title="下载授权函"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handlePrint(reg)}
+                    title="打印授权函"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* 编辑弹窗 */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>编辑注册号</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>系统注册号</Label>
+              <Input value={editingRegNumber?.code || ""} disabled className="bg-slate-50" />
+            </div>
+            <div className="space-y-2">
+              <Label>人工编号（可选）</Label>
+              <Input
+                value={editForm.manual_code}
+                onChange={(e) => setEditForm({ ...editForm, manual_code: e.target.value })}
+                placeholder="输入后将优先显示此编号"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>产权单位</Label>
+              <Input
+                value={editForm.property_owner}
+                onChange={(e) => setEditForm({ ...editForm, property_owner: e.target.value })}
+                placeholder="如：吉林省恒松物业管理有限公司"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>管理单位</Label>
+              <Input
+                value={editForm.management_company}
+                onChange={(e) => setEditForm({ ...editForm, management_company: e.target.value })}
+                placeholder="如：吉林省天之企业管理咨询有限公司"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={saveEdit} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
