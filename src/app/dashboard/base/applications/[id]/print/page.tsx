@@ -30,9 +30,9 @@ export default async function PrintPage({ params }: Params) {
     notFound();
   }
 
-  // 解析 JSON 字段（Supabase 返回的是 snake_case）
-  const personnel = application.personnel ? JSON.parse(application.personnel as string) : [];
-  const shareholders = application.shareholders ? JSON.parse(application.shareholders as string) : [];
+  // 解析 JSON 字段（Supabase 返回的是 snake_case，JSON 字段已自动解析）
+  const personnel = Array.isArray(application.personnel) ? application.personnel : [];
+  const shareholders = Array.isArray(application.shareholders) ? application.shareholders : [];
   const enterpriseNameBackups = application.enterprise_name_backups || [];
 
   // 申请类型映射
