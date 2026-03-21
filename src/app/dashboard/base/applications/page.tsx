@@ -33,6 +33,7 @@ import { useTabs } from "@/app/dashboard/tabs-context";
 import { useConfirm } from "@/components/confirm-dialog";
 import { toast } from "sonner";
 import { ShareDialog } from "./_components/ShareDialog";
+import { exportApplicationToPdf, type ApplicationData } from "@/lib/pdf-export";
 
 // 检测是否在微信内
 const isWechat = (): boolean => {
@@ -208,9 +209,30 @@ export default function ApplicationsPage() {
     router.push(`/dashboard/base/processes?applicationId=${application.id}`);
   };
 
-  // 导出申请（打开打印页面，用户可保存为PDF）
-  const handleExport = (application: Application) => {
-    window.open(`/print/application/${application.id}`, "_blank");
+  // 导出申请（生成并下载 PDF）
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  
+  const handleExport = async (application: Application) => {
+    setExportingId(application.id);
+    try {
+      // 获取申请详情
+      const response = await fetch(`/api/applications/${application.id}`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        toast.error(result.error || "获取申请详情失败");
+        return;
+      }
+      
+      // 生成并下载 PDF
+      await exportApplicationToPdf(result.data as ApplicationData);
+      toast.success("PDF 文件已下载");
+    } catch (err) {
+      console.error("导出 PDF 失败:", err);
+      toast.error("导出 PDF 失败");
+    } finally {
+      setExportingId(null);
+    }
   };
 
   // 打印申请（打开打印页面并自动触发打印）
@@ -590,9 +612,14 @@ export default function ApplicationsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleExport(app)}
+                            disabled={exportingId === app.id}
                             className="gap-1"
                           >
-                            <Download className="h-3.5 w-3.5" />
+                            {exportingId === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
                             导出
                           </Button>
                           <Button
