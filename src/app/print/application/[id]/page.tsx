@@ -331,15 +331,15 @@ export default function PrintPage() {
         </div>
 
         {/* 签名区域 */}
-        <div className="mt-10 flex justify-between">
-          <div className="w-[200px] text-center">
-            <div className="border-b border-black h-[60px] mb-1"></div>
-            <div>申请人签字（盖章）</div>
+        <div className="mt-12 flex justify-between">
+          <div className="w-[220px] text-center">
+            <div className="border-b border-black h-[80px] mb-2"></div>
+            <div className="font-bold mb-4">申请人签字（盖章）</div>
             <div className="text-xs text-gray-500">日期：____年____月____日</div>
           </div>
-          <div className="w-[200px] text-center">
-            <div className="border-b border-black h-[60px] mb-1"></div>
-            <div>审核人签字</div>
+          <div className="w-[220px] text-center">
+            <div className="border-b border-black h-[80px] mb-2"></div>
+            <div className="font-bold mb-4">审核人签字</div>
             <div className="text-xs text-gray-500">日期：____年____月____日</div>
           </div>
         </div>

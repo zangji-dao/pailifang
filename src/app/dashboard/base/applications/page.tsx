@@ -374,18 +374,22 @@ export default function ApplicationsPage() {
             font-weight: bold;
           }
           .signature-area {
-            margin-top: 40px;
+            margin-top: 50px;
             display: flex;
             justify-content: space-between;
           }
           .signature-box {
-            width: 200px;
+            width: 220px;
             text-align: center;
           }
           .signature-line {
             border-bottom: 1px solid rgb(0,0,0);
-            height: 60px;
-            margin-bottom: 5px;
+            height: 80px;
+            margin-bottom: 10px;
+          }
+          .signature-label {
+            font-weight: bold;
+            margin-bottom: 15px;
           }
           .footer {
             margin-top: 40px;
@@ -559,13 +563,13 @@ export default function ApplicationsPage() {
           <div class="signature-area">
             <div class="signature-box">
               <div class="signature-line"></div>
-              <div style="font-weight: bold;">申请人签字（盖章）</div>
-              <div style="font-size: 12px; color: rgb(102,102,102); margin-top: 5px;">日期：____年____月____日</div>
+              <div class="signature-label">申请人签字（盖章）</div>
+              <div style="font-size: 12px; color: rgb(102,102,102);">日期：____年____月____日</div>
             </div>
             <div class="signature-box">
               <div class="signature-line"></div>
-              <div style="font-weight: bold;">审核人签字</div>
-              <div style="font-size: 12px; color: rgb(102,102,102); margin-top: 5px;">日期：____年____月____日</div>
+              <div class="signature-label">审核人签字</div>
+              <div style="font-size: 12px; color: rgb(102,102,102);">日期：____年____月____日</div>
             </div>
           </div>
 

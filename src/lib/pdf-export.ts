@@ -232,16 +232,16 @@ function createApplicationHtml(application: ApplicationData): string {
       </div>
 
       <!-- 签名区域 -->
-      <div style="margin-top: 40px; display: flex; justify-content: space-between;">
-        <div style="width: 200px; text-align: center;">
-          <div style="border-bottom: 1px solid rgb(0,0,0); height: 60px; margin-bottom: 5px;"></div>
-          <div style="font-weight: bold; color: rgb(0,0,0);">申请人签字（盖章）</div>
-          <div style="font-size: 12px; color: rgb(102,102,102); margin-top: 5px;">日期：____年____月____日</div>
+      <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+        <div style="width: 220px; text-align: center;">
+          <div style="border-bottom: 1px solid rgb(0,0,0); height: 80px; margin-bottom: 10px;"></div>
+          <div style="font-weight: bold; color: rgb(0,0,0); margin-bottom: 15px;">申请人签字（盖章）</div>
+          <div style="font-size: 12px; color: rgb(102,102,102);">日期：____年____月____日</div>
         </div>
-        <div style="width: 200px; text-align: center;">
-          <div style="border-bottom: 1px solid rgb(0,0,0); height: 60px; margin-bottom: 5px;"></div>
-          <div style="font-weight: bold; color: rgb(0,0,0);">审核人签字</div>
-          <div style="font-size: 12px; color: rgb(102,102,102); margin-top: 5px;">日期：____年____月____日</div>
+        <div style="width: 220px; text-align: center;">
+          <div style="border-bottom: 1px solid rgb(0,0,0); height: 80px; margin-bottom: 10px;"></div>
+          <div style="font-weight: bold; color: rgb(0,0,0); margin-bottom: 15px;">审核人签字</div>
+          <div style="font-size: 12px; color: rgb(102,102,102);">日期：____年____月____日</div>
         </div>
       </div>
 
