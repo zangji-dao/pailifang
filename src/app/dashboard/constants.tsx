@@ -62,10 +62,10 @@ export const SETTLEMENT_CHILDREN: NavChildItem[] = [
  * 基地管理子菜单
  */
 export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
-  { name: "入驻管理", href: "", icon: FileCheck, children: SETTLEMENT_CHILDREN },
   { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
-  { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
+  { name: "入驻管理", href: "", icon: FileCheck, children: SETTLEMENT_CHILDREN },
   { name: "企业管理", href: "/dashboard/base/tenants", icon: Users },
+  { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
 ];
 
