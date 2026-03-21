@@ -262,12 +262,22 @@ export default function AddressManagementPage() {
   // 获取显示的注册号（优先人工编号）
   const getDisplayCode = (reg: RegNumber) => reg.manual_code || reg.code;
 
-  // 获取地址显示名称
+  // 获取地址显示名称（格式：区+小区+物业+空间，如"宁江区义乌城小区1号楼106-A-3号"）
   const getAddressName = (reg: RegNumber) => {
     const space = reg.space;
     const meter = space?.meter;
     const base = meter?.base;
-    return `${base?.name || "-"} · ${meter?.name || meter?.code || "-"} · ${space?.name || space?.code || "-"}`;
+    
+    // 从基地地址提取区后面的部分
+    const baseAddress = base?.address || '';
+    const areaMatch = baseAddress.match(/区(.+)/);
+    const areaPart = areaMatch ? areaMatch[1].trim() : '';
+    
+    const meterPart = meter?.name || meter?.code || '';
+    const spacePart = space?.name || space?.code || '';
+    
+    // 格式：义乌城小区1号楼106-A-3号
+    return `${areaPart}小区${meterPart}${spacePart}`;
   };
 
   // 格式化日期
