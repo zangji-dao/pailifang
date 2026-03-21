@@ -59,12 +59,20 @@ export const SETTLEMENT_CHILDREN: NavChildItem[] = [
 ];
 
 /**
+ * 企业管理子菜单
+ */
+export const ENTERPRISE_CHILDREN: NavChildItem[] = [
+  { name: "企业列表", href: "/dashboard/base/tenants", icon: Building2 },
+  { name: "新建企业", href: "/dashboard/base/tenants/create", icon: UserPlus },
+];
+
+/**
  * 基地管理子菜单
  */
 export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
   { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
   { name: "入驻管理", href: "", icon: FileCheck, children: SETTLEMENT_CHILDREN },
-  { name: "企业管理", href: "/dashboard/base/tenants", icon: Users },
+  { name: "企业管理", href: "", icon: Users, children: ENTERPRISE_CHILDREN },
   { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
 ];
