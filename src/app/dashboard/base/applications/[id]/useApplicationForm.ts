@@ -722,10 +722,23 @@ export function useApplicationForm(id: string) {
         setSaving(false);
       }
     }
-    // 返回时带上来源状态参数
-    const from = searchParams.get("from");
-    const returnUrl = from 
-      ? `/dashboard/base/applications?from=${from}` 
+    
+    // 判断来源页面
+    const fromPage = searchParams.get("from");
+    const fromStatus = searchParams.get("status");
+    
+    // 如果是从审批页面跳转过来的，返回审批页面
+    if (fromPage === "approval") {
+      const returnUrl = fromStatus 
+        ? `/dashboard/base/processes?status=${fromStatus}` 
+        : "/dashboard/base/processes";
+      router.push(returnUrl);
+      return;
+    }
+    
+    // 否则返回入驻申请页面，带上来源状态参数
+    const returnUrl = fromStatus 
+      ? `/dashboard/base/applications?from=${fromStatus}` 
       : "/dashboard/base/applications";
     router.push(returnUrl);
   }, [id, formData, canEdit, router, searchParams]);

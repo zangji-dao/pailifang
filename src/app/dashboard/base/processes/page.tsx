@@ -74,14 +74,13 @@ export default function ApprovalPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null); // 默认不选中，显示引导页
 
-  // 详情和审批相关状态
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  // 审批相关状态
   const [actionLoading, setActionLoading] = useState(false);
 
   // 驳回弹窗
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectingApp, setRejectingApp] = useState<Application | null>(null);
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -106,6 +105,14 @@ export default function ApprovalPage() {
     fetchApplications();
   }, []);
 
+  // 从 URL 参数恢复筛选状态（从详情页返回时）
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status && ["pending", "rejected", "approved"].includes(status)) {
+      setStatusFilter(status);
+    }
+  }, [searchParams]);
+
   // 过滤申请列表（只显示非草稿）
   const filteredApplications = applications.filter((app) => {
     const matchStatus = statusFilter === null || app.approvalStatus === statusFilter;
@@ -125,19 +132,16 @@ export default function ApprovalPage() {
     rejected: applications.filter((a) => a.approvalStatus === "rejected").length,
   };
 
-  // 查看申请详情
+  // 查看申请详情（跳转到入驻申请详情页）
   const handleViewDetail = (app: Application) => {
-    setSelectedApp(app);
-    setDetailDialogOpen(true);
+    router.push(`/dashboard/base/applications/${app.id}?from=approval&status=${statusFilter}`);
   };
 
   // 审批通过
-  const handleApprove = async () => {
-    if (!selectedApp) return;
-
+  const handleApprove = async (app: Application) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`/api/applications/${selectedApp.id}/approve`, {
+      const response = await fetch(`/api/applications/${app.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -146,8 +150,6 @@ export default function ApprovalPage() {
 
       if (result.success) {
         toast.success("审批通过");
-        setDetailDialogOpen(false);
-        setSelectedApp(null);
         fetchApplications();
       } else {
         toast.error(result.error || "审批失败");
@@ -161,21 +163,21 @@ export default function ApprovalPage() {
   };
 
   // 打开驳回弹窗
-  const handleOpenReject = () => {
-    setDetailDialogOpen(false);
+  const handleOpenReject = (app: Application) => {
+    setRejectingApp(app);
     setRejectDialogOpen(true);
   };
 
   // 驳回申请
   const handleReject = async () => {
-    if (!selectedApp || !rejectReason.trim()) {
+    if (!rejectingApp || !rejectReason.trim()) {
       toast.error("请填写驳回原因");
       return;
     }
 
     try {
       setActionLoading(true);
-      const response = await fetch(`/api/applications/${selectedApp.id}/reject`, {
+      const response = await fetch(`/api/applications/${rejectingApp.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rejectionReason: rejectReason }),
@@ -186,7 +188,7 @@ export default function ApprovalPage() {
         toast.success("已驳回申请");
         setRejectDialogOpen(false);
         setRejectReason("");
-        setSelectedApp(null);
+        setRejectingApp(null);
         fetchApplications();
       } else {
         toast.error(result.error || "驳回失败");
@@ -197,36 +199,6 @@ export default function ApprovalPage() {
     } finally {
       setActionLoading(false);
     }
-  };
-
-  // 快速审批通过
-  const handleQuickApprove = async (app: Application) => {
-    try {
-      setActionLoading(true);
-      const response = await fetch(`/api/applications/${app.id}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success("审批通过");
-        fetchApplications();
-      } else {
-        toast.error(result.error || "审批失败");
-      }
-    } catch (err) {
-      console.error("审批失败:", err);
-      toast.error("审批失败");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // 快速驳回
-  const handleQuickReject = (app: Application) => {
-    setSelectedApp(app);
-    setRejectDialogOpen(true);
   };
 
   // 加载状态
@@ -434,7 +406,7 @@ export default function ApprovalPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleQuickReject(app)}
+                                onClick={() => handleOpenReject(app)}
                                 className="gap-1 text-destructive hover:text-destructive"
                               >
                                 <XCircle className="h-3.5 w-3.5" />
@@ -442,7 +414,7 @@ export default function ApprovalPage() {
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => handleQuickApprove(app)}
+                                onClick={() => handleApprove(app)}
                                 disabled={actionLoading}
                                 className="gap-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                               >
@@ -465,167 +437,6 @@ export default function ApprovalPage() {
           </div>
         </div>
       )}
-
-      {/* 详情弹窗 */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>申请详情</DialogTitle>
-          </DialogHeader>
-          {selectedApp && (
-            <div className="space-y-4 py-4">
-              {/* 基本信息 */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">基本信息</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">企业名称</span>
-                    <p className="font-medium mt-0.5">{selectedApp.enterpriseName}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">申请编号</span>
-                    <p className="font-mono mt-0.5">{selectedApp.applicationNo}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">申请类型</span>
-                    <p className="mt-0.5">
-                      <Badge variant="outline" className={cn("font-normal", applicationTypeConfig[selectedApp.applicationType].className)}>
-                        {applicationTypeConfig[selectedApp.applicationType].label}
-                      </Badge>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">审批状态</span>
-                    <p className="mt-0.5">
-                      <Badge variant="outline" className={cn("font-normal", statusConfig[selectedApp.approvalStatus].className)}>
-                        {statusConfig[selectedApp.approvalStatus].label}
-                      </Badge>
-                    </p>
-                  </div>
-                  {selectedApp.registeredCapital && (
-                    <div>
-                      <span className="text-muted-foreground">注册资本</span>
-                      <p className="font-medium mt-0.5">{selectedApp.registeredCapital} 万元</p>
-                    </div>
-                  )}
-                  {selectedApp.businessTerm && (
-                    <div>
-                      <span className="text-muted-foreground">经营期限</span>
-                      <p className="font-medium mt-0.5">{selectedApp.businessTerm}</p>
-                    </div>
-                  )}
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">申请时间</span>
-                    <p className="font-medium mt-0.5">
-                      {new Date(selectedApp.createdAt).toLocaleString("zh-CN")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 联系信息 */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">联系信息</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {selectedApp.legalPersonName && (
-                    <div>
-                      <span className="text-muted-foreground">法人代表</span>
-                      <p className="font-medium mt-0.5">{selectedApp.legalPersonName}</p>
-                    </div>
-                  )}
-                  {selectedApp.legalPersonPhone && (
-                    <div>
-                      <span className="text-muted-foreground">法人电话</span>
-                      <p className="font-mono mt-0.5">{selectedApp.legalPersonPhone}</p>
-                    </div>
-                  )}
-                  {selectedApp.contactPersonName && (
-                    <div>
-                      <span className="text-muted-foreground">联系人</span>
-                      <p className="font-medium mt-0.5">{selectedApp.contactPersonName}</p>
-                    </div>
-                  )}
-                  {selectedApp.contactPersonPhone && (
-                    <div>
-                      <span className="text-muted-foreground">联系电话</span>
-                      <p className="font-mono mt-0.5">{selectedApp.contactPersonPhone}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 经营范围 */}
-              {selectedApp.businessScope && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">经营范围</h3>
-                  <p className="text-sm leading-relaxed">{selectedApp.businessScope}</p>
-                </div>
-              )}
-
-              {/* 驳回原因 */}
-              {selectedApp.approvalStatus === "rejected" && selectedApp.rejectionReason && (
-                <div className="space-y-2 p-3 rounded-md bg-red-50 border border-red-200">
-                  <div className="flex items-center gap-2 text-red-600 text-sm font-medium">
-                    <XCircle className="h-4 w-4" />
-                    驳回原因
-                  </div>
-                  <p className="text-sm text-red-700">{selectedApp.rejectionReason}</p>
-                </div>
-              )}
-
-              {/* 审批通过信息 */}
-              {selectedApp.approvalStatus === "approved" && selectedApp.approvedAt && (
-                <div className="space-y-2 p-3 rounded-md bg-emerald-50 border border-emerald-200">
-                  <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
-                    <CheckCircle className="h-4 w-4" />
-                    审批通过
-                  </div>
-                  <p className="text-sm text-emerald-700">
-                    {new Date(selectedApp.approvedAt).toLocaleString("zh-CN")}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter className="gap-2">
-            {selectedApp?.approvalStatus === "pending" && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setDetailDialogOpen(false)}
-                >
-                  关闭
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleOpenReject}
-                  className="text-destructive hover:bg-destructive/10"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  驳回
-                </Button>
-                <Button
-                  onClick={handleApprove}
-                  disabled={actionLoading}
-                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                >
-                  {actionLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                  )}
-                  审批通过
-                </Button>
-              </>
-            )}
-            {selectedApp?.approvalStatus !== "pending" && (
-              <Button onClick={() => setDetailDialogOpen(false)}>
-                关闭
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 驳回弹窗 */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
@@ -651,6 +462,7 @@ export default function ApprovalPage() {
               onClick={() => {
                 setRejectDialogOpen(false);
                 setRejectReason("");
+                setRejectingApp(null);
               }}
             >
               取消
