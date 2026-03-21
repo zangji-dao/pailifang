@@ -35,12 +35,18 @@ interface TabConfig {
 }
 
 /**
+ * 入驻管理标签页配置
+ */
+const SETTLEMENT_TAB_CONFIGS: Record<string, TabConfig> = {
+  applications: { id: "settlement-applications", label: "入驻申请", icon: <FileText className="h-3.5 w-3.5" />, group: "settlement" },
+  processes: { id: "settlement-processes", label: "入驻审批", icon: <GitBranch className="h-3.5 w-3.5" />, group: "settlement" },
+};
+
+/**
  * 基地管理标签页配置
  */
 const BASE_TAB_CONFIGS: Record<string, TabConfig> = {
   sites: { id: "base-sites", label: "物业运营中心", icon: <Building className="h-3.5 w-3.5" />, group: "base" },
-  applications: { id: "base-applications", label: "入驻申请", icon: <FileText className="h-3.5 w-3.5" />, group: "base" },
-  processes: { id: "base-processes", label: "入驻审批", icon: <GitBranch className="h-3.5 w-3.5" />, group: "base" },
   addresses: { id: "base-addresses", label: "地址管理", icon: <MapPin className="h-3.5 w-3.5" />, group: "base" },
   tenants: { id: "base-tenants", label: "企业管理", icon: <Users className="h-3.5 w-3.5" />, group: "base" },
   contracts: { id: "base-contracts", label: "合同管理", icon: <FileSignature className="h-3.5 w-3.5" />, group: "base" },
@@ -89,6 +95,22 @@ const SALES_TAB_CONFIGS: Record<string, TabConfig> = {
  * @returns 标签页配置，如果没有匹配则返回 null
  */
 export function getTabConfig(path: string): Tab | null {
+  // 入驻管理（优先匹配，因为路径仍在 /dashboard/base/ 下）
+  if (path === "/dashboard/base/applications" || path === "/dashboard/base/processes") {
+    const pathMatch = path.match(/^\/dashboard\/base\/([^/]+)$/);
+    if (pathMatch) {
+      const subPath = pathMatch[1];
+      const config = SETTLEMENT_TAB_CONFIGS[subPath];
+      if (config) {
+        return {
+          ...config,
+          path: path,
+          closable: true,
+        };
+      }
+    }
+  }
+
   // 基地管理
   if (path.startsWith("/dashboard/base/")) {
     const baseMatch = path.match(/^\/dashboard\/base\/([^/]+)$/);
