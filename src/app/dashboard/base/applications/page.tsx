@@ -257,90 +257,86 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-0">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            入驻申请
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            填写入园审批表，管理企业入驻申请
-          </p>
-        </div>
+      <div className="py-6">
+        <h1 className="text-2xl font-semibold text-slate-900">
+          入驻申请
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          填写入园审批表，管理企业入驻申请
+        </p>
       </div>
 
-      {/* 统计卡片区域 - 带背景 */}
-      <div className="rounded-xl bg-gradient-to-b from-muted/50 to-muted/30 p-5 border">
+      {/* 分割线 */}
+      <div className="border-b" />
+
+      {/* 统计卡片区域 */}
+      <div className="py-6">
         <div className="text-sm font-medium text-muted-foreground mb-4">申请状态概览</div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-6">
           <button
             onClick={() => setStatusFilter(statusFilter === "draft" ? null : "draft")}
             className={cn(
-              "rounded-lg border bg-card p-5 text-left transition-all shadow-sm",
-              statusFilter === "draft" 
-                ? "border-slate-400 ring-2 ring-slate-200" 
-                : "border-border hover:border-slate-300 hover:shadow"
+              "text-left transition-all",
+              statusFilter === "draft" && "opacity-100"
             )}
           >
             <div className="text-sm text-muted-foreground">草稿</div>
-            <div className="text-3xl font-semibold mt-2 text-slate-700">{stats.draft}</div>
+            <div className="text-3xl font-semibold mt-1 text-slate-700">{stats.draft}</div>
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
             className={cn(
-              "rounded-lg border bg-card p-5 text-left transition-all shadow-sm",
-              statusFilter === "pending" 
-                ? "border-amber-400 ring-2 ring-amber-200" 
-                : "border-border hover:border-amber-300 hover:shadow"
+              "text-left transition-all",
+              statusFilter === "pending" && "opacity-100"
             )}
           >
             <div className="text-sm text-amber-600">待审批</div>
-            <div className="text-3xl font-semibold mt-2 text-amber-600">{stats.pending}</div>
+            <div className="text-3xl font-semibold mt-1 text-amber-600">{stats.pending}</div>
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "rejected" ? null : "rejected")}
             className={cn(
-              "rounded-lg border bg-card p-5 text-left transition-all shadow-sm",
-              statusFilter === "rejected" 
-                ? "border-red-400 ring-2 ring-red-200" 
-                : "border-border hover:border-red-300 hover:shadow"
+              "text-left transition-all",
+              statusFilter === "rejected" && "opacity-100"
             )}
           >
             <div className="text-sm text-muted-foreground">已驳回</div>
-            <div className="text-3xl font-semibold mt-2 text-red-600">{stats.rejected}</div>
+            <div className="text-3xl font-semibold mt-1 text-red-600">{stats.rejected}</div>
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "approved" ? null : "approved")}
             className={cn(
-              "rounded-lg border bg-card p-5 text-left transition-all shadow-sm",
-              statusFilter === "approved" 
-                ? "border-emerald-400 ring-2 ring-emerald-200" 
-                : "border-border hover:border-emerald-300 hover:shadow"
+              "text-left transition-all",
+              statusFilter === "approved" && "opacity-100"
             )}
           >
             <div className="text-sm text-muted-foreground">已通过</div>
-            <div className="text-3xl font-semibold mt-2 text-emerald-600">{stats.approved}</div>
+            <div className="text-3xl font-semibold mt-1 text-emerald-600">{stats.approved}</div>
           </button>
         </div>
       </div>
+
+      {/* 分割线 */}
+      <div className="border-b" />
 
       {/* 空状态引导页 - 默认显示，垂直居中 */}
       {statusFilter === null && (
         <div className="flex flex-col items-center justify-center min-h-[400px] py-12">
           <button
             onClick={handleCreate}
-            className="group flex flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-muted-foreground/25 bg-card px-16 py-10 transition-all hover:border-amber-400 hover:bg-gradient-to-b hover:from-amber-50/50 hover:to-card shadow-sm hover:shadow-md"
+            className="group flex flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 px-16 py-10 transition-all hover:border-amber-400 hover:bg-amber-50/50"
           >
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-orange-100 text-amber-600 transition-transform group-hover:scale-110 shadow-inner">
-              <Plus className="h-12 w-12" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 text-amber-600 transition-transform group-hover:scale-110">
+              <Plus className="h-10 w-10" />
             </div>
             <div className="text-center">
-              <div className="text-xl font-medium text-foreground">填写入驻申请表</div>
-              <div className="text-sm text-muted-foreground mt-2">点击创建新的企业入驻申请</div>
+              <div className="text-lg font-medium text-foreground">填写入驻申请表</div>
+              <div className="text-sm text-muted-foreground mt-1">点击创建新的企业入驻申请</div>
             </div>
           </button>
-          <p className="mt-8 text-sm text-muted-foreground">
+          <p className="mt-6 text-sm text-muted-foreground">
             或点击上方状态卡片查看已有申请
           </p>
         </div>
@@ -348,7 +344,7 @@ export default function ApplicationsPage() {
 
       {/* 列表区域 - 点击卡片后显示 */}
       {statusFilter !== null && (
-        <div className="rounded-xl bg-muted/30 p-5 border">
+        <div className="py-6">
           {/* 标题栏 */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -389,7 +385,7 @@ export default function ApplicationsPage() {
             </div>
           )}
 
-          <div className="rounded-lg border bg-card overflow-hidden">
+          <div className="border rounded-lg overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b bg-muted/50">
