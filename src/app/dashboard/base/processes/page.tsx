@@ -15,6 +15,7 @@ import {
   Trash2,
   Plus,
   X,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -110,6 +111,51 @@ export default function ApprovalPage() {
   const [existingAttachments, setExistingAttachments] = useState<Attachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [deletingAttachment, setDeletingAttachment] = useState<string | null>(null);
+
+  // 下载状态
+  const [downloadingApp, setDownloadingApp] = useState<string | null>(null);
+
+  // 下载附件
+  const handleDownloadAttachments = async (app: Application) => {
+    try {
+      setDownloadingApp(app.id);
+      const response = await fetch(`/api/applications/${app.id}/download-attachments`);
+      
+      if (!response.ok) {
+        const result = await response.json();
+        toast.error(result.error || "下载失败");
+        return;
+      }
+
+      // 获取文件名
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let fileName = `${app.enterpriseName || "企业申请"}_${app.applicationNo}_附件.zip`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (match) {
+          fileName = decodeURIComponent(match[1]);
+        }
+      }
+
+      // 下载文件
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("下载成功");
+    } catch (err) {
+      console.error("下载失败:", err);
+      toast.error("下载失败");
+    } finally {
+      setDownloadingApp(null);
+    }
+  };
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -581,6 +627,20 @@ export default function ApprovalPage() {
                           >
                             <Upload className="h-3.5 w-3.5" />
                             附件
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDownloadAttachments(app)}
+                            disabled={downloadingApp === app.id}
+                            className="gap-1"
+                          >
+                            {downloadingApp === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            下载
                           </Button>
                           {statusFilter === "pending" && (
                             <>
