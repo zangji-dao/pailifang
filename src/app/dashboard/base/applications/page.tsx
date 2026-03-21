@@ -208,49 +208,14 @@ export default function ApplicationsPage() {
     router.push(`/dashboard/base/processes?applicationId=${application.id}`);
   };
 
-  // 导出申请
-  const handleExport = async (application: Application) => {
-    try {
-      const response = await fetch(`/api/applications/${application.id}/export`);
-      if (!response.ok) {
-        throw new Error("导出失败");
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `入驻申请_${application.enterpriseName}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success("导出成功");
-    } catch (err) {
-      console.error("导出失败:", err);
-      toast.error("导出失败");
-    }
+  // 导出申请（打开打印页面，用户可保存为PDF）
+  const handleExport = (application: Application) => {
+    window.open(`/dashboard/base/applications/${application.id}/print`, "_blank");
   };
 
-  // 打印申请
-  const handlePrint = async (application: Application) => {
-    try {
-      const response = await fetch(`/api/applications/${application.id}/export`);
-      if (!response.ok) {
-        throw new Error("获取打印内容失败");
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const printWindow = window.open(url, "_blank");
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
-      toast.success("正在打开打印预览");
-    } catch (err) {
-      console.error("打印失败:", err);
-      toast.error("打印失败");
-    }
+  // 打印申请（打开打印页面并自动触发打印）
+  const handlePrint = (application: Application) => {
+    window.open(`/dashboard/base/applications/${application.id}/print?auto=1`, "_blank");
   };
 
   // 分配房间
