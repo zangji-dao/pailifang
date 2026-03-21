@@ -42,14 +42,28 @@ export function Sidebar({
 
         {navigation.map((item) => {
           if (item.expandable && item.children) {
+            // 检查子菜单是否匹配当前路径（排除空href的情况）
+            const hasActiveChild = item.children.some(
+              (child) => {
+                if (!child.href) {
+                  // 如果子菜单有嵌套子项，检查嵌套子项
+                  if (child.children && child.children.length > 0) {
+                    return child.children.some(
+                      (nested) => nested.href && (pathname === nested.href || pathname.startsWith(nested.href + "/"))
+                    );
+                  }
+                  return false;
+                }
+                return pathname === child.href || pathname.startsWith(child.href + "/");
+              }
+            );
+            
             return (
               <ExpandableNavItem
                 key={item.name}
                 item={item}
                 isExpanded={expandedMenus[item.name] || false}
-                isActive={item.children.some(
-                  (child) => pathname === child.href || pathname.startsWith(child.href + "/")
-                )}
+                isActive={hasActiveChild}
                 pathname={pathname}
                 onToggle={() => onToggleMenu(item.name)}
                 onCloseSidebar={onCloseSidebar}
