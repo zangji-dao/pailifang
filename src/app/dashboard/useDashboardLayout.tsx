@@ -32,13 +32,25 @@ export function useDashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // 展开菜单状态
-  const [expandedMenus, setExpandedMenus] = useState<ExpandedMenusState>({
-    "账务中心": pathname.startsWith("/accounting"),
-    "工单管理": pathname.startsWith("/dashboard/orders"),
-    "销售中心": pathname.startsWith("/dashboard/sales"),
-    "人力资源": pathname.startsWith("/dashboard/hr"),
-    "基地管理": pathname.startsWith("/dashboard/base"),
-  });
+  const [expandedMenus, setExpandedMenus] = useState<ExpandedMenusState>(() => ({
+    "账务中心": pathname?.startsWith("/accounting") || false,
+    "工单管理": pathname?.startsWith("/dashboard/orders") || false,
+    "销售中心": pathname?.startsWith("/dashboard/sales") || false,
+    "人力资源": pathname?.startsWith("/dashboard/hr") || false,
+    "基地管理": pathname?.startsWith("/dashboard/base") || false,
+  }));
+
+  // 当路由变化时，自动展开对应的菜单
+  useEffect(() => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      "账务中心": prev["账务中心"] || pathname?.startsWith("/accounting") || false,
+      "工单管理": prev["工单管理"] || pathname?.startsWith("/dashboard/orders") || false,
+      "销售中心": prev["销售中心"] || pathname?.startsWith("/dashboard/sales") || false,
+      "人力资源": prev["人力资源"] || pathname?.startsWith("/dashboard/hr") || false,
+      "基地管理": prev["基地管理"] || pathname?.startsWith("/dashboard/base") || false,
+    }));
+  }, [pathname]);
 
   // 标签页状态
   const [tabs, setTabs] = useState<Tab[]>([DEFAULT_TAB]);

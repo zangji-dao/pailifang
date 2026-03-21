@@ -237,63 +237,58 @@ interface NestedMenuItemProps {
   item: NavChildItem;
   pathname: string;
   onCloseSidebar: () => void;
+  parentExpanded?: boolean; // 父菜单是否展开
 }
 
-function NestedMenuItem({ item, pathname, onCloseSidebar }: NestedMenuItemProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  
+function NestedMenuItem({ item, pathname, onCloseSidebar, parentExpanded }: NestedMenuItemProps) {
   if (!item.children || item.children.length === 0) return null;
   
   // 检查是否有子菜单项处于激活状态
   const hasActiveChild = item.children.some(
     (child) => pathname === child.href || pathname.startsWith(child.href + "/")
   );
+  
+  // 当父菜单展开且有激活子项时，自动展开
+  const isOpen = hasActiveChild;
 
   return (
-    <div>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
+    <div className={`${hasActiveChild ? "bg-amber-50/50 rounded-lg" : ""}`}>
+      <Link
+        href={item.children[0]?.href || "#"}
         className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all ${
           hasActiveChild
-            ? "text-amber-600 font-medium bg-amber-50"
+            ? "text-amber-600 font-medium"
             : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
         }`}
+        onClick={onCloseSidebar}
       >
         <div className="flex items-center gap-2.5">
           <item.icon className="h-3.5 w-3.5" />
           <span>{item.name}</span>
         </div>
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
+      </Link>
       
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-out ${
-          isOpen || hasActiveChild ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="ml-4 pl-3 border-l border-slate-200 space-y-0.5">
-          {item.children.map((nestedChild) => {
-            const isActive = pathname === nestedChild.href || pathname.startsWith(nestedChild.href + "/");
-            
-            return (
-              <Link
-                key={nestedChild.name}
-                href={nestedChild.href}
-                className={`flex items-center gap-2.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
-                  isActive
-                    ? "text-amber-600 font-medium bg-amber-50"
-                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-                }`}
-                onClick={onCloseSidebar}
-              >
-                <nestedChild.icon className="h-3 w-3" />
-                <span>{nestedChild.name}</span>
-              </Link>
-            );
-          })}
-        </div>
+      {/* 直接显示子菜单项 */}
+      <div className="ml-4 pl-3 border-l border-slate-200 space-y-0.5">
+        {item.children.map((nestedChild) => {
+          const isActive = pathname === nestedChild.href || pathname.startsWith(nestedChild.href + "/");
+          
+          return (
+            <Link
+              key={nestedChild.name}
+              href={nestedChild.href}
+              className={`flex items-center gap-2.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
+                isActive
+                  ? "text-amber-600 font-medium bg-amber-50"
+                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              }`}
+              onClick={onCloseSidebar}
+            >
+              <nestedChild.icon className="h-3 w-3" />
+              <span>{nestedChild.name}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
