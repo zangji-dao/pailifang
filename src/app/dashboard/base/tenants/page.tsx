@@ -10,14 +10,7 @@ import {
   Search,
   Eye,
   Edit,
-  MapPin,
-  FileText,
-  PenTool,
-  CreditCard,
-  CheckCircle,
-  LogOut,
   Store,
-  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +46,7 @@ interface Enterprise {
   createdAt: string;
 }
 
-// 入驻企业流程状态配置
+// 入驻企业流程状态配置（不包含new）
 const tenantStatusConfig: Record<string, { 
   label: string; 
   color: string; 
@@ -61,13 +54,6 @@ const tenantStatusConfig: Record<string, {
   borderColor: string;
   dotColor: string;
 }> = {
-  new: { 
-    label: "新建", 
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-300",
-    dotColor: "bg-blue-500",
-  },
   pending_address: { 
     label: "待分配地址", 
     color: "text-orange-600",
@@ -199,7 +185,6 @@ export default function EnterpriseListPage() {
   // 入驻企业统计
   const tenantStats = {
     total: enterprises.filter((e) => e.type === "tenant").length,
-    new: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "new").length,
     pending_address: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_address").length,
     pending_business: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_business").length,
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
@@ -262,26 +247,26 @@ export default function EnterpriseListPage() {
             className={cn(
               "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
               activeTab === "tenant"
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                ? "border-blue-400 bg-blue-50 text-blue-600"
+                : "border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50/50"
             )}
           >
             <Building2 className="h-4 w-4" />
             <span className="font-medium">入驻企业</span>
-            <Badge variant="secondary" className="ml-1">{tenantStats.total}</Badge>
+            <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-700 hover:bg-blue-100">{tenantStats.total}</Badge>
           </button>
           <button
             onClick={() => handleTabChange("non_tenant")}
             className={cn(
               "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
               activeTab === "non_tenant"
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                ? "border-emerald-400 bg-emerald-50 text-emerald-600"
+                : "border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/50"
             )}
           >
             <Store className="h-4 w-4" />
             <span className="font-medium">非入驻企业</span>
-            <Badge variant="secondary" className="ml-1">{nonTenantStats.total}</Badge>
+            <Badge variant="secondary" className="ml-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{nonTenantStats.total}</Badge>
           </button>
         </div>
       </div>
@@ -289,7 +274,7 @@ export default function EnterpriseListPage() {
       {/* 入驻企业 - 状态卡片 */}
       {activeTab === "tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             {Object.entries(tenantStatusConfig).map(([key, config]) => {
               const count = tenantStats[key as keyof typeof tenantStats];
               return (
@@ -300,7 +285,7 @@ export default function EnterpriseListPage() {
                     "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
                     statusFilter === key 
                       ? `${config.borderColor} ${config.bgColor}` 
-                      : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                      : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
                   )}
                 >
                   <div className="text-left">
@@ -331,7 +316,7 @@ export default function EnterpriseListPage() {
                     "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                     statusFilter === key 
                       ? `${config.borderColor} ${config.bgColor}` 
-                      : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                      : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
                   )}
                 >
                   <div className="text-left">
@@ -402,9 +387,9 @@ export default function EnterpriseListPage() {
             </thead>
             <tbody>
               {filteredEnterprises.map((enterprise) => {
-                const processStatus = enterprise.processStatus || "new";
+                const processStatus = enterprise.processStatus || "pending_address";
                 const statusInfo = activeTab === "tenant" 
-                  ? tenantStatusConfig[processStatus] 
+                  ? tenantStatusConfig[processStatus] || tenantStatusConfig.pending_address
                   : nonTenantStatusConfig[processStatus as keyof typeof nonTenantStatusConfig] || nonTenantStatusConfig.new;
                 
                 return (
