@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Hash, Plus, Loader2, RefreshCw, Building2 } from "lucide-react";
+import { Hash, Plus, Loader2, RefreshCw, Building2, Home, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +14,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
-// 注册号类型
+// 类型定义
+interface Space {
+  id: string;
+  code: string;
+  name: string;
+  area: number | null;
+  status: string;
+  isOccupied: boolean;
+  regNumbers: { id: string; code: string; available: boolean }[];
+}
+
+interface Meter {
+  id: string;
+  code: string;
+  name: string;
+  area: number | null;
+  status: string;
+  spaces: Space[];
+}
+
+interface Base {
+  id: string;
+  name: string;
+  address: string | null;
+  status: string;
+  meters: Meter[];
+}
+
+// 注册号类型（列表用）
 interface RegNumber {
   id: string;
   code: string;
@@ -25,7 +54,6 @@ interface RegNumber {
     id: string;
     code: string;
     name: string;
-    area: number | null;
     meter: {
       id: string;
       code: string;
@@ -34,23 +62,6 @@ interface RegNumber {
         id: string;
         name: string;
       };
-    };
-  };
-}
-
-// 空间类型（用于生成注册号）
-interface Space {
-  id: string;
-  code: string;
-  name: string;
-  area: number | null;
-  meter: {
-    id: string;
-    code: string;
-    name: string;
-    base: {
-      id: string;
-      name: string;
     };
   };
 }
@@ -81,12 +92,30 @@ const statusConfig = {
 };
 
 export default function AddressManagementPage() {
+  const [cascadeData, setCascadeData] = useState<Base[]>([]);
   const [regNumbers, setRegNumbers] = useState<RegNumber[]>([]);
-  const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  // 三级联动选择状态
+  const [selectedBaseId, setSelectedBaseId] = useState<string>("");
+  const [selectedMeterId, setSelectedMeterId] = useState<string>("");
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
+
+  // 获取级联数据
+  const fetchCascadeData = async () => {
+    try {
+      const res = await fetch("/api/bases/cascade");
+      const result = await res.json();
+      if (result.success) {
+        setCascadeData(result.data || []);
+      }
+    } catch (error) {
+      console.error("获取级联数据失败:", error);
+      toast.error("获取数据失败");
+    }
+  };
 
   // 获取注册号列表
   const fetchRegNumbers = async () => {
@@ -98,36 +127,50 @@ export default function AddressManagementPage() {
       }
     } catch (error) {
       console.error("获取注册号失败:", error);
-      toast.error("获取数据失败");
-    }
-  };
-
-  // 获取可用空间列表
-  const fetchSpaces = async () => {
-    try {
-      const res = await fetch("/api/spaces/available");
-      const result = await res.json();
-      if (result.success) {
-        setSpaces(result.data || []);
-      }
-    } catch (error) {
-      console.error("获取空间失败:", error);
     }
   };
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchRegNumbers(), fetchSpaces()]);
+      await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
       setLoading(false);
     };
     init();
   }, []);
 
+  // 基地变化时，重置物业和空间
+  const handleBaseChange = (baseId: string) => {
+    setSelectedBaseId(baseId);
+    setSelectedMeterId("");
+    setSelectedSpaceId("");
+  };
+
+  // 物业变化时，重置空间
+  const handleMeterChange = (meterId: string) => {
+    setSelectedMeterId(meterId);
+    setSelectedSpaceId("");
+  };
+
+  // 获取当前选中的基地
+  const selectedBase = cascadeData.find((b) => b.id === selectedBaseId);
+
+  // 获取当前选中的物业
+  const selectedMeter = selectedBase?.meters.find((m) => m.id === selectedMeterId);
+
+  // 获取当前选中的空间
+  const selectedSpace = selectedMeter?.spaces.find((s) => s.id === selectedSpaceId);
+
   // 生成注册号
   const generateRegNumber = async () => {
     if (!selectedSpaceId) {
-      toast.error("请选择空间");
+      toast.error("请选择物理空间");
+      return;
+    }
+
+    // 检查该空间是否已有注册号
+    if (selectedSpace && selectedSpace.regNumbers.length > 0) {
+      toast.error("该空间已有注册号");
       return;
     }
 
@@ -141,9 +184,10 @@ export default function AddressManagementPage() {
       const result = await res.json();
       if (result.success) {
         toast.success("注册号生成成功");
+        // 重置选择
         setSelectedSpaceId("");
-        await fetchRegNumbers();
-        await fetchSpaces();
+        // 刷新数据
+        await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
       } else {
         toast.error(result.error || "生成失败");
       }
@@ -199,8 +243,8 @@ export default function AddressManagementPage() {
           variant="outline"
           size="sm"
           onClick={() => {
+            fetchCascadeData();
             fetchRegNumbers();
-            fetchSpaces();
           }}
         >
           <RefreshCw className="h-4 w-4 mr-1.5" />
@@ -211,7 +255,7 @@ export default function AddressManagementPage() {
       {/* 分割线 */}
       <div className="border-b" />
 
-      {/* 状态卡片（参考 tenants 页面风格） */}
+      {/* 状态卡片 */}
       <div className="py-4">
         <div className="grid grid-cols-3 gap-2">
           {Object.entries(statusConfig).map(([key, config]) => {
@@ -248,36 +292,89 @@ export default function AddressManagementPage() {
       {/* 分割线 */}
       <div className="border-b" />
 
-      {/* 生成注册号 */}
+      {/* 生成新地址 - 三级联动 */}
       <div className="py-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">生成新地址</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground mb-1.5 block">选择空间</label>
-                <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
+            <div className="grid grid-cols-4 gap-4 items-end">
+              {/* 基地选择 */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  基地
+                </Label>
+                <Select value={selectedBaseId} onValueChange={handleBaseChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="请选择空间" />
+                    <SelectValue placeholder="选择基地" />
                   </SelectTrigger>
                   <SelectContent>
-                    {spaces.length === 0 ? (
-                      <div className="px-2 py-4 text-center text-muted-foreground text-sm">
-                        暂无可用空间
-                      </div>
-                    ) : (
-                      spaces.map((space) => (
-                        <SelectItem key={space.id} value={space.id}>
-                          {space.meter?.base?.name} · {space.meter?.name} · {space.name}
-                          {space.area && ` (${space.area}㎡)`}
-                        </SelectItem>
-                      ))
-                    )}
+                    {cascadeData.map((base) => (
+                      <SelectItem key={base.id} value={base.id}>
+                        {base.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* 物业选择 */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Home className="h-3 w-3" />
+                  物业
+                </Label>
+                <Select
+                  value={selectedMeterId}
+                  onValueChange={handleMeterChange}
+                  disabled={!selectedBaseId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedBaseId ? "选择物业" : "请先选基地"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedBase?.meters.map((meter) => (
+                      <SelectItem key={meter.id} value={meter.id}>
+                        {meter.name || meter.code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 物理空间选择 */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <DoorOpen className="h-3 w-3" />
+                  物理空间
+                </Label>
+                <Select
+                  value={selectedSpaceId}
+                  onValueChange={setSelectedSpaceId}
+                  disabled={!selectedMeterId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedMeterId ? "选择空间" : "请先选物业"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedMeter?.spaces.map((space) => (
+                      <SelectItem
+                        key={space.id}
+                        value={space.id}
+                        disabled={space.regNumbers.length > 0}
+                      >
+                        {space.name || space.code}
+                        {space.area && ` (${space.area}㎡)`}
+                        {space.regNumbers.length > 0 && " · 已有注册号"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 生成按钮 */}
               <Button
                 onClick={generateRegNumber}
                 disabled={generating || !selectedSpaceId}
@@ -296,6 +393,17 @@ export default function AddressManagementPage() {
                 )}
               </Button>
             </div>
+
+            {/* 选中空间信息提示 */}
+            {selectedSpace && (
+              <div className="mt-3 p-2 bg-slate-50 rounded-lg text-xs text-muted-foreground">
+                <span className="font-medium">已选择：</span>
+                {selectedBase?.name} → {selectedMeter?.name || selectedMeter?.code} → {selectedSpace.name || selectedSpace.code}
+                {selectedSpace.regNumbers.length > 0 && (
+                  <span className="ml-2 text-amber-600">（已有注册号：{selectedSpace.regNumbers[0].code}）</span>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
