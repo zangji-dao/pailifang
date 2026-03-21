@@ -2,6 +2,84 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
+ * GET /api/enterprises
+ * 获取企业列表
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createClient();
+    const { searchParams } = new URL(request.url);
+    
+    // 可选过滤参数
+    const type = searchParams.get('type');
+    const status = searchParams.get('status');
+    const processStatus = searchParams.get('process_status');
+    const keyword = searchParams.get('keyword');
+
+    let query = supabase
+      .from('enterprises')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // 应用过滤
+    if (type) {
+      query = query.eq('type', type);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (processStatus) {
+      query = query.eq('process_status', processStatus);
+    }
+    if (keyword) {
+      query = query.or(`name.ilike.%${keyword}%,enterprise_code.ilike.%${keyword}%,legal_person.ilike.%${keyword}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('获取企业列表失败:', error);
+      return NextResponse.json(
+        { success: false, error: '获取企业列表失败' },
+        { status: 500 }
+      );
+    }
+
+    // 格式化返回数据
+    const formattedData = (data || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      enterpriseCode: item.enterprise_code,
+      creditCode: item.credit_code,
+      legalPerson: item.legal_person,
+      phone: item.phone,
+      industry: item.industry,
+      type: item.type,
+      status: item.status,
+      processStatus: item.process_status,
+      registeredAddress: item.registered_address,
+      businessAddress: item.business_address,
+      businessScope: item.business_scope,
+      settledDate: item.settled_date,
+      remarks: item.remarks,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      data: formattedData,
+    });
+  } catch (error) {
+    console.error('获取企业列表失败:', error);
+    return NextResponse.json(
+      { success: false, error: '获取企业列表失败' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/enterprises
  * 创建企业
  */
@@ -39,7 +117,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建企业
+    // 确定流程状态
+    let processStatus = 'new';
+    if (body.type === 'tenant') {
+      // 入驻企业流程
+      if (body.space_id || body.registered_address) {
+        processStatus = 'pending_business'; // 已分配地址，进入待工商注册
+      } else {
+        processStatus = 'pending_address'; // 待分配地址
+      }
+    } else {
+      // 非入驻企业，直接设为新建状态
+      processStatus = 'new';
+    }
+
     const enterpriseData = {
       id: crypto.randomUUID(),
       name: body.name,
@@ -50,6 +141,7 @@ export async function POST(request: NextRequest) {
       industry: body.industry || null,
       type: body.type || 'tenant',
       status: body.status || 'active',
+      process_status: processStatus,
       business_scope: body.business_scope || null,
       registered_address: body.registered_address || null,
       business_address: body.business_address || null,
