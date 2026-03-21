@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Share2,
   MessageSquareWarning,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +88,7 @@ export default function ApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null); // 默认不选中，显示引导页
 
   // 分享相关状态
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -229,7 +230,7 @@ export default function ApplicationsPage() {
 
   // 过滤申请列表
   const filteredApplications = applications.filter((app) => {
-    const matchStatus = statusFilter === "all" || app.approvalStatus === statusFilter;
+    const matchStatus = statusFilter === "all" || statusFilter === null || app.approvalStatus === statusFilter;
     const matchKeyword =
       !searchKeyword ||
       app.enterpriseName.includes(searchKeyword) ||
@@ -279,7 +280,7 @@ export default function ApplicationsPage() {
       {/* 统计卡片 - 可点击筛选 */}
       <div className="grid grid-cols-4 gap-4">
         <button
-          onClick={() => setStatusFilter(statusFilter === "draft" ? "all" : "draft")}
+          onClick={() => setStatusFilter(statusFilter === "draft" ? null : "draft")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "draft" 
@@ -291,7 +292,7 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-slate-600">{stats.draft}</div>
         </button>
         <button
-          onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
+          onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "pending" 
@@ -303,7 +304,7 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-amber-700">{stats.pending}</div>
         </button>
         <button
-          onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
+          onClick={() => setStatusFilter(statusFilter === "rejected" ? null : "rejected")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "rejected" 
@@ -315,7 +316,7 @@ export default function ApplicationsPage() {
           <div className="text-2xl font-semibold mt-1 text-red-600">{stats.rejected}</div>
         </button>
         <button
-          onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
+          onClick={() => setStatusFilter(statusFilter === "approved" ? null : "approved")}
           className={cn(
             "rounded-lg border p-4 text-left transition-all",
             statusFilter === "approved" 
@@ -328,29 +329,52 @@ export default function ApplicationsPage() {
         </button>
       </div>
 
-      {/* 搜索 */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="搜索企业名称、编号或法人..."
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-        {statusFilter !== "all" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setStatusFilter("all")}
-            className="text-muted-foreground"
+      {/* 空状态引导页 - 默认显示 */}
+      {statusFilter === null && (
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <button
+            onClick={handleCreate}
+            className="group flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-muted/30 px-12 py-12 transition-all hover:border-amber-400 hover:bg-amber-50/50"
           >
-            清除筛选
-          </Button>
-        )}
-      </div>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-orange-100 text-amber-600 transition-transform group-hover:scale-110">
+              <Plus className="h-10 w-10" />
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-medium text-foreground">填写入驻申请表</div>
+              <div className="text-sm text-muted-foreground mt-1">点击创建新的企业入驻申请</div>
+            </div>
+          </button>
+          <p className="mt-6 text-sm text-muted-foreground">
+            或点击上方状态卡片查看已有申请
+          </p>
+        </div>
+      )}
+
+      {/* 列表区域 - 点击卡片后显示 */}
+      {statusFilter !== null && (
+        <>
+          {/* 搜索 */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="搜索企业名称、编号或法人..."
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setStatusFilter(null)}
+              className="text-muted-foreground"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              返回
+            </Button>
+          </div>
 
       {/* 申请列表 */}
       {error && (
@@ -532,6 +556,8 @@ export default function ApplicationsPage() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
       {/* 分享弹窗 */}
       <ShareDialog
