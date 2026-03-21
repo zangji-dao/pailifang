@@ -168,12 +168,6 @@ export default function AddressManagementPage() {
       return;
     }
 
-    // 检查该空间是否已有注册号
-    if (selectedSpace && selectedSpace.regNumbers.length > 0) {
-      toast.error("该空间已有注册号");
-      return;
-    }
-
     setGenerating(true);
     try {
       const res = await fetch("/api/registration-numbers/generate", {
@@ -359,17 +353,19 @@ export default function AddressManagementPage() {
                     <SelectValue placeholder={selectedMeterId ? "选择空间" : "请先选物业"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedMeter?.spaces.map((space) => (
-                      <SelectItem
-                        key={space.id}
-                        value={space.id}
-                        disabled={space.regNumbers.length > 0}
-                      >
-                        {space.name || space.code}
-                        {space.area && ` (${space.area}㎡)`}
-                        {space.regNumbers.length > 0 && " · 已有注册号"}
-                      </SelectItem>
-                    ))}
+                    {selectedMeter?.spaces
+                      .filter((space) => space.regNumbers.length === 0)
+                      .map((space) => (
+                        <SelectItem key={space.id} value={space.id}>
+                          {space.name || space.code}
+                          {space.area && ` (${space.area}㎡)`}
+                        </SelectItem>
+                      ))}
+                    {selectedMeter?.spaces.every((s) => s.regNumbers.length > 0) && (
+                      <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+                        该物业所有空间已生成注册号
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -399,9 +395,6 @@ export default function AddressManagementPage() {
               <div className="mt-3 p-2 bg-slate-50 rounded-lg text-xs text-muted-foreground">
                 <span className="font-medium">已选择：</span>
                 {selectedBase?.name} → {selectedMeter?.name || selectedMeter?.code} → {selectedSpace.name || selectedSpace.code}
-                {selectedSpace.regNumbers.length > 0 && (
-                  <span className="ml-2 text-amber-600">（已有注册号：{selectedSpace.regNumbers[0].code}）</span>
-                )}
               </div>
             )}
           </CardContent>
