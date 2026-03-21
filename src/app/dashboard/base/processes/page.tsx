@@ -521,15 +521,12 @@ export default function ApprovalPage() {
                         </Badge>
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-1.5">
-                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className={cn(
-                            "text-sm",
-                            app.attachments && app.attachments.length > 0 ? "text-foreground" : "text-muted-foreground"
-                          )}>
-                            {app.attachments?.length || 0} 个
-                          </span>
-                        </div>
+                        <span className={cn(
+                          "text-sm",
+                          app.attachments && app.attachments.length > 0 ? "text-foreground" : "text-muted-foreground"
+                        )}>
+                          {app.attachments?.length || 0}
+                        </span>
                       </td>
                       <td className="p-4 text-sm text-muted-foreground">
                         {new Date(app.createdAt).toLocaleDateString("zh-CN")}
