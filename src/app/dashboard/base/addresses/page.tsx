@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Hash, Plus, Loader2, RefreshCw, Check, X } from "lucide-react";
+import { Hash, Plus, Loader2, RefreshCw, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -55,12 +55,38 @@ interface Space {
   };
 }
 
+// 状态配置（参考 tenants 页面风格）
+const statusConfig = {
+  all: {
+    label: "全部",
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-300",
+    dotColor: "bg-slate-500",
+  },
+  available: {
+    label: "待使用",
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-300",
+    dotColor: "bg-amber-500",
+  },
+  used: {
+    label: "已使用",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-300",
+    dotColor: "bg-emerald-500",
+  },
+};
+
 export default function AddressManagementPage() {
   const [regNumbers, setRegNumbers] = useState<RegNumber[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // 获取注册号列表
   const fetchRegNumbers = async () => {
@@ -130,9 +156,11 @@ export default function AddressManagementPage() {
   };
 
   // 分类统计
-  const allCount = regNumbers.length;
-  const availableCount = regNumbers.filter((r) => r.available).length;
-  const usedCount = regNumbers.filter((r) => !r.available).length;
+  const stats = {
+    all: regNumbers.length,
+    available: regNumbers.filter((r) => r.available).length,
+    used: regNumbers.filter((r) => !r.available).length,
+  };
 
   // 获取地址显示名称
   const getAddressName = (reg: RegNumber) => {
@@ -142,166 +170,172 @@ export default function AddressManagementPage() {
     return `${base?.name || "-"} · ${meter?.name || meter?.code || "-"} · ${space?.name || space?.code || "-"}`;
   };
 
+  // 过滤列表
+  const filteredRegNumbers = regNumbers.filter((r) => {
+    if (statusFilter === "all" || !statusFilter) return true;
+    if (statusFilter === "available") return r.available;
+    if (statusFilter === "used") return !r.available;
+    return true;
+  });
+
+  // 加载状态
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-        <span className="ml-2 text-slate-600">加载中...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* 页面标题 */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-0">
+      {/* 页面标题和操作按钮 */}
+      <div className="py-6 flex items-center justify-between">
         <div>
-          <h1 className="text-page-title text-slate-900">地址管理</h1>
-          <p className="text-body text-muted-foreground">管理注册地址和注册号</p>
+          <h1 className="text-2xl font-semibold text-slate-900">地址管理</h1>
+          <p className="text-sm text-slate-500 mt-1">管理注册地址和注册号</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => { fetchRegNumbers(); fetchSpaces(); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            fetchRegNumbers();
+            fetchSpaces();
+          }}
+        >
           <RefreshCw className="h-4 w-4 mr-1.5" />
           刷新
         </Button>
       </div>
 
+      {/* 分割线 */}
+      <div className="border-b" />
+
+      {/* 状态卡片（参考 tenants 页面风格） */}
+      <div className="py-4">
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(statusConfig).map(([key, config]) => {
+            const count = stats[key as keyof typeof stats];
+            return (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+                className={cn(
+                  "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
+                  statusFilter === key
+                    ? `${config.borderColor} ${config.bgColor}`
+                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                )}
+              >
+                <div className="text-left">
+                  <div className="text-xs text-muted-foreground">{config.label}</div>
+                  <div
+                    className={cn(
+                      "text-xl font-semibold",
+                      statusFilter === key ? config.color : "text-foreground"
+                    )}
+                  >
+                    {count}
+                  </div>
+                </div>
+                <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 分割线 */}
+      <div className="border-b" />
+
       {/* 生成注册号 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-card-title">生成新地址</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <label className="text-caption text-muted-foreground mb-1.5 block">选择空间</label>
-              <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择空间" />
-                </SelectTrigger>
-                <SelectContent>
-                  {spaces.length === 0 ? (
-                    <div className="px-2 py-4 text-center text-muted-foreground text-sm">
-                      暂无可用空间
-                    </div>
-                  ) : (
-                    spaces.map((space) => (
-                      <SelectItem key={space.id} value={space.id}>
-                        {space.meter?.base?.name} · {space.meter?.name} · {space.name}
-                        {space.area && ` (${space.area}㎡)`}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+      <div className="py-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">生成新地址</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1.5 block">选择空间</label>
+                <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择空间" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spaces.length === 0 ? (
+                      <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+                        暂无可用空间
+                      </div>
+                    ) : (
+                      spaces.map((space) => (
+                        <SelectItem key={space.id} value={space.id}>
+                          {space.meter?.base?.name} · {space.meter?.name} · {space.name}
+                          {space.area && ` (${space.area}㎡)`}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={generateRegNumber}
+                disabled={generating || !selectedSpaceId}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    生成注册号
+                  </>
+                )}
+              </Button>
             </div>
-            <Button 
-              onClick={generateRegNumber} 
-              disabled={generating || !selectedSpaceId}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  生成注册号
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* 地址列表 */}
-      <Card>
-        <CardContent className="p-0">
-          <Tabs defaultValue="all">
-            <div className="border-b px-4">
-              <TabsList className="h-12 bg-transparent">
-                <TabsTrigger value="all" className="data-[state=active]:bg-slate-100">
-                  全部 ({allCount})
-                </TabsTrigger>
-                <TabsTrigger value="available" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-600">
-                  待使用 ({availableCount})
-                </TabsTrigger>
-                <TabsTrigger value="used" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
-                  已使用 ({usedCount})
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            {/* 全部 */}
-            <TabsContent value="all" className="m-0">
-              <AddressList items={regNumbers} getAddressName={getAddressName} />
-            </TabsContent>
-
-            {/* 待使用 */}
-            <TabsContent value="available" className="m-0">
-              <AddressList
-                items={regNumbers.filter((r) => r.available)}
-                getAddressName={getAddressName}
-              />
-            </TabsContent>
-
-            {/* 已使用 */}
-            <TabsContent value="used" className="m-0">
-              <AddressList
-                items={regNumbers.filter((r) => !r.available)}
-                getAddressName={getAddressName}
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// 地址列表组件
-function AddressList({
-  items,
-  getAddressName,
-}: {
-  items: RegNumber[];
-  getAddressName: (reg: RegNumber) => string;
-}) {
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <Hash className="h-12 w-12 text-slate-300 mb-3" />
-        <p>暂无数据</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="divide-y">
-      {items.map((reg) => (
-        <div
-          key={reg.id}
-          className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
-        >
-          <div className="flex items-center gap-3">
-            <Hash className="h-4 w-4 text-slate-400" />
-            <div>
-              <p className="font-medium">{reg.code}</p>
-              <p className="text-caption text-muted-foreground">{getAddressName(reg)}</p>
-            </div>
+      <div className="border-t">
+        {filteredRegNumbers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Hash className="h-12 w-12 text-slate-300 mb-3" />
+            <p>暂无数据</p>
           </div>
-          <Badge
-            variant="secondary"
-            className={reg.available 
-              ? "bg-amber-50 text-amber-600" 
-              : "bg-emerald-50 text-emerald-600"
-            }
-          >
-            {reg.available ? "待使用" : "已使用"}
-          </Badge>
-        </div>
-      ))}
+        ) : (
+          <div className="divide-y">
+            {filteredRegNumbers.map((reg) => (
+              <div
+                key={reg.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
+              >
+                <div className="flex items-center gap-3">
+                  <Hash className="h-4 w-4 text-slate-400" />
+                  <div>
+                    <p className="font-medium">{reg.code}</p>
+                    <p className="text-xs text-muted-foreground">{getAddressName(reg)}</p>
+                  </div>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className={
+                    reg.available
+                      ? "bg-amber-50 text-amber-600"
+                      : "bg-emerald-50 text-emerald-600"
+                  }
+                >
+                  {reg.available ? "待使用" : "已使用"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
