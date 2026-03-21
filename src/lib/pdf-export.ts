@@ -55,6 +55,21 @@ export interface ApplicationData {
 }
 
 /**
+ * 创建信息行 HTML
+ */
+function createInfoRow(label: string, value: string): string {
+  return `
+    <tr>
+      <td style="width: 140px; padding: 6px 0; font-weight: bold; vertical-align: top;">${label}</td>
+      <td style="padding: 6px 0; vertical-align: top;">
+        <div style="padding-bottom: 4px;">${value || "-"}</div>
+        <div style="border-bottom: 1px solid #000; height: 1px;"></div>
+      </td>
+    </tr>
+  `;
+}
+
+/**
  * 创建申请表 HTML 内容
  */
 function createApplicationHtml(application: ApplicationData): string {
@@ -63,91 +78,49 @@ function createApplicationHtml(application: ApplicationData): string {
   const enterpriseNameBackups = application.enterpriseNameBackups || [];
 
   return `
-    <style>
-      /* 强制使用标准颜色格式，避免 oklch 不兼容问题 */
-      * {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-        border-color: #000000 !important;
-      }
-      .label {
-        color: #000000 !important;
-      }
-      .value {
-        color: #333333 !important;
-      }
-      .muted {
-        color: #666666 !important;
-      }
-      .header-bg {
-        background-color: #f5f5f5 !important;
-      }
-      .border-black {
-        border-color: #000000 !important;
-      }
-      .border-gray {
-        border-color: #cccccc !important;
-      }
-    </style>
-    <div style="font-family: SimSun, 宋体, serif; font-size: 14px; line-height: 1.6; color: #000; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto;">
+    <div style="font-family: SimSun, 宋体, serif; font-size: 14px; line-height: 1.8; color: #000; background: #fff; padding: 40px; width: 800px;">
       <!-- 标题 -->
       <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">企业入驻申请表</h1>
+        <h1 style="font-size: 24px; font-weight: bold; margin: 0 0 10px 0;">企业入驻申请表</h1>
         <div style="font-size: 14px; color: #666;">Π立方企业服务中心</div>
       </div>
 
       <!-- 基本信息 -->
       <div style="margin-bottom: 25px;">
         <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px;">一、基本信息</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px;">
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">申请编号：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.applicationNo}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">申请日期：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.applicationDate ? new Date(application.applicationDate).toLocaleDateString("zh-CN") : "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">企业名称：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.enterpriseName}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">申请类型：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${applicationTypeMap[application.applicationType || ""] || "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">注册资本：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.registeredCapital || "-"} ${application.currencyType || "万元"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">纳税人类型：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${taxTypeMap[application.taxType || ""] || "-"}</span>
-          </div>
-        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("申请编号：", application.applicationNo)}
+                ${createInfoRow("企业名称：", application.enterpriseName)}
+                ${createInfoRow("注册资本：", `${application.registeredCapital || "-"} ${application.currencyType || "万元"}`)}
+              </table>
+            </td>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("申请日期：", application.applicationDate ? new Date(application.applicationDate).toLocaleDateString("zh-CN") : "-")}
+                ${createInfoRow("申请类型：", applicationTypeMap[application.applicationType || ""] || "-")}
+                ${createInfoRow("纳税人类型：", taxTypeMap[application.taxType || ""] || "-")}
+              </table>
+            </td>
+          </tr>
+        </table>
         ${enterpriseNameBackups.length > 0 ? `
-        <div style="display: flex; margin-top: 10px;">
-          <span style="width: 140px; flex-shrink: 0; font-weight: bold;">备选名称：</span>
-          <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${enterpriseNameBackups.join("、")}</span>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+          ${createInfoRow("备选名称：", enterpriseNameBackups.join("、"))}
+        </table>
         ` : ""}
       </div>
 
       <!-- 地址信息 -->
       <div style="margin-bottom: 25px;">
         <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px;">二、地址信息</div>
-        <div style="display: flex; margin-bottom: 10px;">
-          <span style="width: 140px; flex-shrink: 0; font-weight: bold;">原注册地址：</span>
-          <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.originalRegisteredAddress || "-"}</span>
-        </div>
-        <div style="display: flex; margin-bottom: 10px;">
-          <span style="width: 140px; flex-shrink: 0; font-weight: bold;">通讯地址：</span>
-          <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.mailingAddress || "-"}</span>
-        </div>
-        <div style="display: flex;">
-          <span style="width: 140px; flex-shrink: 0; font-weight: bold;">经营地址：</span>
-          <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.businessAddress || "-"}</span>
-        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          ${createInfoRow("原注册地址：", application.originalRegisteredAddress)}
+          ${createInfoRow("通讯地址：", application.mailingAddress)}
+          ${createInfoRow("经营地址：", application.businessAddress)}
+        </table>
       </div>
 
       <!-- 人员信息 -->
@@ -156,11 +129,11 @@ function createApplicationHtml(application: ApplicationData): string {
         ${personnel.length > 0 ? `
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
           <thead>
-            <tr>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 100px;">姓名</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 120px;">职务</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 130px;">手机号</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5;">邮箱</th>
+            <tr style="background: #f5f5f5;">
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 100px;">姓名</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 120px;">职务</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 130px;">手机号</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left;">邮箱</th>
             </tr>
           </thead>
           <tbody>
@@ -174,7 +147,7 @@ function createApplicationHtml(application: ApplicationData): string {
             `).join("")}
           </tbody>
         </table>
-        ` : '<p style="color: #999;">暂无人员信息</p>'}
+        ` : '<p style="color: #999; margin: 0;">暂无人员信息</p>'}
       </div>
 
       <!-- 股东信息 -->
@@ -183,12 +156,12 @@ function createApplicationHtml(application: ApplicationData): string {
         ${shareholders.length > 0 ? `
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
           <thead>
-            <tr>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 80px;">类型</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 120px;">姓名/名称</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 100px;">投资额(万元)</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5; width: 130px;">手机号</th>
-              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; background: #f5f5f5;">备注</th>
+            <tr style="background: #f5f5f5;">
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 80px;">类型</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 120px;">姓名/名称</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 100px;">投资额(万元)</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left; width: 130px;">手机号</th>
+              <th style="border: 1px solid #000; padding: 8px 10px; text-align: left;">备注</th>
             </tr>
           </thead>
           <tbody>
@@ -203,56 +176,56 @@ function createApplicationHtml(application: ApplicationData): string {
             `).join("")}
           </tbody>
         </table>
-        ` : '<p style="color: #999;">暂无股东信息</p>'}
+        ` : '<p style="color: #999; margin: 0;">暂无股东信息</p>'}
       </div>
 
       <!-- 经营信息 -->
       <div style="margin-bottom: 25px;">
         <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px;">五、经营信息</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px;">
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">预计年营收：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.expectedAnnualRevenue ? `${application.expectedAnnualRevenue} 万元` : "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">预计年纳税：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.expectedAnnualTax ? `${application.expectedAnnualTax} 万元` : "-"}</span>
-          </div>
-        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("预计年营收：", application.expectedAnnualRevenue ? `${application.expectedAnnualRevenue} 万元` : "")}
+              </table>
+            </td>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("预计年纳税：", application.expectedAnnualTax ? `${application.expectedAnnualTax} 万元` : "")}
+              </table>
+            </td>
+          </tr>
+        </table>
         ${application.businessScope ? `
-        <div style="display: flex; margin-top: 10px;">
-          <span style="width: 140px; flex-shrink: 0; font-weight: bold;">经营范围：</span>
-          <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.businessScope}</span>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+          ${createInfoRow("经营范围：", application.businessScope)}
+        </table>
         ` : ""}
       </div>
 
       <!-- 其他信息 -->
       <div style="margin-bottom: 25px;">
         <div style="font-size: 16px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px;">六、其他信息</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px;">
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">园区联系人：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.ewtContactName || "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">园区联系电话：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.ewtContactPhone || "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">中介机构：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.intermediaryDepartment || "-"}</span>
-          </div>
-          <div style="display: flex; margin-bottom: 5px;">
-            <span style="width: 140px; flex-shrink: 0; font-weight: bold;">中介联系人：</span>
-            <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${[application.intermediaryName, application.intermediaryPhone].filter(Boolean).join(" / ") || "-"}</span>
-          </div>
-        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("园区联系人：", application.ewtContactName)}
+                ${createInfoRow("中介机构：", application.intermediaryDepartment)}
+              </table>
+            </td>
+            <td style="width: 50%; padding: 0;">
+              <table style="width: 100%;">
+                ${createInfoRow("园区联系电话：", application.ewtContactPhone)}
+                ${createInfoRow("中介联系人：", [application.intermediaryName, application.intermediaryPhone].filter(Boolean).join(" / "))}
+              </table>
+            </td>
+          </tr>
+        </table>
         ${application.remarks ? `
-        <div style="display: flex; margin-top: 10px;">
-          <span style="width: 140px; flex-shrink: 0; font-weight: bold;">备注：</span>
-          <span style="flex: 1; border-bottom: 1px solid #000; min-height: 20px; padding-left: 5px;">${application.remarks}</span>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+          ${createInfoRow("备注：", application.remarks)}
+        </table>
         ` : ""}
       </div>
 
@@ -260,13 +233,13 @@ function createApplicationHtml(application: ApplicationData): string {
       <div style="margin-top: 40px; display: flex; justify-content: space-between;">
         <div style="width: 200px; text-align: center;">
           <div style="border-bottom: 1px solid #000; height: 60px; margin-bottom: 5px;"></div>
-          <div>申请人签字（盖章）</div>
-          <div style="font-size: 12px; color: #666;">日期：____年____月____日</div>
+          <div style="font-weight: bold;">申请人签字（盖章）</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">日期：____年____月____日</div>
         </div>
         <div style="width: 200px; text-align: center;">
           <div style="border-bottom: 1px solid #000; height: 60px; margin-bottom: 5px;"></div>
-          <div>审核人签字</div>
-          <div style="font-size: 12px; color: #666;">日期：____年____月____日</div>
+          <div style="font-weight: bold;">审核人签字</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">日期：____年____月____日</div>
         </div>
       </div>
 
