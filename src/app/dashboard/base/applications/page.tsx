@@ -287,10 +287,10 @@ export default function ApplicationsPage() {
           {/* 新建申请按钮 */}
           <button
             onClick={handleCreate}
-            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/50 px-6 py-4 transition-all hover:border-slate-400 hover:bg-slate-100 min-w-[140px]"
+            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary px-6 py-4 transition-all hover:bg-primary/5 min-w-[140px]"
           >
-            <Plus className="h-8 w-8 text-slate-600 mb-2" />
-            <span className="text-sm font-medium text-slate-700">新建申请</span>
+            <Plus className="h-8 w-8 text-primary mb-2" />
+            <span className="text-sm font-medium text-primary">新建申请</span>
           </button>
 
           {/* 状态统计 */}
@@ -302,13 +302,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "draft" 
-                    ? "border-slate-500 bg-slate-200" 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-primary bg-primary/10" 
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">草稿</div>
-                  <div className="text-xl font-semibold text-slate-700">{stats.draft}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "draft" ? "text-primary" : "text-foreground")}>{stats.draft}</div>
                 </div>
               </button>
               <button
@@ -316,13 +316,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "pending" 
-                    ? "border-slate-500 bg-slate-200" 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-primary bg-primary/10" 
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">待审批</div>
-                  <div className="text-xl font-semibold text-slate-700">{stats.pending}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "pending" ? "text-primary" : "text-foreground")}>{stats.pending}</div>
                 </div>
               </button>
               <button
@@ -330,13 +330,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "rejected" 
-                    ? "border-slate-500 bg-slate-200" 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-primary bg-primary/10" 
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已驳回</div>
-                  <div className="text-xl font-semibold text-slate-700">{stats.rejected}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "rejected" ? "text-primary" : "text-foreground")}>{stats.rejected}</div>
                 </div>
               </button>
               <button
@@ -344,13 +344,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "approved" 
-                    ? "border-slate-500 bg-slate-200" 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-primary bg-primary/10" 
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已通过</div>
-                  <div className="text-xl font-semibold text-slate-700">{stats.approved}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "approved" ? "text-primary" : "text-foreground")}>{stats.approved}</div>
                 </div>
               </button>
             </div>
