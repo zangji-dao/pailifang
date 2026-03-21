@@ -100,7 +100,6 @@ export default function ApprovalPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadingApp, setUploadingApp] = useState<Application | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // 获取申请列表
@@ -225,7 +224,6 @@ export default function ApprovalPage() {
   // 打开上传附件弹窗
   const handleOpenUpload = (app: Application) => {
     setUploadingApp(app);
-    setPreviewImages([]);
     setSelectedFiles([]);
     setUploadDialogOpen(true);
   };
@@ -243,24 +241,14 @@ export default function ApprovalPage() {
 
     setSelectedFiles((prev) => [...prev, ...imageFiles]);
 
-    // 生成预览
-    imageFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviewImages((prev) => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-
     // 清空 input 以便再次选择同一文件
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  // 移除预览图片
+  // 移除文件
   const handleRemovePreview = (index: number) => {
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -287,7 +275,6 @@ export default function ApprovalPage() {
       if (result.success) {
         toast.success(`成功上传 ${result.data.length} 个附件`);
         setUploadDialogOpen(false);
-        setPreviewImages([]);
         setSelectedFiles([]);
         setUploadingApp(null);
         fetchApplications();
@@ -619,22 +606,41 @@ export default function ApprovalPage() {
               </Button>
             </div>
 
-            {/* 预览图片列表 */}
-            {previewImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
-                {previewImages.map((src, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={src}
-                      alt={`预览 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border"
-                    />
-                    <button
-                      onClick={() => handleRemovePreview(index)}
-                      className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+            {/* 文件列表 */}
+            {selectedFiles.length > 0 && (
+              <div className="border rounded-lg divide-y">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{file.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const url = URL.createObjectURL(file);
+                          window.open(url, "_blank");
+                        }}
+                        className="gap-1"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        查看
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemovePreview(index)}
+                        className="gap-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        删除
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -650,7 +656,6 @@ export default function ApprovalPage() {
               variant="outline"
               onClick={() => {
                 setUploadDialogOpen(false);
-                setPreviewImages([]);
                 setSelectedFiles([]);
                 setUploadingApp(null);
               }}
