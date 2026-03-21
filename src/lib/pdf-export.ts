@@ -63,6 +63,32 @@ function createApplicationHtml(application: ApplicationData): string {
   const enterpriseNameBackups = application.enterpriseNameBackups || [];
 
   return `
+    <style>
+      /* 强制使用标准颜色格式，避免 oklch 不兼容问题 */
+      * {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+        border-color: #000000 !important;
+      }
+      .label {
+        color: #000000 !important;
+      }
+      .value {
+        color: #333333 !important;
+      }
+      .muted {
+        color: #666666 !important;
+      }
+      .header-bg {
+        background-color: #f5f5f5 !important;
+      }
+      .border-black {
+        border-color: #000000 !important;
+      }
+      .border-gray {
+        border-color: #cccccc !important;
+      }
+    </style>
     <div style="font-family: SimSun, 宋体, serif; font-size: 14px; line-height: 1.6; color: #000; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto;">
       <!-- 标题 -->
       <div style="text-align: center; margin-bottom: 30px;">
@@ -274,6 +300,35 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
+      // 处理 oklch 颜色格式不兼容问题
+      onclone: (clonedDoc) => {
+        const clonedContainer = clonedDoc.body.querySelector('div[style*="position: fixed"]');
+        if (clonedContainer) {
+          // 递归处理所有元素的颜色
+          const elements = clonedContainer.querySelectorAll('*');
+          elements.forEach((el: Element) => {
+            const htmlEl = el as HTMLElement;
+            const style = clonedDoc.defaultView?.getComputedStyle(htmlEl);
+            if (style) {
+              // 强制使用标准颜色格式
+              const color = style.color;
+              const bgColor = style.backgroundColor;
+              const borderColor = style.borderColor;
+              
+              // 如果检测到 oklch，替换为黑色/白色
+              if (color && color.includes('oklch')) {
+                htmlEl.style.color = '#000000';
+              }
+              if (bgColor && bgColor.includes('oklch')) {
+                htmlEl.style.backgroundColor = '#ffffff';
+              }
+              if (borderColor && borderColor.includes('oklch')) {
+                htmlEl.style.borderColor = '#000000';
+              }
+            }
+          });
+        }
+      },
     });
 
     // 创建 PDF
