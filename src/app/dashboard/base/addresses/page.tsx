@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Hash, Plus, Loader2, RefreshCw, Building2, Check, X } from "lucide-react";
+import { Hash, Plus, Loader2, RefreshCw, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,7 +145,7 @@ export default function AddressManagementPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         <span className="ml-2 text-slate-600">加载中...</span>
       </div>
     );
@@ -156,8 +156,8 @@ export default function AddressManagementPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">地址管理</h1>
-          <p className="text-sm text-slate-500 mt-1">管理注册地址和注册号</p>
+          <h1 className="text-page-title text-slate-900">地址管理</h1>
+          <p className="text-body text-muted-foreground">管理注册地址和注册号</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => { fetchRegNumbers(); fetchSpaces(); }}>
           <RefreshCw className="h-4 w-4 mr-1.5" />
@@ -165,65 +165,22 @@ export default function AddressManagementPage() {
         </Button>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Hash className="h-5 w-5 text-slate-500" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">全部地址</p>
-                <p className="text-2xl font-semibold">{allCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <Check className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-sm text-emerald-600">待使用</p>
-                <p className="text-2xl font-semibold text-emerald-600">{availableCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <X className="h-5 w-5 text-slate-400" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">已使用</p>
-                <p className="text-2xl font-semibold text-slate-500">{usedCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* 生成注册号 */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">生成新地址</CardTitle>
+          <CardTitle className="text-card-title">生成新地址</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <label className="text-sm text-slate-500 mb-1.5 block">选择空间</label>
+              <label className="text-caption text-muted-foreground mb-1.5 block">选择空间</label>
               <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
                 <SelectTrigger>
                   <SelectValue placeholder="请选择空间" />
                 </SelectTrigger>
                 <SelectContent>
                   {spaces.length === 0 ? (
-                    <div className="px-2 py-4 text-center text-slate-500 text-sm">
+                    <div className="px-2 py-4 text-center text-muted-foreground text-sm">
                       暂无可用空间
                     </div>
                   ) : (
@@ -237,7 +194,11 @@ export default function AddressManagementPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={generateRegNumber} disabled={generating || !selectedSpaceId}>
+            <Button 
+              onClick={generateRegNumber} 
+              disabled={generating || !selectedSpaceId}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+            >
               {generating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -263,10 +224,10 @@ export default function AddressManagementPage() {
                 <TabsTrigger value="all" className="data-[state=active]:bg-slate-100">
                   全部 ({allCount})
                 </TabsTrigger>
-                <TabsTrigger value="available" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
+                <TabsTrigger value="available" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-600">
                   待使用 ({availableCount})
                 </TabsTrigger>
-                <TabsTrigger value="used" className="data-[state=active]:bg-slate-100">
+                <TabsTrigger value="used" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
                   已使用 ({usedCount})
                 </TabsTrigger>
               </TabsList>
@@ -309,7 +270,7 @@ function AddressList({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <Hash className="h-12 w-12 text-slate-300 mb-3" />
         <p>暂无数据</p>
       </div>
@@ -327,12 +288,15 @@ function AddressList({
             <Hash className="h-4 w-4 text-slate-400" />
             <div>
               <p className="font-medium">{reg.code}</p>
-              <p className="text-sm text-slate-500">{getAddressName(reg)}</p>
+              <p className="text-caption text-muted-foreground">{getAddressName(reg)}</p>
             </div>
           </div>
           <Badge
-            variant={reg.available ? "default" : "secondary"}
-            className={reg.available ? "bg-emerald-500" : "bg-slate-200 text-slate-600"}
+            variant="secondary"
+            className={reg.available 
+              ? "bg-amber-50 text-amber-600" 
+              : "bg-emerald-50 text-emerald-600"
+            }
           >
             {reg.available ? "待使用" : "已使用"}
           </Badge>
