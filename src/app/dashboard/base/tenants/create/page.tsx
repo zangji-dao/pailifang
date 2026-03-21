@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,14 +17,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowLeft,
@@ -35,32 +27,74 @@ import {
   PenTool,
   CreditCard,
   CheckCircle2,
-  Upload,
-  X,
   Plus,
   Minus,
   Loader2,
   AlertCircle,
+  Users,
+  Store,
+  Home,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
-// 步骤定义
-const STEPS = [
-  { id: 1, title: "企业信息", icon: Building2 },
+// 步骤定义 - 入驻企业
+const TENANT_STEPS = [
+  { id: 0, title: "选择类型", icon: Users },
+  { id: 1, title: "分配房间", icon: Home },
   { id: 2, title: "工商办理", icon: FileText },
   { id: 3, title: "签订合同", icon: PenTool },
   { id: 4, title: "缴纳费用", icon: CreditCard },
   { id: 5, title: "完成入驻", icon: CheckCircle2 },
 ];
 
+// 步骤定义 - 服务企业
+const SERVICE_STEPS = [
+  { id: 0, title: "选择类型", icon: Users },
+  { id: 1, title: "基本信息", icon: Building2 },
+  { id: 2, title: "完成创建", icon: CheckCircle2 },
+];
+
+// 企业类型
+type EnterpriseType = "tenant" | "service";
+
+// 房间信息
+interface Space {
+  id: string;
+  code: string;
+  name: string;
+  area: number;
+  status: string;
+  baseName: string;
+  regNumbers: { id: string; code: string; available: boolean }[];
+}
+
 export default function NewTenantPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
+  
+  // 从入驻审批跳转过来时，跳过类型选择
+  const fromApproval = searchParams.get("from") === "approval";
+  const prefillType = searchParams.get("type") as EnterpriseType | null;
+  
+  const [currentStep, setCurrentStep] = useState(fromApproval ? 1 : 0);
   const [submitting, setSubmitting] = useState(false);
-
-  // 步骤1：企业基本信息
+  
+  // 企业类型
+  const [enterpriseType, setEnterpriseType] = useState<EnterpriseType | null>(prefillType);
+  
+  // 系统生成的企业编号
+  const [enterpriseCode, setEnterpriseCode] = useState<string>("");
+  
+  // 步骤1：分配房间（入驻企业）
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
+  const [loadingSpaces, setLoadingSpaces] = useState(false);
+  const [manualAddress, setManualAddress] = useState("");
+  const [useManualAddress, setUseManualAddress] = useState(false);
+  
+  // 步骤2：工商办理（入驻企业）/ 基本信息（服务企业）
   const [enterpriseName, setEnterpriseName] = useState("");
   const [creditCode, setCreditCode] = useState("");
   const [legalPerson, setLegalPerson] = useState("");
@@ -69,84 +103,104 @@ export default function NewTenantPage() {
   const [capital, setCapital] = useState("");
   const [businessScope, setBusinessScope] = useState("");
   const [industry, setIndustry] = useState("");
-
-  // 步骤2：工商办理
   const [businessType, setBusinessType] = useState<"register" | "change">("register");
-  const [shareholders, setShareholders] = useState<{ name: string; idCard: string; ratio: string }[]>([]);
-  const [staffList, setStaffList] = useState<{ name: string; idCard: string; phone: string }[]>([]);
-
-  // 步骤3：签订合同
+  
+  // 步骤3：签订合同（入驻企业）
   const [contractNumber, setContractNumber] = useState("");
   const [contractStartDate, setContractStartDate] = useState("");
   const [contractEndDate, setContractEndDate] = useState("");
   const [monthlyRent, setMonthlyRent] = useState("");
   const [deposit, setDeposit] = useState("");
-  const [registeredAddress, setRegisteredAddress] = useState("");
-  const [businessAddress, setBusinessAddress] = useState("");
-
-  // 步骤4：缴纳费用
+  
+  // 步骤4：缴纳费用（入驻企业）
   const [fees, setFees] = useState<{ name: string; amount: number; paid: boolean }[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("bank");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-
+  
   // 完成后的企业ID
   const [createdEnterpriseId, setCreatedEnterpriseId] = useState<string | null>(null);
 
+  // 获取当前步骤列表
+  const steps = enterpriseType === "service" ? SERVICE_STEPS : TENANT_STEPS;
+
+  // 加载可用房间
+  useEffect(() => {
+    if (enterpriseType === "tenant" && currentStep === 1) {
+      fetchSpaces();
+    }
+  }, [enterpriseType, currentStep]);
+
   // 生成合同编号
   useEffect(() => {
-    if (currentStep === 3 && !contractNumber) {
+    if (enterpriseType === "tenant" && currentStep === 3 && !contractNumber) {
       const date = new Date();
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
       setContractNumber(`HT-${year}${month}-${random}`);
     }
-  }, [currentStep, contractNumber]);
+  }, [enterpriseType, currentStep, contractNumber]);
 
   // 初始化费用列表
   useEffect(() => {
-    if (currentStep === 4 && fees.length === 0) {
+    if (enterpriseType === "tenant" && currentStep === 4 && fees.length === 0) {
       setFees([
         { name: "首月租金", amount: parseFloat(monthlyRent) || 0, paid: false },
         { name: "押金", amount: parseFloat(deposit) || 0, paid: false },
         { name: "物业费", amount: 0, paid: false },
-        { name: "水电费押金", amount: 500, paid: false },
       ]);
     }
-  }, [currentStep, fees.length, monthlyRent, deposit]);
+  }, [enterpriseType, currentStep, fees.length, monthlyRent, deposit]);
 
-  // 添加股东
-  const addShareholder = () => {
-    setShareholders([...shareholders, { name: "", idCard: "", ratio: "" }]);
+  // 获取可用房间
+  const fetchSpaces = async () => {
+    setLoadingSpaces(true);
+    try {
+      const res = await fetch("/api/bases/spaces/available");
+      const result = await res.json();
+      if (result.success) {
+        setSpaces(result.data || []);
+        // 如果没有可用房间，自动切换到手动输入模式
+        if (!result.data || result.data.length === 0) {
+          setUseManualAddress(true);
+        }
+      } else {
+        setUseManualAddress(true);
+      }
+    } catch (error) {
+      console.error("获取房间列表失败:", error);
+      setUseManualAddress(true);
+    } finally {
+      setLoadingSpaces(false);
+    }
   };
 
-  // 移除股东
-  const removeShareholder = (index: number) => {
-    setShareholders(shareholders.filter((_, i) => i !== index));
+  // 选择企业类型
+  const selectEnterpriseType = (type: EnterpriseType) => {
+    setEnterpriseType(type);
+    generateEnterpriseCode(type);
+    setCurrentStep(1);
   };
 
-  // 更新股东信息
-  const updateShareholder = (index: number, field: string, value: string) => {
-    const updated = [...shareholders];
-    updated[index] = { ...updated[index], [field]: value };
-    setShareholders(updated);
-  };
-
-  // 添加员工
-  const addStaff = () => {
-    setStaffList([...staffList, { name: "", idCard: "", phone: "" }]);
-  };
-
-  // 移除员工
-  const removeStaff = (index: number) => {
-    setStaffList(staffList.filter((_, i) => i !== index));
-  };
-
-  // 更新员工信息
-  const updateStaff = (index: number, field: string, value: string) => {
-    const updated = [...staffList];
-    updated[index] = { ...updated[index], [field]: value };
-    setStaffList(updated);
+  // 生成企业编号
+  const generateEnterpriseCode = async (type: EnterpriseType) => {
+    try {
+      const res = await fetch("/api/enterprises/generate-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setEnterpriseCode(result.data.code);
+      }
+    } catch (error) {
+      console.error("生成企业编号失败:", error);
+      // 本地生成备用
+      const prefix = type === "tenant" ? "RQ" : "SQ";
+      const timestamp = Date.now().toString().slice(-8);
+      setEnterpriseCode(`${prefix}-${timestamp}`);
+    }
   };
 
   // 更新费用
@@ -168,15 +222,23 @@ export default function NewTenantPage() {
 
   // 步骤验证
   const validateStep = (step: number): boolean => {
+    if (enterpriseType === "service") {
+      if (step === 1) {
+        return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
+      }
+      return true;
+    }
+    
+    // 入驻企业流程
     switch (step) {
       case 1:
-        return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
+        return selectedSpace !== null || (useManualAddress && manualAddress.trim() !== "");
       case 2:
-        return true; // 工商办理可选
+        return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
       case 3:
-        return true; // 合同可选
+        return contractNumber.trim() !== "" && contractStartDate !== "" && contractEndDate !== "";
       case 4:
-        return true; // 费用可选
+        return true; // 费用可以稍后缴纳
       default:
         return true;
     }
@@ -192,54 +254,103 @@ export default function NewTenantPage() {
       });
       return;
     }
-    setCurrentStep(currentStep + 1);
+    
+    const maxStep = enterpriseType === "service" ? 1 : 4;
+    if (currentStep < maxStep) {
+      setCurrentStep(currentStep + 1);
+    }
   };
 
   // 上一步
   const prevStep = () => {
-    setCurrentStep(Math.max(1, currentStep - 1));
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
-  // 提交企业入驻
+  // 提交企业
   const submitEnterprise = async () => {
+    if (!validateStep(currentStep)) {
+      toast({
+        title: "请完善信息",
+        description: "请填写当前步骤的必填信息",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSubmitting(true);
     try {
-      // 调用后端API创建企业
+      // 构建请求数据
+      const registeredAddress = useManualAddress 
+        ? manualAddress 
+        : (selectedSpace ? `吉林省松原市宁江区义乌城 ${selectedSpace.name || selectedSpace.code}` : "");
+
+      const requestData: any = {
+        name: enterpriseName,
+        enterprise_code: enterpriseCode,
+        credit_code: creditCode || null,
+        legal_person: legalPerson,
+        phone: phone || null,
+        industry: industry || null,
+        type: enterpriseType,
+        status: "active",
+        business_scope: businessScope || null,
+        registered_address: registeredAddress,
+        business_address: registeredAddress,
+        settled_date: new Date().toISOString().split("T")[0],
+      };
+
+      // 入驻企业额外信息
+      if (enterpriseType === "tenant") {
+        if (selectedSpace) {
+          requestData.space_id = selectedSpace.id;
+        }
+        if (contractNumber) {
+          requestData.contract = {
+            contract_number: contractNumber,
+            start_date: contractStartDate,
+            end_date: contractEndDate,
+            monthly_rent: parseFloat(monthlyRent) || 0,
+            deposit: parseFloat(deposit) || 0,
+          };
+        }
+        const paidFees = fees.filter(f => f.paid);
+        if (paidFees.length > 0) {
+          requestData.fees = paidFees.map(f => ({
+            name: f.name,
+            amount: f.amount,
+            payment_method: paymentMethod,
+            payment_date: paymentDate,
+          }));
+        }
+      }
+
       const res = await fetch("/api/enterprises", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: enterpriseName,
-          credit_code: creditCode,
-          legal_person: legalPerson,
-          phone,
-          industry,
-          type: "tenant",
-          status: "active",
-          registered_address: registeredAddress,
-          business_address: businessAddress,
-          settled_date: new Date().toISOString().split("T")[0],
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const result = await res.json();
-      if (!result.success && !result.data?.id) {
-        throw new Error(result.error || result.message || "创建企业失败");
+      if (!result.success) {
+        throw new Error(result.error || "创建企业失败");
       }
 
-      const enterpriseId = result.data?.id || result.id;
-      setCreatedEnterpriseId(enterpriseId);
+      setCreatedEnterpriseId(result.data?.id);
+      
+      // 进入完成步骤
+      const completeStep = enterpriseType === "service" ? 2 : 5;
+      setCurrentStep(completeStep);
 
       toast({
-        title: "入驻成功",
-        description: `企业 ${enterpriseName} 已成功创建`,
+        title: "创建成功",
+        description: `企业 ${enterpriseName} 已成功创建，企业编号：${enterpriseCode}`,
       });
-
-      setCurrentStep(5);
     } catch (error: any) {
       console.error("提交失败:", error);
       toast({
-        title: "提交失败",
+        title: "创建失败",
         description: error.message || "请稍后重试",
         variant: "destructive",
       });
@@ -249,49 +360,287 @@ export default function NewTenantPage() {
   };
 
   // 渲染步骤指示器
-  const renderStepIndicator = () => (
-    <div className="mb-8">
-      <div className="flex items-center justify-between">
-        {STEPS.map((step, index) => (
-          <div key={step.id} className="flex items-center">
-            <div className="flex flex-col items-center">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  currentStep > step.id
-                    ? "bg-green-500 text-white"
-                    : currentStep === step.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {currentStep > step.id ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <step.icon className="w-5 h-5" />
-                )}
+  const renderStepIndicator = () => {
+    const displaySteps = enterpriseType === "service" 
+      ? SERVICE_STEPS.filter(s => s.id > 0) 
+      : TENANT_STEPS.filter(s => s.id > 0);
+    
+    return (
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          {displaySteps.map((step, index) => (
+            <div key={step.id} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    currentStep > step.id
+                      ? "bg-green-500 text-white"
+                      : currentStep === step.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {currentStep > step.id ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    <step.icon className="w-5 h-5" />
+                  )}
+                </div>
+                <span className="mt-2 text-sm font-medium">{step.title}</span>
               </div>
-              <span className="mt-2 text-sm font-medium">{step.title}</span>
+              {index < displaySteps.length - 1 && (
+                <div
+                  className={`flex-1 h-1 mx-4 ${
+                    currentStep > step.id ? "bg-green-500" : "bg-muted"
+                  }`}
+                />
+              )}
             </div>
-            {index < STEPS.length - 1 && (
-              <div
-                className={`flex-1 h-1 mx-4 ${
-                  currentStep > step.id ? "bg-green-500" : "bg-muted"
-                }`}
-              />
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  // 步骤1：企业基本信息
-  const renderStep1 = () => (
+  // 步骤0：选择企业类型
+  const renderStep0 = () => (
     <Card>
       <CardHeader>
-        <CardTitle>企业基本信息</CardTitle>
+        <CardTitle>选择企业类型</CardTitle>
+        <CardDescription>请选择要创建的企业类型，不同类型对应不同的入驻流程</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-6">
+          {/* 入驻企业 */}
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary hover:shadow-lg ${
+              enterpriseType === "tenant" ? "border-primary ring-2 ring-primary/20" : ""
+            }`}
+            onClick={() => selectEnterpriseType("tenant")}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-blue-500" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">入驻企业</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                需要在园区内分配房间或工位的企业
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• 分配房间（自动分配注册号）</p>
+                <p>• 工商办理</p>
+                <p>• 签订合同</p>
+                <p>• 缴纳费用</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 服务企业 */}
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary hover:shadow-lg ${
+              enterpriseType === "service" ? "border-primary ring-2 ring-primary/20" : ""
+            }`}
+            onClick={() => selectEnterpriseType("service")}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-50 dark:bg-green-950 flex items-center justify-center">
+                <Store className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">服务企业</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                为园区企业提供服务的公司
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• 填写基本信息</p>
+                <p>• 完成创建</p>
+                <p className="text-green-600">• 流程更简单快捷</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 企业编号预览 */}
+        {enterpriseCode && (
+          <Alert className="mt-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              系统已为您分配企业编号：<strong className="text-primary">{enterpriseCode}</strong>
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // 步骤1（入驻企业）：分配房间
+  const renderStep1Tenant = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>分配房间</CardTitle>
+        <CardDescription>为入驻企业分配办公房间，或手动输入注册地址</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* 企业编号 */}
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            企业编号：<strong className="text-primary">{enterpriseCode}</strong>
+          </AlertDescription>
+        </Alert>
+
+        {/* 切换模式 */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant={!useManualAddress ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseManualAddress(false)}
+          >
+            选择房间
+          </Button>
+          <Button
+            variant={useManualAddress ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseManualAddress(true)}
+          >
+            手动输入地址
+          </Button>
+        </div>
+
+        {useManualAddress ? (
+          // 手动输入地址
+          <div className="space-y-2">
+            <Label>注册地址 *</Label>
+            <Input
+              value={manualAddress}
+              onChange={(e) => setManualAddress(e.target.value)}
+              placeholder="请输入企业注册地址，如：吉林省松原市宁江区义乌城A座101室"
+            />
+            <p className="text-xs text-muted-foreground">
+              如果系统中暂无可用房间，可以手动输入注册地址
+            </p>
+          </div>
+        ) : (
+          // 房间列表
+          loadingSpaces ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : spaces.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                暂无可用房间，请切换到"手动输入地址"模式
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {spaces.map((space) => {
+                const availableRegs = space.regNumbers?.filter(r => r.available) || [];
+                const isSelected = selectedSpace?.id === space.id;
+                
+                return (
+                  <Card 
+                    key={space.id}
+                    className={`cursor-pointer transition-all ${
+                      isSelected ? "border-primary ring-2 ring-primary/20" : ""
+                    } ${availableRegs.length === 0 ? "opacity-50" : ""}`}
+                    onClick={() => availableRegs.length > 0 && setSelectedSpace(space)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-medium">{space.name || space.code}</h4>
+                          <p className="text-sm text-muted-foreground">{space.baseName}</p>
+                        </div>
+                        {availableRegs.length > 0 ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
+                            可用
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-50 text-slate-400">
+                            已满
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        面积：{space.area}㎡
+                        {availableRegs[0] && (
+                          <span className="ml-2">· 注册号：{availableRegs[0].code}</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* 选中信息 */}
+        {selectedSpace && !useManualAddress && (
+          <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              <div className="space-y-1">
+                <p>已选择房间：<strong>{selectedSpace.name || selectedSpace.code}</strong></p>
+                <p>注册地址：<strong>吉林省松原市宁江区义乌城 {selectedSpace.name || selectedSpace.code}</strong></p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // 步骤1（服务企业）/ 步骤2（入驻企业）：基本信息/工商办理
+  const renderEnterpriseForm = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>{enterpriseType === "service" ? "基本信息" : "工商办理"}</CardTitle>
+        <CardDescription>
+          {enterpriseType === "service" 
+            ? "填写服务企业的基本信息" 
+            : "填写企业的工商登记信息"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* 企业编号 */}
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            企业编号：<strong className="text-primary">{enterpriseCode}</strong>
+            {enterpriseType === "tenant" && (selectedSpace || manualAddress) && (
+              <span className="ml-4">注册地址：<strong>
+                {useManualAddress ? manualAddress : `吉林省松原市宁江区义乌城 ${selectedSpace?.name}`}
+              </strong></span>
+            )}
+          </AlertDescription>
+        </Alert>
+
+        {/* 入驻企业的办理类型 */}
+        {enterpriseType === "tenant" && (
+          <div className="space-y-2">
+            <Label>办理类型</Label>
+            <div className="flex gap-4">
+              <Button
+                variant={businessType === "register" ? "default" : "outline"}
+                onClick={() => setBusinessType("register")}
+              >
+                新注册
+              </Button>
+              <Button
+                variant={businessType === "change" ? "default" : "outline"}
+                onClick={() => setBusinessType("change")}
+              >
+                变更
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Separator />
+
+        {/* 基本信息 */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>企业名称 *</Label>
@@ -342,7 +691,7 @@ export default function NewTenantPage() {
               type="number"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2">
             <Label>所属行业</Label>
             <Select value={industry} onValueChange={setIndustry}>
               <SelectTrigger>
@@ -358,6 +707,8 @@ export default function NewTenantPage() {
                 <SelectItem value="能源技术">能源技术</SelectItem>
                 <SelectItem value="新材料">新材料</SelectItem>
                 <SelectItem value="生物技术">生物技术</SelectItem>
+                <SelectItem value="财税服务">财税服务</SelectItem>
+                <SelectItem value="法律服务">法律服务</SelectItem>
                 <SelectItem value="其他">其他</SelectItem>
               </SelectContent>
             </Select>
@@ -373,165 +724,26 @@ export default function NewTenantPage() {
             rows={3}
           />
         </div>
-
-        <Separator />
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>注册地址</Label>
-            <Input
-              value={registeredAddress}
-              onChange={(e) => setRegisteredAddress(e.target.value)}
-              placeholder="请输入注册地址"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>经营地址</Label>
-            <Input
-              value={businessAddress}
-              onChange={(e) => setBusinessAddress(e.target.value)}
-              placeholder="请输入经营地址"
-            />
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
 
-  // 步骤2：工商办理
-  const renderStep2 = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>工商办理</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>办理类型</Label>
-          <div className="flex gap-4">
-            <Button
-              variant={businessType === "register" ? "default" : "outline"}
-              onClick={() => setBusinessType("register")}
-            >
-              新注册
-            </Button>
-            <Button
-              variant={businessType === "change" ? "default" : "outline"}
-              onClick={() => setBusinessType("change")}
-            >
-              变更
-            </Button>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* 股东信息 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>股东信息</Label>
-            <Button variant="outline" size="sm" onClick={addShareholder}>
-              <Plus className="w-4 h-4 mr-1" />
-              添加股东
-            </Button>
-          </div>
-          {shareholders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无股东信息</p>
-          ) : (
-            shareholders.map((shareholder, index) => (
-              <div key={index} className="flex gap-2 items-end">
-                <Input
-                  placeholder="股东姓名"
-                  value={shareholder.name}
-                  onChange={(e) => updateShareholder(index, "name", e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="身份证号"
-                  value={shareholder.idCard}
-                  onChange={(e) => updateShareholder(index, "idCard", e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="持股比例(%)"
-                  value={shareholder.ratio}
-                  onChange={(e) => updateShareholder(index, "ratio", e.target.value)}
-                  className="w-32"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeShareholder(index)}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-
-        <Separator />
-
-        {/* 员工信息 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>员工信息</Label>
-            <Button variant="outline" size="sm" onClick={addStaff}>
-              <Plus className="w-4 h-4 mr-1" />
-              添加员工
-            </Button>
-          </div>
-          {staffList.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无员工信息</p>
-          ) : (
-            staffList.map((staff, index) => (
-              <div key={index} className="flex gap-2 items-end">
-                <Input
-                  placeholder="员工姓名"
-                  value={staff.name}
-                  onChange={(e) => updateStaff(index, "name", e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="身份证号"
-                  value={staff.idCard}
-                  onChange={(e) => updateStaff(index, "idCard", e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="联系电话"
-                  value={staff.phone}
-                  onChange={(e) => updateStaff(index, "phone", e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeStaff(index)}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            股东和员工信息可在入驻后继续完善
-          </AlertDescription>
-        </Alert>
-      </CardContent>
-    </Card>
-  );
-
-  // 步骤3：签订合同
-  const renderStep3 = () => (
+  // 步骤3（入驻企业）：签订合同
+  const renderStep3Tenant = () => (
     <Card>
       <CardHeader>
         <CardTitle>签订合同</CardTitle>
+        <CardDescription>填写入驻企业的租赁合同信息</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            企业编号：<strong className="text-primary">{enterpriseCode}</strong>
+            <span className="ml-4">企业名称：<strong>{enterpriseName}</strong></span>
+          </AlertDescription>
+        </Alert>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>合同编号</Label>
@@ -546,7 +758,7 @@ export default function NewTenantPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>合同开始日期</Label>
+            <Label>合同开始日期 *</Label>
             <Input
               type="date"
               value={contractStartDate}
@@ -554,7 +766,7 @@ export default function NewTenantPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>合同结束日期</Label>
+            <Label>合同结束日期 *</Label>
             <Input
               type="date"
               value={contractEndDate}
@@ -581,23 +793,34 @@ export default function NewTenantPage() {
           </div>
         </div>
 
-        <Alert>
-          <FileText className="h-4 w-4" />
-          <AlertDescription>
-            合同信息可在入驻后继续完善
-          </AlertDescription>
-        </Alert>
+        {(selectedSpace || manualAddress) && (
+          <Alert>
+            <Home className="h-4 w-4" />
+            <AlertDescription>
+              注册地址：<strong>{useManualAddress ? manualAddress : `吉林省松原市宁江区义乌城 ${selectedSpace?.name}`}</strong>
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );
 
-  // 步骤4：缴纳费用
-  const renderStep4 = () => (
+  // 步骤4（入驻企业）：缴纳费用
+  const renderStep4Tenant = () => (
     <Card>
       <CardHeader>
         <CardTitle>缴纳费用</CardTitle>
+        <CardDescription>记录入驻企业的缴费情况（可稍后缴纳）</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            企业编号：<strong className="text-primary">{enterpriseCode}</strong>
+            <span className="ml-4">企业名称：<strong>{enterpriseName}</strong></span>
+          </AlertDescription>
+        </Alert>
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>费用项目</Label>
@@ -607,70 +830,57 @@ export default function NewTenantPage() {
             </Button>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>费用名称</TableHead>
-                <TableHead>金额(元)</TableHead>
-                <TableHead>已缴纳</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fees.map((fee, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Input
-                      value={fee.name}
-                      onChange={(e) => updateFee(index, "name", e.target.value)}
-                      className="border-0 p-0 h-auto"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={fee.amount}
-                      onChange={(e) =>
-                        updateFee(index, "amount", parseFloat(e.target.value) || 0)
-                      }
-                      className="border-0 p-0 h-auto w-24"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Checkbox
-                      checked={fee.paid}
-                      onCheckedChange={(checked) =>
-                        updateFee(index, "paid", checked === true)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFee(index)}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-2">
+            {fees.map((fee, index) => (
+              <div key={index} className="flex gap-2 items-center p-3 bg-muted rounded-lg">
+                <Input
+                  value={fee.name}
+                  onChange={(e) => updateFee(index, "name", e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  value={fee.amount}
+                  onChange={(e) =>
+                    updateFee(index, "amount", parseFloat(e.target.value) || 0)
+                  }
+                  className="w-32"
+                  placeholder="金额"
+                />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={fee.paid}
+                    onCheckedChange={(checked) =>
+                      updateFee(index, "paid", checked === true)
+                    }
+                  />
+                  <span className="text-sm">已缴</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeFee(index)}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-          <span className="font-medium">合计金额</span>
-          <span className="text-xl font-bold">
-            ¥{fees.reduce((sum, f) => sum + f.amount, 0).toFixed(2)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-          <span className="font-medium text-green-700 dark:text-green-300">已缴金额</span>
-          <span className="text-xl font-bold text-green-600">
-            ¥{fees.filter((f) => f.paid).reduce((sum, f) => sum + f.amount, 0).toFixed(2)}
-          </span>
+        <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+          <div>
+            <p className="text-sm text-muted-foreground">合计金额</p>
+            <p className="text-xl font-bold">
+              ¥{fees.reduce((sum, f) => sum + f.amount, 0).toFixed(2)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">已缴金额</p>
+            <p className="text-xl font-bold text-green-600">
+              ¥{fees.filter((f) => f.paid).reduce((sum, f) => sum + f.amount, 0).toFixed(2)}
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -697,33 +907,50 @@ export default function NewTenantPage() {
             />
           </div>
         </div>
-
-        <Alert>
-          <CreditCard className="h-4 w-4" />
-          <AlertDescription>
-            费用信息可在入驻后继续完善
-          </AlertDescription>
-        </Alert>
       </CardContent>
     </Card>
   );
 
-  // 步骤5：完成入驻
-  const renderStep5 = () => (
+  // 完成步骤
+  const renderComplete = () => (
     <Card>
       <CardHeader>
-        <CardTitle className="text-center text-2xl">入驻成功</CardTitle>
+        <CardTitle className="text-center text-2xl">
+          {enterpriseType === "service" ? "创建成功" : "入驻成功"}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 text-center">
         <CheckCircle2 className="w-24 h-24 mx-auto text-green-500" />
+        
         <div className="space-y-2">
-          <p className="text-lg font-medium">企业入驻已完成</p>
+          <p className="text-lg font-medium">
+            {enterpriseType === "service" ? "服务企业创建完成" : "企业入驻已完成"}
+          </p>
           <p className="text-muted-foreground">
             企业 <strong>{enterpriseName}</strong> 已成功创建
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-4">
+        <div className="grid grid-cols-2 gap-4 text-left max-w-md mx-auto p-4 bg-muted rounded-lg">
+          <div>
+            <p className="text-sm text-muted-foreground">企业编号</p>
+            <p className="font-semibold text-primary">{enterpriseCode}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">企业类型</p>
+            <p className="font-semibold">{enterpriseType === "tenant" ? "入驻企业" : "服务企业"}</p>
+          </div>
+          {enterpriseType === "tenant" && (selectedSpace || manualAddress) && (
+            <div className="col-span-2">
+              <p className="text-sm text-muted-foreground">注册地址</p>
+              <p className="font-semibold text-sm">
+                {useManualAddress ? manualAddress : `吉林省松原市宁江区义乌城 ${selectedSpace?.name}`}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 pt-4 max-w-md mx-auto">
           <Button variant="outline" asChild>
             <Link href="/dashboard/base/tenants">返回企业列表</Link>
           </Button>
@@ -737,6 +964,40 @@ export default function NewTenantPage() {
     </Card>
   );
 
+  // 渲染当前步骤内容
+  const renderCurrentStep = () => {
+    if (currentStep === 0) {
+      return renderStep0();
+    }
+
+    if (enterpriseType === "service") {
+      switch (currentStep) {
+        case 1:
+          return renderEnterpriseForm();
+        case 2:
+          return renderComplete();
+        default:
+          return null;
+      }
+    }
+
+    // 入驻企业
+    switch (currentStep) {
+      case 1:
+        return renderStep1Tenant();
+      case 2:
+        return renderEnterpriseForm();
+      case 3:
+        return renderStep3Tenant();
+      case 4:
+        return renderStep4Tenant();
+      case 5:
+        return renderComplete();
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 max-w-4xl">
       <div className="flex items-center gap-4 mb-6">
@@ -746,41 +1007,41 @@ export default function NewTenantPage() {
             返回
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">新建企业入驻</h1>
+        <h1 className="text-2xl font-bold">新建企业</h1>
       </div>
 
-      {/* 步骤指示器 */}
-      {renderStepIndicator()}
+      {/* 步骤指示器（非选择类型步骤时显示） */}
+      {currentStep > 0 && renderStepIndicator()}
 
       {/* 步骤内容 */}
-      {currentStep === 1 && renderStep1()}
-      {currentStep === 2 && renderStep2()}
-      {currentStep === 3 && renderStep3()}
-      {currentStep === 4 && renderStep4()}
-      {currentStep === 5 && renderStep5()}
+      {renderCurrentStep()}
 
       {/* 底部按钮 */}
-      {currentStep < 5 && (
+      {currentStep > 0 && (
         <div className="flex justify-between mt-6">
           <Button
             variant="outline"
             onClick={prevStep}
-            disabled={currentStep === 1}
+            disabled={currentStep === 0}
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             上一步
           </Button>
 
-          {currentStep === 4 ? (
+          {/* 最后一步：提交 */}
+          {((enterpriseType === "service" && currentStep === 1) ||
+            (enterpriseType === "tenant" && currentStep === 4)) ? (
             <Button onClick={submitEnterprise} disabled={submitting}>
               {submitting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              完成入驻
+              {enterpriseType === "service" ? "完成创建" : "完成入驻"}
             </Button>
           ) : (
-            <Button onClick={nextStep}>
-              下一步
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
+            currentStep < (enterpriseType === "service" ? 1 : 4) && (
+              <Button onClick={nextStep}>
+                下一步
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            )
           )}
         </div>
       )}
