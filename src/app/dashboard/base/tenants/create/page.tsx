@@ -48,15 +48,15 @@ const TENANT_STEPS = [
   { id: 5, title: "完成入驻", icon: CheckCircle2 },
 ];
 
-// 步骤定义 - 服务企业
-const SERVICE_STEPS = [
+// 步骤定义 - 非入驻企业
+const NON_TENANT_STEPS = [
   { id: 0, title: "选择类型", icon: Users },
   { id: 1, title: "基本信息", icon: Building2 },
   { id: 2, title: "完成创建", icon: CheckCircle2 },
 ];
 
 // 企业类型
-type EnterpriseType = "tenant" | "service";
+type EnterpriseType = "tenant" | "non_tenant";
 
 // 房间信息
 interface Space {
@@ -94,7 +94,7 @@ export default function NewTenantPage() {
   const [manualAddress, setManualAddress] = useState("");
   const [useManualAddress, setUseManualAddress] = useState(false);
   
-  // 步骤2：工商办理（入驻企业）/ 基本信息（服务企业）
+  // 步骤2：工商办理（入驻企业）/ 基本信息（非入驻企业）
   const [enterpriseName, setEnterpriseName] = useState("");
   const [creditCode, setCreditCode] = useState("");
   const [legalPerson, setLegalPerson] = useState("");
@@ -121,7 +121,7 @@ export default function NewTenantPage() {
   const [createdEnterpriseId, setCreatedEnterpriseId] = useState<string | null>(null);
 
   // 获取当前步骤列表
-  const steps = enterpriseType === "service" ? SERVICE_STEPS : TENANT_STEPS;
+  const steps = enterpriseType === "non_tenant" ? NON_TENANT_STEPS : TENANT_STEPS;
 
   // 加载可用房间
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function NewTenantPage() {
     } catch (error) {
       console.error("生成企业编号失败:", error);
       // 本地生成备用
-      const prefix = type === "tenant" ? "RQ" : "SQ";
+      const prefix = type === "tenant" ? "RQ" : "NQ";
       const timestamp = Date.now().toString().slice(-8);
       setEnterpriseCode(`${prefix}-${timestamp}`);
     }
@@ -222,7 +222,7 @@ export default function NewTenantPage() {
 
   // 步骤验证
   const validateStep = (step: number): boolean => {
-    if (enterpriseType === "service") {
+    if (enterpriseType === "non_tenant") {
       if (step === 1) {
         return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
       }
@@ -255,7 +255,7 @@ export default function NewTenantPage() {
       return;
     }
     
-    const maxStep = enterpriseType === "service" ? 1 : 4;
+    const maxStep = enterpriseType === "non_tenant" ? 1 : 4;
     if (currentStep < maxStep) {
       setCurrentStep(currentStep + 1);
     }
@@ -340,7 +340,7 @@ export default function NewTenantPage() {
       setCreatedEnterpriseId(result.data?.id);
       
       // 进入完成步骤
-      const completeStep = enterpriseType === "service" ? 2 : 5;
+      const completeStep = enterpriseType === "non_tenant" ? 2 : 5;
       setCurrentStep(completeStep);
 
       toast({
@@ -361,8 +361,8 @@ export default function NewTenantPage() {
 
   // 渲染步骤指示器
   const renderStepIndicator = () => {
-    const displaySteps = enterpriseType === "service" 
-      ? SERVICE_STEPS.filter(s => s.id > 0) 
+    const displaySteps = enterpriseType === "non_tenant" 
+      ? NON_TENANT_STEPS.filter(s => s.id > 0) 
       : TENANT_STEPS.filter(s => s.id > 0);
     
     return (
@@ -407,7 +407,7 @@ export default function NewTenantPage() {
     <Card>
       <CardHeader>
         <CardTitle>选择企业类型</CardTitle>
-        <CardDescription>请选择要创建的企业类型，不同类型对应不同的入驻流程</CardDescription>
+        <CardDescription>请选择要创建的企业类型，不同类型对应不同的流程</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-6">
@@ -424,7 +424,7 @@ export default function NewTenantPage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">入驻企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                需要在园区内分配房间或工位的企业
+                在园区内分配房间或工位的企业
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• 分配房间（自动分配注册号）</p>
@@ -435,20 +435,20 @@ export default function NewTenantPage() {
             </CardContent>
           </Card>
 
-          {/* 服务企业 */}
+          {/* 非入驻企业 */}
           <Card 
             className={`cursor-pointer transition-all hover:border-primary hover:shadow-lg ${
-              enterpriseType === "service" ? "border-primary ring-2 ring-primary/20" : ""
+              enterpriseType === "non_tenant" ? "border-primary ring-2 ring-primary/20" : ""
             }`}
-            onClick={() => selectEnterpriseType("service")}
+            onClick={() => selectEnterpriseType("non_tenant")}
           >
             <CardContent className="p-6 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-50 dark:bg-green-950 flex items-center justify-center">
                 <Store className="w-8 h-8 text-green-500" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">服务企业</h3>
+              <h3 className="text-lg font-semibold mb-2">非入驻企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                为园区企业提供服务的公司
+                不在园区内入驻，仅使用园区服务的企业
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• 填写基本信息</p>
@@ -592,14 +592,14 @@ export default function NewTenantPage() {
     </Card>
   );
 
-  // 步骤1（服务企业）/ 步骤2（入驻企业）：基本信息/工商办理
+  // 步骤1（非入驻企业）/ 步骤2（入驻企业）：基本信息/工商办理
   const renderEnterpriseForm = () => (
     <Card>
       <CardHeader>
-        <CardTitle>{enterpriseType === "service" ? "基本信息" : "工商办理"}</CardTitle>
+        <CardTitle>{enterpriseType === "non_tenant" ? "基本信息" : "工商办理"}</CardTitle>
         <CardDescription>
-          {enterpriseType === "service" 
-            ? "填写服务企业的基本信息" 
+          {enterpriseType === "non_tenant" 
+            ? "填写企业的基本信息" 
             : "填写企业的工商登记信息"}
         </CardDescription>
       </CardHeader>
@@ -916,7 +916,7 @@ export default function NewTenantPage() {
     <Card>
       <CardHeader>
         <CardTitle className="text-center text-2xl">
-          {enterpriseType === "service" ? "创建成功" : "入驻成功"}
+          {enterpriseType === "non_tenant" ? "创建成功" : "入驻成功"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 text-center">
@@ -924,7 +924,7 @@ export default function NewTenantPage() {
         
         <div className="space-y-2">
           <p className="text-lg font-medium">
-            {enterpriseType === "service" ? "服务企业创建完成" : "企业入驻已完成"}
+            {enterpriseType === "non_tenant" ? "非入驻企业创建完成" : "企业入驻已完成"}
           </p>
           <p className="text-muted-foreground">
             企业 <strong>{enterpriseName}</strong> 已成功创建
@@ -938,7 +938,7 @@ export default function NewTenantPage() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">企业类型</p>
-            <p className="font-semibold">{enterpriseType === "tenant" ? "入驻企业" : "服务企业"}</p>
+            <p className="font-semibold">{enterpriseType === "tenant" ? "入驻企业" : "非入驻企业"}</p>
           </div>
           {enterpriseType === "tenant" && (selectedSpace || manualAddress) && (
             <div className="col-span-2">
@@ -970,7 +970,7 @@ export default function NewTenantPage() {
       return renderStep0();
     }
 
-    if (enterpriseType === "service") {
+    if (enterpriseType === "non_tenant") {
       switch (currentStep) {
         case 1:
           return renderEnterpriseForm();
@@ -1029,14 +1029,14 @@ export default function NewTenantPage() {
           </Button>
 
           {/* 最后一步：提交 */}
-          {((enterpriseType === "service" && currentStep === 1) ||
+          {((enterpriseType === "non_tenant" && currentStep === 1) ||
             (enterpriseType === "tenant" && currentStep === 4)) ? (
             <Button onClick={submitEnterprise} disabled={submitting}>
               {submitting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              {enterpriseType === "service" ? "完成创建" : "完成入驻"}
+              {enterpriseType === "non_tenant" ? "完成创建" : "完成入驻"}
             </Button>
           ) : (
-            currentStep < (enterpriseType === "service" ? 1 : 4) && (
+            currentStep < (enterpriseType === "non_tenant" ? 1 : 4) && (
               <Button onClick={nextStep}>
                 下一步
                 <ArrowRight className="w-4 h-4 ml-1" />

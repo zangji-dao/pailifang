@@ -6,16 +6,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * 生成企业编号
  * 
  * 规则：
- * - 入驻企业：RQ-YYYYMMDD-001（R=入驻，Q=企业）
- * - 服务企业：SQ-YYYYMMDD-001（S=服务，Q=企业）
+ * - 入驻企业：RQ-YYYYMMDD-XXX（R=入驻，Q=企业）
+ * - 非入驻企业：NQ-YYYYMMDD-XXX（N=非，Q=企业）
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
-    const { type } = body as { type: 'tenant' | 'service' };
+    const { type } = body as { type: 'tenant' | 'non_tenant' };
 
-    if (!type || !['tenant', 'service'].includes(type)) {
+    if (!type || !['tenant', 'non_tenant'].includes(type)) {
       return NextResponse.json(
         { success: false, error: '请提供有效的企业类型' },
         { status: 400 }
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 生成前缀和日期部分
-    const prefix = type === 'tenant' ? 'RQ' : 'SQ';
+    const prefix = type === 'tenant' ? 'RQ' : 'NQ';
     const today = new Date();
     const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
