@@ -58,15 +58,42 @@ const NON_TENANT_STEPS = [
 // 企业类型
 type EnterpriseType = "tenant" | "non_tenant";
 
-// 房间信息
+// 基地信息
+interface Base {
+  id: string;
+  name: string;
+  address: string | null;
+  status: string;
+  meters: Meter[];
+}
+
+// 物业信息
+interface Meter {
+  id: string;
+  code: string;
+  name: string;
+  area: number | null;
+  status: string;
+  spaces: Space[];
+}
+
+// 物理空间信息
 interface Space {
   id: string;
   code: string;
   name: string;
-  area: number;
+  area: number | null;
   status: string;
-  baseName: string;
-  regNumbers: { id: string; code: string; available: boolean }[];
+  isOccupied: boolean;
+}
+
+// 注册号信息
+interface RegNumber {
+  id: string;
+  code: string;
+  space_id: string;
+  enterprise_id: string | null;
+  available: boolean;
 }
 
 export default function NewTenantPage() {
@@ -87,10 +114,14 @@ export default function NewTenantPage() {
   // 系统生成的企业编号
   const [enterpriseCode, setEnterpriseCode] = useState<string>("");
   
-  // 步骤1：分配房间（入驻企业）
-  const [spaces, setSpaces] = useState<Space[]>([]);
+  // 步骤1：分配房间（入驻企业）- 三级联动
+  const [cascadeData, setCascadeData] = useState<Base[]>([]);
+  const [selectedBase, setSelectedBase] = useState<Base | null>(null);
+  const [selectedMeter, setSelectedMeter] = useState<Meter | null>(null);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
-  const [loadingSpaces, setLoadingSpaces] = useState(false);
+  const [generatedRegNumber, setGeneratedRegNumber] = useState<RegNumber | null>(null);
+  const [loadingCascade, setLoadingCascade] = useState(false);
+  const [generatingReg, setGeneratingReg] = useState(false);
   const [manualAddress, setManualAddress] = useState("");
   const [useManualAddress, setUseManualAddress] = useState(false);
   
@@ -123,10 +154,10 @@ export default function NewTenantPage() {
   // 获取当前步骤列表
   const steps = enterpriseType === "non_tenant" ? NON_TENANT_STEPS : TENANT_STEPS;
 
-  // 加载可用房间
+  // 加载级联数据
   useEffect(() => {
     if (enterpriseType === "tenant" && currentStep === 1) {
-      fetchSpaces();
+      fetchCascadeData();
     }
   }, [enterpriseType, currentStep]);
 
@@ -152,27 +183,79 @@ export default function NewTenantPage() {
     }
   }, [enterpriseType, currentStep, fees.length, monthlyRent, deposit]);
 
-  // 获取可用房间
-  const fetchSpaces = async () => {
-    setLoadingSpaces(true);
+  // 获取基地-物业-空间级联数据
+  const fetchCascadeData = async () => {
+    setLoadingCascade(true);
     try {
-      const res = await fetch("/api/bases/spaces/available");
+      const res = await fetch("/api/bases/cascade");
       const result = await res.json();
       if (result.success) {
-        setSpaces(result.data || []);
-        // 如果没有可用房间，自动切换到手动输入模式
-        if (!result.data || result.data.length === 0) {
+        setCascadeData(result.data || []);
+        // 如果没有可用空间，自动切换到手动输入模式
+        const hasAvailableSpace = (result.data || []).some((base: Base) => 
+          base.meters.some((meter: Meter) => 
+            meter.spaces.some((space: Space) => !space.isOccupied)
+          )
+        );
+        if (!hasAvailableSpace) {
           setUseManualAddress(true);
         }
       } else {
         setUseManualAddress(true);
       }
     } catch (error) {
-      console.error("获取房间列表失败:", error);
+      console.error("获取级联数据失败:", error);
       setUseManualAddress(true);
     } finally {
-      setLoadingSpaces(false);
+      setLoadingCascade(false);
     }
+  };
+
+  // 生成注册号
+  const generateRegNumber = async () => {
+    if (!selectedSpace) {
+      toast({
+        title: "请先选择物理空间",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingReg(true);
+    try {
+      const res = await fetch("/api/registration-numbers/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ space_id: selectedSpace.id }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setGeneratedRegNumber(result.data);
+        toast({
+          title: "注册号生成成功",
+          description: `注册号：${result.data.code}`,
+        });
+      } else {
+        throw new Error(result.error || "生成注册号失败");
+      }
+    } catch (error: any) {
+      console.error("生成注册号失败:", error);
+      toast({
+        title: "生成注册号失败",
+        description: error.message || "请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingReg(false);
+    }
+  };
+
+  // 重置选择
+  const resetSelection = () => {
+    setSelectedBase(null);
+    setSelectedMeter(null);
+    setSelectedSpace(null);
+    setGeneratedRegNumber(null);
   };
 
   // 选择企业类型
@@ -232,7 +315,8 @@ export default function NewTenantPage() {
     // 入驻企业流程
     switch (step) {
       case 1:
-        return selectedSpace !== null || (useManualAddress && manualAddress.trim() !== "");
+        // 需要生成了注册号，或者使用手动输入地址
+        return generatedRegNumber !== null || (useManualAddress && manualAddress.trim() !== "");
       case 2:
         return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
       case 3:
@@ -282,9 +366,13 @@ export default function NewTenantPage() {
     setSubmitting(true);
     try {
       // 构建请求数据
-      const registeredAddress = useManualAddress 
-        ? manualAddress 
-        : (selectedSpace ? `吉林省松原市宁江区义乌城 ${selectedSpace.name || selectedSpace.code}` : "");
+      let registeredAddress = "";
+      
+      if (useManualAddress) {
+        registeredAddress = manualAddress;
+      } else if (selectedBase && selectedMeter && selectedSpace) {
+        registeredAddress = `${selectedBase.address || ''} ${selectedMeter.name} ${selectedSpace.name}`.trim();
+      }
 
       const requestData: any = {
         name: enterpriseName,
@@ -305,6 +393,10 @@ export default function NewTenantPage() {
       if (enterpriseType === "tenant") {
         if (selectedSpace) {
           requestData.space_id = selectedSpace.id;
+        }
+        if (generatedRegNumber) {
+          requestData.registration_number_id = generatedRegNumber.id;
+          requestData.registration_number = generatedRegNumber.code;
         }
         if (contractNumber) {
           requestData.contract = {
@@ -472,125 +564,256 @@ export default function NewTenantPage() {
     </Card>
   );
 
-  // 步骤1（入驻企业）：分配房间
-  const renderStep1Tenant = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>分配房间</CardTitle>
-        <CardDescription>为入驻企业分配办公房间，或手动输入注册地址</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* 企业编号 */}
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            企业编号：<strong className="text-primary">{enterpriseCode}</strong>
-          </AlertDescription>
-        </Alert>
+  // 步骤1（入驻企业）：分配房间 - 三级联动
+  const renderStep1Tenant = () => {
+    // 获取可选的物业列表（基于选中的基地）
+    const availableMeters = selectedBase?.meters || [];
+    // 获取可选的空间列表（基于选中的物业）
+    const availableSpaces = selectedMeter?.spaces.filter(s => !s.isOccupied) || [];
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>分配房间</CardTitle>
+          <CardDescription>依次选择基地、物业、物理空间，然后生成注册号</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* 企业编号 */}
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              企业编号：<strong className="text-primary">{enterpriseCode}</strong>
+            </AlertDescription>
+          </Alert>
 
-        {/* 切换模式 */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant={!useManualAddress ? "default" : "outline"}
-            size="sm"
-            onClick={() => setUseManualAddress(false)}
-          >
-            选择房间
-          </Button>
-          <Button
-            variant={useManualAddress ? "default" : "outline"}
-            size="sm"
-            onClick={() => setUseManualAddress(true)}
-          >
-            手动输入地址
-          </Button>
-        </div>
-
-        {useManualAddress ? (
-          // 手动输入地址
-          <div className="space-y-2">
-            <Label>注册地址 *</Label>
-            <Input
-              value={manualAddress}
-              onChange={(e) => setManualAddress(e.target.value)}
-              placeholder="请输入企业注册地址，如：吉林省松原市宁江区义乌城A座101室"
-            />
-            <p className="text-xs text-muted-foreground">
-              如果系统中暂无可用房间，可以手动输入注册地址
-            </p>
+          {/* 切换模式 */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant={!useManualAddress ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseManualAddress(false)}
+            >
+              选择房间
+            </Button>
+            <Button
+              variant={useManualAddress ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseManualAddress(true)}
+            >
+              手动输入地址
+            </Button>
           </div>
-        ) : (
-          // 房间列表
-          loadingSpaces ? (
+
+          {useManualAddress ? (
+            // 手动输入地址
+            <div className="space-y-2">
+              <Label>注册地址 *</Label>
+              <Input
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+                placeholder="请输入企业注册地址，如：吉林省松原市宁江区义乌城A座101室"
+              />
+              <p className="text-xs text-muted-foreground">
+                如果系统中暂无可用房间，可以手动输入注册地址
+              </p>
+            </div>
+          ) : loadingCascade ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
-          ) : spaces.length === 0 ? (
+          ) : cascadeData.length === 0 ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                暂无可用房间，请切换到"手动输入地址"模式
+                暂无基地数据，请切换到"手动输入地址"模式
               </AlertDescription>
             </Alert>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              {spaces.map((space) => {
-                const availableRegs = space.regNumbers?.filter(r => r.available) || [];
-                const isSelected = selectedSpace?.id === space.id;
-                
-                return (
-                  <Card 
-                    key={space.id}
-                    className={`cursor-pointer transition-all ${
-                      isSelected ? "border-primary ring-2 ring-primary/20" : ""
-                    } ${availableRegs.length === 0 ? "opacity-50" : ""}`}
-                    onClick={() => availableRegs.length > 0 && setSelectedSpace(space)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h4 className="font-medium">{space.name || space.code}</h4>
-                          <p className="text-sm text-muted-foreground">{space.baseName}</p>
-                        </div>
-                        {availableRegs.length > 0 ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                            可用
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-slate-50 text-slate-400">
-                            已满
-                          </Badge>
-                        )}
+            <div className="space-y-6">
+              {/* 步骤1：选择基地 */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">1</span>
+                  选择基地
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {cascadeData.map((base) => (
+                    <div
+                      key={base.id}
+                      onClick={() => {
+                        if (selectedBase?.id !== base.id) {
+                          setSelectedBase(base);
+                          setSelectedMeter(null);
+                          setSelectedSpace(null);
+                          setGeneratedRegNumber(null);
+                        }
+                      }}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        selectedBase?.id === base.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="font-medium">{base.name}</div>
+                      {base.address && (
+                        <div className="text-sm text-muted-foreground mt-1">{base.address}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {base.meters.length} 个物业
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        面积：{space.area}㎡
-                        {availableRegs[0] && (
-                          <span className="ml-2">· 注册号：{availableRegs[0].code}</span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )
-        )}
-
-        {/* 选中信息 */}
-        {selectedSpace && !useManualAddress && (
-          <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-700 dark:text-green-300">
-              <div className="space-y-1">
-                <p>已选择房间：<strong>{selectedSpace.name || selectedSpace.code}</strong></p>
-                <p>注册地址：<strong>吉林省松原市宁江区义乌城 {selectedSpace.name || selectedSpace.code}</strong></p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
-  );
+
+              {/* 步骤2：选择物业 */}
+              {selectedBase && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-medium">2</span>
+                    选择物业
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableMeters.map((meter) => {
+                      const availableSpaceCount = meter.spaces.filter(s => !s.isOccupied).length;
+                      return (
+                        <div
+                          key={meter.id}
+                          onClick={() => {
+                            if (selectedMeter?.id !== meter.id) {
+                              setSelectedMeter(meter);
+                              setSelectedSpace(null);
+                              setGeneratedRegNumber(null);
+                            }
+                          }}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedMeter?.id === meter.id
+                              ? "border-amber-500 bg-amber-50"
+                              : availableSpaceCount === 0
+                              ? "border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed"
+                              : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="font-medium">{meter.name || meter.code}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            编号：{meter.code}
+                            {meter.area && ` · 面积：${meter.area}㎡`}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant={availableSpaceCount > 0 ? "outline" : "secondary"} className="text-xs">
+                              {availableSpaceCount > 0 ? `${availableSpaceCount} 个可用空间` : "已满"}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 步骤3：选择物理空间 */}
+              {selectedMeter && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-medium">3</span>
+                    选择物理空间
+                  </Label>
+                  {availableSpaces.length === 0 ? (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>该物业暂无可用空间</AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {availableSpaces.map((space) => (
+                        <div
+                          key={space.id}
+                          onClick={() => {
+                            if (selectedSpace?.id !== space.id) {
+                              setSelectedSpace(space);
+                              setGeneratedRegNumber(null);
+                            }
+                          }}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedSpace?.id === space.id
+                              ? "border-emerald-500 bg-emerald-50"
+                              : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="font-medium">{space.name || space.code}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            编号：{space.code}
+                            {space.area && ` · 面积：${space.area}㎡`}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 步骤4：生成注册号 */}
+              {selectedSpace && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-sm font-medium">4</span>
+                    生成注册号
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={generateRegNumber}
+                      disabled={generatingReg || !!generatedRegNumber}
+                      className="gap-2"
+                    >
+                      {generatingReg ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          生成中...
+                        </>
+                      ) : generatedRegNumber ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          已生成
+                        </>
+                      ) : (
+                        <>
+                          生成注册号
+                        </>
+                      )}
+                    </Button>
+                    {generatedRegNumber && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">注册号：</span>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 text-base px-3 py-1">
+                          {generatedRegNumber.code}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 选中信息汇总 */}
+              {selectedSpace && generatedRegNumber && (
+                <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-700 dark:text-green-300">
+                    <div className="space-y-1">
+                      <p>基地：<strong>{selectedBase?.name}</strong></p>
+                      <p>物业：<strong>{selectedMeter?.name || selectedMeter?.code}</strong></p>
+                      <p>空间：<strong>{selectedSpace.name || selectedSpace.code}</strong></p>
+                      <p>注册号：<strong>{generatedRegNumber.code}</strong></p>
+                      <p>注册地址：<strong>吉林省松原市宁江区义乌城 {selectedMeter?.name} {selectedSpace.name}</strong></p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   // 步骤1（非入驻企业）/ 步骤2（入驻企业）：基本信息/工商办理
   const renderEnterpriseForm = () => (
