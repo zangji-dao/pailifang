@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Search,
   Plus,
   Eye,
   Send,
@@ -86,6 +87,7 @@ export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null); // 默认不选中，显示引导页
 
   // 分享相关状态
@@ -228,7 +230,13 @@ export default function ApplicationsPage() {
 
   // 过滤申请列表
   const filteredApplications = applications.filter((app) => {
-    return statusFilter === null || app.approvalStatus === statusFilter;
+    const matchStatus = statusFilter === null || app.approvalStatus === statusFilter;
+    const matchKeyword =
+      !searchKeyword ||
+      app.enterpriseName.includes(searchKeyword) ||
+      app.applicationNo.includes(searchKeyword) ||
+      (app.legalPersonName && app.legalPersonName.includes(searchKeyword));
+    return matchStatus && matchKeyword;
   });
 
   // 统计数据
@@ -373,6 +381,16 @@ export default function ApplicationsPage() {
                 {statusFilter === "approved" && "已通过申请"}
               </span>
               <span className="text-sm text-muted-foreground">({filteredApplications.length})</span>
+            </div>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="搜索企业名称、编号..."
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
           </div>
 

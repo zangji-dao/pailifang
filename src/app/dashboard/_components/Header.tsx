@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, X, Search, Bell, Settings, LogOut, Sparkles } from "lucide-react";
+import { Menu, X, Bell, Settings, LogOut, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -69,21 +69,6 @@ export function Header({ user, sidebarOpen, onToggleSidebar, onLogout }: HeaderP
               <h1 className="text-base font-semibold text-slate-900 tracking-tight">Π立方</h1>
               <p className="text-[10px] text-slate-400 leading-none -mt-0.5">企业服务中心</p>
             </div>
-          </div>
-        </div>
-
-        {/* 中间：搜索框 */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
-            <input
-              type="text"
-              placeholder="搜索客户、凭证、科目..."
-              className="w-full h-9 pl-9 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 focus:bg-white transition-all"
-            />
-            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 rounded">
-              ⌘K
-            </kbd>
           </div>
         </div>
 
