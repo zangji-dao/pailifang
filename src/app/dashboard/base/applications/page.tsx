@@ -629,10 +629,10 @@ export default function ApplicationsPage() {
     }
   };
 
-  // 新建企业
+  // 新建企业（跳转到企业管理的创建页面）
   const handleAssignRoom = (application: Application) => {
-    // TODO: 打开新建企业弹窗或跳转到新建企业页面
-    toast.info("新建企业功能开发中");
+    // 跳转到企业管理的创建页面，传递申请ID作为参数
+    router.push(`/dashboard/base/tenants/create?applicationId=${application.id}`);
   };
 
   // 转发分享

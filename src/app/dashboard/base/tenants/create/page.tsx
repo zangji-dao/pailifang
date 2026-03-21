@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Loader2,
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTabs } from "@/app/dashboard/tabs-context";
+import { toast } from "sonner";
 
 // 企业状态
 type EnterpriseStatus = "active" | "inactive" | "pending";
@@ -45,9 +46,11 @@ const INDUSTRIES = [
 
 export default function EnterpriseCreatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tabsContext = useTabs();
 
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -62,6 +65,52 @@ export default function EnterpriseCreatePage() {
     type: "tenant" as EnterpriseType,
     remarks: "",
   });
+
+  // 从入驻申请获取数据预填
+  const applicationId = searchParams.get("applicationId");
+
+  useEffect(() => {
+    if (applicationId) {
+      fetchApplicationData(applicationId);
+    }
+  }, [applicationId]);
+
+  const fetchApplicationData = async (id: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/applications/${id}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const app = result.data;
+        // 找到法人代表
+        const legalPerson = app.personnel?.find(
+          (p: any) => p.roles?.includes("legal_person")
+        );
+        
+        // 预填表单
+        setFormData({
+          name: app.enterpriseName || "",
+          creditCode: "", // 信用代码需要手动填写
+          legalPerson: legalPerson?.name || "",
+          phone: legalPerson?.phone || "",
+          registeredAddress: app.originalRegisteredAddress || "",
+          businessAddress: app.businessAddress || "",
+          industry: "", // 行业需要手动选择
+          settledDate: new Date().toISOString().split("T")[0],
+          status: "pending" as EnterpriseStatus,
+          type: "tenant" as EnterpriseType,
+          remarks: `来源：入驻申请 ${app.applicationNo}`,
+        });
+        toast.success("已从入驻申请预填企业信息");
+      }
+    } catch (err) {
+      console.error("获取入驻申请数据失败:", err);
+      toast.error("获取入驻申请数据失败");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 返回
   const handleBack = () => {
@@ -169,9 +218,22 @@ export default function EnterpriseCreatePage() {
       {/* 表单内容 */}
       <div className="flex-1 overflow-auto px-6 py-6">
         <div className="max-w-3xl mx-auto">
+          {loading && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-600 text-sm flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              正在从入驻申请加载数据...
+            </div>
+          )}
+          
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
+            </div>
+          )}
+
+          {applicationId && !loading && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+              📋 已从入驻申请预填企业信息，请补充完整后提交
             </div>
           )}
 
