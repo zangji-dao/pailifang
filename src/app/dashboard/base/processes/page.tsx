@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -10,6 +10,11 @@ import {
   XCircle,
   Eye,
   ArrowLeft,
+  Upload,
+  Image as ImageIcon,
+  Trash2,
+  Plus,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +33,13 @@ import { Textarea } from "@/components/ui/textarea";
 // 类型定义
 type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
 type ApplicationType = "new" | "migration";
+
+interface Attachment {
+  name: string;
+  url: string;
+  type?: string;
+  uploadedAt?: string;
+}
 
 interface Application {
   id: string;
@@ -49,6 +61,7 @@ interface Application {
   businessTerm: string | null;
   createdAt: string;
   status: string;
+  attachments?: Attachment[];
 }
 
 // 状态配置
@@ -67,6 +80,7 @@ const applicationTypeConfig: Record<ApplicationType, { label: string; className:
 export default function ApprovalPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +95,13 @@ export default function ApprovalPage() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingApp, setRejectingApp] = useState<Application | null>(null);
+
+  // 上传附件弹窗
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadingApp, setUploadingApp] = useState<Application | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -198,6 +219,86 @@ export default function ApprovalPage() {
       toast.error("驳回失败");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // 打开上传附件弹窗
+  const handleOpenUpload = (app: Application) => {
+    setUploadingApp(app);
+    setPreviewImages([]);
+    setSelectedFiles([]);
+    setUploadDialogOpen(true);
+  };
+
+  // 选择文件
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // 过滤只允许图片
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length !== files.length) {
+      toast.warning("只支持图片格式文件");
+    }
+
+    setSelectedFiles((prev) => [...prev, ...imageFiles]);
+
+    // 生成预览
+    imageFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewImages((prev) => [...prev, e.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // 清空 input 以便再次选择同一文件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // 移除预览图片
+  const handleRemovePreview = (index: number) => {
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // 上传附件
+  const handleUpload = async () => {
+    if (!uploadingApp || selectedFiles.length === 0) {
+      toast.error("请选择要上传的文件");
+      return;
+    }
+
+    try {
+      setUploadingFiles(true);
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      const response = await fetch(`/api/applications/${uploadingApp.id}/attachments`, {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(`成功上传 ${result.data.length} 个附件`);
+        setUploadDialogOpen(false);
+        setPreviewImages([]);
+        setSelectedFiles([]);
+        setUploadingApp(null);
+        fetchApplications();
+      } else {
+        toast.error(result.error || "上传失败");
+      }
+    } catch (err) {
+      console.error("上传失败:", err);
+      toast.error("上传失败");
+    } finally {
+      setUploadingFiles(false);
     }
   };
 
@@ -401,6 +502,15 @@ export default function ApprovalPage() {
                             <Eye className="h-3.5 w-3.5" />
                             查看
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenUpload(app)}
+                            className="gap-1"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            上传附件
+                          </Button>
                           {statusFilter === "pending" && (
                             <>
                               <Button
@@ -474,6 +584,86 @@ export default function ApprovalPage() {
             >
               {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               确认驳回
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 上传附件弹窗 */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>上传签字表扫描件</DialogTitle>
+            <DialogDescription>
+              请上传签字盖章后的申请表扫描件，支持多张图片上传。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {/* 选择文件按钮 */}
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-20 border-dashed"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                选择图片文件
+              </Button>
+            </div>
+
+            {/* 预览图片列表 */}
+            {previewImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {previewImages.map((src, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={src}
+                      alt={`预览 ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <button
+                      onClick={() => handleRemovePreview(index)}
+                      className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 提示信息 */}
+            <p className="text-xs text-muted-foreground">
+              支持 JPG、PNG 格式图片，建议上传清晰完整的扫描件。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUploadDialogOpen(false);
+                setPreviewImages([]);
+                setSelectedFiles([]);
+                setUploadingApp(null);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={uploadingFiles || selectedFiles.length === 0}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+            >
+              {uploadingFiles && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              上传 ({selectedFiles.length} 个文件)
             </Button>
           </DialogFooter>
         </DialogContent>
