@@ -279,58 +279,62 @@ export default function ApplicationsPage() {
           <button
             onClick={() => setStatusFilter(statusFilter === "draft" ? null : "draft")}
             className={cn(
-              "group flex items-center justify-between rounded-lg px-4 py-3 transition-all",
-              "hover:bg-muted/50",
-              statusFilter === "draft" && "bg-muted/50"
+              "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
+              statusFilter === "draft" 
+                ? "border-slate-400 bg-slate-50" 
+                : "border-border hover:border-slate-300 hover:bg-slate-50/50"
             )}
           >
-            <div className="text-left">
+            <div className="flex-1 text-left">
               <div className="text-sm text-muted-foreground">草稿</div>
-              <div className="text-2xl font-semibold mt-0.5 text-slate-700">{stats.draft}</div>
+              <div className="text-2xl font-semibold text-slate-700">{stats.draft}</div>
             </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+            <div className="text-xs text-muted-foreground hover:text-slate-600">查看 →</div>
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
             className={cn(
-              "group flex items-center justify-between rounded-lg px-4 py-3 transition-all",
-              "hover:bg-amber-50/50",
-              statusFilter === "pending" && "bg-amber-50/50"
+              "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
+              statusFilter === "pending" 
+                ? "border-amber-400 bg-amber-50" 
+                : "border-border hover:border-amber-300 hover:bg-amber-50/50"
             )}
           >
-            <div className="text-left">
+            <div className="flex-1 text-left">
               <div className="text-sm text-amber-600">待审批</div>
-              <div className="text-2xl font-semibold mt-0.5 text-amber-600">{stats.pending}</div>
+              <div className="text-2xl font-semibold text-amber-600">{stats.pending}</div>
             </div>
-            <ChevronRight className="h-5 w-5 text-amber-400/50 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500" />
+            <div className="text-xs text-amber-500 hover:text-amber-600">查看 →</div>
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "rejected" ? null : "rejected")}
             className={cn(
-              "group flex items-center justify-between rounded-lg px-4 py-3 transition-all",
-              "hover:bg-red-50/50",
-              statusFilter === "rejected" && "bg-red-50/50"
+              "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
+              statusFilter === "rejected" 
+                ? "border-red-400 bg-red-50" 
+                : "border-border hover:border-red-300 hover:bg-red-50/50"
             )}
           >
-            <div className="text-left">
+            <div className="flex-1 text-left">
               <div className="text-sm text-muted-foreground">已驳回</div>
-              <div className="text-2xl font-semibold mt-0.5 text-red-600">{stats.rejected}</div>
+              <div className="text-2xl font-semibold text-red-600">{stats.rejected}</div>
             </div>
-            <ChevronRight className="h-5 w-5 text-red-400/50 transition-transform group-hover:translate-x-0.5 group-hover:text-red-500" />
+            <div className="text-xs text-red-500 hover:text-red-600">查看 →</div>
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "approved" ? null : "approved")}
             className={cn(
-              "group flex items-center justify-between rounded-lg px-4 py-3 transition-all",
-              "hover:bg-emerald-50/50",
-              statusFilter === "approved" && "bg-emerald-50/50"
+              "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
+              statusFilter === "approved" 
+                ? "border-emerald-400 bg-emerald-50" 
+                : "border-border hover:border-emerald-300 hover:bg-emerald-50/50"
             )}
           >
-            <div className="text-left">
+            <div className="flex-1 text-left">
               <div className="text-sm text-muted-foreground">已通过</div>
-              <div className="text-2xl font-semibold mt-0.5 text-emerald-600">{stats.approved}</div>
+              <div className="text-2xl font-semibold text-emerald-600">{stats.approved}</div>
             </div>
-            <ChevronRight className="h-5 w-5 text-emerald-400/50 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500" />
+            <div className="text-xs text-emerald-500 hover:text-emerald-600">查看 →</div>
           </button>
         </div>
       </div>
