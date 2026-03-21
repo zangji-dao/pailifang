@@ -161,7 +161,7 @@ export default function AddressManagementPage() {
         sum +
         b.meters.reduce(
           (s, m) =>
-            s + m.spaces.reduce((rs, sp) => rs + sp.regNumbers.length, 0),
+            s + m.spaces.reduce((rs, sp) => rs + (sp.regNumbers?.length || 0), 0),
           0
         ),
       0
@@ -174,7 +174,7 @@ export default function AddressManagementPage() {
             s +
             m.spaces.reduce(
               (rs, sp) =>
-                rs + sp.regNumbers.filter((r) => r.available).length,
+                rs + (sp.regNumbers?.filter((r) => r.available).length || 0),
               0
             ),
           0
@@ -414,8 +414,8 @@ export default function AddressManagementPage() {
 
                                   {/* 注册号区域 */}
                                   <div className="flex items-center gap-2">
-                                    {space.regNumbers.length > 0 ? (
-                                      space.regNumbers.map((reg) => (
+                                    {(space.regNumbers?.length || 0) > 0 ? (
+                                      space.regNumbers?.map((reg) => (
                                         <Badge
                                           key={reg.id}
                                           variant="outline"
