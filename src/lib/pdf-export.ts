@@ -13,13 +13,15 @@ const taxTypeMap: Record<string, string> = {
   small_scale: "小规模纳税人",
 };
 
-// 职务映射
+// 职务映射（匹配数据库存储的下划线格式）
 const roleMap: Record<string, string> = {
-  legalPerson: "法定代表人",
+  legal_person: "法人代表",
   supervisor: "监事",
+  finance_manager: "财务负责人",
+  ewt_contact: "e窗通登录联系人",
+  // 兼容驼峰格式
+  legalPerson: "法人代表",
   finance: "财务负责人",
-  contact: "企业联系人",
-  agent: "经办人",
 };
 
 // 股东类型映射
