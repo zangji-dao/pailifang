@@ -4,157 +4,185 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Search,
-  Plus,
-  MapPin,
-  Eye,
-  Edit,
-  Trash2,
-  Loader2,
-  AlertCircle,
   Building2,
-  User,
+  Home,
+  DoorOpen,
+  Hash,
+  Plus,
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Building,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 类型定义
-type AddressStatus = "available" | "reserved" | "assigned";
-
-interface Address {
+interface RegNumber {
   id: string;
   code: string;
-  fullAddress: string;
-  building: string | null;
-  floor: string | null;
-  room: string | null;
-  area: string | null;
-  status: AddressStatus;
-  enterpriseId: string | null;
-  enterpriseName: string | null;
-  assignedAt: string | null;
-  remarks: string | null;
-  createdAt: string;
+  available: boolean;
+  enterprise_id: string | null;
 }
 
-// 状态配置
-const statusConfig: Record<AddressStatus, { label: string; className: string }> = {
-  available: { label: "可用", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  reserved: { label: "预留", className: "bg-amber-50 text-amber-600 border-amber-200" },
-  assigned: { label: "已分配", className: "bg-gray-50 text-gray-600 border-gray-200" },
-};
+interface Space {
+  id: string;
+  code: string;
+  name: string;
+  area: number | null;
+  status: string;
+  isOccupied: boolean;
+  regNumbers: RegNumber[];
+}
 
-export default function AddressesPage() {
+interface Meter {
+  id: string;
+  code: string;
+  name: string;
+  area: number | null;
+  status: string;
+  spaces: Space[];
+}
+
+interface Base {
+  id: string;
+  name: string;
+  address: string | null;
+  status: string;
+  meters: Meter[];
+}
+
+export default function AddressManagementPage() {
   const router = useRouter();
-  const tabsContext = useTabs();
-
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [cascadeData, setCascadeData] = useState<Base[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [expandedBases, setExpandedBases] = useState<Set<string>>(new Set());
+  const [expandedMeters, setExpandedMeters] = useState<Set<string>>(new Set());
+  const [generatingReg, setGeneratingReg] = useState<string | null>(null);
 
-  // 获取地址列表
-  useEffect(() => {
-    const fetchAddresses = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/settlement/addresses");
-        if (!response.ok) {
-          throw new Error("获取地址列表失败");
-        }
-        const result = await response.json();
-        setAddresses(result.data || []);
-        setError(null);
-      } catch (err) {
-        console.error("获取地址列表失败:", err);
-        setError(err instanceof Error ? err.message : "获取地址列表失败");
-      } finally {
-        setLoading(false);
+  // 获取级联数据
+  const fetchCascadeData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/bases/cascade");
+      const result = await res.json();
+      if (result.success) {
+        setCascadeData(result.data || []);
+      } else {
+        toast.error("获取数据失败");
       }
-    };
+    } catch (error) {
+      console.error("获取级联数据失败:", error);
+      toast.error("获取数据失败");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchAddresses();
+  useEffect(() => {
+    fetchCascadeData();
   }, []);
 
-  // 过滤地址列表
-  const filteredAddresses = addresses.filter((a) => {
-    const matchSearch =
-      !searchKeyword ||
-      a.code.includes(searchKeyword) ||
-      a.fullAddress.includes(searchKeyword) ||
-      (a.building && a.building.includes(searchKeyword));
-    const matchStatus = statusFilter === "all" || a.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  // 展开/折叠基地
+  const toggleBase = (baseId: string) => {
+    setExpandedBases((prev) => {
+      const next = new Set(prev);
+      if (next.has(baseId)) {
+        next.delete(baseId);
+      } else {
+        next.add(baseId);
+      }
+      return next;
+    });
+  };
+
+  // 展开/折叠物业
+  const toggleMeter = (meterId: string) => {
+    setExpandedMeters((prev) => {
+      const next = new Set(prev);
+      if (next.has(meterId)) {
+        next.delete(meterId);
+      } else {
+        next.add(meterId);
+      }
+      return next;
+    });
+  };
+
+  // 生成注册号
+  const generateRegNumber = async (spaceId: string) => {
+    setGeneratingReg(spaceId);
+    try {
+      const res = await fetch("/api/registration-numbers/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ space_id: spaceId }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(`注册号 ${result.data.code} 生成成功`);
+        // 刷新数据
+        fetchCascadeData();
+      } else {
+        toast.error(result.error || "生成失败");
+      }
+    } catch (error) {
+      console.error("生成注册号失败:", error);
+      toast.error("生成注册号失败");
+    } finally {
+      setGeneratingReg(null);
+    }
+  };
 
   // 统计数据
   const stats = {
-    total: addresses.length,
-    available: addresses.filter((a) => a.status === "available").length,
-    reserved: addresses.filter((a) => a.status === "reserved").length,
-    assigned: addresses.filter((a) => a.status === "assigned").length,
+    totalBases: cascadeData.length,
+    totalMeters: cascadeData.reduce((sum, b) => sum + b.meters.length, 0),
+    totalSpaces: cascadeData.reduce(
+      (sum, b) => sum + b.meters.reduce((s, m) => s + m.spaces.length, 0),
+      0
+    ),
+    availableSpaces: cascadeData.reduce(
+      (sum, b) =>
+        sum +
+        b.meters.reduce(
+          (s, m) => s + m.spaces.filter((sp) => !sp.isOccupied).length,
+          0
+        ),
+      0
+    ),
+    totalRegNumbers: cascadeData.reduce(
+      (sum, b) =>
+        sum +
+        b.meters.reduce(
+          (s, m) =>
+            s + m.spaces.reduce((rs, sp) => rs + sp.regNumbers.length, 0),
+          0
+        ),
+      0
+    ),
+    availableRegNumbers: cascadeData.reduce(
+      (sum, b) =>
+        sum +
+        b.meters.reduce(
+          (s, m) =>
+            s +
+            m.spaces.reduce(
+              (rs, sp) =>
+                rs + sp.regNumbers.filter((r) => r.available).length,
+              0
+            ),
+          0
+        ),
+      0
+    ),
   };
 
-  // 打开新增地址标签页
-  const handleAdd = () => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: "address-create",
-        label: "新增地址",
-        path: "/dashboard/base/addresses/create",
-      });
-    } else {
-      router.push("/dashboard/base/addresses/create");
-    }
-  };
-
-  // 打开地址详情标签页
-  const handleView = (address: Address) => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: `address-${address.id}`,
-        label: address.code,
-        path: `/dashboard/base/addresses/${address.id}`,
-      });
-    } else {
-      router.push(`/dashboard/base/addresses/${address.id}`);
-    }
-  };
-
-  // 删除地址
-  const handleDelete = async (address: Address) => {
-    if (!confirm(`确定要删除地址「${address.code}」吗？`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/settlement/addresses/${address.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "删除失败");
-      }
-
-      setAddresses((prev) => prev.filter((a) => a.id !== address.id));
-    } catch (err) {
-      console.error("删除失败:", err);
-      toast.error(err instanceof Error ? err.message : "删除失败");
-    }
-  };
-
-  // 加载状态
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -164,227 +192,282 @@ export default function AddressesPage() {
     );
   }
 
-  // 错误状态
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-        <p className="text-red-600 mb-4">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          重新加载
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white">
-      {/* 操作栏 */}
-      <div className="bg-white border-b border-slate-100 px-6 py-4">
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-            onClick={handleAdd}
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            新增地址
-          </Button>
+    <div className="space-y-6">
+      {/* 页面标题 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">地址管理</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            管理基地、物业、物理空间和注册号
+          </p>
         </div>
+        <Button variant="outline" size="sm" onClick={fetchCascadeData}>
+          <RefreshCw className="h-4 w-4 mr-1.5" />
+          刷新
+        </Button>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-4 gap-4 px-6 py-4">
-        <div className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">地址总数</p>
-              <p className="text-2xl font-semibold text-slate-900 mt-1">{stats.total}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">基地</p>
+                <p className="text-2xl font-semibold">{stats.totalBases}</p>
+              </div>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-slate-500" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Home className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">物业</p>
+                <p className="text-2xl font-semibold">{stats.totalMeters}</p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-emerald-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-emerald-600">可用</p>
-              <p className="text-2xl font-semibold text-emerald-700 mt-1">{stats.available}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <DoorOpen className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">物理空间</p>
+                <p className="text-2xl font-semibold">{stats.totalSpaces}</p>
+              </div>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-emerald-500" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm text-green-600">可用空间</p>
+                <p className="text-2xl font-semibold text-green-600">
+                  {stats.availableSpaces}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-amber-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-amber-600">预留</p>
-              <p className="text-2xl font-semibold text-amber-700 mt-1">{stats.reserved}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                <Hash className="h-5 w-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">注册号</p>
+                <p className="text-2xl font-semibold">{stats.totalRegNumbers}</p>
+              </div>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-amber-500" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
+                <Hash className="h-5 w-5 text-violet-500" />
+              </div>
+              <div>
+                <p className="text-sm text-violet-600">可用注册号</p>
+                <p className="text-2xl font-semibold text-violet-600">
+                  {stats.availableRegNumbers}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">已分配</p>
-              <p className="text-2xl font-semibold text-gray-700 mt-1">{stats.assigned}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-gray-500" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 搜索和筛选 */}
-      <div className="px-6 py-3 flex items-center gap-3 border-b border-slate-100 bg-white">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="搜索地址编码、地址、楼宇..."
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100"
-          />
-        </div>
-
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-32 h-9 text-sm">
-            <SelectValue placeholder="状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="available">可用</SelectItem>
-            <SelectItem value="reserved">预留</SelectItem>
-            <SelectItem value="assigned">已分配</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 地址列表 */}
-      <div className="flex-1 overflow-auto px-6 py-4">
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-100">
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  地址编码
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  完整地址
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  楼宇/楼层/房间
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">面积</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">状态</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500">
-                  分配企业
-                </th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-slate-500">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAddresses.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
-                    <MapPin className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                    <p>暂无地址数据</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredAddresses.map((address) => (
-                  <tr
-                    key={address.id}
-                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+      {/* 层级树 */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">地址层级</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cascadeData.length === 0 ? (
+            <div className="text-center py-12">
+              <Building className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">暂无地址数据</p>
+              <p className="text-sm text-slate-400 mt-1">
+                请先在基地列表中添加基地和物业
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {cascadeData.map((base) => (
+                <div key={base.id} className="border rounded-lg">
+                  {/* 基地层级 */}
+                  <div
+                    className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-50"
+                    onClick={() => toggleBase(base.id)}
                   >
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-slate-900 font-mono">
-                        {address.code}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600 max-w-xs truncate">
-                      {address.fullAddress}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {address.building || address.floor || address.room ? (
-                        <span>
-                          {[address.building, address.floor, address.room]
-                            .filter(Boolean)
-                            .join(" / ")}
+                    <div className="flex items-center gap-2">
+                      {expandedBases.has(base.id) ? (
+                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                      )}
+                      <Building2 className="h-5 w-5 text-blue-500" />
+                      <span className="font-medium">{base.name}</span>
+                      {base.address && (
+                        <span className="text-sm text-slate-500">
+                          · {base.address}
                         </span>
-                      ) : (
-                        "-"
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {address.area ? `${address.area}㎡` : "-"}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs font-medium",
-                          statusConfig[address.status].className
-                        )}
-                      >
-                        {statusConfig[address.status].label}
+                      <Badge variant="secondary" className="ml-2">
+                        {base.meters.length} 物业
                       </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      {address.enterpriseName ? (
-                        <div className="flex items-center gap-1">
-                          <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-sm text-slate-600">{address.enterpriseName}</span>
-                        </div>
-                      ) : (
-                        "-"
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        base.status === "active"
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                          : "bg-slate-50 text-slate-500"
                       )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
-                          onClick={() => handleView(address)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {address.status !== "assigned" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-amber-600"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
-                              onClick={() => handleDelete(address)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    >
+                      {base.status === "active" ? "运营中" : "已停用"}
+                    </Badge>
+                  </div>
+
+                  {/* 物业层级 */}
+                  {expandedBases.has(base.id) && (
+                    <div className="ml-6 border-l-2 border-slate-100 pl-2 py-1">
+                      {base.meters.map((meter) => (
+                        <div key={meter.id} className="mb-1">
+                          <div
+                            className="flex items-center justify-between p-2 cursor-pointer hover:bg-slate-50 rounded"
+                            onClick={() => toggleMeter(meter.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              {expandedMeters.has(meter.id) ? (
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-slate-400" />
+                              )}
+                              <Home className="h-4 w-4 text-amber-500" />
+                              <span className="font-medium">
+                                {meter.name || meter.code}
+                              </span>
+                              <span className="text-sm text-slate-500">
+                                ({meter.code})
+                              </span>
+                              {meter.area && (
+                                <span className="text-sm text-slate-500">
+                                  · {meter.area}㎡
+                                </span>
+                              )}
+                              <Badge variant="secondary" className="ml-1">
+                                {meter.spaces.length} 空间
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* 物理空间层级 */}
+                          {expandedMeters.has(meter.id) && (
+                            <div className="ml-6 border-l-2 border-slate-100 pl-2 py-1">
+                              {meter.spaces.map((space) => (
+                                <div
+                                  key={space.id}
+                                  className="flex items-center justify-between p-2 hover:bg-slate-50 rounded"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <DoorOpen className="h-4 w-4 text-emerald-500" />
+                                    <span>{space.name || space.code}</span>
+                                    {space.area && (
+                                      <span className="text-sm text-slate-500">
+                                        · {space.area}㎡
+                                      </span>
+                                    )}
+                                    {space.isOccupied ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-slate-50 text-slate-500"
+                                      >
+                                        已占用
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-green-50 text-green-600 border-green-200"
+                                      >
+                                        可用
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  {/* 注册号区域 */}
+                                  <div className="flex items-center gap-2">
+                                    {space.regNumbers.length > 0 ? (
+                                      space.regNumbers.map((reg) => (
+                                        <Badge
+                                          key={reg.id}
+                                          variant="outline"
+                                          className={cn(
+                                            reg.available
+                                              ? "bg-violet-50 text-violet-600 border-violet-200"
+                                              : "bg-slate-50 text-slate-500"
+                                          )}
+                                        >
+                                          <Hash className="h-3 w-3 mr-1" />
+                                          {reg.code}
+                                          {reg.available ? " (可用)" : " (已分配)"}
+                                        </Badge>
+                                      ))
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          generateRegNumber(space.id);
+                                        }}
+                                        disabled={generatingReg === space.id}
+                                      >
+                                        {generatingReg === space.id ? (
+                                          <>
+                                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                            生成中...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            生成注册号
+                                          </>
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
