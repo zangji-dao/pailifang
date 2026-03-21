@@ -96,6 +96,12 @@ export default function ApprovalPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingApp, setRejectingApp] = useState<Application | null>(null);
 
+  // 审批确认弹窗
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approvingApp, setApprovingApp] = useState<Application | null>(null);
+  const [checkingAttachments, setCheckingAttachments] = useState(false);
+  const [approveAttachments, setApproveAttachments] = useState<Attachment[]>([]);
+
   // 上传附件弹窗
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadingApp, setUploadingApp] = useState<Application | null>(null);
@@ -160,11 +166,34 @@ export default function ApprovalPage() {
     router.push(`/dashboard/base/applications/${app.id}?from=approval&status=${statusFilter}`);
   };
 
-  // 审批通过
-  const handleApprove = async (app: Application) => {
+  // 打开审批确认弹窗
+  const handleOpenApprove = async (app: Application) => {
+    setApprovingApp(app);
+    setApproveAttachments([]);
+    setApproveDialogOpen(true);
+
+    // 加载附件信息
+    setCheckingAttachments(true);
+    try {
+      const response = await fetch(`/api/applications/${app.id}/attachments`);
+      const result = await response.json();
+      if (result.success) {
+        setApproveAttachments(result.data || []);
+      }
+    } catch (err) {
+      console.error("加载附件失败:", err);
+    } finally {
+      setCheckingAttachments(false);
+    }
+  };
+
+  // 确认审批通过
+  const handleConfirmApprove = async () => {
+    if (!approvingApp) return;
+
     try {
       setActionLoading(true);
-      const response = await fetch(`/api/applications/${app.id}/approve`, {
+      const response = await fetch(`/api/applications/${approvingApp.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -173,6 +202,8 @@ export default function ApprovalPage() {
 
       if (result.success) {
         toast.success("审批通过");
+        setApproveDialogOpen(false);
+        setApprovingApp(null);
         fetchApplications();
       } else {
         toast.error(result.error || "审批失败");
@@ -564,7 +595,7 @@ export default function ApprovalPage() {
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => handleApprove(app)}
+                                onClick={() => handleOpenApprove(app)}
                                 disabled={actionLoading}
                                 className="gap-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                               >
@@ -624,6 +655,92 @@ export default function ApprovalPage() {
             >
               {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               确认驳回
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 审批确认弹窗 */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认审批通过</DialogTitle>
+            <DialogDescription>
+              请确认已上传签字表扫描件，审批通过后将无法修改。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {/* 申请信息 */}
+            {approvingApp && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">申请编号</span>
+                  <span className="font-mono">{approvingApp.applicationNo}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">企业名称</span>
+                  <span>{approvingApp.enterpriseName || "-"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">法人代表</span>
+                  <span>{approvingApp.legalPersonName || "-"}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 附件检查 */}
+            <div>
+              <h4 className="text-sm font-medium mb-2">附件确认</h4>
+              {checkingAttachments ? (
+                <div className="flex items-center justify-center py-4 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  检查附件中...
+                </div>
+              ) : approveAttachments.length > 0 ? (
+                <div className="border rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-sm text-emerald-600 mb-2">
+                    <CheckCircle className="h-4 w-4" />
+                    已上传 {approveAttachments.length} 个附件
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {approveAttachments.map((att, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <ImageIcon className="h-3 w-3" />
+                        {att.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-destructive/50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    暂未上传附件
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    建议上传签字表扫描件后再审批通过
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setApproveDialogOpen(false);
+                setApprovingApp(null);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleConfirmApprove}
+              disabled={actionLoading}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+            >
+              {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              确认通过
             </Button>
           </DialogFooter>
         </DialogContent>
