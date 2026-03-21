@@ -165,10 +165,40 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { key } = await request.json();
     
-    if (!key) {
+    // 从查询参数或请求体获取文件名
+    const url = new URL(request.url);
+    let fileName = url.searchParams.get("name");
+    
+    if (!fileName) {
+      // 尝试从请求体获取
+      try {
+        const body = await request.json();
+        fileName = body.name || body.key;
+      } catch {
+        // ignore
+      }
+    }
+    
+    if (!fileName) {
       return NextResponse.json({ error: "缺少文件标识" }, { status: 400 });
+    }
+    
+    // 从数据库中获取现有附件
+    const { getSupabaseClient } = await import("@/storage/database/supabase-client");
+    const client = getSupabaseClient();
+    
+    const { data: existing } = await client
+      .from("pi_settlement_applications")
+      .select("attachments")
+      .eq("id", id)
+      .single();
+    
+    const existingAttachments = (existing?.attachments || []) as Array<{ name: string; url: string }>;
+    const attachmentToDelete = existingAttachments.find((a) => a.name === fileName);
+    
+    if (!attachmentToDelete) {
+      return NextResponse.json({ error: "附件不存在" }, { status: 404 });
     }
     
     // 删除存储中的文件
@@ -180,22 +210,18 @@ export async function DELETE(
       region: "cn-beijing",
     });
     
-    await storage.deleteFile({ fileKey: key });
+    // 删除对象存储中的文件
+    if (attachmentToDelete.url && !attachmentToDelete.url.startsWith("http")) {
+      try {
+        await storage.deleteFile({ fileKey: attachmentToDelete.url });
+      } catch (err) {
+        console.error("删除存储文件失败:", err);
+        // 继续删除数据库记录
+      }
+    }
     
     // 从数据库中移除附件记录
-    const { getSupabaseClient } = await import("@/storage/database/supabase-client");
-    const client = getSupabaseClient();
-    
-    const { data: existing } = await client
-      .from("pi_settlement_applications")
-      .select("attachments")
-      .eq("id", id)
-      .single();
-    
-    const existingAttachments = existing?.attachments || [];
-    const newAttachments = existingAttachments.filter(
-      (a: { url: string }) => a.url !== key
-    );
+    const newAttachments = existingAttachments.filter((a) => a.name !== fileName);
     
     await client
       .from("pi_settlement_applications")

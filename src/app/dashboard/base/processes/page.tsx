@@ -109,7 +109,7 @@ export default function ApprovalPage() {
   const fetchApplications = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/settlement/applications");
+      const response = await fetch("/api/applications/list");
       if (!response.ok) {
         throw new Error("获取申请列表失败");
       }
