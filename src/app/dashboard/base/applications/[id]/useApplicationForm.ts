@@ -684,9 +684,15 @@ export function useApplicationForm(id: string) {
       if (status === "pending") {
         setSuccess(true);
         toast.success("提交成功");
-        router.push("/dashboard/base/applications");
+        // 返回时带上来源状态参数
+        const from = searchParams.get("from");
+        const returnUrl = from 
+          ? `/dashboard/base/applications?from=${from}` 
+          : "/dashboard/base/applications";
+        router.push(returnUrl);
       } else {
         setSuccess(true);
+        toast.success("保存成功");
       }
     } catch (error) {
       console.error("操作失败:", error);
@@ -694,7 +700,7 @@ export function useApplicationForm(id: string) {
     } finally {
       setSubmitting(false);
     }
-  }, [id, formData, validateForm, router]);
+  }, [id, formData, validateForm, router, searchParams]);
 
   // 计算属性：草稿和驳回状态可编辑
   const canEdit = formData?.approvalStatus === "draft" || formData?.approvalStatus === "rejected";
