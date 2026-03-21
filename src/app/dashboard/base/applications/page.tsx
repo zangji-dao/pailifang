@@ -18,6 +18,8 @@ import {
   Download,
   Printer,
   DoorOpen,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -732,56 +734,60 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "draft" 
-                    ? "border-primary bg-primary/10" 
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    ? "border-slate-400 bg-slate-50" 
+                    : "border-border hover:border-slate-300 hover:bg-slate-50/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">草稿</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "draft" ? "text-primary" : "text-foreground")}>{stats.draft}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "draft" ? "text-slate-600" : "text-foreground")}>{stats.draft}</div>
                 </div>
+                <div className="w-2 h-2 rounded-full bg-slate-400" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "pending" 
-                    ? "border-primary bg-primary/10" 
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    ? "border-amber-500 bg-amber-50" 
+                    : "border-border hover:border-amber-300 hover:bg-amber-50/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">待审批</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "pending" ? "text-primary" : "text-foreground")}>{stats.pending}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "pending" ? "text-amber-600" : "text-foreground")}>{stats.pending}</div>
                 </div>
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "rejected" ? null : "rejected")}
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "rejected" 
-                    ? "border-primary bg-primary/10" 
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    ? "border-red-500 bg-red-50" 
+                    : "border-border hover:border-red-300 hover:bg-red-50/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已驳回</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "rejected" ? "text-primary" : "text-foreground")}>{stats.rejected}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "rejected" ? "text-red-600" : "text-foreground")}>{stats.rejected}</div>
                 </div>
+                <XCircle className="w-4 h-4 text-red-400" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "approved" ? null : "approved")}
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "approved" 
-                    ? "border-primary bg-primary/10" 
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    ? "border-emerald-500 bg-emerald-50" 
+                    : "border-border hover:border-emerald-300 hover:bg-emerald-50/50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已通过</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "approved" ? "text-primary" : "text-foreground")}>{stats.approved}</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "approved" ? "text-emerald-600" : "text-foreground")}>{stats.approved}</div>
                 </div>
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
               </button>
             </div>
           </div>
