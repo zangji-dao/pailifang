@@ -140,12 +140,6 @@ export default async function PrintPage({ params }: Params) {
             gap: 10px 30px;
           }
           
-          .grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px 20px;
-          }
-          
           table {
             width: 100%;
             border-collapse: collapse;
@@ -190,14 +184,6 @@ export default async function PrintPage({ params }: Params) {
           @media print {
             body {
               padding: 20px;
-            }
-            
-            .page {
-              page-break-after: always;
-            }
-            
-            .page:last-child {
-              page-break-after: auto;
             }
           }
         ` }} />
@@ -430,7 +416,6 @@ export default async function PrintPage({ params }: Params) {
         {/* 自动打印脚本 */}
         <script dangerouslySetInnerHTML={{ __html: `
           window.onload = function() {
-            // 检查 URL 是否带有 print 参数
             if (window.location.search.includes('auto=1')) {
               setTimeout(function() {
                 window.print();

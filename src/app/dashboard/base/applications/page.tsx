@@ -210,12 +210,12 @@ export default function ApplicationsPage() {
 
   // 导出申请（打开打印页面，用户可保存为PDF）
   const handleExport = (application: Application) => {
-    window.open(`/dashboard/base/applications/${application.id}/print`, "_blank");
+    window.open(`/print/application/${application.id}`, "_blank");
   };
 
   // 打印申请（打开打印页面并自动触发打印）
   const handlePrint = (application: Application) => {
-    window.open(`/dashboard/base/applications/${application.id}/print?auto=1`, "_blank");
+    window.open(`/print/application/${application.id}?auto=1`, "_blank");
   };
 
   // 分配房间
