@@ -262,22 +262,29 @@ export default function AddressManagementPage() {
   // 获取显示的注册号（优先人工编号）
   const getDisplayCode = (reg: RegNumber) => reg.manual_code || reg.code;
 
-  // 获取地址显示名称（格式：区+小区+物业+空间，如"宁江区义乌城小区1号楼106-A-3号"）
+  // 获取地址显示名称
+  // 格式：松原市宁江区建华路义乌城小区1号楼XXX号（XXX是注册号）
   const getAddressName = (reg: RegNumber) => {
     const space = reg.space;
     const meter = space?.meter;
     const base = meter?.base;
     
-    // 从基地地址提取区后面的部分
-    const baseAddress = base?.address || '';
-    const areaMatch = baseAddress.match(/区(.+)/);
-    const areaPart = areaMatch ? areaMatch[1].trim() : '';
+    // 从基地地址提取完整信息
+    const baseAddress = base?.address || ''; // 如：吉林省松原市宁江区建华路义乌城
     
-    const meterPart = meter?.name || meter?.code || '';
-    const spacePart = space?.name || space?.code || '';
+    // 去掉省份前缀
+    const addressWithoutProvince = baseAddress.replace(/^.+省/, '');
     
-    // 格式：义乌城小区1号楼106-A-3号
-    return `${areaPart}小区${meterPart}${spacePart}`;
+    // 显示编号（优先人工编号）
+    const displayCode = reg.manual_code || reg.code;
+    
+    // 物业名如"1号楼106室"，提取"1号楼"
+    const meterName = meter?.name || meter?.code || '';
+    const buildingMatch = meterName.match(/(\d+号楼)/);
+    const buildingPart = buildingMatch ? buildingMatch[1] : meterName;
+    
+    // 格式：松原市宁江区建华路义乌城小区1号楼XXX号
+    return `${addressWithoutProvince}小区${buildingPart}${displayCode}号`;
   };
 
   // 格式化日期

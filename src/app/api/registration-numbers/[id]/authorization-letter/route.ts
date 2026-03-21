@@ -56,34 +56,22 @@ export async function GET(
     }
 
     // 解析地址（从基地地址中提取市、区、详细地址）
-    // 基地地址格式：吉林省松原市宁江区义乌城
+    // 基地地址格式：吉林省松原市宁江区建华路义乌城
     const baseAddress = base?.address || '';
-    let city = '';
-    let district = '';
-    let detailAddr = '';
     
-    // 解析市：匹配"XX市"，去掉省份前缀
-    const cityMatch = baseAddress.match(/省?(.+?市)/);
-    if (cityMatch) {
-      city = cityMatch[1].replace('市', '').replace(/^.+省/, '');
-    }
+    // 去掉省份前缀
+    const addressWithoutProvince = baseAddress.replace(/^.+省/, '');
     
-    // 解析区：匹配"XX区"
-    const districtMatch = baseAddress.match(/市(.+?区)/);
-    if (districtMatch) {
-      district = districtMatch[1].replace('区', '');
-    }
-    
-    // 详细地址：区后面的部分 + 小区 + 物业 + 空间编号
-    const areaPart = baseAddress.match(/区(.+)/) ? baseAddress.match(/区(.+)/)[1].trim() : '';
-    const meterPart = meter?.name || meter?.code || '';
-    const spacePart = space?.name || space?.code || '';
-    // 格式：义乌城小区1号楼106-A-3号
-    // 物业名如"1号楼102室"，空间名如"1-106-A-3"
-    detailAddr = `${areaPart}小区${meterPart}${spacePart}`;
-
     // 显示编号（优先人工编号）
     const displayCode = regNumber.manual_code || regNumber.code;
+    
+    // 物业名如"1号楼106室"，提取"1号楼"
+    const meterName = meter?.name || meter?.code || '';
+    const buildingMatch = meterName.match(/(\d+号楼)/);
+    const buildingPart = buildingMatch ? buildingMatch[1] : meterName;
+    
+    // 格式：松原市宁江区建华路义乌城小区1号楼XXX号
+    const detailAddr = `${addressWithoutProvince}小区${buildingPart}${displayCode}号`;
 
     // 格式化日期
     const date = new Date(regNumber.created_at);
@@ -145,7 +133,7 @@ export async function GET(
 <body>
   <div class="title">房屋产权证明</div>
   <div class="content">
-    <p>兹证明，位于<span class="blank">${city}</span>市 <span class="blank">${district}</span>区${detailAddr}的房屋，其所有权属于<span class="blank">${regNumber.property_owner || '__________'}</span>，管理权归<span class="blank">${regNumber.management_company || '__________'}</span>所有，现已将该房屋无偿租赁给<span class="blank">${displayCode}</span>作为经营场所使用，该房屋无单独房照，符合国家安全标准，不属于拆迁范围。</p>
+    <p>兹证明，位于${detailAddr}的房屋，其所有权属于<span class="blank">${regNumber.property_owner || '__________'}</span>，管理权归<span class="blank">${regNumber.management_company || '__________'}</span>所有，现已将该房屋无偿租赁给<span class="blank">${displayCode}</span>作为经营场所使用，该房屋无单独房照，符合国家安全标准，不属于拆迁范围。</p>
     <p style="margin-top: 20px;">特此证明。</p>
   </div>
   <div class="footer">
