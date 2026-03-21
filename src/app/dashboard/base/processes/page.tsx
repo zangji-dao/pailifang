@@ -101,6 +101,9 @@ export default function ApprovalPage() {
   const [uploadingApp, setUploadingApp] = useState<Application | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<Attachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [deletingAttachment, setDeletingAttachment] = useState<string | null>(null);
 
   // 获取申请列表
   const fetchApplications = async () => {
@@ -222,10 +225,25 @@ export default function ApprovalPage() {
   };
 
   // 打开上传附件弹窗
-  const handleOpenUpload = (app: Application) => {
+  const handleOpenUpload = async (app: Application) => {
     setUploadingApp(app);
     setSelectedFiles([]);
+    setExistingAttachments([]);
     setUploadDialogOpen(true);
+
+    // 加载已有附件
+    setLoadingAttachments(true);
+    try {
+      const response = await fetch(`/api/applications/${app.id}/attachments`);
+      const result = await response.json();
+      if (result.success) {
+        setExistingAttachments(result.data || []);
+      }
+    } catch (err) {
+      console.error("加载附件失败:", err);
+    } finally {
+      setLoadingAttachments(false);
+    }
   };
 
   // 选择文件
@@ -274,9 +292,9 @@ export default function ApprovalPage() {
 
       if (result.success) {
         toast.success(`成功上传 ${result.data.length} 个附件`);
-        setUploadDialogOpen(false);
         setSelectedFiles([]);
-        setUploadingApp(null);
+        // 更新已有附件列表
+        setExistingAttachments((prev) => [...prev, ...result.data]);
         fetchApplications();
       } else {
         toast.error(result.error || "上传失败");
@@ -286,6 +304,32 @@ export default function ApprovalPage() {
       toast.error("上传失败");
     } finally {
       setUploadingFiles(false);
+    }
+  };
+
+  // 删除附件
+  const handleDeleteAttachment = async (attachmentName: string) => {
+    if (!uploadingApp) return;
+
+    try {
+      setDeletingAttachment(attachmentName);
+      const response = await fetch(`/api/applications/${uploadingApp.id}/attachments?name=${encodeURIComponent(attachmentName)}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("删除成功");
+        setExistingAttachments((prev) => prev.filter((a) => a.name !== attachmentName));
+        fetchApplications();
+      } else {
+        toast.error(result.error || "删除失败");
+      }
+    } catch (err) {
+      console.error("删除失败:", err);
+      toast.error("删除失败");
+    } finally {
+      setDeletingAttachment(null);
     }
   };
 
@@ -438,6 +482,7 @@ export default function ApprovalPage() {
                   <th className="p-4 text-left text-sm font-medium text-muted-foreground">申请类型</th>
                   <th className="p-4 text-left text-sm font-medium text-muted-foreground">法人/电话</th>
                   <th className="p-4 text-left text-sm font-medium text-muted-foreground">状态</th>
+                  <th className="p-4 text-left text-sm font-medium text-muted-foreground">附件</th>
                   <th className="p-4 text-left text-sm font-medium text-muted-foreground">申请时间</th>
                   <th className="p-4 text-right text-sm font-medium text-muted-foreground">操作</th>
                 </tr>
@@ -445,7 +490,7 @@ export default function ApprovalPage() {
               <tbody>
                 {filteredApplications.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
                       {statusFilter === "pending" ? "暂无待审批申请" : "暂无申请记录"}
                     </td>
                   </tr>
@@ -475,6 +520,17 @@ export default function ApprovalPage() {
                           {statusConfig[app.approvalStatus].label}
                         </Badge>
                       </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1.5">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          <span className={cn(
+                            "text-sm",
+                            app.attachments && app.attachments.length > 0 ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {app.attachments?.length || 0} 个
+                          </span>
+                        </div>
+                      </td>
                       <td className="p-4 text-sm text-muted-foreground">
                         {new Date(app.createdAt).toLocaleDateString("zh-CN")}
                       </td>
@@ -496,7 +552,7 @@ export default function ApprovalPage() {
                             className="gap-1"
                           >
                             <Upload className="h-3.5 w-3.5" />
-                            上传附件
+                            附件
                           </Button>
                           {statusFilter === "pending" && (
                             <>
@@ -580,14 +636,69 @@ export default function ApprovalPage() {
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>上传签字表扫描件</DialogTitle>
+            <DialogTitle>附件管理</DialogTitle>
             <DialogDescription>
-              请上传签字盖章后的申请表扫描件，支持多张图片上传。
+              管理签字表扫描件，支持多张图片上传。
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
+            {/* 已上传附件列表 */}
+            <div>
+              <h4 className="text-sm font-medium mb-2">已上传附件</h4>
+              {loadingAttachments ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  加载中...
+                </div>
+              ) : existingAttachments.length > 0 ? (
+                <div className="border rounded-lg divide-y">
+                  {existingAttachments.map((attachment, index) => (
+                    <div key={index} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{attachment.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.open(attachment.url, "_blank")}
+                          className="gap-1"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          查看
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteAttachment(attachment.name)}
+                          disabled={deletingAttachment === attachment.name}
+                          className="gap-1 text-destructive hover:text-destructive"
+                        >
+                          {deletingAttachment === attachment.name ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                          删除
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
+                  暂无附件
+                </div>
+              )}
+            </div>
+
+            {/* 分隔线 */}
+            <div className="border-t" />
+
             {/* 选择文件按钮 */}
             <div>
+              <h4 className="text-sm font-medium mb-2">添加新附件</h4>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -599,14 +710,14 @@ export default function ApprovalPage() {
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full h-20 border-dashed"
+                className="w-full h-16 border-dashed"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 选择图片文件
               </Button>
             </div>
 
-            {/* 文件列表 */}
+            {/* 待上传文件列表 */}
             {selectedFiles.length > 0 && (
               <div className="border rounded-lg divide-y">
                 {selectedFiles.map((file, index) => (
@@ -658,18 +769,21 @@ export default function ApprovalPage() {
                 setUploadDialogOpen(false);
                 setSelectedFiles([]);
                 setUploadingApp(null);
+                setExistingAttachments([]);
               }}
             >
-              取消
+              关闭
             </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={uploadingFiles || selectedFiles.length === 0}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-            >
-              {uploadingFiles && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              上传 ({selectedFiles.length} 个文件)
-            </Button>
+            {selectedFiles.length > 0 && (
+              <Button
+                onClick={handleUpload}
+                disabled={uploadingFiles}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                {uploadingFiles && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                上传 ({selectedFiles.length} 个文件)
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
