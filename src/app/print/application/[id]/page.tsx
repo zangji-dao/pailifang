@@ -121,9 +121,11 @@ export default function PrintPage() {
           }
           .print-area {
             position: absolute;
-            left: 0;
+            left: 50%;
+            transform: translateX(-50%);
             top: 0;
             width: 100%;
+            max-width: 800px;
           }
           .no-print {
             display: none !important;
@@ -131,12 +133,14 @@ export default function PrintPage() {
         }
       `}</style>
 
-      <div className="print-area p-10 bg-white max-w-[800px] mx-auto">
-        {/* 标题 */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-2">企业入驻申请表</h1>
-          <div className="text-sm text-gray-500">Π立方企业服务中心</div>
-        </div>
+      {/* 预览容器 */}
+      <div className="min-h-screen bg-gray-100 py-8 flex justify-center">
+        <div className="print-area p-10 bg-white w-[800px] shadow-lg">
+          {/* 标题 */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold mb-2">企业入驻申请表</h1>
+            <div className="text-sm text-gray-500">Π立方企业服务中心</div>
+          </div>
 
         {/* 基本信息 */}
         <div className="mb-6">
@@ -344,6 +348,7 @@ export default function PrintPage() {
         <div className="mt-10 text-right text-xs text-gray-500">
           <div>申请编号：{application.applicationNo}</div>
           <div>打印时间：{new Date().toLocaleString("zh-CN")}</div>
+        </div>
         </div>
       </div>
     </>
