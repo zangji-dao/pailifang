@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import {
   Building2,
   Plus,
@@ -10,58 +10,37 @@ import {
   Search,
   Eye,
   Edit,
-  MoreHorizontal,
-  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useTabs } from "@/app/dashboard/tabs-context";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 // 企业状态
 type EnterpriseStatus = "active" | "inactive" | "pending";
 
-// 企业类型
-type EnterpriseType = "tenant" | "service";
-
 interface Enterprise {
   id: string;
   name: string;
-  creditCode: string | null;
-  legalPerson: string | null;
-  phone: string | null;
-  industry: string | null;
-  status: EnterpriseStatus;
-  type: EnterpriseType;
-  registeredAddress: string | null;
-  businessAddress: string | null;
-  settledDate: string | null;
-  remarks: string | null;
+  creditCode?: string;
+  legalPerson?: string;
+  phone?: string;
+  industry?: string;
+  status: string;
+  type?: string;
+  settledDate?: string;
   createdAt: string;
 }
 
 // 状态配置
-const statusConfig: Record<EnterpriseStatus, { label: string; className: string }> = {
+const statusConfig: Record<string, { label: string; className: string }> = {
   active: { label: "正常", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   inactive: { label: "注销", className: "bg-slate-50 text-slate-600 border-slate-200" },
   pending: { label: "待审核", className: "bg-amber-50 text-amber-600 border-amber-200" },
 };
 
-// 类型配置
-const typeConfig: Record<EnterpriseType, { label: string; className: string }> = {
-  tenant: { label: "入驻企业", className: "bg-blue-50 text-blue-600 border-blue-200" },
-  service: { label: "服务商", className: "bg-purple-50 text-purple-600 border-purple-200" },
-};
-
 export default function EnterpriseListPage() {
   const router = useRouter();
-  const tabsContext = useTabs();
+  const { toast } = useToast();
 
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,11 +55,18 @@ export default function EnterpriseListPage() {
       if (result.success) {
         setEnterprises(result.data || []);
       } else {
-        toast.error("获取企业列表失败");
+        toast({
+          title: "获取企业列表失败",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error("获取企业列表失败:", err);
-      toast.error("获取企业列表失败");
+      toast({
+        title: "获取企业列表失败",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -97,7 +83,7 @@ export default function EnterpriseListPage() {
     return (
       e.name?.toLowerCase().includes(keyword) ||
       e.creditCode?.includes(keyword) ||
-      e.legalPerson?.includes(keyword) ||
+      e.legalPerson?.toLowerCase().includes(keyword) ||
       e.phone?.includes(keyword)
     );
   });
@@ -105,9 +91,8 @@ export default function EnterpriseListPage() {
   // 统计数据
   const stats = {
     total: enterprises.length,
-    tenant: enterprises.filter((e) => e.type === "tenant").length,
-    service: enterprises.filter((e) => e.type === "service").length,
     active: enterprises.filter((e) => e.status === "active").length,
+    pending: enterprises.filter((e) => e.status === "pending").length,
   };
 
   // 加载状态
@@ -139,22 +124,18 @@ export default function EnterpriseListPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="bg-card border rounded-lg p-4">
           <div className="text-sm text-muted-foreground">企业总数</div>
           <div className="text-2xl font-semibold mt-1">{stats.total}</div>
         </div>
         <div className="bg-card border rounded-lg p-4">
-          <div className="text-sm text-muted-foreground">入驻企业</div>
-          <div className="text-2xl font-semibold mt-1 text-blue-600">{stats.tenant}</div>
-        </div>
-        <div className="bg-card border rounded-lg p-4">
-          <div className="text-sm text-muted-foreground">服务商</div>
-          <div className="text-2xl font-semibold mt-1 text-purple-600">{stats.service}</div>
-        </div>
-        <div className="bg-card border rounded-lg p-4">
           <div className="text-sm text-muted-foreground">正常运营</div>
           <div className="text-2xl font-semibold mt-1 text-emerald-600">{stats.active}</div>
+        </div>
+        <div className="bg-card border rounded-lg p-4">
+          <div className="text-sm text-muted-foreground">待审核</div>
+          <div className="text-2xl font-semibold mt-1 text-amber-600">{stats.pending}</div>
         </div>
       </div>
 
@@ -179,7 +160,6 @@ export default function EnterpriseListPage() {
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">统一社会信用代码</th>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">法人/电话</th>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">行业</th>
-              <th className="p-4 text-left text-sm font-medium text-muted-foreground">类型</th>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">状态</th>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">入驻时间</th>
               <th className="p-4 text-right text-sm font-medium text-muted-foreground">操作</th>
@@ -188,7 +168,7 @@ export default function EnterpriseListPage() {
           <tbody>
             {filteredEnterprises.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">
                   {searchKeyword ? "未找到匹配的企业" : "暂无企业数据"}
                 </td>
               </tr>
@@ -212,17 +192,12 @@ export default function EnterpriseListPage() {
                     {enterprise.industry || "-"}
                   </td>
                   <td className="p-4">
-                    <Badge variant="outline" className={cn("font-normal", typeConfig[enterprise.type].className)}>
-                      {typeConfig[enterprise.type].label}
-                    </Badge>
-                  </td>
-                  <td className="p-4">
-                    <Badge variant="outline" className={cn("font-normal", statusConfig[enterprise.status].className)}>
-                      {statusConfig[enterprise.status].label}
+                    <Badge variant="outline" className={cn("font-normal", statusConfig[enterprise.status]?.className || statusConfig.pending.className)}>
+                      {statusConfig[enterprise.status]?.label || enterprise.status}
                     </Badge>
                   </td>
                   <td className="p-4 text-sm text-muted-foreground">
-                    {enterprise.settledDate ? new Date(enterprise.settledDate).toLocaleDateString("zh-CN") : "-"}
+                    {enterprise.settledDate ? new Date(enterprise.settledDate).toLocaleDateString("zh-CN") : (enterprise.createdAt ? new Date(enterprise.createdAt).toLocaleDateString("zh-CN") : "-")}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-1">

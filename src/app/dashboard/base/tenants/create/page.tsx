@@ -1,22 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Loader2,
-  Save,
-  Check,
-  Building2,
-  FileText,
-  PenTool,
-  Wallet,
-  CheckCircle2,
-  ChevronRight,
-} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -24,713 +14,776 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTabs } from "@/app/dashboard/tabs-context";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Building2,
+  FileText,
+  PenTool,
+  CreditCard,
+  CheckCircle2,
+  Upload,
+  X,
+  Plus,
+  Minus,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 // 步骤定义
 const STEPS = [
-  { id: 1, name: "分配房间", icon: Building2, description: "选择入驻基地和房间号" },
-  { id: 2, name: "工商办理", icon: FileText, description: "工商注册或工商变更" },
-  { id: 3, name: "签订合同", icon: PenTool, description: "签订入驻合同" },
-  { id: 4, name: "缴纳费用", icon: Wallet, description: "缴纳押金与费用" },
-  { id: 5, name: "完成入驻", icon: CheckCircle2, description: "确认完成正式入驻" },
+  { id: 1, title: "企业信息", icon: Building2 },
+  { id: 2, title: "工商办理", icon: FileText },
+  { id: 3, title: "签订合同", icon: PenTool },
+  { id: 4, title: "缴纳费用", icon: CreditCard },
+  { id: 5, title: "完成入驻", icon: CheckCircle2 },
 ];
 
-// 行业选项
-const INDUSTRIES = [
-  "制造业",
-  "批发和零售业",
-  "信息技术服务业",
-  "科学研究和技术服务业",
-  "租赁和商务服务业",
-  "建筑业",
-  "交通运输业",
-  "住宿和餐饮业",
-  "金融业",
-  "教育",
-  "卫生和社会工作",
-  "文化、体育和娱乐业",
-  "其他",
-];
-
-// 基地接口
-interface Base {
-  id: string;
-  name: string;
-}
-
-// 房间接口
-interface Room {
-  id: string;
-  roomNumber: string;
-  status: string;
-}
-
-// 表单数据接口
-interface FormData {
-  // 步骤1：分配房间
-  baseId: string;
-  baseName: string;
-  roomId: string;
-  roomNumber: string;
-  
-  // 步骤2：工商办理
-  businessType: "register" | "change"; // 注册或变更
-  enterpriseName: string;
-  creditCode: string;
-  legalPerson: string;
-  phone: string;
-  industry: string;
-  registeredAddress: string;
-  businessAddress: string;
-  
-  // 步骤3：签订合同
-  contractNo: string;
-  contractStartDate: string;
-  contractEndDate: string;
-  contractAmount: string;
-  
-  // 步骤4：缴纳费用
-  deposit: string;
-  rent: string;
-  serviceFee: string;
-  otherFee: string;
-  totalFee: string;
-  paymentStatus: "unpaid" | "partial" | "paid";
-  paymentDate: string;
-  
-  // 备注
-  remarks: string;
-}
-
-export default function EnterpriseCreatePage() {
+export default function NewTenantPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const tabsContext = useTabs();
-
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
-  const [saving, setSaving] = useState(false);
-  const [loadingBases, setLoadingBases] = useState(false);
-  const [loadingRooms, setLoadingRooms] = useState(false);
-  
-  const [bases, setBases] = useState<Base[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // 步骤1：企业基本信息
+  const [enterpriseName, setEnterpriseName] = useState("");
+  const [creditCode, setCreditCode] = useState("");
+  const [legalPerson, setLegalPerson] = useState("");
+  const [idCard, setIdCard] = useState("");
+  const [phone, setPhone] = useState("");
+  const [capital, setCapital] = useState("");
+  const [businessScope, setBusinessScope] = useState("");
+  const [industry, setIndustry] = useState("");
+
+  // 步骤2：工商办理
+  const [businessType, setBusinessType] = useState<"register" | "change">("register");
+  const [shareholders, setShareholders] = useState<{ name: string; idCard: string; ratio: string }[]>([]);
+  const [staffList, setStaffList] = useState<{ name: string; idCard: string; phone: string }[]>([]);
+
+  // 步骤3：签订合同
+  const [contractNumber, setContractNumber] = useState("");
+  const [contractStartDate, setContractStartDate] = useState("");
+  const [contractEndDate, setContractEndDate] = useState("");
+  const [monthlyRent, setMonthlyRent] = useState("");
+  const [deposit, setDeposit] = useState("");
+  const [registeredAddress, setRegisteredAddress] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+
+  // 步骤4：缴纳费用
+  const [fees, setFees] = useState<{ name: string; amount: number; paid: boolean }[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState("bank");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // 完成后的企业ID
   const [createdEnterpriseId, setCreatedEnterpriseId] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState<FormData>({
-    baseId: "",
-    baseName: "",
-    roomId: "",
-    roomNumber: "",
-    businessType: "register",
-    enterpriseName: "",
-    creditCode: "",
-    legalPerson: "",
-    phone: "",
-    industry: "",
-    registeredAddress: "",
-    businessAddress: "",
-    contractNo: "",
-    contractStartDate: new Date().toISOString().split("T")[0],
-    contractEndDate: "",
-    contractAmount: "",
-    deposit: "",
-    rent: "",
-    serviceFee: "",
-    otherFee: "",
-    totalFee: "",
-    paymentStatus: "unpaid",
-    paymentDate: "",
-    remarks: "",
-  });
 
-  // 从入驻申请获取数据预填
-  const applicationId = searchParams.get("applicationId");
-
+  // 生成合同编号
   useEffect(() => {
-    fetchBases();
-    if (applicationId) {
-      fetchApplicationData(applicationId);
+    if (currentStep === 3 && !contractNumber) {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+      setContractNumber(`HT-${year}${month}-${random}`);
     }
-  }, [applicationId]);
+  }, [currentStep, contractNumber]);
 
-  // 加载基地列表
-  const fetchBases = async () => {
-    try {
-      setLoadingBases(true);
-      const response = await fetch("/api/bases");
-      const result = await response.json();
-      if (result.success) {
-        setBases(result.data || []);
-      }
-    } catch (err) {
-      console.error("获取基地列表失败:", err);
-    } finally {
-      setLoadingBases(false);
-    }
-  };
-
-  // 加载房间列表
-  const fetchRooms = async (baseId: string) => {
-    try {
-      setLoadingRooms(true);
-      const response = await fetch(`/api/bases/${baseId}`);
-      const result = await response.json();
-      if (result.success && result.data.meters) {
-        // 展开所有房间
-        const allRooms: Room[] = [];
-        result.data.meters.forEach((meter: any) => {
-          meter.spaces?.forEach((space: any) => {
-            allRooms.push({
-              id: space.id,
-              roomNumber: space.room_number || space.name,
-              status: space.status || "available",
-            });
-          });
-        });
-        setRooms(allRooms);
-      }
-    } catch (err) {
-      console.error("获取房间列表失败:", err);
-    } finally {
-      setLoadingRooms(false);
-    }
-  };
-
-  // 从申请获取数据
-  const fetchApplicationData = async (id: string) => {
-    try {
-      const response = await fetch(`/api/applications/${id}`);
-      const result = await response.json();
-      if (result.success && result.data) {
-        const app = result.data;
-        const legalPerson = app.personnel?.find(
-          (p: any) => p.roles?.includes("legal_person")
-        );
-        setFormData((prev) => ({
-          ...prev,
-          enterpriseName: app.enterpriseName || prev.enterpriseName,
-          legalPerson: legalPerson?.name || prev.legalPerson,
-          phone: legalPerson?.phone || prev.phone,
-          businessAddress: app.businessAddress || prev.businessAddress,
-        }));
-      }
-    } catch (err) {
-      console.error("获取申请数据失败:", err);
-    }
-  };
-
-  // 更新表单字段
-  const updateFormData = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // 基地选择变更
-  const handleBaseChange = (baseId: string) => {
-    const base = bases.find((b) => b.id === baseId);
-    updateFormData("baseId", baseId);
-    updateFormData("baseName", base?.name || "");
-    updateFormData("roomId", "");
-    updateFormData("roomNumber", "");
-    fetchRooms(baseId);
-  };
-
-  // 房间选择变更
-  const handleRoomChange = (roomId: string) => {
-    const room = rooms.find((r) => r.id === roomId);
-    updateFormData("roomId", roomId);
-    updateFormData("roomNumber", room?.roomNumber || "");
-  };
-
-  // 计算总费用
+  // 初始化费用列表
   useEffect(() => {
-    const total = 
-      parseFloat(formData.deposit || "0") +
-      parseFloat(formData.rent || "0") +
-      parseFloat(formData.serviceFee || "0") +
-      parseFloat(formData.otherFee || "0");
-    updateFormData("totalFee", total > 0 ? total.toString() : "");
-  }, [formData.deposit, formData.rent, formData.serviceFee, formData.otherFee]);
+    if (currentStep === 4 && fees.length === 0) {
+      setFees([
+        { name: "首月租金", amount: parseFloat(monthlyRent) || 0, paid: false },
+        { name: "押金", amount: parseFloat(deposit) || 0, paid: false },
+        { name: "物业费", amount: 0, paid: false },
+        { name: "水电费押金", amount: 500, paid: false },
+      ]);
+    }
+  }, [currentStep, fees.length, monthlyRent, deposit]);
+
+  // 添加股东
+  const addShareholder = () => {
+    setShareholders([...shareholders, { name: "", idCard: "", ratio: "" }]);
+  };
+
+  // 移除股东
+  const removeShareholder = (index: number) => {
+    setShareholders(shareholders.filter((_, i) => i !== index));
+  };
+
+  // 更新股东信息
+  const updateShareholder = (index: number, field: string, value: string) => {
+    const updated = [...shareholders];
+    updated[index] = { ...updated[index], [field]: value };
+    setShareholders(updated);
+  };
+
+  // 添加员工
+  const addStaff = () => {
+    setStaffList([...staffList, { name: "", idCard: "", phone: "" }]);
+  };
+
+  // 移除员工
+  const removeStaff = (index: number) => {
+    setStaffList(staffList.filter((_, i) => i !== index));
+  };
+
+  // 更新员工信息
+  const updateStaff = (index: number, field: string, value: string) => {
+    const updated = [...staffList];
+    updated[index] = { ...updated[index], [field]: value };
+    setStaffList(updated);
+  };
+
+  // 更新费用
+  const updateFee = (index: number, field: string, value: any) => {
+    const updated = [...fees];
+    updated[index] = { ...updated[index], [field]: value };
+    setFees(updated);
+  };
+
+  // 添加费用项
+  const addFee = () => {
+    setFees([...fees, { name: "新费用项", amount: 0, paid: false }]);
+  };
+
+  // 移除费用项
+  const removeFee = (index: number) => {
+    setFees(fees.filter((_, i) => i !== index));
+  };
+
+  // 步骤验证
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
+      case 2:
+        return true; // 工商办理可选
+      case 3:
+        return true; // 合同可选
+      case 4:
+        return true; // 费用可选
+      default:
+        return true;
+    }
+  };
 
   // 下一步
-  const handleNext = () => {
-    if (currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1);
+  const nextStep = () => {
+    if (!validateStep(currentStep)) {
+      toast({
+        title: "请完善信息",
+        description: "请填写当前步骤的必填信息",
+        variant: "destructive",
+      });
+      return;
     }
+    setCurrentStep(currentStep + 1);
   };
 
   // 上一步
-  const handlePrev = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+  const prevStep = () => {
+    setCurrentStep(Math.max(1, currentStep - 1));
   };
 
-  // 保存企业
-  const handleSave = async () => {
-    if (!formData.enterpriseName) {
-      toast.error("请填写企业名称");
-      return;
-    }
-
+  // 提交企业入驻
+  const submitEnterprise = async () => {
+    setSubmitting(true);
     try {
-      setSaving(true);
-      const response = await fetch("/api/enterprises", {
+      // 调用后端API创建企业
+      const res = await fetch("/api/enterprises", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.enterpriseName,
-          credit_code: formData.creditCode,
-          legal_person: formData.legalPerson,
-          phone: formData.phone,
-          industry: formData.industry,
-          registered_address: formData.registeredAddress,
-          business_address: formData.businessAddress,
-          settled_date: new Date().toISOString().split("T")[0],
+          name: enterpriseName,
+          credit_code: creditCode,
+          legal_person: legalPerson,
+          phone,
+          industry,
           type: "tenant",
           status: "active",
-          remarks: formData.remarks,
+          registered_address: registeredAddress,
+          business_address: businessAddress,
+          settled_date: new Date().toISOString().split("T")[0],
         }),
       });
-      const result = await response.json();
-      
-      if (result.success) {
-        setCreatedEnterpriseId(result.data.id);
-        toast.success("企业创建成功");
-        handleNext();
-      } else {
-        toast.error(result.error || "保存失败");
+
+      const result = await res.json();
+      if (!result.success && !result.data?.id) {
+        throw new Error(result.error || result.message || "创建企业失败");
       }
-    } catch (err) {
-      console.error("保存失败:", err);
-      toast.error("保存失败");
+
+      const enterpriseId = result.data?.id || result.id;
+      setCreatedEnterpriseId(enterpriseId);
+
+      toast({
+        title: "入驻成功",
+        description: `企业 ${enterpriseName} 已成功创建`,
+      });
+
+      setCurrentStep(5);
+    } catch (error: any) {
+      console.error("提交失败:", error);
+      toast({
+        title: "提交失败",
+        description: error.message || "请稍后重试",
+        variant: "destructive",
+      });
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
-  // 完成入驻
-  const handleComplete = () => {
-    router.push("/dashboard/base/tenants");
-  };
-
-  // 渲染步骤内容
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>选择基地 *</Label>
-                <Select value={formData.baseId} onValueChange={handleBaseChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择基地" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bases.map((base) => (
-                      <SelectItem key={base.id} value={base.id}>
-                        {base.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>选择房间 *</Label>
-                <Select 
-                  value={formData.roomId} 
-                  onValueChange={handleRoomChange}
-                  disabled={!formData.baseId || loadingRooms}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingRooms ? "加载中..." : "请选择房间"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rooms.map((room) => (
-                      <SelectItem key={room.id} value={room.id}>
-                        {room.roomNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            {formData.baseId && formData.roomNumber && (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="text-sm text-muted-foreground mb-1">已分配地址</div>
-                <div className="text-lg font-medium">
-                  {formData.baseName} - {formData.roomNumber}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>办理类型 *</Label>
-              <Select 
-                value={formData.businessType} 
-                onValueChange={(v) => updateFormData("businessType", v)}
+  // 渲染步骤指示器
+  const renderStepIndicator = () => (
+    <div className="mb-8">
+      <div className="flex items-center justify-between">
+        {STEPS.map((step, index) => (
+          <div key={step.id} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  currentStep > step.id
+                    ? "bg-green-500 text-white"
+                    : currentStep === step.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
               >
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="register">工商注册</SelectItem>
-                  <SelectItem value="change">工商变更</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>企业名称 *</Label>
-                <Input
-                  value={formData.enterpriseName}
-                  onChange={(e) => updateFormData("enterpriseName", e.target.value)}
-                  placeholder="请输入企业名称"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>统一社会信用代码</Label>
-                <Input
-                  value={formData.creditCode}
-                  onChange={(e) => updateFormData("creditCode", e.target.value)}
-                  placeholder="请输入信用代码"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>法人代表 *</Label>
-                <Input
-                  value={formData.legalPerson}
-                  onChange={(e) => updateFormData("legalPerson", e.target.value)}
-                  placeholder="请输入法人姓名"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>联系电话</Label>
-                <Input
-                  value={formData.phone}
-                  onChange={(e) => updateFormData("phone", e.target.value)}
-                  placeholder="请输入联系电话"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>所属行业</Label>
-                <Select value={formData.industry} onValueChange={(v) => updateFormData("industry", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择行业" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDUSTRIES.map((ind) => (
-                      <SelectItem key={ind} value={ind}>
-                        {ind}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>注册地址</Label>
-                <Input
-                  value={formData.registeredAddress}
-                  onChange={(e) => updateFormData("registeredAddress", e.target.value)}
-                  placeholder="请输入注册地址"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>合同编号</Label>
-                <Input
-                  value={formData.contractNo}
-                  onChange={(e) => updateFormData("contractNo", e.target.value)}
-                  placeholder="请输入合同编号"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>合同金额 (元)</Label>
-                <Input
-                  type="number"
-                  value={formData.contractAmount}
-                  onChange={(e) => updateFormData("contractAmount", e.target.value)}
-                  placeholder="请输入合同金额"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>合同开始日期</Label>
-                <Input
-                  type="date"
-                  value={formData.contractStartDate}
-                  onChange={(e) => updateFormData("contractStartDate", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>合同结束日期</Label>
-                <Input
-                  type="date"
-                  value={formData.contractEndDate}
-                  onChange={(e) => updateFormData("contractEndDate", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-sm text-blue-600">
-                提示：合同签订后请上传扫描件至系统存档
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>押金 (元)</Label>
-                <Input
-                  type="number"
-                  value={formData.deposit}
-                  onChange={(e) => updateFormData("deposit", e.target.value)}
-                  placeholder="请输入押金金额"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>租金 (元)</Label>
-                <Input
-                  type="number"
-                  value={formData.rent}
-                  onChange={(e) => updateFormData("rent", e.target.value)}
-                  placeholder="请输入租金金额"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>服务费 (元)</Label>
-                <Input
-                  type="number"
-                  value={formData.serviceFee}
-                  onChange={(e) => updateFormData("serviceFee", e.target.value)}
-                  placeholder="请输入服务费金额"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>其他费用 (元)</Label>
-                <Input
-                  type="number"
-                  value={formData.otherFee}
-                  onChange={(e) => updateFormData("otherFee", e.target.value)}
-                  placeholder="请输入其他费用"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>缴费状态</Label>
-                <Select 
-                  value={formData.paymentStatus} 
-                  onValueChange={(v) => updateFormData("paymentStatus", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unpaid">未缴费</SelectItem>
-                    <SelectItem value="partial">部分缴费</SelectItem>
-                    <SelectItem value="paid">已缴清</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>缴费日期</Label>
-                <Input
-                  type="date"
-                  value={formData.paymentDate}
-                  onChange={(e) => updateFormData("paymentDate", e.target.value)}
-                />
-              </div>
-            </div>
-
-            {formData.totalFee && (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">费用合计</span>
-                  <span className="text-xl font-semibold">¥ {parseFloat(formData.totalFee).toLocaleString()}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col items-center justify-center py-8">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">入驻流程已完成</h2>
-              <p className="text-muted-foreground text-center max-w-md">
-                企业 {formData.enterpriseName} 已完成所有入驻流程，可正式开始运营。
-              </p>
-            </div>
-
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">企业名称</span>
-                <span>{formData.enterpriseName}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">入驻地址</span>
-                <span>{formData.baseName} - {formData.roomNumber}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">法人代表</span>
-                <span>{formData.legalPerson}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">联系电话</span>
-                <span>{formData.phone || "-"}</span>
-              </div>
-              {formData.totalFee && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">费用合计</span>
-                  <span>¥ {parseFloat(formData.totalFee).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 页面标题 */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.back()}
-          className="gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          返回
-        </Button>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">新建企业</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            完成入驻流程后企业将正式入驻
-          </p>
-        </div>
-      </div>
-
-      {/* 步骤条 */}
-      <div className="bg-card border rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          {STEPS.map((step, index) => {
-            const Icon = step.icon;
-            const isActive = currentStep === step.id;
-            const isCompleted = currentStep > step.id;
-            
-            return (
-              <div key={step.id} className="flex items-center flex-1">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors",
-                      isActive && "border-primary bg-primary text-primary-foreground",
-                      isCompleted && "border-emerald-500 bg-emerald-500 text-white",
-                      !isActive && !isCompleted && "border-muted-foreground/30 text-muted-foreground"
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <Icon className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="mt-2 text-center">
-                    <div className={cn(
-                      "text-sm font-medium",
-                      isActive ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {step.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground hidden lg:block">
-                      {step.description}
-                    </div>
-                  </div>
-                </div>
-                {index < STEPS.length - 1 && (
-                  <div className={cn(
-                    "flex-1 h-0.5 mx-4",
-                    currentStep > step.id ? "bg-emerald-500" : "bg-muted"
-                  )} />
+                {currentStep > step.id ? (
+                  <Check className="w-5 h-5" />
+                ) : (
+                  <step.icon className="w-5 h-5" />
                 )}
               </div>
-            );
-          })}
-        </div>
+              <span className="mt-2 text-sm font-medium">{step.title}</span>
+            </div>
+            {index < STEPS.length - 1 && (
+              <div
+                className={`flex-1 h-1 mx-4 ${
+                  currentStep > step.id ? "bg-green-500" : "bg-muted"
+                }`}
+              />
+            )}
+          </div>
+        ))}
       </div>
+    </div>
+  );
+
+  // 步骤1：企业基本信息
+  const renderStep1 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>企业基本信息</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>企业名称 *</Label>
+            <Input
+              value={enterpriseName}
+              onChange={(e) => setEnterpriseName(e.target.value)}
+              placeholder="请输入企业名称"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>统一社会信用代码</Label>
+            <Input
+              value={creditCode}
+              onChange={(e) => setCreditCode(e.target.value)}
+              placeholder="请输入统一社会信用代码"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>法定代表人 *</Label>
+            <Input
+              value={legalPerson}
+              onChange={(e) => setLegalPerson(e.target.value)}
+              placeholder="请输入法定代表人姓名"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>身份证号</Label>
+            <Input
+              value={idCard}
+              onChange={(e) => setIdCard(e.target.value)}
+              placeholder="请输入法定代表人身份证号"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>联系电话</Label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="请输入联系电话"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>注册资本(万元)</Label>
+            <Input
+              value={capital}
+              onChange={(e) => setCapital(e.target.value)}
+              placeholder="请输入注册资本"
+              type="number"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>所属行业</Label>
+            <Select value={industry} onValueChange={setIndustry}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择行业" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="油田技服">油田技服</SelectItem>
+                <SelectItem value="企业服务">企业服务</SelectItem>
+                <SelectItem value="商贸服务">商贸服务</SelectItem>
+                <SelectItem value="运输服务">运输服务</SelectItem>
+                <SelectItem value="建筑工程">建筑工程</SelectItem>
+                <SelectItem value="化工贸易">化工贸易</SelectItem>
+                <SelectItem value="能源技术">能源技术</SelectItem>
+                <SelectItem value="新材料">新材料</SelectItem>
+                <SelectItem value="生物技术">生物技术</SelectItem>
+                <SelectItem value="其他">其他</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>经营范围</Label>
+          <Textarea
+            value={businessScope}
+            onChange={(e) => setBusinessScope(e.target.value)}
+            placeholder="请输入经营范围"
+            rows={3}
+          />
+        </div>
+
+        <Separator />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>注册地址</Label>
+            <Input
+              value={registeredAddress}
+              onChange={(e) => setRegisteredAddress(e.target.value)}
+              placeholder="请输入注册地址"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>经营地址</Label>
+            <Input
+              value={businessAddress}
+              onChange={(e) => setBusinessAddress(e.target.value)}
+              placeholder="请输入经营地址"
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // 步骤2：工商办理
+  const renderStep2 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>工商办理</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label>办理类型</Label>
+          <div className="flex gap-4">
+            <Button
+              variant={businessType === "register" ? "default" : "outline"}
+              onClick={() => setBusinessType("register")}
+            >
+              新注册
+            </Button>
+            <Button
+              variant={businessType === "change" ? "default" : "outline"}
+              onClick={() => setBusinessType("change")}
+            >
+              变更
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* 股东信息 */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>股东信息</Label>
+            <Button variant="outline" size="sm" onClick={addShareholder}>
+              <Plus className="w-4 h-4 mr-1" />
+              添加股东
+            </Button>
+          </div>
+          {shareholders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">暂无股东信息</p>
+          ) : (
+            shareholders.map((shareholder, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                <Input
+                  placeholder="股东姓名"
+                  value={shareholder.name}
+                  onChange={(e) => updateShareholder(index, "name", e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="身份证号"
+                  value={shareholder.idCard}
+                  onChange={(e) => updateShareholder(index, "idCard", e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="持股比例(%)"
+                  value={shareholder.ratio}
+                  onChange={(e) => updateShareholder(index, "ratio", e.target.value)}
+                  className="w-32"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeShareholder(index)}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <Separator />
+
+        {/* 员工信息 */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>员工信息</Label>
+            <Button variant="outline" size="sm" onClick={addStaff}>
+              <Plus className="w-4 h-4 mr-1" />
+              添加员工
+            </Button>
+          </div>
+          {staffList.length === 0 ? (
+            <p className="text-sm text-muted-foreground">暂无员工信息</p>
+          ) : (
+            staffList.map((staff, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                <Input
+                  placeholder="员工姓名"
+                  value={staff.name}
+                  onChange={(e) => updateStaff(index, "name", e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="身份证号"
+                  value={staff.idCard}
+                  onChange={(e) => updateStaff(index, "idCard", e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="联系电话"
+                  value={staff.phone}
+                  onChange={(e) => updateStaff(index, "phone", e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeStaff(index)}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            股东和员工信息可在入驻后继续完善
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+
+  // 步骤3：签订合同
+  const renderStep3 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>签订合同</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>合同编号</Label>
+            <Input value={contractNumber} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>签订日期</Label>
+            <Input
+              type="date"
+              value={contractStartDate}
+              onChange={(e) => setContractStartDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>合同开始日期</Label>
+            <Input
+              type="date"
+              value={contractStartDate}
+              onChange={(e) => setContractStartDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>合同结束日期</Label>
+            <Input
+              type="date"
+              value={contractEndDate}
+              onChange={(e) => setContractEndDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>月租金(元)</Label>
+            <Input
+              type="number"
+              value={monthlyRent}
+              onChange={(e) => setMonthlyRent(e.target.value)}
+              placeholder="请输入月租金"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>押金(元)</Label>
+            <Input
+              type="number"
+              value={deposit}
+              onChange={(e) => setDeposit(e.target.value)}
+              placeholder="请输入押金"
+            />
+          </div>
+        </div>
+
+        <Alert>
+          <FileText className="h-4 w-4" />
+          <AlertDescription>
+            合同信息可在入驻后继续完善
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+
+  // 步骤4：缴纳费用
+  const renderStep4 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>缴纳费用</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>费用项目</Label>
+            <Button variant="outline" size="sm" onClick={addFee}>
+              <Plus className="w-4 h-4 mr-1" />
+              添加费用项
+            </Button>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>费用名称</TableHead>
+                <TableHead>金额(元)</TableHead>
+                <TableHead>已缴纳</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {fees.map((fee, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Input
+                      value={fee.name}
+                      onChange={(e) => updateFee(index, "name", e.target.value)}
+                      className="border-0 p-0 h-auto"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={fee.amount}
+                      onChange={(e) =>
+                        updateFee(index, "amount", parseFloat(e.target.value) || 0)
+                      }
+                      className="border-0 p-0 h-auto w-24"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Checkbox
+                      checked={fee.paid}
+                      onCheckedChange={(checked) =>
+                        updateFee(index, "paid", checked === true)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFee(index)}
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+          <span className="font-medium">合计金额</span>
+          <span className="text-xl font-bold">
+            ¥{fees.reduce((sum, f) => sum + f.amount, 0).toFixed(2)}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+          <span className="font-medium text-green-700 dark:text-green-300">已缴金额</span>
+          <span className="text-xl font-bold text-green-600">
+            ¥{fees.filter((f) => f.paid).reduce((sum, f) => sum + f.amount, 0).toFixed(2)}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>支付方式</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bank">银行转账</SelectItem>
+                <SelectItem value="cash">现金</SelectItem>
+                <SelectItem value="wechat">微信</SelectItem>
+                <SelectItem value="alipay">支付宝</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>支付日期</Label>
+            <Input
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Alert>
+          <CreditCard className="h-4 w-4" />
+          <AlertDescription>
+            费用信息可在入驻后继续完善
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+
+  // 步骤5：完成入驻
+  const renderStep5 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-center text-2xl">入驻成功</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6 text-center">
+        <CheckCircle2 className="w-24 h-24 mx-auto text-green-500" />
+        <div className="space-y-2">
+          <p className="text-lg font-medium">企业入驻已完成</p>
+          <p className="text-muted-foreground">
+            企业 <strong>{enterpriseName}</strong> 已成功创建
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 pt-4">
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/base/tenants">返回企业列表</Link>
+          </Button>
+          <Button asChild>
+            <Link href={`/dashboard/base/tenants/${createdEnterpriseId}`}>
+              查看企业详情
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="container mx-auto py-6 max-w-4xl">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/dashboard/base/tenants">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            返回
+          </Link>
+        </Button>
+        <h1 className="text-2xl font-bold">新建企业入驻</h1>
+      </div>
+
+      {/* 步骤指示器 */}
+      {renderStepIndicator()}
 
       {/* 步骤内容 */}
-      <div className="bg-card border rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">
-          步骤 {currentStep}：{STEPS[currentStep - 1].name}
-        </h2>
-        {renderStepContent()}
-      </div>
+      {currentStep === 1 && renderStep1()}
+      {currentStep === 2 && renderStep2()}
+      {currentStep === 3 && renderStep3()}
+      {currentStep === 4 && renderStep4()}
+      {currentStep === 5 && renderStep5()}
 
-      {/* 底部操作按钮 */}
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={handlePrev}
-          disabled={currentStep === 1}
-        >
-          上一步
-        </Button>
-        
-        <div className="flex gap-2">
-          {currentStep < STEPS.length - 1 && (
-            <Button onClick={handleNext}>
+      {/* 底部按钮 */}
+      {currentStep < 5 && (
+        <div className="flex justify-between mt-6">
+          <Button
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            上一步
+          </Button>
+
+          {currentStep === 4 ? (
+            <Button onClick={submitEnterprise} disabled={submitting}>
+              {submitting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              完成入驻
+            </Button>
+          ) : (
+            <Button onClick={nextStep}>
               下一步
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
-          
-          {currentStep === STEPS.length - 1 && (
-            <Button 
-              onClick={handleSave}
-              disabled={saving || !formData.enterpriseName}
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              <Save className="h-4 w-4 mr-2" />
-              保存企业
-            </Button>
-          )}
-          
-          {currentStep === STEPS.length && (
-            <Button onClick={handleComplete}>
-              完成
+              <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
