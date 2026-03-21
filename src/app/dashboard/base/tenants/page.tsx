@@ -16,21 +16,25 @@ import {
   CreditCard,
   CheckCircle,
   LogOut,
+  Store,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-// 企业流程状态
+// 企业类型 Tab
+type EnterpriseType = "tenant" | "non_tenant";
+
+// 流程状态
 type ProcessStatus = 
-  | "new" // 新建
-  | "pending_address" // 待分配地址
-  | "pending_business" // 待工商注册及变更完成
-  | "pending_contract" // 待签合同
-  | "pending_payment" // 待缴费
-  | "active" // 入驻中
-  | "moved_out"; // 已迁出
+  | "new" 
+  | "pending_address" 
+  | "pending_business" 
+  | "pending_contract" 
+  | "pending_payment" 
+  | "active" 
+  | "moved_out";
 
 interface Enterprise {
   id: string;
@@ -48,14 +52,13 @@ interface Enterprise {
   createdAt: string;
 }
 
-// 流程状态配置
-const processStatusConfig: Record<ProcessStatus, { 
+// 入驻企业流程状态配置
+const tenantStatusConfig: Record<ProcessStatus, { 
   label: string; 
   color: string; 
   bgColor: string;
   borderColor: string;
   dotColor: string;
-  icon: React.ElementType;
 }> = {
   new: { 
     label: "新建", 
@@ -63,7 +66,6 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-blue-50",
     borderColor: "border-blue-300",
     dotColor: "bg-blue-500",
-    icon: Plus,
   },
   pending_address: { 
     label: "待分配地址", 
@@ -71,7 +73,6 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-orange-50",
     borderColor: "border-orange-300",
     dotColor: "bg-orange-500",
-    icon: MapPin,
   },
   pending_business: { 
     label: "待工商注册", 
@@ -79,7 +80,6 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-purple-50",
     borderColor: "border-purple-300",
     dotColor: "bg-purple-500",
-    icon: FileText,
   },
   pending_contract: { 
     label: "待签合同", 
@@ -87,7 +87,6 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-cyan-50",
     borderColor: "border-cyan-300",
     dotColor: "bg-cyan-500",
-    icon: PenTool,
   },
   pending_payment: { 
     label: "待缴费", 
@@ -95,7 +94,6 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-amber-50",
     borderColor: "border-amber-300",
     dotColor: "bg-amber-500",
-    icon: CreditCard,
   },
   active: { 
     label: "入驻中", 
@@ -103,7 +101,6 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-300",
     dotColor: "bg-emerald-500",
-    icon: CheckCircle,
   },
   moved_out: { 
     label: "已迁出", 
@@ -111,25 +108,43 @@ const processStatusConfig: Record<ProcessStatus, {
     bgColor: "bg-slate-50",
     borderColor: "border-slate-300",
     dotColor: "bg-slate-500",
-    icon: LogOut,
   },
 };
 
-// 企业状态配置（用于兼容旧数据）
-const statusConfig: Record<string, { label: string; className: string }> = {
-  active: { label: "正常", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  inactive: { label: "注销", className: "bg-slate-50 text-slate-600 border-slate-200" },
-  pending: { label: "待审核", className: "bg-amber-50 text-amber-600 border-amber-200" },
+// 非入驻企业状态配置
+const nonTenantStatusConfig = {
+  new: { 
+    label: "新建", 
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-300",
+    dotColor: "bg-blue-500",
+  },
+  active: { 
+    label: "活跃", 
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-300",
+    dotColor: "bg-emerald-500",
+  },
+  inactive: { 
+    label: "已注销", 
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-300",
+    dotColor: "bg-slate-500",
+  },
 };
 
 export default function EnterpriseListPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [activeTab, setActiveTab] = useState<EnterpriseType>("tenant");
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ProcessStatus | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // 获取企业列表
   const fetchEnterprises = async () => {
@@ -161,8 +176,11 @@ export default function EnterpriseListPage() {
     fetchEnterprises();
   }, []);
 
+  // 根据当前 Tab 过滤企业
+  const tabEnterprises = enterprises.filter((e) => e.type === activeTab);
+
   // 过滤企业列表
-  const filteredEnterprises = enterprises.filter((e) => {
+  const filteredEnterprises = tabEnterprises.filter((e) => {
     // 状态过滤
     const matchStatus = statusFilter === null || e.processStatus === statusFilter;
     // 关键词过滤
@@ -177,16 +195,31 @@ export default function EnterpriseListPage() {
     return matchStatus && matchKeyword;
   });
 
-  // 统计各状态数量
-  const stats = {
-    total: enterprises.length,
-    new: enterprises.filter((e) => e.processStatus === "new" || (!e.processStatus && e.type === "non_tenant")).length,
-    pending_address: enterprises.filter((e) => e.processStatus === "pending_address").length,
-    pending_business: enterprises.filter((e) => e.processStatus === "pending_business").length,
-    pending_contract: enterprises.filter((e) => e.processStatus === "pending_contract").length,
-    pending_payment: enterprises.filter((e) => e.processStatus === "pending_payment").length,
-    active: enterprises.filter((e) => e.processStatus === "active" || (!e.processStatus && e.status === "active")).length,
-    moved_out: enterprises.filter((e) => e.processStatus === "moved_out").length,
+  // 入驻企业统计
+  const tenantStats = {
+    total: enterprises.filter((e) => e.type === "tenant").length,
+    new: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "new").length,
+    pending_address: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_address").length,
+    pending_business: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_business").length,
+    pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
+    pending_payment: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_payment").length,
+    active: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "active").length,
+    moved_out: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "moved_out").length,
+  };
+
+  // 非入驻企业统计
+  const nonTenantStats = {
+    total: enterprises.filter((e) => e.type === "non_tenant").length,
+    new: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "new").length,
+    active: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "active").length,
+    inactive: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "moved_out").length,
+  };
+
+  // 切换 Tab 时重置过滤条件
+  const handleTabChange = (tab: EnterpriseType) => {
+    setActiveTab(tab);
+    setStatusFilter(null);
+    setSearchKeyword("");
   };
 
   // 加载状态
@@ -200,157 +233,119 @@ export default function EnterpriseListPage() {
 
   return (
     <div className="space-y-0">
-      {/* 页面标题 */}
-      <div className="py-6">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          企业管理
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          管理入驻企业和非入驻企业
-        </p>
+      {/* 页面标题和操作按钮 */}
+      <div className="py-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">企业管理</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            管理入驻企业和非入驻企业
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push("/dashboard/base/tenants/create")}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          新建企业
+        </Button>
       </div>
 
       {/* 分割线 */}
       <div className="border-b" />
 
-      {/* 统计卡片区域 */}
-      <div className="py-6">
-        <div className="flex gap-4">
-          {/* 新建企业按钮 */}
+      {/* Tab 切换 */}
+      <div className="py-4">
+        <div className="flex gap-2">
           <button
-            onClick={() => router.push("/dashboard/base/tenants/create")}
-            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary px-6 py-4 transition-all hover:bg-primary/5 min-w-[140px]"
+            onClick={() => handleTabChange("tenant")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
+              activeTab === "tenant"
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border hover:border-primary/50 hover:bg-muted/50"
+            )}
           >
-            <Plus className="h-8 w-8 text-primary mb-2" />
-            <span className="text-sm font-medium text-primary">新建企业</span>
+            <Building2 className="h-4 w-4" />
+            <span className="font-medium">入驻企业</span>
+            <Badge variant="secondary" className="ml-1">{tenantStats.total}</Badge>
           </button>
-
-          {/* 流程状态统计 */}
-          <div className="flex-1">
-            <div className="text-sm font-medium text-muted-foreground mb-3">流程状态</div>
-            <div className="grid grid-cols-7 gap-2">
-              {/* 新建 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "new" ? null : "new")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "new" 
-                    ? `${processStatusConfig.new.borderColor} ${processStatusConfig.new.bgColor}` 
-                    : "border-border hover:border-blue-300 hover:bg-blue-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">新建</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "new" ? processStatusConfig.new.color : "text-foreground")}>{stats.new}</div>
-                </div>
-                <div className={cn("w-2 h-2 rounded-full", processStatusConfig.new.dotColor)} />
-              </button>
-
-              {/* 待分配地址 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "pending_address" ? null : "pending_address")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "pending_address" 
-                    ? `${processStatusConfig.pending_address.borderColor} ${processStatusConfig.pending_address.bgColor}` 
-                    : "border-border hover:border-orange-300 hover:bg-orange-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">待分配</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "pending_address" ? processStatusConfig.pending_address.color : "text-foreground")}>{stats.pending_address}</div>
-                </div>
-                <div className={cn("w-2 h-2 rounded-full", processStatusConfig.pending_address.dotColor)} />
-              </button>
-
-              {/* 待工商注册 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "pending_business" ? null : "pending_business")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "pending_business" 
-                    ? `${processStatusConfig.pending_business.borderColor} ${processStatusConfig.pending_business.bgColor}` 
-                    : "border-border hover:border-purple-300 hover:bg-purple-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">待工商</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "pending_business" ? processStatusConfig.pending_business.color : "text-foreground")}>{stats.pending_business}</div>
-                </div>
-                <div className={cn("w-2 h-2 rounded-full", processStatusConfig.pending_business.dotColor)} />
-              </button>
-
-              {/* 待签合同 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "pending_contract" ? null : "pending_contract")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "pending_contract" 
-                    ? `${processStatusConfig.pending_contract.borderColor} ${processStatusConfig.pending_contract.bgColor}` 
-                    : "border-border hover:border-cyan-300 hover:bg-cyan-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">待签合同</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "pending_contract" ? processStatusConfig.pending_contract.color : "text-foreground")}>{stats.pending_contract}</div>
-                </div>
-                <div className={cn("w-2 h-2 rounded-full", processStatusConfig.pending_contract.dotColor)} />
-              </button>
-
-              {/* 待缴费 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "pending_payment" ? null : "pending_payment")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "pending_payment" 
-                    ? `${processStatusConfig.pending_payment.borderColor} ${processStatusConfig.pending_payment.bgColor}` 
-                    : "border-border hover:border-amber-300 hover:bg-amber-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">待缴费</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "pending_payment" ? processStatusConfig.pending_payment.color : "text-foreground")}>{stats.pending_payment}</div>
-                </div>
-                <div className={cn("w-2 h-2 rounded-full", processStatusConfig.pending_payment.dotColor)} />
-              </button>
-
-              {/* 入驻中 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "active" ? null : "active")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "active" 
-                    ? `${processStatusConfig.active.borderColor} ${processStatusConfig.active.bgColor}` 
-                    : "border-border hover:border-emerald-300 hover:bg-emerald-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">入驻中</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "active" ? processStatusConfig.active.color : "text-foreground")}>{stats.active}</div>
-                </div>
-                <CheckCircle className={cn("w-4 h-4", processStatusConfig.active.dotColor.replace('bg-', 'text-'))} />
-              </button>
-
-              {/* 已迁出 */}
-              <button
-                onClick={() => setStatusFilter(statusFilter === "moved_out" ? null : "moved_out")}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
-                  statusFilter === "moved_out" 
-                    ? `${processStatusConfig.moved_out.borderColor} ${processStatusConfig.moved_out.bgColor}` 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50/50"
-                )}
-              >
-                <div className="text-left">
-                  <div className="text-xs text-muted-foreground">已迁出</div>
-                  <div className={cn("text-lg font-semibold", statusFilter === "moved_out" ? processStatusConfig.moved_out.color : "text-foreground")}>{stats.moved_out}</div>
-                </div>
-                <LogOut className={cn("w-4 h-4 text-slate-400")} />
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => handleTabChange("non_tenant")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
+              activeTab === "non_tenant"
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border hover:border-primary/50 hover:bg-muted/50"
+            )}
+          >
+            <Store className="h-4 w-4" />
+            <span className="font-medium">非入驻企业</span>
+            <Badge variant="secondary" className="ml-1">{nonTenantStats.total}</Badge>
+          </button>
         </div>
       </div>
+
+      {/* 入驻企业 - 状态卡片 */}
+      {activeTab === "tenant" && (
+        <div className="pb-4">
+          <div className="grid grid-cols-7 gap-2">
+            {Object.entries(tenantStatusConfig).map(([key, config]) => {
+              const count = tenantStats[key as keyof typeof tenantStats];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
+                    statusFilter === key 
+                      ? `${config.borderColor} ${config.bgColor}` 
+                      : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                  )}
+                >
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">{config.label}</div>
+                    <div className={cn("text-lg font-semibold", statusFilter === key ? config.color : "text-foreground")}>
+                      {count}
+                    </div>
+                  </div>
+                  <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 非入驻企业 - 状态卡片 */}
+      {activeTab === "non_tenant" && (
+        <div className="pb-4">
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(nonTenantStatusConfig).map(([key, config]) => {
+              const count = nonTenantStats[key as keyof typeof nonTenantStats];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
+                    statusFilter === key 
+                      ? `${config.borderColor} ${config.bgColor}` 
+                      : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                  )}
+                >
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">{config.label}</div>
+                    <div className={cn("text-xl font-semibold", statusFilter === key ? config.color : "text-foreground")}>
+                      {count}
+                    </div>
+                  </div>
+                  <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 分割线 */}
       <div className="border-b" />
@@ -369,12 +364,24 @@ export default function EnterpriseListPage() {
         </div>
       </div>
 
-      {/* 空状态引导页 - 默认显示 */}
-      {statusFilter === null && filteredEnterprises.length === 0 && (
+      {/* 空状态引导页 */}
+      {filteredEnterprises.length === 0 && statusFilter === null && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Building2 className="h-16 w-16 text-muted-foreground/30 mb-4" />
-          <div className="text-muted-foreground mb-2">点击上方「新建企业」创建企业</div>
-          <div className="text-sm text-muted-foreground">或点击状态卡片查看已有企业</div>
+          <div className="text-muted-foreground mb-2">
+            暂无{activeTab === "tenant" ? "入驻企业" : "非入驻企业"}
+          </div>
+          <div className="text-sm text-muted-foreground">点击右上角「新建企业」创建</div>
+        </div>
+      )}
+
+      {/* 有过滤条件但无结果 */}
+      {filteredEnterprises.length === 0 && statusFilter !== null && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-muted-foreground mb-2">该状态下暂无企业</div>
+          <Button variant="link" onClick={() => setStatusFilter(null)}>
+            查看全部
+          </Button>
         </div>
       )}
 
@@ -386,18 +393,18 @@ export default function EnterpriseListPage() {
               <tr className="border-b bg-muted/50">
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">企业编号</th>
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">企业名称</th>
-                <th className="p-4 text-left text-sm font-medium text-muted-foreground">类型</th>
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">法人/电话</th>
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">行业</th>
-                <th className="p-4 text-left text-sm font-medium text-muted-foreground">流程状态</th>
+                <th className="p-4 text-left text-sm font-medium text-muted-foreground">状态</th>
                 <th className="p-4 text-right text-sm font-medium text-muted-foreground">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredEnterprises.map((enterprise) => {
-                const processStatus = enterprise.processStatus || (enterprise.type === "non_tenant" ? "new" : "active");
-                const statusInfo = processStatusConfig[processStatus] || processStatusConfig.new;
-                const StatusIcon = statusInfo.icon;
+                const processStatus = enterprise.processStatus || "new";
+                const statusInfo = activeTab === "tenant" 
+                  ? tenantStatusConfig[processStatus] 
+                  : nonTenantStatusConfig[processStatus as keyof typeof nonTenantStatusConfig] || nonTenantStatusConfig.new;
                 
                 return (
                   <tr key={enterprise.id} className="border-b last:border-b-0 hover:bg-muted/50">
@@ -406,17 +413,13 @@ export default function EnterpriseListPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        {activeTab === "tenant" ? (
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Store className="h-4 w-4 text-muted-foreground" />
+                        )}
                         <span className="text-sm font-medium">{enterprise.name}</span>
                       </div>
-                    </td>
-                    <td className="p-4">
-                      <Badge variant="outline" className={cn(
-                        "font-normal",
-                        enterprise.type === "tenant" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-green-50 text-green-600 border-green-200"
-                      )}>
-                        {enterprise.type === "tenant" ? "入驻企业" : "非入驻企业"}
-                      </Badge>
                     </td>
                     <td className="p-4 text-sm">
                       <div>{enterprise.legalPerson || "-"}</div>
@@ -430,7 +433,7 @@ export default function EnterpriseListPage() {
                         "inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium",
                         statusInfo.bgColor, statusInfo.color
                       )}>
-                        <StatusIcon className="h-3.5 w-3.5" />
+                        <div className={cn("w-1.5 h-1.5 rounded-full", statusInfo.dotColor)} />
                         {statusInfo.label}
                       </div>
                     </td>
@@ -461,16 +464,6 @@ export default function EnterpriseListPage() {
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* 有过滤条件但无结果 */}
-      {statusFilter !== null && filteredEnterprises.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="text-muted-foreground mb-2">该状态下暂无企业</div>
-          <Button variant="link" onClick={() => setStatusFilter(null)}>
-            查看全部企业
-          </Button>
         </div>
       )}
     </div>
