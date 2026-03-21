@@ -15,6 +15,9 @@ import {
   Share2,
   MessageSquareWarning,
   ArrowLeft,
+  Download,
+  Printer,
+  DoorOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -203,6 +206,57 @@ export default function ApplicationsPage() {
   // 查看流程
   const handleViewProcess = (application: Application) => {
     router.push(`/dashboard/base/processes?applicationId=${application.id}`);
+  };
+
+  // 导出申请
+  const handleExport = async (application: Application) => {
+    try {
+      const response = await fetch(`/api/applications/${application.id}/export`);
+      if (!response.ok) {
+        throw new Error("导出失败");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `入驻申请_${application.enterpriseName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("导出成功");
+    } catch (err) {
+      console.error("导出失败:", err);
+      toast.error("导出失败");
+    }
+  };
+
+  // 打印申请
+  const handlePrint = async (application: Application) => {
+    try {
+      const response = await fetch(`/api/applications/${application.id}/export`);
+      if (!response.ok) {
+        throw new Error("获取打印内容失败");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      toast.success("正在打开打印预览");
+    } catch (err) {
+      console.error("打印失败:", err);
+      toast.error("打印失败");
+    }
+  };
+
+  // 分配房间
+  const handleAssignRoom = (application: Application) => {
+    // TODO: 打开分配房间弹窗或跳转到分配页面
+    toast.info("分配房间功能开发中");
   };
 
   // 转发分享
@@ -566,15 +620,35 @@ export default function ApplicationsPage() {
                         </Button>
                       )}
                       {app.approvalStatus === "approved" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleViewProcess(app)}
-                          className="gap-1"
-                        >
-                          <GitBranch className="h-3.5 w-3.5" />
-                          查看流程
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleExport(app)}
+                            className="gap-1"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            导出
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handlePrint(app)}
+                            className="gap-1"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            打印
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAssignRoom(app)}
+                            className="gap-1"
+                          >
+                            <DoorOpen className="h-3.5 w-3.5" />
+                            分配房间
+                          </Button>
+                        </>
                       )}
                     </div>
                   </td>
