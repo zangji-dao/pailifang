@@ -629,10 +629,10 @@ export default function ApplicationsPage() {
     }
   };
 
-  // 分配房间
+  // 新建企业
   const handleAssignRoom = (application: Application) => {
-    // TODO: 打开分配房间弹窗或跳转到分配页面
-    toast.info("分配房间功能开发中");
+    // TODO: 打开新建企业弹窗或跳转到新建企业页面
+    toast.info("新建企业功能开发中");
   };
 
   // 转发分享
@@ -1032,7 +1032,7 @@ export default function ApplicationsPage() {
                             className="gap-1"
                           >
                             <DoorOpen className="h-3.5 w-3.5" />
-                            分配房间
+                            新建企业
                           </Button>
                         </>
                       )}
