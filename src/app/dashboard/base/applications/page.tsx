@@ -287,10 +287,10 @@ export default function ApplicationsPage() {
           {/* 新建申请按钮 */}
           <button
             onClick={handleCreate}
-            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 px-6 py-4 transition-all hover:border-amber-400 hover:bg-amber-50 min-w-[140px]"
+            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/50 px-6 py-4 transition-all hover:border-slate-400 hover:bg-slate-100 min-w-[140px]"
           >
-            <Plus className="h-8 w-8 text-amber-500 mb-2" />
-            <span className="text-sm font-medium text-amber-600">新建申请</span>
+            <Plus className="h-8 w-8 text-slate-600 mb-2" />
+            <span className="text-sm font-medium text-slate-700">新建申请</span>
           </button>
 
           {/* 状态统计 */}
@@ -302,8 +302,8 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "draft" 
-                    ? "border-slate-400 bg-slate-50" 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                    ? "border-slate-500 bg-slate-200" 
+                    : "border-border hover:border-slate-300 hover:bg-slate-50"
                 )}
               >
                 <div className="text-left">
@@ -316,13 +316,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "pending" 
-                    ? "border-amber-400 bg-amber-50" 
-                    : "border-border hover:border-amber-300 hover:bg-amber-50/50"
+                    ? "border-slate-500 bg-slate-200" 
+                    : "border-border hover:border-slate-300 hover:bg-slate-50"
                 )}
               >
                 <div className="text-left">
-                  <div className="text-xs text-amber-600">待审批</div>
-                  <div className="text-xl font-semibold text-amber-600">{stats.pending}</div>
+                  <div className="text-xs text-muted-foreground">待审批</div>
+                  <div className="text-xl font-semibold text-slate-700">{stats.pending}</div>
                 </div>
               </button>
               <button
@@ -330,13 +330,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "rejected" 
-                    ? "border-red-400 bg-red-50" 
-                    : "border-border hover:border-red-300 hover:bg-red-50/50"
+                    ? "border-slate-500 bg-slate-200" 
+                    : "border-border hover:border-slate-300 hover:bg-slate-50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已驳回</div>
-                  <div className="text-xl font-semibold text-red-600">{stats.rejected}</div>
+                  <div className="text-xl font-semibold text-slate-700">{stats.rejected}</div>
                 </div>
               </button>
               <button
@@ -344,13 +344,13 @@ export default function ApplicationsPage() {
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
                   statusFilter === "approved" 
-                    ? "border-emerald-400 bg-emerald-50" 
-                    : "border-border hover:border-emerald-300 hover:bg-emerald-50/50"
+                    ? "border-slate-500 bg-slate-200" 
+                    : "border-border hover:border-slate-300 hover:bg-slate-50"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已通过</div>
-                  <div className="text-xl font-semibold text-emerald-600">{stats.approved}</div>
+                  <div className="text-xl font-semibold text-slate-700">{stats.approved}</div>
                 </div>
               </button>
             </div>
