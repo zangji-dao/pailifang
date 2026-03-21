@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { 
   ApplicationFormData, 
@@ -24,6 +24,7 @@ interface ShareholderCropperTarget {
 
 export function useApplicationForm(id: string) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   // 基础状态
   const [formData, setFormData] = useState<ApplicationFormData | null>(null);
@@ -715,8 +716,13 @@ export function useApplicationForm(id: string) {
         setSaving(false);
       }
     }
-    router.push("/dashboard/base/applications");
-  }, [id, formData, canEdit, router]);
+    // 返回时带上来源状态参数
+    const from = searchParams.get("from");
+    const returnUrl = from 
+      ? `/dashboard/base/applications?from=${from}` 
+      : "/dashboard/base/applications";
+    router.push(returnUrl);
+  }, [id, formData, canEdit, router, searchParams]);
 
   return {
     // 状态

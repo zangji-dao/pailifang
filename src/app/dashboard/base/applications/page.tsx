@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   Plus,
@@ -81,6 +81,7 @@ const applicationTypeConfig: Record<ApplicationType, { label: string; className:
 
 export default function ApplicationsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tabsContext = useTabs();
   const confirm = useConfirm();
 
@@ -129,14 +130,23 @@ export default function ApplicationsPage() {
     fetchApplications();
   }, []);
 
+  // 从 URL 参数恢复筛选状态（从编辑页返回时）
+  useEffect(() => {
+    const from = searchParams.get("from");
+    if (from && ["draft", "pending", "rejected", "approved"].includes(from)) {
+      setStatusFilter(from);
+    }
+  }, [searchParams]);
+
   // 打开新建表单（新标签页）
   const handleCreate = () => {
     router.push("/dashboard/base/applications/new");
   };
 
-  // 打开编辑表单（新标签页）
+  // 打开编辑表单（带上当前筛选状态）
   const handleEdit = (application: Application) => {
-    router.push(`/dashboard/base/applications/${application.id}`);
+    const fromStatus = statusFilter || "";
+    router.push(`/dashboard/base/applications/${application.id}?from=${fromStatus}`);
   };
 
   // 提交审批
