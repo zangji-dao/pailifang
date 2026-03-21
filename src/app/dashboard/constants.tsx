@@ -51,7 +51,7 @@ export const BASE_NAVIGATION: NavItem[] = [
 ];
 
 /**
- * 入驻管理子菜单
+ * 入驻管理子菜单（基地管理下的二级菜单）
  */
 export const SETTLEMENT_CHILDREN: NavChildItem[] = [
   { name: "入驻申请", href: "/dashboard/base/applications", icon: FileText },
@@ -61,7 +61,8 @@ export const SETTLEMENT_CHILDREN: NavChildItem[] = [
 /**
  * 基地管理子菜单
  */
-export const BASE_MANAGEMENT_CHILDREN = [
+export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
+  { name: "入驻管理", href: "", icon: FileCheck, children: SETTLEMENT_CHILDREN },
   { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
   { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "企业管理", href: "/dashboard/base/tenants", icon: Users },
@@ -135,13 +136,6 @@ export function getNavigation(userRole?: string): NavItem[] {
 
   return [
     ...BASE_NAVIGATION,
-    {
-      name: "入驻管理",
-      icon: FileCheck,
-      expandable: true,
-      badge: null,
-      children: SETTLEMENT_CHILDREN,
-    },
     {
       name: "基地管理",
       icon: MapPin,

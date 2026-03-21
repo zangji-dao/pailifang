@@ -44,6 +44,7 @@ export interface NavChildItem {
   href: string;
   icon: LucideIcon;
   badge?: string | null;
+  children?: NavChildItem[]; // 支持嵌套子菜单
 }
 
 /**
