@@ -34,7 +34,8 @@ type ProcessStatus =
   | "pending_contract" 
   | "pending_payment" 
   | "active" 
-  | "moved_out";
+  | "moved_out"
+  | "terminated";
 
 interface Enterprise {
   id: string;
@@ -53,7 +54,7 @@ interface Enterprise {
 }
 
 // 入驻企业流程状态配置
-const tenantStatusConfig: Record<ProcessStatus, { 
+const tenantStatusConfig: Record<string, { 
   label: string; 
   color: string; 
   bgColor: string;
@@ -114,21 +115,21 @@ const tenantStatusConfig: Record<ProcessStatus, {
 // 非入驻企业状态配置
 const nonTenantStatusConfig = {
   new: { 
-    label: "新建", 
+    label: "洽谈中", 
     color: "text-blue-600",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-300",
     dotColor: "bg-blue-500",
   },
   active: { 
-    label: "活跃", 
+    label: "服务中", 
     color: "text-emerald-600",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-300",
     dotColor: "bg-emerald-500",
   },
-  inactive: { 
-    label: "已注销", 
+  terminated: { 
+    label: "服务终止", 
     color: "text-slate-600",
     bgColor: "bg-slate-50",
     borderColor: "border-slate-300",
@@ -212,7 +213,7 @@ export default function EnterpriseListPage() {
     total: enterprises.filter((e) => e.type === "non_tenant").length,
     new: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "new").length,
     active: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "active").length,
-    inactive: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "moved_out").length,
+    terminated: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "terminated").length,
   };
 
   // 切换 Tab 时重置过滤条件
