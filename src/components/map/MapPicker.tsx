@@ -42,7 +42,7 @@ interface MapPickerProps {
 async function searchAddress(query: string): Promise<Location[]> {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&accept-language=zh`
     );
     const data = await response.json();
     
@@ -69,17 +69,36 @@ async function searchAddress(query: string): Promise<Location[]> {
 async function reverseGeocode(lat: number, lng: number): Promise<Location> {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=zh`
     );
     const data = await response.json();
     const addr = data.address || {};
+    
+    // 尝试从 display_name 中提取城市名（格式通常是：街道, 区县, 城市, 省份, 国家）
+    let cityName = addr.city || addr.town || addr.village || '';
+    
+    // 如果没有城市名，尝试从 display_name 解析
+    if (!cityName && data.display_name) {
+      const parts = data.display_name.split(',').map((s: string) => s.trim());
+      // 从后往前找：国家、省份、城市、区县...
+      for (const part of parts) {
+        // 跳过国家和省份
+        if (part.includes('中国') || part.includes('省') || part.includes('自治区') || part.includes('市')) {
+          // 如果包含"市"但不是省份（不含"省"、"自治区"），可能是城市
+          if (part.includes('市') && !part.includes('省') && !part.includes('自治区')) {
+            cityName = part;
+            break;
+          }
+        }
+      }
+    }
     
     return {
       lat,
       lng,
       address: data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       province: addr.province || addr.state || addr['ISO3166-2-lvl4']?.split('-')[0] || '',
-      city: addr.city || addr.town || addr.village || addr.county || '',
+      city: cityName || addr.county || '',
       district: addr.suburb || addr.district || addr.county || '',
       street: addr.road || addr.street || '',
     };
