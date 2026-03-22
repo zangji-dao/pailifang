@@ -73,6 +73,8 @@ export interface Meter {
   networkType: MeterType;
   networkStatus: MeterStatus;
   area: number | null;
+  enterpriseId: string | null;
+  enterprise: Enterprise | null;
   spaces: Space[];
 }
 

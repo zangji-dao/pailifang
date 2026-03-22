@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Building2, Settings, DoorOpen, Plus, X, ChevronRight, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Settings, DoorOpen, Plus, X, ChevronRight, Loader2, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Meter, Space } from "../types";
+import type { Meter, Space, Enterprise } from "../types";
 import { MeterBillCard } from "./MeterBillCard";
 
 interface MeterDetailPanelProps {
@@ -20,8 +20,59 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
   const [showAddRegNumber, setShowAddRegNumber] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
+  // 企业列表
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
+  const [loadingEnterprises, setLoadingEnterprises] = useState(false);
+  const [selectedEnterpriseId, setSelectedEnterpriseId] = useState<string | null>(meter.enterpriseId || null);
+  const [updatingEnterprise, setUpdatingEnterprise] = useState(false);
+  
   // 新增工位号表单
   const [regNumberForm, setRegNumberForm] = useState({ code: "" });
+
+  // 获取企业列表
+  useEffect(() => {
+    const fetchEnterprises = async () => {
+      setLoadingEnterprises(true);
+      try {
+        const res = await fetch("/api/enterprises");
+        const result = await res.json();
+        if (result.success) {
+          setEnterprises(result.data || []);
+        }
+      } catch (error) {
+        console.error("获取企业列表失败:", error);
+      } finally {
+        setLoadingEnterprises(false);
+      }
+    };
+    
+    fetchEnterprises();
+  }, []);
+
+  // 更新负责公司
+  const handleUpdateEnterprise = async (enterpriseId: string | null) => {
+    setUpdatingEnterprise(true);
+    try {
+      const res = await fetch(`/api/meters/${meter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enterprise_id: enterpriseId }),
+      });
+      
+      const result = await res.json();
+      if (result.success) {
+        toast.success("负责公司更新成功");
+        setSelectedEnterpriseId(enterpriseId);
+        onRefresh?.();
+      } else {
+        toast.error(result.error || "更新失败");
+      }
+    } catch (error) {
+      toast.error("更新失败");
+    } finally {
+      setUpdatingEnterprise(false);
+    }
+  };
 
   // 新增工位号
   const handleAddRegNumber = async (spaceId: string) => {
@@ -90,6 +141,43 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
           </div>
         </div>
       )}
+
+      {/* 负责公司 */}
+      <div className="mb-8">
+        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "#1C1917" }}>
+          <Building className="h-4 w-4" style={{ color: "#A8A29E" }} />
+          负责公司
+        </h3>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          {loadingEnterprises ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedEnterpriseId || ""}
+                onChange={(e) => handleUpdateEnterprise(e.target.value || null)}
+                disabled={updatingEnterprise}
+                className="flex-1 h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white disabled:opacity-50"
+              >
+                <option value="">选择负责公司</option>
+                {enterprises.map((enterprise) => (
+                  <option key={enterprise.id} value={enterprise.id}>
+                    {enterprise.name}
+                  </option>
+                ))}
+              </select>
+              {updatingEnterprise && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
+            </div>
+          )}
+          {selectedEnterpriseId && (
+            <p className="text-xs mt-2" style={{ color: "#A8A29E" }}>
+              当前负责公司：{enterprises.find(e => e.id === selectedEnterpriseId)?.name || meter.enterprise?.name || "未知"}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* 表号详情 */}
       <div className="mb-8">

@@ -612,6 +612,7 @@ export const meters = pgTable("meters", {
 	baseId: varchar("base_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 255 }),
+	enterpriseId: varchar("enterprise_id", { length: 36 }),
 	// 电表
 	electricityNumber: varchar("electricity_number", { length: 50 }),
 	electricityType: varchar("electricity_type", { length: 20 }).default('base'), // base=基地负责, customer=客户负责
@@ -636,6 +637,7 @@ export const meters = pgTable("meters", {
 }, (table) => [
 	index("meters_base_id_idx").on(table.baseId),
 	index("meters_code_idx").on(table.code),
+	index("meters_enterprise_id_idx").on(table.enterpriseId),
 	foreignKey({
 			columns: [table.baseId],
 			foreignColumns: [bases.id],

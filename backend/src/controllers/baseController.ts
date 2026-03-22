@@ -179,11 +179,30 @@ export const baseController = {
         .from(meters)
         .where(eq(meters.baseId, id));
 
+      // 获取每个物业的 enterprise 信息
+      const metersWithEnterprise = await Promise.all(
+        meterList.map(async (meter) => {
+          let enterprise = null;
+          if (meter.enterpriseId) {
+            const enterpriseResult = await db
+              .select({ id: enterprises.id, name: enterprises.name })
+              .from(enterprises)
+              .where(eq(enterprises.id, meter.enterpriseId))
+              .limit(1);
+            enterprise = enterpriseResult[0] || null;
+          }
+          return {
+            ...meter,
+            enterprise,
+          };
+        })
+      );
+
       return res.json({
         success: true,
         data: {
           ...result[0],
-          meters: meterList,
+          meters: metersWithEnterprise,
         },
       });
     } catch (error) {
