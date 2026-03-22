@@ -89,12 +89,16 @@ export async function GET(
   <title>房屋产权证明</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      font-family: "SimSun", "宋体", serif !important;
+      font-size: 16px !important;
+      line-height: 2 !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      -webkit-font-smoothing: antialiased;
+    }
     body {
-      font-family: "SimSun", "宋体", serif;
-      font-size: 16px;
-      line-height: 2;
       padding: 60px 80px;
-      background: #fff;
     }
     .title {
       text-align: center;

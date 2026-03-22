@@ -424,27 +424,41 @@ export default function AddressManagementPage() {
         return;
       }
 
-      // 2. 创建临时容器渲染HTML
-      const container = document.createElement("div");
-      container.innerHTML = result.data.html;
-      container.style.position = "absolute";
-      container.style.left = "-9999px";
-      container.style.top = "0";
-      container.style.width = "800px";
-      container.style.background = "#fff";
-      document.body.appendChild(container);
+      // 2. 创建隐藏的iframe来隔离渲染
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "-9999px";
+      iframe.style.top = "0";
+      iframe.style.width = "800px";
+      iframe.style.height = "600px";
+      iframe.style.border = "none";
+      iframe.style.zIndex = "-9999";
+      document.body.appendChild(iframe);
 
-      // 3. 使用 html2canvas 生成图片
-      const canvas = await html2canvas(container, {
+      // 3. 写入HTML内容
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        throw new Error("无法创建iframe文档");
+      }
+      iframeDoc.open();
+      iframeDoc.write(result.data.html);
+      iframeDoc.close();
+
+      // 4. 等待内容加载完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 5. 使用 html2canvas 生成图片
+      const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
+        logging: false,
       });
 
-      // 4. 移除临时容器
-      document.body.removeChild(container);
+      // 6. 移除iframe
+      document.body.removeChild(iframe);
 
-      // 5. 生成 PDF
+      // 7. 生成 PDF
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -457,7 +471,7 @@ export default function AddressManagementPage() {
 
       pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio);
       
-      // 6. 下载 PDF
+      // 8. 下载 PDF
       const displayCode = reg.manual_code || reg.code;
       const enterpriseName = reg.assigned_enterprise_name || displayCode;
       pdf.save(`房屋产权证明_${enterpriseName}.pdf`);
