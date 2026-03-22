@@ -773,7 +773,6 @@ export default function BaseListPage() {
                         <Trash2 className="h-4 w-4 mr-1.5" />
                         删除
                       </Button>
-                      <ChevronRight className="h-5 w-5 text-slate-300 shrink-0 hidden sm:block" />
                     </div>
                   </div>
                 </div>
@@ -784,7 +783,7 @@ export default function BaseListPage() {
       </div>
 
       {/* 删除确认弹窗 */}
-      {deleteConfirm.open && (
+      {deleteConfirm.open && deleteConfirm.base && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* 遮罩 */}
           <div 
@@ -794,47 +793,100 @@ export default function BaseListPage() {
           
           {/* 弹窗内容 */}
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
-                <Trash2 className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-center text-slate-900 mb-2">
-                确认删除
-              </h3>
-              <p className="text-center text-slate-500 text-sm">
-                确定要删除基地「{deleteConfirm.base?.name}」吗？此操作不可恢复。
-              </p>
-              {deleteConfirm.base && deleteConfirm.base.meterCount > 0 && (
-                <p className="text-center text-amber-600 text-sm mt-2 bg-amber-50 rounded-lg p-2">
-                  该基地下有 {deleteConfirm.base.meterCount} 个物业，删除后物业数据将一并删除。
-                </p>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setDeleteConfirm({ open: false, base: null })}
-                disabled={deleting}
-              >
-                取消
-              </Button>
-              <Button
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                onClick={handleDeleteBase}
-                disabled={deleting}
-              >
-                {deleting ? (
+            {(() => {
+              const base = deleteConfirm.base;
+              const stats = baseStats[base.id] || { totalSpaces: 0, totalRegNumbers: 0, allocatedRegNumbers: 0 };
+              const hasMeters = base.meterCount > 0;
+              const hasEnterprises = stats.allocatedRegNumbers > 0;
+              const canDelete = !hasMeters && !hasEnterprises;
+              
+              if (!canDelete) {
+                // 有关联数据，禁止删除
+                return (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    删除中...
+                    <div className="p-6">
+                      <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-amber-100 rounded-full">
+                        <Trash2 className="h-6 w-6 text-amber-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-center text-slate-900 mb-2">
+                        无法删除
+                      </h3>
+                      <p className="text-center text-slate-500 text-sm">
+                        基地「{base.name}」下存在关联数据，无法删除。
+                      </p>
+                      <div className="mt-4 bg-amber-50 rounded-lg p-3 space-y-2">
+                        {hasMeters && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">物业数量</span>
+                            <span className="font-medium text-amber-700">{base.meterCount} 个</span>
+                          </div>
+                        )}
+                        {hasEnterprises && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">入驻企业</span>
+                            <span className="font-medium text-amber-700">{stats.allocatedRegNumbers} 家</span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-center text-slate-400 text-xs mt-4">
+                        请先删除或迁移相关数据后再操作
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center justify-center px-6 py-4 bg-slate-50 border-t border-slate-100">
+                      <Button
+                        className="px-8"
+                        onClick={() => setDeleteConfirm({ open: false, base: null })}
+                      >
+                        我知道了
+                      </Button>
+                    </div>
                   </>
-                ) : (
-                  "确认删除"
-                )}
-              </Button>
-            </div>
+                );
+              }
+              
+              // 无关联数据，可以删除
+              return (
+                <>
+                  <div className="p-6">
+                    <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                      <Trash2 className="h-6 w-6 text-red-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-center text-slate-900 mb-2">
+                      确认删除
+                    </h3>
+                    <p className="text-center text-slate-500 text-sm">
+                      确定要删除基地「{base.name}」吗？此操作不可恢复。
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setDeleteConfirm({ open: false, base: null })}
+                      disabled={deleting}
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      onClick={handleDeleteBase}
+                      disabled={deleting}
+                    >
+                      {deleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          删除中...
+                        </>
+                      ) : (
+                        "确认删除"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
