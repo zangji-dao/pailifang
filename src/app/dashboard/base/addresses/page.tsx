@@ -538,16 +538,14 @@ export default function AddressManagementPage() {
           </div>
         ) : (
           <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+            <table className="w-full min-w-[800px]">
               {/* 表头 */}
               <thead>
                 <tr className="bg-slate-50 border-b text-xs font-medium text-muted-foreground">
                   <th className="px-4 py-3 text-left w-[140px]">注册号</th>
                   <th className="px-4 py-3 text-left w-[100px]">人工编号</th>
-                  <th className="px-4 py-3 text-left w-[200px]">地址</th>
-                  <th className="px-4 py-3 text-left w-[120px]">预分配企业</th>
-                  <th className="px-4 py-3 text-left w-[100px]">产权单位</th>
-                  <th className="px-4 py-3 text-left w-[100px]">管理单位</th>
+                  <th className="px-4 py-3 text-left w-[240px]">地址</th>
+                  <th className="px-4 py-3 text-left w-[140px]">预分配企业</th>
                   <th className="px-4 py-3 text-left w-[90px]">生成日期</th>
                   <th className="px-4 py-3 text-left w-[70px]">状态</th>
                   <th className="px-4 py-3 text-right w-[100px]">操作</th>
@@ -563,17 +561,11 @@ export default function AddressManagementPage() {
                     <td className="px-4 py-3 text-sm">
                       {reg.manual_code || <span className="text-slate-300">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[200px]" title={getAddressName(reg)}>
+                    <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[240px]" title={getAddressName(reg)}>
                       {getAddressName(reg)}
                     </td>
-                    <td className="px-4 py-3 text-sm truncate max-w-[120px]" title={reg.assigned_enterprise_name || "-"}>
+                    <td className="px-4 py-3 text-sm truncate max-w-[140px]" title={reg.assigned_enterprise_name || "-"}>
                       {reg.assigned_enterprise_name || <span className="text-slate-300">-</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm truncate max-w-[100px]" title={reg.property_owner || "-"}>
-                      {reg.property_owner || <span className="text-slate-300">-</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm truncate max-w-[100px]" title={reg.management_company || "-"}>
-                      {reg.management_company || <span className="text-slate-300">-</span>}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formatDate(reg.created_at)}
@@ -641,11 +633,19 @@ export default function AddressManagementPage() {
               <Input value={editingRegNumber?.code || ""} disabled className="bg-slate-50" />
             </div>
             <div className="space-y-2">
-              <Label>人工编号（可选）</Label>
+              <Label>人工编号</Label>
               <Input
                 value={editForm.manual_code}
                 onChange={(e) => setEditForm({ ...editForm, manual_code: e.target.value })}
                 placeholder="输入后将优先显示此编号"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>预分配企业</Label>
+              <Input
+                value={editForm.assigned_enterprise_name}
+                onChange={(e) => setEditForm({ ...editForm, assigned_enterprise_name: e.target.value })}
+                placeholder="用于生成产权证明授权函"
               />
             </div>
             <div className="space-y-2">
@@ -662,14 +662,6 @@ export default function AddressManagementPage() {
                 value={editForm.management_company}
                 onChange={(e) => setEditForm({ ...editForm, management_company: e.target.value })}
                 placeholder="如：吉林省天之企业管理咨询有限公司"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>预分配企业</Label>
-              <Input
-                value={editForm.assigned_enterprise_name}
-                onChange={(e) => setEditForm({ ...editForm, assigned_enterprise_name: e.target.value })}
-                placeholder="用于生成产权证明授权函"
               />
             </div>
           </div>
