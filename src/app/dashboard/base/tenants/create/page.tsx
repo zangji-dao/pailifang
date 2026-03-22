@@ -379,10 +379,19 @@ export default function NewTenantPage() {
 
   // 步骤0：选择基地
   const renderStep0 = () => {
-    // 根据城市筛选基地
+    // 根据省份/城市筛选基地
     const filteredBases = bases.filter((base) => {
-      if (!filterCity) return true;
-      return base.city_code === filterCity.code;
+      // 如果选择了城市，按城市代码精确匹配
+      if (filterCity) {
+        return base.city_code === filterCity.code;
+      }
+      // 如果只选择了省份，按省份代码前缀匹配
+      if (filterProvince) {
+        // 省份代码前2位是省份标识
+        const provincePrefix = filterProvince.code.substring(0, 2);
+        return base.city_code?.startsWith(provincePrefix);
+      }
+      return true;
     });
 
     // 获取所有有基地的城市代码
@@ -455,6 +464,14 @@ export default function NewTenantPage() {
           </div>
 
           {/* 基地列表 */}
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>共 {filteredBases.length} 个基地</span>
+            {(filterProvince || filterCity) && (
+              <span className="text-xs">
+                已筛选：{filterProvince?.name}{filterCity ? ` / ${filterCity.name}` : ''}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBases.map((base) => (
               <Card
