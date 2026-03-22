@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const newCode = `REG-${year}-${month}-${String(sequence).padStart(3, '0')}`;
 
-    // 3. 插入新注册号
+    // 3. 插入新注册号（带默认产权单位和管理单位）
     const { data: newReg, error: insertError } = await supabase
       .from('registration_numbers')
       .insert({
@@ -95,6 +95,8 @@ export async function POST(request: NextRequest) {
         space_id: space_id,
         enterprise_id: enterprise_id || null,
         assigned_enterprise_name: assigned_enterprise_name || null,
+        property_owner: '吉林省恒松物业管理有限公司',
+        management_company: '吉林省天之企业管理咨询有限公司',
         available: !enterprise_id, // 如果指定了企业，则标记为已分配
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
