@@ -90,8 +90,7 @@ export default function NewTenantPage() {
   const [selectedRegNumber, setSelectedRegNumber] = useState<AvailableRegNumber | null>(null);
   
   // 步骤3：上传证明
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [proofUrl, setProofUrl] = useState<string>("");
+  const [proofFiles, setProofFiles] = useState<{ name: string; url: string; size: number }[]>([]);
   const [uploading, setUploading] = useState(false);
   
   // 步骤4：确认信息
@@ -189,8 +188,12 @@ export default function NewTenantPage() {
       });
       const result = await res.json();
       if (result.success || result.url) {
-        setProofUrl(result.data?.url || result.url);
-        setProofFile(file);
+        const url = result.data?.url || result.url;
+        setProofFiles(prev => [...prev, { 
+          name: file.name, 
+          url: url,
+          size: file.size 
+        }]);
         toast({ title: "上传成功" });
       } else {
         throw new Error(result.error || result.message || "上传失败");
@@ -201,6 +204,18 @@ export default function NewTenantPage() {
     } finally {
       setUploading(false);
     }
+  };
+
+  // 删除文件
+  const handleRemoveFile = (index: number) => {
+    setProofFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 格式化文件大小
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   // 步骤验证
@@ -215,7 +230,7 @@ export default function NewTenantPage() {
         if (enterpriseType === "non_tenant") return true;
         return selectedRegNumber !== null;
       case 3:
-        return proofUrl !== "";
+        return proofFiles.length > 0;
       case 4:
         return enterpriseName.trim() !== "";
       default:
@@ -277,7 +292,7 @@ export default function NewTenantPage() {
         business_scope: remarks || null,
         registered_address: selectedRegNumber?.fullAddress || null,
         business_address: selectedRegNumber?.fullAddress || null,
-        proof_document_url: proofUrl,
+        proof_documents: proofFiles, // 传递文件列表
       };
 
       // 入驻企业额外信息
@@ -538,7 +553,7 @@ export default function NewTenantPage() {
     <Card>
       <CardHeader>
         <CardTitle>上传房屋产权证明</CardTitle>
-        <CardDescription>请上传已盖章的房屋产权证明文件</CardDescription>
+        <CardDescription>请上传已盖章的房屋产权证明文件，支持多个文件</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* 显示工位号信息 */}
@@ -554,51 +569,63 @@ export default function NewTenantPage() {
           </Alert>
         )}
 
+        {/* 文件列表 */}
+        {proofFiles.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">已上传文件 ({proofFiles.length})</Label>
+            <div className="border rounded-lg divide-y">
+              {proofFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveFile(index)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    删除
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 上传区域 */}
         <div className="border-2 border-dashed rounded-lg p-8 text-center">
-          {proofUrl ? (
-            <div className="space-y-4">
-              <CheckCircle2 className="w-12 h-12 mx-auto text-green-500" />
-              <p className="text-sm text-muted-foreground">文件已上传</p>
-              <p className="text-sm font-medium">{proofFile?.name}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setProofUrl("");
-                  setProofFile(null);
-                }}
-              >
-                重新上传
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">点击或拖拽上传</p>
-              <Input
-                type="file"
-                accept="image/*,.pdf"
-                className="max-w-xs mx-auto"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file);
-                }}
-                disabled={uploading}
-              />
-              {uploading && (
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">上传中...</span>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="space-y-4">
+            <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">点击选择文件上传</p>
+            <Input
+              type="file"
+              accept="image/*,.pdf"
+              className="max-w-xs mx-auto"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+              disabled={uploading}
+            />
+            {uploading && (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">上传中...</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 提示 */}
         <div className="text-sm text-muted-foreground">
-          <p>支持上传图片或PDF文件，文件大小不超过10MB</p>
+          <p>支持上传图片或PDF文件，文件大小不超过10MB，可上传多个文件</p>
         </div>
       </CardContent>
     </Card>
@@ -670,6 +697,22 @@ export default function NewTenantPage() {
               rows={3}
             />
           </div>
+
+          {/* 已上传文件 */}
+          {proofFiles.length > 0 && (
+            <div>
+              <Label className="text-muted-foreground">产权证明文件 ({proofFiles.length})</Label>
+              <div className="mt-2 space-y-1">
+                {proofFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <span>{file.name}</span>
+                    <span className="text-muted-foreground">({formatFileSize(file.size)})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 创建后状态提示 */}
