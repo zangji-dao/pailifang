@@ -16,6 +16,9 @@ import {
   ArrowLeft,
   Briefcase,
   MapPinned,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -67,7 +70,7 @@ interface BaseDetail {
 }
 
 // 视图模式类型
-type ViewMode = "list" | "add";
+type ViewMode = "list" | "add" | "edit";
 
 export default function BaseListPage() {
   const router = useRouter();
@@ -77,10 +80,13 @@ export default function BaseListPage() {
   const [enterpriseStats, setEnterpriseStats] = useState<EnterpriseStats>({ total: 0, tenant: 0, service: 0, active: 0 });
   const [loading, setLoading] = useState(true);
   
-  // 视图模式：列表或新增
+  // 视图模式：列表、新增或编辑
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   
-  // 新增基地表单数据
+  // 正在编辑的基地
+  const [editingBase, setEditingBase] = useState<Base | null>(null);
+  
+  // 表单数据
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -92,6 +98,13 @@ export default function BaseListPage() {
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  // 删除确认弹窗
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; base: Base | null }>({
+    open: false,
+    base: null,
+  });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -146,6 +159,36 @@ export default function BaseListPage() {
     fetchData();
   }, []);
 
+  // 打开编辑视图
+  const handleEditBase = (base: Base) => {
+    setEditingBase(base);
+    setFormData({
+      name: base.name,
+      address: base.address || "",
+      city_code: base.city_code || "",
+      longitude: base.longitude || 0,
+      latitude: base.latitude || 0,
+      status: base.status,
+    });
+    
+    // 根据城市代码找到对应的省份和城市
+    if (base.city_code) {
+      for (const province of provinces) {
+        const city = province.cities.find(c => c.code === base.city_code);
+        if (city) {
+          setSelectedProvince(province);
+          setSelectedCity(city);
+          break;
+        }
+      }
+    } else {
+      setSelectedProvince(null);
+      setSelectedCity(null);
+    }
+    
+    setViewMode("edit");
+  };
+
   // 创建基地
   const handleCreateBase = async () => {
     if (!formData.name.trim()) {
@@ -171,13 +214,8 @@ export default function BaseListPage() {
       const result = await response.json();
       if (result.success) {
         toast.success("基地创建成功");
-        // 重置表单
-        setFormData({ name: "", address: "", city_code: "", longitude: 0, latitude: 0, status: "active" });
-        setSelectedProvince(null);
-        setSelectedCity(null);
-        // 返回列表
+        resetForm();
         setViewMode("list");
-        // 刷新列表
         fetchData();
       } else {
         toast.error(result.error || "创建失败");
@@ -188,6 +226,79 @@ export default function BaseListPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // 更新基地
+  const handleUpdateBase = async () => {
+    if (!editingBase || !formData.name.trim()) {
+      toast.error("请输入基地名称");
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/bases/${editingBase.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          city: selectedCity?.name || null,
+          longitude: formData.longitude || null,
+          latitude: formData.latitude || null,
+        }),
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        toast.success("基地更新成功");
+        resetForm();
+        setViewMode("list");
+        fetchData();
+      } else {
+        toast.error(result.error || "更新失败");
+      }
+    } catch (error) {
+      console.error("更新基地失败:", error);
+      toast.error("更新失败，请重试");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 删除基地
+  const handleDeleteBase = async () => {
+    if (!deleteConfirm.base) return;
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/bases/${deleteConfirm.base.id}`, {
+        method: "DELETE",
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        toast.success("基地删除成功");
+        setDeleteConfirm({ open: false, base: null });
+        fetchData();
+      } else {
+        toast.error(result.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("删除基地失败:", error);
+      toast.error("删除失败，请重试");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // 重置表单
+  const resetForm = () => {
+    setFormData({ name: "", address: "", city_code: "", longitude: 0, latitude: 0, status: "active" });
+    setSelectedProvince(null);
+    setSelectedCity(null);
+    setEditingBase(null);
   };
 
   const handleBaseClick = (baseId: string, baseName: string) => {
@@ -216,8 +327,8 @@ export default function BaseListPage() {
     );
   }
 
-  // 新增基地视图
-  if (viewMode === "add") {
+  // 表单视图（新增或编辑）
+  if (viewMode === "add" || viewMode === "edit") {
     return (
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
         {/* 头部 */}
@@ -225,7 +336,10 @@ export default function BaseListPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setViewMode("list")}
+            onClick={() => {
+              setViewMode("list");
+              resetForm();
+            }}
             className="text-slate-600"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -237,7 +351,9 @@ export default function BaseListPage() {
         <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
           {/* 头部 */}
           <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-lg font-semibold text-slate-900">新增基地</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {viewMode === "add" ? "新增基地" : "编辑基地"}
+            </h2>
             <p className="text-sm text-slate-500 mt-1">填写基地基本信息</p>
           </div>
           
@@ -378,25 +494,36 @@ export default function BaseListPage() {
           <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-xl">
             <Button
               variant="outline"
-              onClick={() => setViewMode("list")}
+              onClick={() => {
+                setViewMode("list");
+                resetForm();
+              }}
               disabled={submitting}
             >
               取消
             </Button>
             <Button
-              onClick={handleCreateBase}
+              onClick={viewMode === "add" ? handleCreateBase : handleUpdateBase}
               disabled={submitting}
               className="bg-slate-900 hover:bg-slate-800 text-white"
             >
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  创建中...
+                  {viewMode === "add" ? "创建中..." : "保存中..."}
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  创建基地
+                  {viewMode === "add" ? (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      创建基地
+                    </>
+                  ) : (
+                    <>
+                      保存修改
+                    </>
+                  )}
                 </>
               )}
             </Button>
@@ -514,17 +641,19 @@ export default function BaseListPage() {
               return (
                 <div
                   key={base.id}
-                  onClick={() => handleBaseClick(base.id, base.name)}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50 cursor-pointer transition-colors group gap-4"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50 transition-colors gap-4"
                 >
                   {/* 左侧：基地信息 */}
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div 
+                    className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 cursor-pointer"
+                    onClick={() => handleBaseClick(base.id, base.name)}
+                  >
                     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
                       <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-slate-500" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-slate-900 group-hover:text-slate-700 truncate">{base.name}</h3>
+                        <h3 className="font-medium text-slate-900 truncate">{base.name}</h3>
                         {base.city && (
                           <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600 shrink-0 flex items-center gap-1">
                             <MapPinned className="h-3 w-3" />
@@ -550,7 +679,7 @@ export default function BaseListPage() {
                   </div>
 
                   {/* 中间：统计数据 - 小屏幕隐藏，大屏幕显示 */}
-                  <div className="hidden lg:flex items-center gap-8">
+                  <div className="hidden lg:flex items-center gap-8 shrink-0">
                     {/* 物业 */}
                     <div className="text-center min-w-[60px]">
                       <p className="text-2xl font-semibold text-slate-900">{base.meterCount}</p>
@@ -576,43 +705,42 @@ export default function BaseListPage() {
                     </div>
                   </div>
 
-                  {/* 右侧：快捷入口 */}
-                  <div className="flex items-center justify-between sm:justify-end gap-4">
+                  {/* 右侧：操作区 */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                     {/* 小屏幕：显示统计标签 */}
                     <div className="flex sm:hidden items-center gap-2 text-xs text-slate-500">
                       <span className="px-2 py-1 bg-slate-100 rounded">{base.meterCount} 物业</span>
                       <span className="px-2 py-1 bg-violet-50 text-violet-600 rounded">{stats.allocatedRegNumbers} 企业</span>
                     </div>
                     
-                    {/* 大屏幕：快捷按钮 */}
-                    <div className="hidden sm:flex items-center gap-2">
+                    {/* 操作按钮 */}
+                    <div className="flex items-center gap-2">
                       <Button 
                         variant="ghost" 
                         size="sm"
                         className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleBaseClick(base.id, base.name);
+                          handleEditBase(base);
                         }}
                       >
-                        <Home className="h-4 w-4 mr-1.5" />
-                        物业管理
+                        <Pencil className="h-4 w-4 mr-1.5" />
+                        编辑
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                        className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleBaseClick(base.id, base.name);
+                          setDeleteConfirm({ open: true, base });
                         }}
                       >
-                        <Users className="h-4 w-4 mr-1.5" />
-                        入驻企业
+                        <Trash2 className="h-4 w-4 mr-1.5" />
+                        删除
                       </Button>
+                      <ChevronRight className="h-5 w-5 text-slate-300 shrink-0 hidden sm:block" />
                     </div>
-                    
-                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
                   </div>
                 </div>
               );
@@ -620,6 +748,62 @@ export default function BaseListPage() {
           </div>
         )}
       </div>
+
+      {/* 删除确认弹窗 */}
+      {deleteConfirm.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 遮罩 */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !deleting && setDeleteConfirm({ open: false, base: null })}
+          />
+          
+          {/* 弹窗内容 */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-center text-slate-900 mb-2">
+                确认删除
+              </h3>
+              <p className="text-center text-slate-500 text-sm">
+                确定要删除基地「{deleteConfirm.base?.name}」吗？此操作不可恢复。
+              </p>
+              {deleteConfirm.base && deleteConfirm.base.meterCount > 0 && (
+                <p className="text-center text-amber-600 text-sm mt-2 bg-amber-50 rounded-lg p-2">
+                  该基地下有 {deleteConfirm.base.meterCount} 个物业，删除后物业数据将一并删除。
+                </p>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDeleteConfirm({ open: false, base: null })}
+                disabled={deleting}
+              >
+                取消
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDeleteBase}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    删除中...
+                  </>
+                ) : (
+                  "确认删除"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
