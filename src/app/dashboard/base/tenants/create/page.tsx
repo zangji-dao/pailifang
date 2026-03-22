@@ -229,10 +229,12 @@ export default function NewTenantPage() {
       case 1:
         return enterpriseType !== null;
       case 2:
-        // 入驻企业必须选择工位号，非入驻企业可跳过
+        // 入驻企业必须选择工位号，非入驻企业跳过此步骤
         if (enterpriseType === "non_tenant") return true;
         return selectedRegNumber !== null;
       case 3:
+        // 入驻企业必须上传证明，非入驻企业跳过此步骤
+        if (enterpriseType === "non_tenant") return true;
         return proofFiles.length > 0;
       case 4:
         return enterpriseName.trim() !== "";
@@ -252,9 +254,9 @@ export default function NewTenantPage() {
       return;
     }
     
-    // 非入驻企业跳过工位选择步骤
+    // 非入驻企业跳过工位选择和上传证明步骤
     if (currentStep === 1 && enterpriseType === "non_tenant") {
-      setCurrentStep(3);
+      setCurrentStep(4); // 直接跳到确认信息
     } else if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
@@ -262,8 +264,8 @@ export default function NewTenantPage() {
 
   // 上一步
   const prevStep = () => {
-    // 非入驻企业跳过工位选择步骤
-    if (currentStep === 3 && enterpriseType === "non_tenant") {
+    // 非入驻企业跳过工位选择和上传证明步骤
+    if (currentStep === 4 && enterpriseType === "non_tenant") {
       setCurrentStep(1);
     } else if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
@@ -295,14 +297,16 @@ export default function NewTenantPage() {
         business_scope: remarks || null,
         registered_address: selectedRegNumber?.fullAddress || null,
         business_address: selectedRegNumber?.fullAddress || null,
-        proof_documents: proofFiles, // 传递文件列表
       };
 
-      // 入驻企业额外信息
-      if (enterpriseType === "tenant" && selectedRegNumber) {
-        requestData.space_id = selectedRegNumber.spaceId;
-        requestData.registration_number_id = selectedRegNumber.id;
-        requestData.registration_number = selectedRegNumber.manual_code || selectedRegNumber.code;
+      // 入驻企业需要上传证明和绑定工位
+      if (enterpriseType === "tenant") {
+        requestData.proof_documents = proofFiles;
+        if (selectedRegNumber) {
+          requestData.space_id = selectedRegNumber.spaceId;
+          requestData.registration_number_id = selectedRegNumber.id;
+          requestData.registration_number = selectedRegNumber.manual_code || selectedRegNumber.code;
+        }
       }
 
       const res = await fetch("/api/enterprises", {
@@ -336,8 +340,9 @@ export default function NewTenantPage() {
 
   // 渲染步骤指示器
   const renderStepIndicator = () => {
+    // 非入驻企业跳过工位选择和上传证明步骤
     const displaySteps = enterpriseType === "non_tenant"
-      ? STEPS.filter(s => s.id !== 2) // 非入驻企业跳过工位选择
+      ? STEPS.filter(s => s.id !== 2 && s.id !== 3)
       : STEPS;
     
     return (
