@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useEffect, useCallback, useRef } from "react";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -39,6 +39,26 @@ function MapEventHandler({ onLocationSelect }: { onLocationSelect: (lat: number,
   return null;
 }
 
+// 位置更新组件 - 当 position 变化时自动移动地图视图
+function MapPositionUpdater({ position }: { position?: [number, number] }) {
+  const map = useMap();
+  const prevPositionRef = useRef<[number, number] | undefined>(undefined);
+
+  useEffect(() => {
+    if (position && (
+      !prevPositionRef.current ||
+      prevPositionRef.current[0] !== position[0] ||
+      prevPositionRef.current[1] !== position[1]
+    )) {
+      // 位置变化时，移动地图到新位置
+      map.setView(position, 15);
+      prevPositionRef.current = position;
+    }
+  }, [position, map]);
+
+  return null;
+}
+
 export default function MapComponent({ position, onLocationSelect }: MapComponentProps) {
   const center = position || DEFAULT_CENTER;
   const zoom = position ? 15 : DEFAULT_ZOOM;
@@ -55,6 +75,7 @@ export default function MapComponent({ position, onLocationSelect }: MapComponen
       />
       {position && <Marker position={position} />}
       <MapEventHandler onLocationSelect={onLocationSelect} />
+      <MapPositionUpdater position={position} />
     </MapContainer>
   );
 }

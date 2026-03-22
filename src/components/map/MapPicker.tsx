@@ -240,7 +240,10 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowMap(true)}
+              onClick={() => {
+                setShowMap(true);
+                setMapKey(prev => prev + 1);
+              }}
               className="text-primary"
             >
               修改
