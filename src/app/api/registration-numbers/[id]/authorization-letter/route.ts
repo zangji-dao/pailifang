@@ -91,82 +91,59 @@ export async function GET(
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       font-family: "SimSun", "宋体", serif !important;
-      font-size: 16px !important;
-      line-height: 1.8 !important;
+      font-size: 18px !important;
+      line-height: 2 !important;
       background: #ffffff !important;
       color: #000000 !important;
       -webkit-font-smoothing: antialiased;
     }
     body {
-      padding: 80px 100px;
+      padding: 100px 120px;
       min-height: 100vh;
     }
     .title {
       text-align: center;
-      font-size: 26px;
+      font-size: 28px;
       font-weight: bold;
-      margin-bottom: 50px;
-      letter-spacing: 10px;
+      margin-bottom: 60px;
+      letter-spacing: 12px;
     }
     .content {
       text-indent: 2em;
       text-align: justify;
-      font-size: 16px;
-      line-height: 2;
     }
-    .content p {
-      margin-bottom: 0;
-    }
-    .blank {
-      display: inline-block;
-      border-bottom: 1px solid #000;
-      min-width: 80px;
-      text-align: center;
-      margin: 0 4px;
-      padding: 0 4px;
-    }
-    .blank-long {
-      min-width: 200px;
+    .underline {
+      text-decoration: underline;
+      text-decoration-skip-ink: none;
     }
     .footer {
-      margin-top: 80px;
+      margin-top: 100px;
       text-align: right;
-      padding-right: 60px;
-      font-size: 16px;
+      padding-right: 80px;
     }
     .seal-area {
-      margin-top: 40px;
+      margin-top: 50px;
       text-align: right;
-      padding-right: 60px;
-    }
-    .seal-label {
-      font-size: 14px;
+      padding-right: 80px;
+      font-size: 16px;
       color: #333;
     }
-    .seal-box {
-      margin-top: 10px;
-      width: 120px;
-      height: 120px;
-      border: 1px dashed #ccc;
-      display: inline-block;
-    }
     @media print {
-      body { padding: 60px 80px; }
+      body { padding: 80px 100px; }
     }
   </style>
 </head>
 <body>
   <div class="title">房屋产权证明</div>
   <div class="content">
-    <p>兹证明，位于<span class="blank blank-long">${detailAddr}</span>的房屋，其所有权属于<span class="blank">${regNumber.property_owner || '__________'}</span>，管理权归<span class="blank">${regNumber.management_company || '__________'}</span>所有，现已将该房屋无偿租赁给<span class="blank">${enterpriseName}</span>作为经营场所使用。</p>
-    <p style="margin-top: 16px; text-indent: 2em;">该房屋无单独房照，符合国家安全标准，不属于拆迁范围。</p>
-    <p style="margin-top: 40px; text-indent: 2em;">特此证明。</p>
+    <p>兹证明，位于<span class="underline">${detailAddr}</span>的房屋，其所有权属于<span class="underline">${regNumber.property_owner || '____________'}</span>，管理权归<span class="underline">${regNumber.management_company || '____________'}</span>所有，现已将该房屋无偿租赁给<span class="underline">${enterpriseName}</span>作为经营场所使用。该房屋无单独房照，符合国家安全标准，不属于拆迁范围。</p>
+    <p style="margin-top: 60px; text-indent: 2em;">特此证明。</p>
   </div>
   <div class="footer">
     <p>${formattedDate}</p>
   </div>
   <div class="seal-area">
-    <p class="seal-label">出证单位（盖章）</p>
+    <p>出证单位（盖章）</p>
   </div>
 </body>
 </html>
