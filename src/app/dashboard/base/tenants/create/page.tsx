@@ -379,18 +379,64 @@ export default function NewTenantPage() {
 
   // 步骤0：选择基地
   const renderStep0 = () => {
+    // 从地址中解析城市名
+    const getCityFromAddress = (address: string | null): string => {
+      if (!address) return "";
+      // 地址格式通常是: 街道, 区, 市, 省, 国家
+      const parts = address.split(",").map(p => p.trim());
+      // 查找市级行政区
+      for (const part of parts) {
+        if (part.includes("市")) {
+          return part.replace("市", "");
+        }
+      }
+      return "";
+    };
+    
+    // 从地址中解析省份名
+    const getProvinceFromAddress = (address: string | null): string => {
+      if (!address) return "";
+      const parts = address.split(",").map(p => p.trim());
+      for (const part of parts) {
+        if (part.includes("省") || part.includes("自治区")) {
+          return part.replace(/省|自治区/g, "");
+        }
+      }
+      return "";
+    };
+    
     // 根据省份/城市筛选基地
     const filteredBases = bases.filter((base) => {
-      // 如果选择了城市，按城市代码精确匹配
+      // 优先使用 city_code，如果没有则从 address 解析
+      const baseCityCode = base.city_code;
+      const baseProvince = base.city_code 
+        ? null // 如果有 city_code，不需要从地址解析
+        : getProvinceFromAddress(base.address);
+      const baseCity = base.city 
+        || (base.city_code ? null : getCityFromAddress(base.address));
+      
+      // 如果选择了城市
       if (filterCity) {
-        return base.city_code === filterCity.code;
+        // 优先按 city_code 精确匹配
+        if (baseCityCode) {
+          return baseCityCode === filterCity.code;
+        }
+        // 否则按城市名匹配
+        return baseCity === filterCity.name.replace("市", "");
       }
-      // 如果只选择了省份，按省份代码前缀匹配
+      
+      // 如果只选择了省份
       if (filterProvince) {
-        // 省份代码前2位是省份标识
-        const provincePrefix = filterProvince.code.substring(0, 2);
-        return base.city_code?.startsWith(provincePrefix);
+        // 优先按 city_code 前缀匹配
+        if (baseCityCode) {
+          const provincePrefix = filterProvince.code.substring(0, 2);
+          return baseCityCode.startsWith(provincePrefix);
+        }
+        // 否则按省份名匹配
+        const provinceName = filterProvince.name.replace(/省|自治区/g, "");
+        return baseProvince === provinceName;
       }
+      
       return true;
     });
     
