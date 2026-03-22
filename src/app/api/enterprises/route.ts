@@ -136,11 +136,14 @@ export async function POST(request: NextRequest) {
     const enterpriseType = body.type || 'tenant';
     
     if (enterpriseType === 'tenant') {
-      // 入驻企业
-      if (body.registration_number || body.registered_address) {
+      // 入驻企业：选择了工位号则待工商注册，否则报错
+      if (body.registration_number_id || body.space_id) {
         processStatus = 'pending_registration'; // 有工位号，待工商注册
       } else {
-        processStatus = 'pending_address'; // 待分配地址
+        return NextResponse.json(
+          { success: false, error: '入驻企业必须选择工位号' },
+          { status: 400 }
+        );
       }
     } else {
       // 非入驻企业

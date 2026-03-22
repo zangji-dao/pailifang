@@ -305,6 +305,17 @@ export default function NewTenantPage() {
       return;
     }
     
+    // 入驻企业必须选择工位号
+    if (enterpriseType === "tenant" && !selectedRegNumber) {
+      toast({
+        title: "请完善信息",
+        description: "入驻企业必须选择工位号",
+        variant: "destructive",
+      });
+      setCurrentStep(2); // 跳转到工位选择步骤
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const selectedBase = bases.find(b => b.id === selectedBaseId);
