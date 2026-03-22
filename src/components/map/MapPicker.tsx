@@ -74,32 +74,56 @@ async function reverseGeocode(lat: number, lng: number): Promise<Location> {
     const data = await response.json();
     const addr = data.address || {};
     
-    // 尝试从 display_name 中提取城市名（格式通常是：街道, 区县, 城市, 省份, 国家）
-    let cityName = addr.city || addr.town || addr.village || '';
+    // 提取省份
+    let province = addr.province || addr.state || '';
     
-    // 如果没有城市名，尝试从 display_name 解析
-    if (!cityName && data.display_name) {
-      const parts = data.display_name.split(',').map((s: string) => s.trim());
-      // 从后往前找：国家、省份、城市、区县...
+    // 提取城市
+    let city = addr.city || addr.town || addr.village || '';
+    
+    // 如果没有省份或城市，尝试从 display_name 解析
+    if (!province || !city) {
+      const parts = data.display_name?.split(',').map((s: string) => s.trim()) || [];
       for (const part of parts) {
-        // 跳过国家和省份
-        if (part.includes('中国') || part.includes('省') || part.includes('自治区') || part.includes('市')) {
-          // 如果包含"市"但不是省份（不含"省"、"自治区"），可能是城市
-          if (part.includes('市') && !part.includes('省') && !part.includes('自治区')) {
-            cityName = part;
-            break;
-          }
+        // 匹配省份（包含"省"或"自治区"）
+        if (!province && (part.includes('省') || part.includes('自治区'))) {
+          province = part;
+        }
+        // 匹配城市（包含"市"但不包含"省"、"自治区"）
+        if (!city && part.includes('市') && !part.includes('省') && !part.includes('自治区')) {
+          city = part;
+        }
+        // 匹配区县（包含"区"或"县"，作为城市备选）
+        if (!city && (part.includes('区') || part.includes('县'))) {
+          if (!city) city = part;
         }
       }
+    }
+    
+    // 处理 ISO3166-2-lvl4 代码（如 CN-JL）
+    if (!province && addr['ISO3166-2-lvl4']) {
+      const code = addr['ISO3166-2-lvl4'].split('-')[1];
+      // 简单映射常见省份代码
+      const codeMap: Record<string, string> = {
+        'BJ': '北京市', 'TJ': '天津市', 'HE': '河北省', 'SX': '山西省',
+        'NM': '内蒙古自治区', 'LN': '辽宁省', 'JL': '吉林省', 'HL': '黑龙江省',
+        'SH': '上海市', 'JS': '江苏省', 'ZJ': '浙江省', 'AH': '安徽省',
+        'FJ': '福建省', 'JX': '江西省', 'SD': '山东省', 'HA': '河南省',
+        'HB': '湖北省', 'HN': '湖南省', 'GD': '广东省', 'GX': '广西壮族自治区',
+        'HI': '海南省', 'CQ': '重庆市', 'SC': '四川省', 'GZ': '贵州省',
+        'YN': '云南省', 'XZ': '西藏自治区', 'SN': '陕西省', 'GS': '甘肃省',
+        'QH': '青海省', 'NX': '宁夏回族自治区', 'XJ': '新疆维吾尔自治区',
+        'HK': '香港特别行政区', 'MO': '澳门特别行政区', 'TW': '台湾省',
+      };
+      province = codeMap[code] || '';
     }
     
     return {
       lat,
       lng,
       address: data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-      province: addr.province || addr.state || addr['ISO3166-2-lvl4']?.split('-')[0] || '',
-      city: cityName || addr.county || '',
-      district: addr.suburb || addr.district || addr.county || '',
+      province,
+      city,
+      district: addr.suburb || addr.district || '',
       street: addr.road || addr.street || '',
     };
   } catch (error) {
@@ -209,10 +233,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
   // 处理地图点击选择
   const handleLocationSelect = useCallback(async (lat: number, lng: number) => {
     const location = await reverseGeocode(lat, lng);
-    // 标准化省份名称
-    if (location.province) {
-      location.province = normalizeProvinceName(location.province);
-    }
+    // 直接返回原始数据，由调用方处理匹配
     onChange(location);
   }, [onChange]);
 
@@ -223,12 +244,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
     setSearching(true);
     setShowResults(true);
     const results = await searchAddress(searchKeyword);
-    // 标准化省份名称
-    results.forEach(r => {
-      if (r.province) {
-        r.province = normalizeProvinceName(r.province);
-      }
-    });
+    // 直接返回原始数据，由调用方处理匹配
     setSearchResults(results);
     setSearching(false);
   };
@@ -236,10 +252,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
   // 选择搜索结果
   const selectSearchResult = async (location: Location) => {
     const fullLocation = await reverseGeocode(location.lat, location.lng);
-    // 标准化省份名称
-    if (fullLocation.province) {
-      fullLocation.province = normalizeProvinceName(fullLocation.province);
-    }
+    // 直接返回原始数据，由调用方处理匹配
     onChange(fullLocation);
     setShowResults(false);
     setSearchKeyword("");

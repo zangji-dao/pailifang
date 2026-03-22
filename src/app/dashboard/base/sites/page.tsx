@@ -435,6 +435,8 @@ export default function BaseListPage() {
                     : undefined
                 }
                 onChange={(location) => {
+                  console.log('地图选点返回:', location);
+                  
                   // 根据地图返回的省市信息自动填充
                   let newProvince = selectedProvince;
                   let newCity = selectedCity;
@@ -443,16 +445,22 @@ export default function BaseListPage() {
                     const provinceName = location.province;
                     // 查找匹配的省份（支持多种格式匹配）
                     const matchedProvince = provinces.find(p => {
+                      const pName = p.name;
+                      const pShort = pName.replace(/省|市|自治区|特别行政区/g, '');
+                      
                       // 完全匹配
-                      if (p.name === provinceName) return true;
-                      // 包含匹配（如"吉林"匹配"吉林省"）
-                      if (p.name.includes(provinceName)) return true;
-                      if (provinceName.includes(p.name)) return true;
-                      // 去掉"省"/"市"后缀匹配
-                      const shortName = p.name.replace(/省|市|自治区|特别行政区/g, '');
-                      if (shortName === provinceName) return true;
+                      if (pName === provinceName) return true;
+                      // 简称匹配（"吉林" 匹配 "吉林省"）
+                      if (pShort === provinceName) return true;
+                      // 包含匹配
+                      if (pName.includes(provinceName) || provinceName.includes(pName)) return true;
+                      if (pShort.includes(provinceName) || provinceName.includes(pShort)) return true;
+                      
                       return false;
                     });
+                    
+                    console.log('省份匹配:', provinceName, '->', matchedProvince?.name);
+                    
                     if (matchedProvince) {
                       newProvince = matchedProvince;
                       
@@ -460,18 +468,24 @@ export default function BaseListPage() {
                       if (location.city) {
                         const cityName = location.city;
                         const matchedCity = matchedProvince.cities.find(c => {
+                          const cName = c.name;
+                          const cShort = cName.replace(/市|县|区/g, '');
+                          const cityShort = cityName.replace(/市|县|区/g, '');
+                          
                           // 完全匹配
-                          if (c.name === cityName) return true;
-                          // 包含匹配（"松原"匹配"松原市"）
-                          if (c.name.includes(cityName)) return true;
-                          if (cityName.includes(c.name)) return true;
-                          // 去掉"市"后缀匹配
-                          const shortCityName = c.name.replace(/市|县|区/g, '');
-                          const shortInputName = cityName.replace(/市|县|区/g, '');
-                          if (shortCityName === shortInputName) return true;
-                          if (shortCityName === cityName || shortInputName === c.name) return true;
+                          if (cName === cityName) return true;
+                          // 简称匹配
+                          if (cShort === cityShort) return true;
+                          if (cShort === cityName) return true;
+                          // 包含匹配
+                          if (cName.includes(cityName) || cityName.includes(cName)) return true;
+                          if (cShort.includes(cityShort) || cityShort.includes(cShort)) return true;
+                          
                           return false;
                         });
+                        
+                        console.log('城市匹配:', cityName, '->', matchedCity?.name);
+                        
                         if (matchedCity) {
                           newCity = matchedCity;
                         }
