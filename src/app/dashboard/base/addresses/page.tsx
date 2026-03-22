@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import {
   Hash,
   Plus,
@@ -123,6 +125,10 @@ export default function AddressManagementPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  // 下载/打印状态
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [printingId, setPrintingId] = useState<string | null>(null);
 
   // 三级联动选择状态
   const [selectedBaseId, setSelectedBaseId] = useState<string>("");
@@ -405,24 +411,69 @@ export default function AddressManagementPage() {
     used: regNumbers.filter((r) => !r.available).length,
   };
 
-  // 下载授权函
+  // 下载授权函（导出为PDF）
   const handleDownload = async (reg: RegNumber) => {
+    setDownloadingId(reg.id);
     try {
+      // 1. 获取授权函HTML
       const res = await fetch(`/api/registration-numbers/${reg.id}/authorization-letter`);
       const result = await res.json();
-      if (result.success && result.data?.url) {
-        window.open(result.data.url, "_blank");
-      } else {
+      
+      if (!result.success || !result.data?.html) {
         toast.error(result.error || "生成授权函失败");
+        return;
       }
+
+      // 2. 创建临时容器渲染HTML
+      const container = document.createElement("div");
+      container.innerHTML = result.data.html;
+      container.style.position = "absolute";
+      container.style.left = "-9999px";
+      container.style.top = "0";
+      container.style.width = "800px";
+      container.style.background = "#fff";
+      document.body.appendChild(container);
+
+      // 3. 使用 html2canvas 生成图片
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      // 4. 移除临时容器
+      document.body.removeChild(container);
+
+      // 5. 生成 PDF
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+
+      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      // 6. 下载 PDF
+      const displayCode = reg.manual_code || reg.code;
+      const enterpriseName = reg.assigned_enterprise_name || displayCode;
+      pdf.save(`房屋产权证明_${enterpriseName}.pdf`);
+      
+      toast.success("PDF 已下载");
     } catch (error) {
       console.error("下载失败:", error);
       toast.error("下载失败");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
   // 打印授权函
   const handlePrint = async (reg: RegNumber) => {
+    setPrintingId(reg.id);
     try {
       const res = await fetch(`/api/registration-numbers/${reg.id}/authorization-letter`);
       const result = await res.json();
@@ -439,6 +490,8 @@ export default function AddressManagementPage() {
     } catch (error) {
       console.error("打印失败:", error);
       toast.error("打印失败");
+    } finally {
+      setPrintingId(null);
     }
   };
 
@@ -726,18 +779,28 @@ export default function AddressManagementPage() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleDownload(reg)}
+                          disabled={downloadingId === reg.id}
                           title="下载授权函"
                         >
-                          <Download className="h-3.5 w-3.5" />
+                          {downloadingId === reg.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handlePrint(reg)}
+                          disabled={printingId === reg.id}
                           title="打印授权函"
                         >
-                          <Printer className="h-3.5 w-3.5" />
+                          {printingId === reg.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Printer className="h-3.5 w-3.5" />
+                          )}
                         </Button>
                       </div>
                     </td>
