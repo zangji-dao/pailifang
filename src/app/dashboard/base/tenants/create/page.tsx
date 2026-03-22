@@ -882,34 +882,43 @@ export default function NewTenantPage() {
           </div>
         )}
 
-        {/* 上传区域 */}
-        <div className="border-2 border-dashed rounded-lg p-8 text-center">
-          <div className="space-y-4">
-            <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">点击选择文件上传</p>
-            <Input
-              type="file"
-              accept="image/*,.pdf"
-              className="max-w-xs mx-auto"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
-              }}
-              disabled={uploading}
-            />
-            {uploading && (
-              <div className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">上传中...</span>
-              </div>
-            )}
+        {/* 上传区域 - 整个区域可点击 */}
+        <label 
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors block
+            ${uploading 
+              ? "opacity-50 cursor-not-allowed" 
+              : "hover:border-primary hover:bg-muted/50"
+            }`}
+        >
+          <input
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+            }}
+            disabled={uploading}
+          />
+          <div className="space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-full bg-muted flex items-center justify-center">
+              <Upload className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">点击上传文件</p>
+              <p className="text-xs text-muted-foreground mt-1">或将文件拖放到此处</p>
+            </div>
+            <p className="text-xs text-muted-foreground">支持图片或PDF，单文件不超过10MB</p>
           </div>
-        </div>
+        </label>
 
-        {/* 提示 */}
-        <div className="text-sm text-muted-foreground">
-          <p>支持上传图片或PDF文件，文件大小不超过10MB，可上传多个文件</p>
-        </div>
+        {/* 上传中状态 */}
+        {uploading && (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">上传中...</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
