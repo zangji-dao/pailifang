@@ -285,7 +285,22 @@ function NestedMenuItem({ item, pathname, onCloseSidebar, parentExpanded }: Nest
       {/* 直接显示子菜单项 */}
       <div className="ml-4 pl-3 border-l border-slate-200 space-y-0.5">
         {item.children.map((nestedChild) => {
-          const isActive = pathname === nestedChild.href || pathname.startsWith(nestedChild.href + "/");
+          // 三级菜单激活逻辑：
+          // 1. 精确匹配
+          // 2. 子路径匹配（但排除其他同级菜单的路径）
+          const isExactMatch = pathname === nestedChild.href;
+          
+          // 子路径匹配时，需要排除其他同级菜单的特殊路径
+          // 例如：/dashboard/base/tenants/create 不应匹配 /dashboard/base/tenants
+          const isSubPathMatch = 
+            pathname.startsWith(nestedChild.href + "/") &&
+            !item.children?.some(
+              (sibling) => 
+                sibling.href !== nestedChild.href && 
+                pathname.startsWith(sibling.href)
+            );
+          
+          const isActive = isExactMatch || isSubPathMatch;
           
           return (
             <Link
