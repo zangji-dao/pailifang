@@ -617,14 +617,17 @@ export const meters = pgTable("meters", {
 	electricityNumber: varchar("electricity_number", { length: 50 }),
 	electricityType: varchar("electricity_type", { length: 20 }).default('base'), // base=基地负责, customer=客户负责
 	electricityStatus: varchar("electricity_status", { length: 20 }).default('normal'), // normal=正常, abnormal=异常
+	electricityEnterpriseId: varchar("electricity_enterprise_id", { length: 36 }),
 	// 水表
 	waterNumber: varchar("water_number", { length: 50 }),
 	waterType: varchar("water_type", { length: 20 }).default('base'),
 	waterStatus: varchar("water_status", { length: 20 }).default('normal'),
+	waterEnterpriseId: varchar("water_enterprise_id", { length: 36 }),
 	// 取暖
 	heatingNumber: varchar("heating_number", { length: 50 }),
 	heatingType: varchar("heating_type", { length: 20 }).default('base'),
 	heatingStatus: varchar("heating_status", { length: 20 }).default('normal'),
+	heatingEnterpriseId: varchar("heating_enterprise_id", { length: 36 }),
 	// 网络
 	networkNumber: varchar("network_number", { length: 50 }),
 	networkType: varchar("network_type", { length: 20 }).default('base'),

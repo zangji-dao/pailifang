@@ -1,19 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, AlertCircle } from "lucide-react";
-import type { MeterType, QueryState, AuthStatus } from "../types";
+import { Search, Loader2, AlertCircle, Building } from "lucide-react";
+import type { MeterType, QueryState, Enterprise } from "../types";
 import { MeterIcon } from "./MeterIcon";
 import { TypeTag } from "./TypeTag";
+import { toast } from "sonner";
 
 interface MeterBillCardProps {
+  meterId: string;
   type: "electricity" | "water" | "heating";
   label: string;
   meterNumber: string | null;
   meterType: MeterType;
+  enterpriseId?: string | null;
+  enterprises: Enterprise[];
+  onEnterpriseUpdate?: () => void;
 }
 
-export function MeterBillCard({ type, label, meterNumber, meterType }: MeterBillCardProps) {
+export function MeterBillCard({ 
+  meterId, 
+  type, 
+  label, 
+  meterNumber, 
+  meterType, 
+  enterpriseId,
+  enterprises,
+  onEnterpriseUpdate 
+}: MeterBillCardProps) {
   const [queryState, setQueryState] = useState<QueryState>({
     loading: false,
     result: null,
@@ -21,8 +35,11 @@ export function MeterBillCard({ type, label, meterNumber, meterType }: MeterBill
   });
   const [showResult, setShowResult] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
+  const [selectedEnterpriseId, setSelectedEnterpriseId] = useState<string | null>(enterpriseId || null);
+  const [updatingEnterprise, setUpdatingEnterprise] = useState(false);
 
   const bgColor = type === "electricity" ? "#FFFBEB" : type === "water" ? "#F0F9FF" : "#FFF7ED";
+  const typeColor = type === "electricity" ? "#D97706" : type === "water" ? "#0284C7" : "#EA580C";
 
   const checkAuthStatus = async (): Promise<boolean> => {
     setCheckingAuth(true);
@@ -108,6 +125,35 @@ export function MeterBillCard({ type, label, meterNumber, meterType }: MeterBill
     }
   };
 
+  // 更新负责公司
+  const handleUpdateEnterprise = async (newEnterpriseId: string) => {
+    setUpdatingEnterprise(true);
+    try {
+      const field = type === "electricity" ? "electricity_enterprise_id" 
+                  : type === "water" ? "water_enterprise_id" 
+                  : "heating_enterprise_id";
+      
+      const res = await fetch(`/api/meters/${meterId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: newEnterpriseId || null }),
+      });
+      
+      const result = await res.json();
+      if (result.success) {
+        toast.success(`${label}负责公司更新成功`);
+        setSelectedEnterpriseId(newEnterpriseId || null);
+        onEnterpriseUpdate?.();
+      } else {
+        toast.error(result.error || "更新失败");
+      }
+    } catch (error) {
+      toast.error("更新失败");
+    } finally {
+      setUpdatingEnterprise(false);
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
@@ -125,7 +171,7 @@ export function MeterBillCard({ type, label, meterNumber, meterType }: MeterBill
             onClick={handleQuery}
             disabled={queryState.loading}
             className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium bg-white/80 hover:bg-white transition-colors disabled:opacity-50"
-            style={{ color: type === "electricity" ? "#D97706" : type === "water" ? "#0284C7" : "#EA580C" }}
+            style={{ color: typeColor }}
           >
             {queryState.loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -135,6 +181,30 @@ export function MeterBillCard({ type, label, meterNumber, meterType }: MeterBill
             查询
           </button>
         )}
+      </div>
+
+      {/* 负责公司选择 */}
+      <div className="mt-3">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Building className="h-3.5 w-3.5" style={{ color: "#A8A29E" }} />
+          <span className="text-xs font-medium" style={{ color: "#78716C" }}>负责公司</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedEnterpriseId || ""}
+            onChange={(e) => handleUpdateEnterprise(e.target.value)}
+            disabled={updatingEnterprise}
+            className="flex-1 h-8 px-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 bg-white disabled:opacity-50"
+          >
+            <option value="">未指定</option>
+            {enterprises.map((enterprise) => (
+              <option key={enterprise.id} value={enterprise.id}>
+                {enterprise.name}
+              </option>
+            ))}
+          </select>
+          {updatingEnterprise && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+        </div>
       </div>
 
       {/* 查询结果 */}

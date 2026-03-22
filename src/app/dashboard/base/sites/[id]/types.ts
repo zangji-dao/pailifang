@@ -63,18 +63,19 @@ export interface Meter {
   electricityNumber: string | null;
   electricityType: MeterType;
   electricityStatus: MeterStatus;
+  electricityEnterpriseId: string | null;
   waterNumber: string | null;
   waterType: MeterType;
   waterStatus: MeterStatus;
+  waterEnterpriseId: string | null;
   heatingNumber: string | null;
   heatingType: MeterType;
   heatingStatus: MeterStatus;
+  heatingEnterpriseId: string | null;
   networkNumber: string | null;
   networkType: MeterType;
   networkStatus: MeterStatus;
   area: number | null;
-  enterpriseId: string | null;
-  enterprise: Enterprise | null;
   spaces: Space[];
 }
 

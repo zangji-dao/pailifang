@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, Settings, DoorOpen, Plus, X, ChevronRight, Loader2, Building } from "lucide-react";
+import { Building2, Settings, DoorOpen, Plus, X, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -23,8 +23,6 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
   // 企业列表
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [loadingEnterprises, setLoadingEnterprises] = useState(false);
-  const [selectedEnterpriseId, setSelectedEnterpriseId] = useState<string | null>(meter.enterpriseId || null);
-  const [updatingEnterprise, setUpdatingEnterprise] = useState(false);
   
   // 新增工位号表单
   const [regNumberForm, setRegNumberForm] = useState({ code: "" });
@@ -48,31 +46,6 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
     
     fetchEnterprises();
   }, []);
-
-  // 更新负责公司
-  const handleUpdateEnterprise = async (enterpriseId: string | null) => {
-    setUpdatingEnterprise(true);
-    try {
-      const res = await fetch(`/api/meters/${meter.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enterprise_id: enterpriseId }),
-      });
-      
-      const result = await res.json();
-      if (result.success) {
-        toast.success("负责公司更新成功");
-        setSelectedEnterpriseId(enterpriseId);
-        onRefresh?.();
-      } else {
-        toast.error(result.error || "更新失败");
-      }
-    } catch (error) {
-      toast.error("更新失败");
-    } finally {
-      setUpdatingEnterprise(false);
-    }
-  };
 
   // 新增工位号
   const handleAddRegNumber = async (spaceId: string) => {
@@ -142,69 +115,50 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
         </div>
       )}
 
-      {/* 负责公司 */}
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "#1C1917" }}>
-          <Building className="h-4 w-4" style={{ color: "#A8A29E" }} />
-          负责公司
-        </h3>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          {loadingEnterprises ? (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <select
-                value={selectedEnterpriseId || ""}
-                onChange={(e) => handleUpdateEnterprise(e.target.value || null)}
-                disabled={updatingEnterprise}
-                className="flex-1 h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white disabled:opacity-50"
-              >
-                <option value="">选择负责公司</option>
-                {enterprises.map((enterprise) => (
-                  <option key={enterprise.id} value={enterprise.id}>
-                    {enterprise.name}
-                  </option>
-                ))}
-              </select>
-              {updatingEnterprise && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
-            </div>
-          )}
-          {selectedEnterpriseId && (
-            <p className="text-xs mt-2" style={{ color: "#A8A29E" }}>
-              当前负责公司：{enterprises.find(e => e.id === selectedEnterpriseId)?.name || meter.enterprise?.name || "未知"}
-            </p>
-          )}
-        </div>
-      </div>
-
       {/* 表号详情 */}
       <div className="mb-8">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "#1C1917" }}>
           <Settings className="h-4 w-4" style={{ color: "#A8A29E" }} />
           表号信息
         </h3>
-        <div className="space-y-3">
-          <MeterBillCard
-            type="electricity"
-            label="电表"
-            meterNumber={meter.electricityNumber}
-            meterType={meter.electricityType}
-          />
-          <MeterBillCard
-            type="water"
-            label="水表"
-            meterNumber={meter.waterNumber}
-            meterType={meter.waterType}
-          />
-          <MeterBillCard
-            type="heating"
-            label="取暖号"
-            meterNumber={meter.heatingNumber}
-            meterType={meter.heatingType}
-          />
-        </div>
+        {loadingEnterprises ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <MeterBillCard
+              meterId={meter.id}
+              type="electricity"
+              label="电表"
+              meterNumber={meter.electricityNumber}
+              meterType={meter.electricityType}
+              enterpriseId={meter.electricityEnterpriseId}
+              enterprises={enterprises}
+              onEnterpriseUpdate={onRefresh}
+            />
+            <MeterBillCard
+              meterId={meter.id}
+              type="water"
+              label="水表"
+              meterNumber={meter.waterNumber}
+              meterType={meter.waterType}
+              enterpriseId={meter.waterEnterpriseId}
+              enterprises={enterprises}
+              onEnterpriseUpdate={onRefresh}
+            />
+            <MeterBillCard
+              meterId={meter.id}
+              type="heating"
+              label="取暖号"
+              meterNumber={meter.heatingNumber}
+              meterType={meter.heatingType}
+              enterpriseId={meter.heatingEnterpriseId}
+              enterprises={enterprises}
+              onEnterpriseUpdate={onRefresh}
+            />
+          </div>
+        )}
       </div>
 
       {/* 物理空间 */}

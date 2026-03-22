@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * PATCH /api/meters/[id]
- * 更新物业信息（如负责公司）
+ * 更新物业信息（如各表号的负责公司）
  */
 export async function PATCH(
   request: NextRequest,
@@ -14,14 +14,34 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const { enterprise_id } = body;
+    const { 
+      enterprise_id,
+      electricity_enterprise_id, 
+      water_enterprise_id, 
+      heating_enterprise_id 
+    } = body;
+
+    // 构建更新对象
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (enterprise_id !== undefined) {
+      updateData.enterprise_id = enterprise_id || null;
+    }
+    if (electricity_enterprise_id !== undefined) {
+      updateData.electricity_enterprise_id = electricity_enterprise_id || null;
+    }
+    if (water_enterprise_id !== undefined) {
+      updateData.water_enterprise_id = water_enterprise_id || null;
+    }
+    if (heating_enterprise_id !== undefined) {
+      updateData.heating_enterprise_id = heating_enterprise_id || null;
+    }
 
     const { data, error } = await supabase
       .from('meters')
-      .update({
-        enterprise_id: enterprise_id || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
