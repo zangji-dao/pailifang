@@ -16,7 +16,7 @@ export async function GET(
     // 1. 获取注册号基本信息
     const { data: regNumber, error: regError } = await supabase
       .from('registration_numbers')
-      .select('id, code, manual_code, property_owner, management_company, created_at, space_id')
+      .select('id, code, manual_code, property_owner, management_company, assigned_enterprise_name, created_at, space_id')
       .eq('id', id)
       .single();
 
@@ -64,6 +64,9 @@ export async function GET(
     
     // 显示编号（优先人工编号）
     const displayCode = regNumber.manual_code || regNumber.code;
+    
+    // 企业名称（优先使用预分配企业名称）
+    const enterpriseName = (regNumber as any).assigned_enterprise_name || displayCode;
     
     // 物业名如"1号楼106室"，提取"1号楼"
     const meterName = meter?.name || meter?.code || '';
@@ -133,7 +136,7 @@ export async function GET(
 <body>
   <div class="title">房屋产权证明</div>
   <div class="content">
-    <p>兹证明，位于${detailAddr}的房屋，其所有权属于<span class="blank">${regNumber.property_owner || '__________'}</span>，管理权归<span class="blank">${regNumber.management_company || '__________'}</span>所有，现已将该房屋无偿租赁给<span class="blank">${displayCode}</span>作为经营场所使用，该房屋无单独房照，符合国家安全标准，不属于拆迁范围。</p>
+    <p>兹证明，位于${detailAddr}的房屋，其所有权属于<span class="blank">${regNumber.property_owner || '__________'}</span>，管理权归<span class="blank">${regNumber.management_company || '__________'}</span>所有，现已将该房屋无偿租赁给<span class="blank">${enterpriseName}</span>作为经营场所使用，该房屋无单独房照，符合国家安全标准，不属于拆迁范围。</p>
     <p style="margin-top: 20px;">特此证明。</p>
   </div>
   <div class="footer">

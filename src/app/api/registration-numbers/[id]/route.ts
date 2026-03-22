@@ -14,7 +14,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const { manual_code, property_owner, management_company } = body;
+    const { manual_code, property_owner, management_company, assigned_enterprise_name } = body;
 
     // 更新注册号
     const { data, error } = await supabase
@@ -23,6 +23,7 @@ export async function PATCH(
         manual_code: manual_code || null,
         property_owner: property_owner || null,
         management_company: management_company || null,
+        assigned_enterprise_name: assigned_enterprise_name || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

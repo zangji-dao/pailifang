@@ -71,6 +71,7 @@ interface RegNumber {
   manual_code: string | null;
   property_owner: string | null;
   management_company: string | null;
+  assigned_enterprise_name: string | null;
   available: boolean;
   enterprise_id: string | null;
   created_at: string;
@@ -127,6 +128,7 @@ export default function AddressManagementPage() {
   const [selectedBaseId, setSelectedBaseId] = useState<string>("");
   const [selectedMeterId, setSelectedMeterId] = useState<string>("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
+  const [assignedEnterpriseName, setAssignedEnterpriseName] = useState<string>("");
 
   // 编辑弹窗状态
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -135,6 +137,7 @@ export default function AddressManagementPage() {
     manual_code: "",
     property_owner: "",
     management_company: "",
+    assigned_enterprise_name: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -204,12 +207,16 @@ export default function AddressManagementPage() {
       const res = await fetch("/api/registration-numbers/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ space_id: selectedSpaceId }),
+        body: JSON.stringify({ 
+          space_id: selectedSpaceId,
+          assigned_enterprise_name: assignedEnterpriseName || null
+        }),
       });
       const result = await res.json();
       if (result.success) {
         toast.success("注册号生成成功");
         setSelectedSpaceId("");
+        setAssignedEnterpriseName("");
         await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
       } else {
         toast.error(result.error || "生成失败");
@@ -229,6 +236,7 @@ export default function AddressManagementPage() {
       manual_code: reg.manual_code || "",
       property_owner: reg.property_owner || "",
       management_company: reg.management_company || "",
+      assigned_enterprise_name: reg.assigned_enterprise_name || "",
     });
     setEditDialogOpen(true);
   };
@@ -488,6 +496,18 @@ export default function AddressManagementPage() {
                 </Select>
               </div>
 
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  预分配企业（可选）
+                </Label>
+                <Input
+                  placeholder="输入企业名称"
+                  value={assignedEnterpriseName}
+                  onChange={(e) => setAssignedEnterpriseName(e.target.value)}
+                />
+              </div>
+
               <Button
                 onClick={generateRegNumber}
                 disabled={generating || !selectedSpaceId}
@@ -521,85 +541,94 @@ export default function AddressManagementPage() {
             <p>暂无数据</p>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            {/* 表头 */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-50 border-b text-xs font-medium text-muted-foreground">
-              <div className="col-span-2">注册号</div>
-              <div className="col-span-3">地址</div>
-              <div className="col-span-2">产权单位</div>
-              <div className="col-span-2">管理单位</div>
-              <div className="col-span-1">生成日期</div>
-              <div className="col-span-1">状态</div>
-              <div className="col-span-1 text-right">操作</div>
-            </div>
-
-            {/* 表体 */}
-            {filteredRegNumbers.map((reg) => (
-              <div
-                key={reg.id}
-                className="grid grid-cols-12 gap-2 px-4 py-3 border-b last:border-b-0 hover:bg-slate-50 items-center"
-              >
-                <div className="col-span-2 font-medium text-sm">
-                  {getDisplayCode(reg)}
-                  {reg.manual_code && (
-                    <span className="ml-1 text-xs text-slate-400">({reg.code})</span>
-                  )}
-                </div>
-                <div className="col-span-3 text-sm text-muted-foreground truncate" title={getAddressName(reg)}>
-                  {getAddressName(reg)}
-                </div>
-                <div className="col-span-2 text-sm truncate" title={reg.property_owner || "-"}>
-                  {reg.property_owner || <span className="text-slate-300">-</span>}
-                </div>
-                <div className="col-span-2 text-sm truncate" title={reg.management_company || "-"}>
-                  {reg.management_company || <span className="text-slate-300">-</span>}
-                </div>
-                <div className="col-span-1 text-sm text-muted-foreground">
-                  {formatDate(reg.created_at)}
-                </div>
-                <div className="col-span-1">
-                  <Badge
-                    variant="secondary"
-                    className={
-                      reg.available
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-emerald-50 text-emerald-600"
-                    }
-                  >
-                    {reg.available ? "待使用" : "已使用"}
-                  </Badge>
-                </div>
-                <div className="col-span-1 flex items-center justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => openEditDialog(reg)}
-                    title="编辑"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleDownload(reg)}
-                    title="下载授权函"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handlePrint(reg)}
-                    title="打印授权函"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              {/* 表头 */}
+              <thead>
+                <tr className="bg-slate-50 border-b text-xs font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-left w-[140px]">注册号</th>
+                  <th className="px-4 py-3 text-left w-[100px]">人工编号</th>
+                  <th className="px-4 py-3 text-left w-[200px]">地址</th>
+                  <th className="px-4 py-3 text-left w-[120px]">预分配企业</th>
+                  <th className="px-4 py-3 text-left w-[100px]">产权单位</th>
+                  <th className="px-4 py-3 text-left w-[100px]">管理单位</th>
+                  <th className="px-4 py-3 text-left w-[90px]">生成日期</th>
+                  <th className="px-4 py-3 text-left w-[70px]">状态</th>
+                  <th className="px-4 py-3 text-right w-[100px]">操作</th>
+                </tr>
+              </thead>
+              {/* 表体 */}
+              <tbody>
+                {filteredRegNumbers.map((reg) => (
+                  <tr key={reg.id} className="border-b last:border-b-0 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-sm">
+                      {reg.code}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {reg.manual_code || <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[200px]" title={getAddressName(reg)}>
+                      {getAddressName(reg)}
+                    </td>
+                    <td className="px-4 py-3 text-sm truncate max-w-[120px]" title={reg.assigned_enterprise_name || "-"}>
+                      {reg.assigned_enterprise_name || <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm truncate max-w-[100px]" title={reg.property_owner || "-"}>
+                      {reg.property_owner || <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm truncate max-w-[100px]" title={reg.management_company || "-"}>
+                      {reg.management_company || <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {formatDate(reg.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant="secondary"
+                        className={
+                          reg.available
+                            ? "bg-amber-50 text-amber-600"
+                            : "bg-emerald-50 text-emerald-600"
+                        }
+                      >
+                        {reg.available ? "待使用" : "已使用"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => openEditDialog(reg)}
+                          title="编辑"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleDownload(reg)}
+                          title="下载授权函"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handlePrint(reg)}
+                          title="打印授权函"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -637,6 +666,14 @@ export default function AddressManagementPage() {
                 value={editForm.management_company}
                 onChange={(e) => setEditForm({ ...editForm, management_company: e.target.value })}
                 placeholder="如：吉林省天之企业管理咨询有限公司"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>预分配企业</Label>
+              <Input
+                value={editForm.assigned_enterprise_name}
+                onChange={(e) => setEditForm({ ...editForm, assigned_enterprise_name: e.target.value })}
+                placeholder="用于生成产权证明授权函"
               />
             </div>
           </div>

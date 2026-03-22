@@ -8,13 +8,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * 请求体：
  * - space_id: 物理空间ID
  * - enterprise_id: 企业ID（可选，分配时提供）
+ * - assigned_enterprise_name: 预分配企业名称（可选）
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
 
-    const { space_id, enterprise_id } = body;
+    const { space_id, enterprise_id, assigned_enterprise_name } = body;
 
     if (!space_id) {
       return NextResponse.json(
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
         code: newCode,
         space_id: space_id,
         enterprise_id: enterprise_id || null,
+        assigned_enterprise_name: assigned_enterprise_name || null,
         available: !enterprise_id, // 如果指定了企业，则标记为已分配
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
