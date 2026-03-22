@@ -377,12 +377,12 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="tenant">入驻企业</SelectItem>
-                      <SelectItem value="service">服务企业</SelectItem>
+                      <SelectItem value="service">未入驻企业</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-400">
                     {formData.type === "service"
-                      ? "服务企业：不在基地内注册的企业，如合作会计师事务所、律师事务所等"
+                      ? "未入驻企业：不在基地内注册的企业，如合作会计师事务所、律师事务所等"
                       : "入驻企业：在基地内注册的企业"}
                   </p>
                 </div>

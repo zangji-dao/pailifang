@@ -27,12 +27,12 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
   // 新增工位号表单
   const [regNumberForm, setRegNumberForm] = useState({ code: "" });
 
-  // 获取服务企业列表（负责公司）
+  // 获取未入驻企业列表（负责公司）
   useEffect(() => {
     const fetchEnterprises = async () => {
       setLoadingEnterprises(true);
       try {
-        // 只获取服务企业（非入驻企业）
+        // 只获取未入驻企业（非入驻企业）
         const res = await fetch("/api/enterprises?type=service");
         const result = await res.json();
         if (result.success) {

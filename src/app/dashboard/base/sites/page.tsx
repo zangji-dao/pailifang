@@ -653,13 +653,13 @@ export default function BaseListPage() {
           <p className="text-xs text-slate-400 mt-1">基地内注册</p>
         </div>
 
-        {/* 服务企业 */}
+        {/* 未入驻企业 */}
         <div className="bg-white rounded-xl p-4 sm:p-5 border border-purple-100 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
               <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
             </div>
-            <span className="text-xs sm:text-sm text-purple-600">服务企业</span>
+            <span className="text-xs sm:text-sm text-purple-600">未入驻企业</span>
           </div>
           <p className="text-2xl font-semibold text-purple-700">{enterpriseStats.service}</p>
           <p className="text-xs text-slate-400 mt-1">基地外注册</p>

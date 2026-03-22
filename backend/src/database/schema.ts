@@ -313,7 +313,7 @@ export const enterprises = pgTable("enterprises", {
 	businessAddress: varchar("business_address", { length: 500 }),
 	industry: varchar({ length: 100 }),
 	settledDate: timestamp("settled_date"),
-	type: varchar({ length: 20 }).default('tenant').notNull(), // tenant=入驻企业, service=服务企业
+	type: varchar({ length: 20 }).default('tenant').notNull(), // tenant=入驻企业, service=未入驻企业
 	status: varchar({ length: 20 }).default('active').notNull(),
 	remarks: text(),
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),

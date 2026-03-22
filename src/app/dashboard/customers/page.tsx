@@ -392,7 +392,7 @@ export default function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900">服务企业</h2>
+          <h2 className="text-2xl font-semibold text-slate-900">未入驻企业</h2>
           <p className="text-gray-600 mt-1">管理基地内外企业客户信息</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -404,7 +404,7 @@ export default function CustomersPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>添加服务企业</DialogTitle>
+              <DialogTitle>添加未入驻企业</DialogTitle>
               <DialogDescription>填写企业信息，录入系统</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
