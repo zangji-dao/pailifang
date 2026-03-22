@@ -559,7 +559,7 @@ export default function AddressManagementPage() {
                       {reg.code}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {reg.manual_code || "-"}
+                      {reg.manual_code || <span className="text-muted-foreground/50 italic text-xs">未设置</span>}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[240px]" title={getAddressName(reg)}>
                       {getAddressName(reg)}
