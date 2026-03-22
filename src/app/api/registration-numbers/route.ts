@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/registration-numbers
@@ -102,5 +102,58 @@ export async function GET() {
   } catch (error) {
     console.error('获取工位号失败:', error);
     return NextResponse.json({ success: false, error: '获取工位号失败' }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/registration-numbers
+ * 创建工位号
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createClient();
+    const body = await request.json();
+
+    const { space_id, code, assigned_enterprise_name, available } = body;
+
+    if (!space_id || !code) {
+      return NextResponse.json(
+        { success: false, error: '缺少必填字段：space_id 和 code' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from('registration_numbers')
+      .insert({
+        id: crypto.randomUUID(),
+        space_id,
+        code,
+        assigned_enterprise_name: assigned_enterprise_name || null,
+        available: available !== undefined ? available : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('创建工位号失败:', error);
+      return NextResponse.json(
+        { success: false, error: '创建工位号失败: ' + error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error('创建工位号失败:', error);
+    return NextResponse.json(
+      { success: false, error: '创建工位号失败' },
+      { status: 500 }
+    );
   }
 }

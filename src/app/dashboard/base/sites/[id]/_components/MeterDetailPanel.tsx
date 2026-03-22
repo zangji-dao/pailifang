@@ -1,19 +1,103 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Settings, DoorOpen, Plus, X, ChevronRight } from "lucide-react";
+import { Building2, Settings, DoorOpen, Plus, X, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Meter } from "../types";
+import { toast } from "sonner";
+import type { Meter, Space } from "../types";
 import { MeterBillCard } from "./MeterBillCard";
 
 interface MeterDetailPanelProps {
   meter: Meter;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-export function MeterDetailPanel({ meter, onClose }: MeterDetailPanelProps) {
+export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanelProps) {
   const [expandedSpace, setExpandedSpace] = useState<string | null>(null);
+  const [showAddSpace, setShowAddSpace] = useState(false);
+  const [showAddRegNumber, setShowAddRegNumber] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // 新增空间表单
+  const [spaceForm, setSpaceForm] = useState({ code: "", name: "", area: "" });
+  
+  // 新增工位号表单
+  const [regNumberForm, setRegNumberForm] = useState({ code: "" });
+
+  // 新增物理空间
+  const handleAddSpace = async () => {
+    if (!spaceForm.code.trim()) {
+      toast.error("请输入空间编码");
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/spaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meter_id: meter.id,
+          code: spaceForm.code,
+          name: spaceForm.name || spaceForm.code,
+          area: spaceForm.area ? parseFloat(spaceForm.area) : null,
+          status: "active",
+        }),
+      });
+      
+      const result = await res.json();
+      if (result.success) {
+        toast.success("空间创建成功");
+        setShowAddSpace(false);
+        setSpaceForm({ code: "", name: "", area: "" });
+        onRefresh?.();
+      } else {
+        toast.error(result.error || "创建失败");
+      }
+    } catch (error) {
+      toast.error("创建失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 新增工位号
+  const handleAddRegNumber = async (spaceId: string) => {
+    if (!regNumberForm.code.trim()) {
+      toast.error("请输入工位号");
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/registration-numbers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          space_id: spaceId,
+          code: regNumberForm.code,
+          available: true,
+        }),
+      });
+      
+      const result = await res.json();
+      if (result.success) {
+        toast.success("工位号创建成功");
+        setShowAddRegNumber(null);
+        setRegNumberForm({ code: "" });
+        onRefresh?.();
+      } else {
+        toast.error(result.error || "创建失败");
+      }
+    } catch (error) {
+      toast.error("创建失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="p-8">
@@ -83,10 +167,58 @@ export function MeterDetailPanel({ meter, onClose }: MeterDetailPanelProps) {
             <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
             物理空间
           </h3>
-          <Button variant="ghost" size="sm" className="h-8 text-xs rounded-lg">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 text-xs rounded-lg"
+            onClick={() => setShowAddSpace(true)}
+          >
             <Plus className="h-3.5 w-3.5 mr-1.5" />新增
           </Button>
         </div>
+
+        {/* 新增空间表单 */}
+        {showAddSpace && (
+          <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>编码 *</label>
+                <Input
+                  value={spaceForm.code}
+                  onChange={(e) => setSpaceForm({ ...spaceForm, code: e.target.value })}
+                  placeholder="如：1-101-1"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>名称</label>
+                <Input
+                  value={spaceForm.name}
+                  onChange={(e) => setSpaceForm({ ...spaceForm, name: e.target.value })}
+                  placeholder="如：一楼办公区"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>面积(㎡)</label>
+                <Input
+                  value={spaceForm.area}
+                  onChange={(e) => setSpaceForm({ ...spaceForm, area: e.target.value })}
+                  placeholder="可选"
+                  type="number"
+                  className="h-9"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowAddSpace(false)}>取消</Button>
+              <Button size="sm" onClick={handleAddSpace} disabled={submitting}>
+                {submitting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                确认
+              </Button>
+            </div>
+          </div>
+        )}
 
         {(meter.spaces?.length || 0) === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -128,10 +260,41 @@ export function MeterDetailPanel({ meter, onClose }: MeterDetailPanelProps) {
                   <div className="px-4 pb-4 border-t border-slate-100">
                     <div className="flex items-center justify-between mt-3 mb-3">
                       <span className="text-xs font-medium" style={{ color: "#78716C" }}>工位号</span>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowAddRegNumber(space.id);
+                        }}
+                      >
                         <Plus className="h-3 w-3 mr-1" />新增
                       </Button>
                     </div>
+                    
+                    {/* 新增工位号表单 */}
+                    {showAddRegNumber === space.id && (
+                      <div className="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-200">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>工位号 *</label>
+                            <Input
+                              value={regNumberForm.code}
+                              onChange={(e) => setRegNumberForm({ code: e.target.value })}
+                              placeholder="如：101-1"
+                              className="h-8"
+                            />
+                          </div>
+                          <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAddRegNumber(null)}>取消</Button>
+                          <Button size="sm" className="h-8" onClick={() => handleAddRegNumber(space.id)} disabled={submitting}>
+                            {submitting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                            确认
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
                     {(space.regNumbers?.length || 0) === 0 ? (
                       <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
                     ) : (
