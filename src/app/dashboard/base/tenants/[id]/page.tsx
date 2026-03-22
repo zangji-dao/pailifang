@@ -154,11 +154,16 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
 
   // 返回列表
   const handleBack = () => {
+    // 先尝试关闭 tab（如果存在）
     if (tabsContext) {
-      tabsContext.closeTab(`enterprise-${resolvedParams.id}`);
-    } else {
-      router.push("/dashboard/base/tenants");
+      const tabId = `enterprise-${resolvedParams.id}`;
+      const tabExists = tabsContext.tabs.some(t => t.id === tabId);
+      if (tabExists) {
+        tabsContext.closeTab(tabId);
+      }
     }
+    // 始终执行导航返回列表页
+    router.push("/dashboard/base/tenants");
   };
 
   // 打开编辑页面

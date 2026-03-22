@@ -135,11 +135,16 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
 
   // 返回
   const handleBack = () => {
+    // 先尝试关闭 tab（如果存在）
     if (tabsContext) {
-      tabsContext.closeTab(`enterprise-edit-${resolvedParams.id}`);
-    } else {
-      router.push(`/dashboard/base/tenants/${resolvedParams.id}`);
+      const tabId = `enterprise-edit-${resolvedParams.id}`;
+      const tabExists = tabsContext.tabs.some(t => t.id === tabId);
+      if (tabExists) {
+        tabsContext.closeTab(tabId);
+      }
     }
+    // 始终执行导航返回详情页
+    router.push(`/dashboard/base/tenants/${resolvedParams.id}`);
   };
 
   // 保存
@@ -178,17 +183,15 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
         throw new Error(result.error || "保存失败");
       }
 
-      // 关闭编辑标签页，打开详情标签页
+      // 关闭编辑标签页（如果存在），导航到详情页
       if (tabsContext) {
-        tabsContext.closeTab(`enterprise-edit-${resolvedParams.id}`);
-        tabsContext.openTab({
-          id: `enterprise-${resolvedParams.id}`,
-          label: formData.name,
-          path: `/dashboard/base/tenants/${resolvedParams.id}`,
-        });
-      } else {
-        router.push(`/dashboard/base/tenants/${resolvedParams.id}`);
+        const editTabId = `enterprise-edit-${resolvedParams.id}`;
+        const tabExists = tabsContext.tabs.some(t => t.id === editTabId);
+        if (tabExists) {
+          tabsContext.closeTab(editTabId);
+        }
       }
+      router.push(`/dashboard/base/tenants/${resolvedParams.id}`);
     } catch (err) {
       console.error("保存失败:", err);
       setError(err instanceof Error ? err.message : "保存失败");
