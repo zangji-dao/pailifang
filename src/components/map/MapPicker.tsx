@@ -77,26 +77,50 @@ async function reverseGeocode(lat: number, lng: number): Promise<Location> {
     // 提取省份
     let province = addr.province || addr.state || '';
     
-    // 提取城市
-    let city = addr.city || addr.town || addr.village || '';
+    // 提取城市 - OpenStreetMap 有时把区县放在 city 字段，需要从 display_name 解析真正的城市
+    let city = '';
+    let district = '';
     
-    // 如果没有省份或城市，尝试从 display_name 解析
-    if (!province || !city) {
-      const parts = data.display_name?.split(',').map((s: string) => s.trim()) || [];
+    // 从 display_name 解析（格式通常是：街道, 区县, 城市, 省份, 邮编, 国家）
+    if (data.display_name) {
+      const parts = data.display_name.split(',').map((s: string) => s.trim());
+      
       for (const part of parts) {
+        // 跳过邮编和国家
+        if (/^\d+$/.test(part) || part === '中国') continue;
+        
         // 匹配省份（包含"省"或"自治区"）
         if (!province && (part.includes('省') || part.includes('自治区'))) {
           province = part;
+          continue;
         }
+        
         // 匹配城市（包含"市"但不包含"省"、"自治区"）
-        if (!city && part.includes('市') && !part.includes('省') && !part.includes('自治区')) {
-          city = part;
+        if (part.includes('市') && !part.includes('省') && !part.includes('自治区')) {
+          if (!city) {
+            city = part;
+          }
+          continue;
         }
-        // 匹配区县（包含"区"或"县"，作为城市备选）
-        if (!city && (part.includes('区') || part.includes('县'))) {
-          if (!city) city = part;
+        
+        // 匹配区县（包含"区"或"县"）
+        if (part.includes('区') || part.includes('县')) {
+          if (!district) {
+            district = part;
+          }
+          continue;
         }
       }
+    }
+    
+    // 如果从 display_name 没解析到城市，尝试用 addr.city
+    if (!city) {
+      city = addr.city || addr.town || addr.village || '';
+    }
+    
+    // 如果没有区县，用 addr 中的值
+    if (!district) {
+      district = addr.suburb || addr.district || addr.county || '';
     }
     
     // 处理 ISO3166-2-lvl4 代码（如 CN-JL）
@@ -123,7 +147,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<Location> {
       address: data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       province,
       city,
-      district: addr.suburb || addr.district || '',
+      district,
       street: addr.road || addr.street || '',
     };
   } catch (error) {
