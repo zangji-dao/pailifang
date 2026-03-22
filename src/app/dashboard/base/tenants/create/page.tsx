@@ -404,7 +404,7 @@ export default function NewTenantPage() {
               {index < displaySteps.length - 1 && (
                 <div
                   className={`flex-1 h-1 mx-4 ${
-                    currentStep > step.id ? "bg-green-500" : "bg-muted"
+                    currentStep > step.id ? "bg-primary" : "bg-muted"
                   }`}
                 />
               )}
@@ -621,8 +621,8 @@ export default function NewTenantPage() {
             onClick={() => setEnterpriseType("tenant")}
           >
             <CardContent className="p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-50 flex items-center justify-center">
-                <Home className="w-8 h-8 text-blue-500" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <Home className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">入驻企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -644,8 +644,8 @@ export default function NewTenantPage() {
             onClick={() => setEnterpriseType("non_tenant")}
           >
             <CardContent className="p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-50 flex items-center justify-center">
-                <Store className="w-8 h-8 text-green-500" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                <Store className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">非入驻企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -1017,7 +1017,7 @@ export default function NewTenantPage() {
   const renderComplete = () => (
     <Card>
       <CardContent className="py-12 text-center">
-        <CheckCircle2 className="w-16 h-16 mx-auto text-green-500 mb-4" />
+        <CheckCircle2 className="w-16 h-16 mx-auto text-primary mb-4" />
         <h2 className="text-2xl font-bold mb-2">创建成功</h2>
         <p className="text-muted-foreground mb-6">
           企业 <strong>{enterpriseName}</strong> 已成功创建
@@ -1059,7 +1059,7 @@ export default function NewTenantPage() {
   };
 
   return (
-    <div className="container max-w-4xl py-6">
+    <div className="container max-w-4xl mx-auto py-6">
       {/* 页头 */}
       <div className="flex items-center gap-4 mb-6">
         <Link href="/dashboard/base/tenants">
