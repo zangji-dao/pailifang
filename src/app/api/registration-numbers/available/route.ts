@@ -1,20 +1,26 @@
 import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/registration-numbers/available
  * 获取可用的工位号列表
+ * 支持参数：
+ * - base_id: 按基地ID过滤
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
+    const { searchParams } = new URL(request.url);
+    const baseId = searchParams.get('base_id');
 
     // 1. 查询所有可用的工位号
-    const { data: regNumbers, error: regError } = await supabase
+    let query = supabase
       .from('registration_numbers')
-      .select('id, code, available, space_id, created_at')
+      .select('id, code, manual_code, available, space_id, assigned_enterprise_name, property_owner, management_company, created_at')
       .eq('available', true)
       .order('code', { ascending: true });
+
+    const { data: regNumbers, error: regError } = await query;
 
     if (regError) {
       console.error('获取可用工位号失败:', regError);
@@ -68,28 +74,41 @@ export async function GET() {
     }
 
     // 8. 组装数据
-    const formattedData = regNumbers.map((reg) => {
+    let formattedData = regNumbers.map((reg) => {
       const space = (spaces || []).find(s => s.id === reg.space_id);
       const meter = space ? (meters || []).find(m => m.id === space.meter_id) : null;
       const base = meter ? (bases || []).find(b => b.id === meter.base_id) : null;
 
+      // 地址格式：松原市宁江区建华路义乌城小区1号楼XXX号
+      const displayCode = reg.manual_code || reg.code;
       const fullAddress = base?.address 
-        ? `${base.address} ${meter?.name || ''} ${space?.name || ''}`.trim()
+        ? `${base.address}${displayCode}号`
         : null;
 
       return {
         id: reg.id,
         code: reg.code,
+        manualCode: reg.manual_code,
+        displayCode: displayCode, // 优先使用人工编号
         spaceId: reg.space_id,
         spaceName: space?.name || space?.code || '',
         spaceCode: space?.code || '',
         meterName: meter?.name || meter?.code || '',
         meterCode: meter?.code || '',
+        baseId: base?.id || '',
         baseName: base?.name || '',
         baseAddress: base?.address || null,
         fullAddress,
+        assignedEnterpriseName: reg.assigned_enterprise_name,
+        propertyOwner: reg.property_owner,
+        managementCompany: reg.management_company,
       };
     });
+
+    // 如果指定了基地ID，过滤结果
+    if (baseId) {
+      formattedData = formattedData.filter(item => item.baseId === baseId);
+    }
 
     return NextResponse.json({
       success: true,

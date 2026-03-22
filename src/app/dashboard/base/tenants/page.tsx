@@ -23,7 +23,8 @@ type EnterpriseType = "tenant" | "non_tenant";
 type ProcessStatus = 
   | "new" 
   | "pending_address" 
-  | "pending_business" 
+  | "pending_registration" 
+  | "pending_change"
   | "pending_contract" 
   | "pending_payment" 
   | "active" 
@@ -61,7 +62,7 @@ const tenantStatusConfig: Record<string, {
     borderColor: "border-orange-300",
     dotColor: "bg-orange-500",
   },
-  pending_business: { 
+  pending_registration: { 
     label: "待工商注册", 
     color: "text-purple-600",
     bgColor: "bg-purple-50",
@@ -99,13 +100,26 @@ const tenantStatusConfig: Record<string, {
 };
 
 // 非入驻企业状态配置
-const nonTenantStatusConfig = {
+const nonTenantStatusConfig: Record<string, { 
+  label: string; 
+  color: string; 
+  bgColor: string;
+  borderColor: string;
+  dotColor: string;
+}> = {
   new: { 
     label: "洽谈中", 
     color: "text-blue-600",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-300",
     dotColor: "bg-blue-500",
+  },
+  pending_change: { 
+    label: "待工商变更", 
+    color: "text-violet-600",
+    bgColor: "bg-violet-50",
+    borderColor: "border-violet-300",
+    dotColor: "bg-violet-500",
   },
   active: { 
     label: "服务中", 
@@ -186,7 +200,7 @@ export default function EnterpriseListPage() {
   const tenantStats = {
     total: enterprises.filter((e) => e.type === "tenant").length,
     pending_address: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_address").length,
-    pending_business: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_business").length,
+    pending_registration: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_registration").length,
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
     pending_payment: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_payment").length,
     active: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "active").length,
@@ -196,7 +210,8 @@ export default function EnterpriseListPage() {
   // 非入驻企业统计
   const nonTenantStats = {
     total: enterprises.filter((e) => e.type === "non_tenant").length,
-    new: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "new").length,
+    new: enterprises.filter((e) => e.type === "non_tenant" && (e.processStatus === "new" || e.processStatus === undefined)).length,
+    pending_change: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "pending_change").length,
     active: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "active").length,
     terminated: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "terminated").length,
   };
@@ -305,7 +320,7 @@ export default function EnterpriseListPage() {
       {/* 非入驻企业 - 状态卡片 */}
       {activeTab === "non_tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {Object.entries(nonTenantStatusConfig).map(([key, config]) => {
               const count = nonTenantStats[key as keyof typeof nonTenantStats];
               return (
@@ -387,10 +402,10 @@ export default function EnterpriseListPage() {
             </thead>
             <tbody>
               {filteredEnterprises.map((enterprise) => {
-                const processStatus = enterprise.processStatus || "pending_address";
+                const processStatus = enterprise.processStatus || (activeTab === "tenant" ? "pending_address" : "new");
                 const statusInfo = activeTab === "tenant" 
                   ? tenantStatusConfig[processStatus] || tenantStatusConfig.pending_address
-                  : nonTenantStatusConfig[processStatus as keyof typeof nonTenantStatusConfig] || nonTenantStatusConfig.new;
+                  : nonTenantStatusConfig[processStatus] || nonTenantStatusConfig.new;
                 
                 return (
                   <tr key={enterprise.id} className="border-b last:border-b-0 hover:bg-muted/50">

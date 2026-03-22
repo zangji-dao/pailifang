@@ -62,6 +62,10 @@ export async function GET(request: NextRequest) {
       businessScope: item.business_scope,
       settledDate: item.settled_date,
       remarks: item.remarks,
+      proofDocumentUrl: item.proof_document_url,
+      registrationNumber: item.registration_number,
+      baseId: item.base_id,
+      spaceId: item.space_id,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
     }));
@@ -82,6 +86,16 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/enterprises
  * 创建企业
+ * 
+ * 新流程：
+ * 1. 选择基地
+ * 2. 选择类型（入驻/非入驻）
+ * 3. 选择工位号
+ * 4. 上传产权证明
+ * 5. 确认企业名称
+ * 
+ * 入驻企业状态：pending_registration（待工商注册）
+ * 非入驻企业状态：pending_change（待工商变更）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -117,21 +131,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 确定流程状态
+    // 根据类型确定流程状态
     let processStatus = 'new';
-    if (body.type === 'tenant') {
-      // 入驻企业流程
-      if (body.space_id || body.registered_address) {
-        processStatus = 'pending_business'; // 已分配地址，进入待工商注册
+    const enterpriseType = body.type || 'tenant';
+    
+    if (enterpriseType === 'tenant') {
+      // 入驻企业
+      if (body.registration_number || body.registered_address) {
+        processStatus = 'pending_registration'; // 有工位号，待工商注册
       } else {
         processStatus = 'pending_address'; // 待分配地址
       }
     } else {
-      // 非入驻企业，直接设为新建状态
-      processStatus = 'new';
+      // 非入驻企业
+      processStatus = 'pending_change'; // 待工商变更
     }
 
-    const enterpriseData = {
+    // 构建基础企业数据（仅使用数据库已有的字段）
+    const enterpriseData: Record<string, any> = {
       id: crypto.randomUUID(),
       name: body.name,
       enterprise_code: body.enterprise_code,
@@ -139,7 +156,7 @@ export async function POST(request: NextRequest) {
       legal_person: body.legal_person || null,
       phone: body.phone || null,
       industry: body.industry || null,
-      type: body.type || 'tenant',
+      type: enterpriseType,
       status: body.status || 'active',
       process_status: processStatus,
       business_scope: body.business_scope || null,
@@ -150,6 +167,9 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    // 添加空间ID（数据库已有此字段）
+    if (body.space_id) enterpriseData.space_id = body.space_id;
 
     console.log('[创建企业] 准备插入的数据:', JSON.stringify(enterpriseData, null, 2));
 
@@ -166,13 +186,29 @@ export async function POST(request: NextRequest) {
     if (enterpriseError) {
       console.error('创建企业失败:', enterpriseError);
       return NextResponse.json(
-        { success: false, error: '创建企业失败' },
+        { success: false, error: `创建企业失败: ${enterpriseError.message}` },
         { status: 500 }
       );
     }
 
+    // 如果选择了工位号，标记为已使用
+    if (body.registration_number_id) {
+      const { error: updateRegError } = await supabase
+        .from('registration_numbers')
+        .update({
+          available: false,
+          enterprise_id: enterprise.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', body.registration_number_id);
+
+      if (updateRegError) {
+        console.error('更新工位号状态失败:', updateRegError);
+      }
+    }
+
     // 如果是入驻企业且有房间信息，创建房间关联
-    if (body.type === 'tenant' && body.space_id) {
+    if (enterpriseType === 'tenant' && body.space_id) {
       // 分配房间给企业
       const { error: updateSpaceError } = await supabase
         .from('spaces')
@@ -185,29 +221,6 @@ export async function POST(request: NextRequest) {
 
       if (updateSpaceError) {
         console.error('分配房间失败:', updateSpaceError);
-        // 不影响主流程，仅记录错误
-      }
-
-      // 分配工位号
-      const { data: regNumbers } = await supabase
-        .from('registration_numbers')
-        .select('id, code')
-        .eq('space_id', body.space_id)
-        .eq('available', true)
-        .limit(1);
-
-      if (regNumbers && regNumbers.length > 0) {
-        const regNumber = regNumbers[0];
-        
-        // 标记工位号为已使用
-        await supabase
-          .from('registration_numbers')
-          .update({ 
-            available: false,
-            enterprise_id: enterprise.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', regNumber.id);
       }
     }
 
