@@ -123,17 +123,17 @@ export function MeterDetailPanel({ meter, onClose }: MeterDetailPanelProps) {
                   </div>
                 </div>
 
-                {/* 注册号列表 */}
+                {/* 工位号列表 */}
                 {expandedSpace === space.id && (
                   <div className="px-4 pb-4 border-t border-slate-100">
                     <div className="flex items-center justify-between mt-3 mb-3">
-                      <span className="text-xs font-medium" style={{ color: "#78716C" }}>注册号</span>
+                      <span className="text-xs font-medium" style={{ color: "#78716C" }}>工位号</span>
                       <Button variant="ghost" size="sm" className="h-6 text-xs">
                         <Plus className="h-3 w-3 mr-1" />新增
                       </Button>
                     </div>
                     {(space.regNumbers?.length || 0) === 0 ? (
-                      <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无注册号</p>
+                      <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         {space.regNumbers?.map((reg) => (

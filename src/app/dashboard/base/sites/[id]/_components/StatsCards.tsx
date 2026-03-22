@@ -26,7 +26,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     {
       icon: Hash,
       value: stats.totalRegNumbers,
-      label: "注册号",
+      label: "工位号",
       gradient: "from-blue-100 to-blue-50",
       iconColor: "text-blue-600",
     },

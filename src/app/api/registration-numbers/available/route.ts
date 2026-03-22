@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 
 /**
  * GET /api/registration-numbers/available
- * 获取可用的注册号列表
+ * 获取可用的工位号列表
  */
 export async function GET() {
   try {
     const supabase = createClient();
 
-    // 1. 查询所有可用的注册号
+    // 1. 查询所有可用的工位号
     const { data: regNumbers, error: regError } = await supabase
       .from('registration_numbers')
       .select('id, code, available, space_id, created_at')
@@ -17,8 +17,8 @@ export async function GET() {
       .order('code', { ascending: true });
 
     if (regError) {
-      console.error('获取可用注册号失败:', regError);
-      return NextResponse.json({ success: false, error: '获取可用注册号失败' }, { status: 500 });
+      console.error('获取可用工位号失败:', regError);
+      return NextResponse.json({ success: false, error: '获取可用工位号失败' }, { status: 500 });
     }
 
     if (!regNumbers || regNumbers.length === 0) {
@@ -96,7 +96,7 @@ export async function GET() {
       data: formattedData,
     });
   } catch (error) {
-    console.error('获取可用注册号失败:', error);
-    return NextResponse.json({ success: false, error: '获取可用注册号失败' }, { status: 500 });
+    console.error('获取可用工位号失败:', error);
+    return NextResponse.json({ success: false, error: '获取可用工位号失败' }, { status: 500 });
   }
 }

@@ -13,7 +13,7 @@ export async function GET(
     const supabase = createClient();
     const { id } = await params;
 
-    // 1. 获取注册号基本信息
+    // 1. 获取工位号基本信息
     const { data: regNumber, error: regError } = await supabase
       .from('registration_numbers')
       .select('id, code, manual_code, property_owner, management_company, assigned_enterprise_name, created_at, space_id')
@@ -21,8 +21,8 @@ export async function GET(
       .single();
 
     if (regError || !regNumber) {
-      console.error('获取注册号失败:', regError);
-      return NextResponse.json({ success: false, error: '注册号不存在' }, { status: 404 });
+      console.error('获取工位号失败:', regError);
+      return NextResponse.json({ success: false, error: '工位号不存在' }, { status: 404 });
     }
 
     // 2. 获取空间信息

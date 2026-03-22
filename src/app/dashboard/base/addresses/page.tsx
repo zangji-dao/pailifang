@@ -66,7 +66,7 @@ interface Base {
   meters: Meter[];
 }
 
-// 注册号类型
+// 工位号类型
 interface RegNumber {
   id: string;
   code: string;
@@ -171,7 +171,7 @@ export default function AddressManagementPage() {
     }
   };
 
-  // 获取注册号列表
+  // 获取工位号列表
   const fetchRegNumbers = async () => {
     try {
       const res = await fetch("/api/registration-numbers");
@@ -180,7 +180,7 @@ export default function AddressManagementPage() {
         setRegNumbers(result.data || []);
       }
     } catch (error) {
-      console.error("获取注册号失败:", error);
+      console.error("获取工位号失败:", error);
     }
   };
 
@@ -211,7 +211,7 @@ export default function AddressManagementPage() {
   const selectedMeter = selectedBase?.meters.find((m) => m.id === selectedMeterId);
   const selectedSpace = selectedMeter?.spaces.find((s) => s.id === selectedSpaceId);
 
-  // 生成注册号
+  // 生成工位号
   const generateRegNumber = async () => {
     if (!selectedSpaceId) {
       toast.error("请选择物理空间");
@@ -235,7 +235,7 @@ export default function AddressManagementPage() {
       });
       const result = await res.json();
       if (result.success) {
-        toast.success("注册号生成成功");
+        toast.success("工位号生成成功");
         setSelectedSpaceId("");
         setAssignedEnterpriseName("");
         await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
@@ -243,7 +243,7 @@ export default function AddressManagementPage() {
         toast.error(result.error || "生成失败");
       }
     } catch (error) {
-      console.error("生成注册号失败:", error);
+      console.error("生成工位号失败:", error);
       toast.error("生成失败");
     } finally {
       setGenerating(false);
@@ -362,11 +362,11 @@ export default function AddressManagementPage() {
     setEditingEnterpriseValue("");
   };
 
-  // 获取显示的注册号（优先人工编号）
+  // 获取显示的工位号（优先人工编号）
   const getDisplayCode = (reg: RegNumber) => reg.manual_code || reg.code;
 
   // 获取地址显示名称
-  // 格式：松原市宁江区建华路义乌城小区1号楼XXX号（XXX是注册号）
+  // 格式：松原市宁江区建华路义乌城小区1号楼XXX号（XXX是工位号）
   const getAddressName = (reg: RegNumber) => {
     const space = reg.space;
     const meter = space?.meter;
@@ -524,7 +524,7 @@ export default function AddressManagementPage() {
       <div className="py-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">地址管理</h1>
-          <p className="text-sm text-slate-500 mt-1">管理注册地址和注册号</p>
+          <p className="text-sm text-slate-500 mt-1">管理注册地址和工位号</p>
         </div>
         <Button
           variant="outline"
@@ -667,7 +667,7 @@ export default function AddressManagementPage() {
                   ) : (
                     <>
                       <Plus className="h-4 w-4 mr-1.5" />
-                      生成注册号
+                      生成工位号
                     </>
                   )}
                 </Button>
@@ -680,7 +680,7 @@ export default function AddressManagementPage() {
       {/* 分割线 */}
       <div className="border-b" />
 
-      {/* 注册号列表 */}
+      {/* 工位号列表 */}
       <div className="py-4">
         {filteredRegNumbers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -693,7 +693,7 @@ export default function AddressManagementPage() {
               {/* 表头 */}
               <thead>
                 <tr className="bg-slate-50 border-b text-xs font-medium text-muted-foreground">
-                  <th className="px-4 py-3 text-left w-[140px]">注册号</th>
+                  <th className="px-4 py-3 text-left w-[140px]">工位号</th>
                   <th className="px-4 py-3 text-left w-[100px]">人工编号</th>
                   <th className="px-4 py-3 text-left w-[240px]">地址</th>
                   <th className="px-4 py-3 text-left w-[140px]">预分配企业</th>
@@ -830,11 +830,11 @@ export default function AddressManagementPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>编辑注册号</DialogTitle>
+            <DialogTitle>编辑工位号</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>系统注册号</Label>
+              <Label>系统工位号</Label>
               <Input value={editingRegNumber?.code || ""} disabled className="bg-slate-50" />
             </div>
             <div className="space-y-2">

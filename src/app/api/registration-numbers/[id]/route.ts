@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * PATCH /api/registration-numbers/[id]
- * 更新注册号信息
+ * 更新工位号信息
  */
 export async function PATCH(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { manual_code, property_owner, management_company, assigned_enterprise_name } = body;
 
-    // 更新注册号
+    // 更新工位号
     const { data, error } = await supabase
       .from('registration_numbers')
       .update({
@@ -31,20 +31,20 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error('更新注册号失败:', error);
+      console.error('更新工位号失败:', error);
       return NextResponse.json({ success: false, error: '更新失败' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('更新注册号失败:', error);
+    console.error('更新工位号失败:', error);
     return NextResponse.json({ success: false, error: '更新失败' }, { status: 500 });
   }
 }
 
 /**
  * GET /api/registration-numbers/[id]
- * 获取单个注册号详情
+ * 获取单个工位号详情
  */
 export async function GET(
   request: NextRequest,
@@ -88,13 +88,13 @@ export async function GET(
       .single();
 
     if (error) {
-      console.error('获取注册号失败:', error);
+      console.error('获取工位号失败:', error);
       return NextResponse.json({ success: false, error: '获取失败' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('获取注册号失败:', error);
+    console.error('获取工位号失败:', error);
     return NextResponse.json({ success: false, error: '获取失败' }, { status: 500 });
   }
 }

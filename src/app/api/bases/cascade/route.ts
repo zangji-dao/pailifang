@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 /**
  * GET /api/bases/cascade
- * 获取基地-物业-物理空间级联数据（包含注册号）
+ * 获取基地-物业-物理空间级联数据（包含工位号）
  */
 export async function GET() {
   try {
@@ -44,7 +44,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: '获取物理空间失败' }, { status: 500 });
     }
 
-    // 4. 获取所有注册号
+    // 4. 获取所有工位号
     const spaceIds = (spaces || []).map(s => s.id);
     const { data: regNumbers, error: regError } = await supabase
       .from('registration_numbers')
@@ -52,7 +52,7 @@ export async function GET() {
       .in('space_id', spaceIds);
 
     if (regError) {
-      console.error('获取注册号失败:', regError);
+      console.error('获取工位号失败:', regError);
     }
 
     // 5. 构建级联数据结构
@@ -63,7 +63,7 @@ export async function GET() {
           const meterSpaces = (spaces || [])
             .filter(s => s.meter_id === meter.id)
             .map(space => {
-              // 获取该空间的注册号
+              // 获取该空间的工位号
               const spaceRegNumbers = (regNumbers || [])
                 .filter(r => r.space_id === space.id)
                 .map(r => ({

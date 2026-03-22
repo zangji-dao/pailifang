@@ -59,7 +59,7 @@ const NON_TENANT_STEPS = [
 // 企业类型
 type EnterpriseType = "tenant" | "non_tenant";
 
-// 可用注册号信息（从地址管理中选择）
+// 可用工位号信息（从地址管理中选择）
 interface AvailableRegNumber {
   id: string;
   code: string;
@@ -91,7 +91,7 @@ export default function NewTenantPage() {
   // 系统生成的企业编号
   const [enterpriseCode, setEnterpriseCode] = useState<string>("");
   
-  // 步骤1：分配房间（入驻企业）- 选择已有注册号或手动输入
+  // 步骤1：分配房间（入驻企业）- 选择已有工位号或手动输入
   const [availableRegNumbers, setAvailableRegNumbers] = useState<AvailableRegNumber[]>([]);
   const [selectedRegNumber, setSelectedRegNumber] = useState<AvailableRegNumber | null>(null);
   const [loadingRegNumbers, setLoadingRegNumbers] = useState(false);
@@ -127,7 +127,7 @@ export default function NewTenantPage() {
   // 获取当前步骤列表
   const steps = enterpriseType === "non_tenant" ? NON_TENANT_STEPS : TENANT_STEPS;
 
-  // 加载可用注册号
+  // 加载可用工位号
   useEffect(() => {
     if (enterpriseType === "tenant" && currentStep === 1) {
       fetchAvailableRegNumbers();
@@ -156,7 +156,7 @@ export default function NewTenantPage() {
     }
   }, [enterpriseType, currentStep, fees.length, monthlyRent, deposit]);
 
-  // 获取可用注册号列表
+  // 获取可用工位号列表
   const fetchAvailableRegNumbers = async () => {
     setLoadingRegNumbers(true);
     try {
@@ -164,7 +164,7 @@ export default function NewTenantPage() {
       const result = await res.json();
       if (result.success) {
         setAvailableRegNumbers(result.data || []);
-        // 如果没有可用注册号，自动切换到手动输入模式
+        // 如果没有可用工位号，自动切换到手动输入模式
         if (!result.data || result.data.length === 0) {
           setUseManualAddress(true);
         }
@@ -172,7 +172,7 @@ export default function NewTenantPage() {
         setUseManualAddress(true);
       }
     } catch (error) {
-      console.error("获取可用注册号失败:", error);
+      console.error("获取可用工位号失败:", error);
       setUseManualAddress(true);
     } finally {
       setLoadingRegNumbers(false);
@@ -241,7 +241,7 @@ export default function NewTenantPage() {
     // 入驻企业流程
     switch (step) {
       case 1:
-        // 需要选择了注册号，或者使用手动输入地址
+        // 需要选择了工位号，或者使用手动输入地址
         return selectedRegNumber !== null || (useManualAddress && manualAddress.trim() !== "");
       case 2:
         return enterpriseName.trim() !== "" && legalPerson.trim() !== "";
@@ -444,7 +444,7 @@ export default function NewTenantPage() {
                 在园区内分配房间或工位的企业
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
-                <p>• 分配房间（自动分配注册号）</p>
+                <p>• 分配房间（自动分配工位号）</p>
                 <p>• 工商办理</p>
                 <p>• 签订合同</p>
                 <p>• 缴纳费用</p>
@@ -489,13 +489,13 @@ export default function NewTenantPage() {
     </Card>
   );
 
-  // 步骤1（入驻企业）：选择注册号
+  // 步骤1（入驻企业）：选择工位号
   const renderStep1Tenant = () => {
     return (
       <Card>
         <CardHeader>
           <CardTitle>分配房间</CardTitle>
-          <CardDescription>选择已生成的注册号，或手动输入注册地址</CardDescription>
+          <CardDescription>选择已生成的工位号，或手动输入注册地址</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* 企业编号 */}
@@ -513,7 +513,7 @@ export default function NewTenantPage() {
               size="sm"
               onClick={() => setUseManualAddress(false)}
             >
-              选择注册号
+              选择工位号
             </Button>
             <Button
               variant={useManualAddress ? "default" : "outline"}
@@ -534,7 +534,7 @@ export default function NewTenantPage() {
                 placeholder="请输入企业注册地址，如：吉林省松原市宁江区义乌城A座101室"
               />
               <p className="text-xs text-muted-foreground">
-                如果系统中暂无可用注册号，可以手动输入注册地址
+                如果系统中暂无可用工位号，可以手动输入注册地址
               </p>
             </div>
           ) : loadingRegNumbers ? (
@@ -546,7 +546,7 @@ export default function NewTenantPage() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  暂无可用注册号，请先在地址管理中生成注册号
+                  暂无可用工位号，请先在地址管理中生成工位号
                 </AlertDescription>
               </Alert>
               <Button variant="outline" onClick={goToAddressManagement}>
@@ -555,7 +555,7 @@ export default function NewTenantPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <Label>选择注册号</Label>
+              <Label>选择工位号</Label>
               <div className="grid grid-cols-1 gap-3">
                 {availableRegNumbers.map((reg) => {
                   const isSelected = selectedRegNumber?.id === reg.id;
@@ -596,9 +596,9 @@ export default function NewTenantPage() {
                 })}
               </div>
               
-              {/* 提示：可以前往地址管理生成更多注册号 */}
+              {/* 提示：可以前往地址管理生成更多工位号 */}
               <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
-                <span>共 {availableRegNumbers.length} 个可用注册号</span>
+                <span>共 {availableRegNumbers.length} 个可用工位号</span>
                 <Button variant="link" size="sm" onClick={goToAddressManagement}>
                   前往地址管理生成更多
                 </Button>
@@ -612,7 +612,7 @@ export default function NewTenantPage() {
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700 dark:text-green-300">
                 <div className="space-y-1">
-                  <p>注册号：<strong>{selectedRegNumber.code}</strong></p>
+                  <p>工位号：<strong>{selectedRegNumber.code}</strong></p>
                   <p>基地：<strong>{selectedRegNumber.baseName}</strong></p>
                   <p>物业：<strong>{selectedRegNumber.meterName || selectedRegNumber.meterCode}</strong></p>
                   <p>空间：<strong>{selectedRegNumber.spaceName || selectedRegNumber.spaceCode}</strong></p>

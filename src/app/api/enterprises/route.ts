@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         // 不影响主流程，仅记录错误
       }
 
-      // 分配注册号
+      // 分配工位号
       const { data: regNumbers } = await supabase
         .from('registration_numbers')
         .select('id, code')
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
       if (regNumbers && regNumbers.length > 0) {
         const regNumber = regNumbers[0];
         
-        // 标记注册号为已使用
+        // 标记工位号为已使用
         await supabase
           .from('registration_numbers')
           .update({ 

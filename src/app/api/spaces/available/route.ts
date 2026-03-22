@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 /**
  * GET /api/spaces/available
- * 获取所有空间列表（用于生成注册号时选择）
+ * 获取所有空间列表（用于生成工位号时选择）
  */
 export async function GET() {
   try {

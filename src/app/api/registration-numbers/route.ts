@@ -3,21 +3,21 @@ import { NextResponse } from 'next/server';
 
 /**
  * GET /api/registration-numbers
- * 获取所有注册号列表
+ * 获取所有工位号列表
  */
 export async function GET() {
   try {
     const supabase = createClient();
 
-    // 1. 查询所有注册号
+    // 1. 查询所有工位号
     const { data: regNumbers, error: regError } = await supabase
       .from('registration_numbers')
       .select('id, code, manual_code, property_owner, management_company, assigned_enterprise_name, available, space_id, enterprise_id, created_at')
       .order('created_at', { ascending: false });
 
     if (regError) {
-      console.error('获取注册号失败:', regError);
-      return NextResponse.json({ success: false, error: '获取注册号失败' }, { status: 500 });
+      console.error('获取工位号失败:', regError);
+      return NextResponse.json({ success: false, error: '获取工位号失败' }, { status: 500 });
     }
 
     if (!regNumbers || regNumbers.length === 0) {
@@ -100,7 +100,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, data: formattedData });
   } catch (error) {
-    console.error('获取注册号失败:', error);
-    return NextResponse.json({ success: false, error: '获取注册号失败' }, { status: 500 });
+    console.error('获取工位号失败:', error);
+    return NextResponse.json({ success: false, error: '获取工位号失败' }, { status: 500 });
   }
 }

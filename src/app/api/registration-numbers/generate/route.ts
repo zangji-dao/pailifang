@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/registration-numbers/generate
- * 为指定的物理空间生成注册号（每个空间可生成多个）
+ * 为指定的物理空间生成工位号（每个空间可生成多个）
  * 
  * 请求体：
  * - space_id: 物理空间ID（必填）
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 生成新的注册号
+    // 2. 生成新的工位号
     // 规则：REG-年份-月份-序号（如 REG-2026-03-001）
     const now = new Date();
     const year = now.getFullYear();
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const newCode = `REG-${year}-${month}-${String(sequence).padStart(3, '0')}`;
 
-    // 3. 插入新注册号（带默认产权单位和管理单位）
+    // 3. 插入新工位号（带默认产权单位和管理单位）
     const { data: newReg, error: insertError } = await supabase
       .from('registration_numbers')
       .insert({
@@ -105,9 +105,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('创建注册号失败:', insertError);
+      console.error('创建工位号失败:', insertError);
       return NextResponse.json(
-        { success: false, error: '创建注册号失败' },
+        { success: false, error: '创建工位号失败' },
         { status: 500 }
       );
     }
@@ -126,12 +126,12 @@ export async function POST(request: NextRequest) {
           spaceName: space.name,
         },
       },
-      message: '注册号生成成功',
+      message: '工位号生成成功',
     });
   } catch (error) {
-    console.error('生成注册号失败:', error);
+    console.error('生成工位号失败:', error);
     return NextResponse.json(
-      { success: false, error: '生成注册号失败' },
+      { success: false, error: '生成工位号失败' },
       { status: 500 }
     );
   }
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/registration-numbers/generate
- * 获取指定空间的注册号列表
+ * 获取指定空间的工位号列表
  */
 export async function GET(request: NextRequest) {
   try {
@@ -160,9 +160,9 @@ export async function GET(request: NextRequest) {
       .eq('space_id', spaceId);
 
     if (error) {
-      console.error('查询注册号失败:', error);
+      console.error('查询工位号失败:', error);
       return NextResponse.json(
-        { success: false, error: '查询注册号失败' },
+        { success: false, error: '查询工位号失败' },
         { status: 500 }
       );
     }
@@ -172,9 +172,9 @@ export async function GET(request: NextRequest) {
       data: regNumbers || [],
     });
   } catch (error) {
-    console.error('查询注册号失败:', error);
+    console.error('查询工位号失败:', error);
     return NextResponse.json(
-      { success: false, error: '查询注册号失败' },
+      { success: false, error: '查询工位号失败' },
       { status: 500 }
     );
   }

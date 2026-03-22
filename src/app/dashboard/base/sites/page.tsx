@@ -237,13 +237,13 @@ export default function BaseListPage() {
           <p className="text-2xl font-semibold text-slate-900">{totalSpaces}</p>
         </div>
 
-        {/* 注册号 */}
+        {/* 工位号 */}
         <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
               <Hash className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
-            <span className="text-xs sm:text-sm text-slate-500">注册号</span>
+            <span className="text-xs sm:text-sm text-slate-500">工位号</span>
           </div>
           <p className="text-2xl font-semibold text-slate-900">{totalRegNumbers}</p>
         </div>
@@ -339,10 +339,10 @@ export default function BaseListPage() {
                       <p className="text-xs text-slate-500">空间</p>
                     </div>
                     
-                    {/* 注册号 */}
+                    {/* 工位号 */}
                     <div className="text-center min-w-[60px]">
                       <p className="text-2xl font-semibold text-slate-900">{stats.totalRegNumbers}</p>
-                      <p className="text-xs text-slate-500">注册号</p>
+                      <p className="text-xs text-slate-500">工位号</p>
                     </div>
                     
                     {/* 入驻企业 */}

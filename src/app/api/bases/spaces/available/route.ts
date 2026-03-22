@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/bases/spaces/available
- * 获取可用房间列表（带有可用注册号的房间）
+ * 获取可用房间列表（带有可用工位号的房间）
  */
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 查询每个房间的注册号
+    // 查询每个房间的工位号
     const spacesWithRegs = await Promise.all(
       (spaces || []).map(async (space: any) => {
         const { data: regNumbers, error: regError } = await supabase
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
           .eq('space_id', space.id);
 
         if (regError) {
-          console.error('查询注册号失败:', regError);
+          console.error('查询工位号失败:', regError);
           return {
             ...space,
             baseName: space.bases?.name || '未知基地',
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // 过滤出有可用注册号的房间
+    // 过滤出有可用工位号的房间
     const availableSpaces = spacesWithRegs.filter(
       (space) => space.regNumbers?.some((r: any) => r.available)
     );

@@ -76,7 +76,7 @@ export function MeterCard({ meter, isExpanded, onClick }: MeterCardProps) {
             <span className="text-sm font-medium" style={{ color: "#57534E" }}>
               {meter.spaces?.reduce((s, sp) => s + (sp.regNumbers?.length || 0), 0) || 0}
             </span>
-            <span className="text-sm" style={{ color: "#A8A29E" }}>注册号</span>
+            <span className="text-sm" style={{ color: "#A8A29E" }}>工位号</span>
           </div>
         </div>
       </div>

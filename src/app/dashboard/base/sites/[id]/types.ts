@@ -36,7 +36,7 @@ export interface Enterprise {
   name: string;
 }
 
-// 注册号信息
+// 工位号信息
 export interface RegNumber {
   id: string;
   code: string;
