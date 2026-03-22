@@ -67,6 +67,24 @@ interface AvailableRegNumber {
   management_company: string | null;
 }
 
+// API 返回数据转换为前端格式
+function mapRegNumberFromAPI(apiData: any): AvailableRegNumber {
+  return {
+    id: apiData.id,
+    code: apiData.code,
+    manual_code: apiData.manualCode || apiData.manual_code,
+    assigned_enterprise_name: apiData.assignedEnterpriseName || apiData.assigned_enterprise_name,
+    spaceId: apiData.spaceId,
+    spaceName: apiData.spaceName,
+    meterName: apiData.meterName,
+    baseName: apiData.baseName,
+    baseAddress: apiData.baseAddress,
+    fullAddress: apiData.fullAddress,
+    property_owner: apiData.propertyOwner || apiData.property_owner,
+    management_company: apiData.managementCompany || apiData.management_company,
+  };
+}
+
 export default function NewTenantPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -150,7 +168,9 @@ export default function NewTenantPage() {
       const res = await fetch(`/api/registration-numbers/available?base_id=${selectedBaseId}`);
       const result = await res.json();
       if (result.success) {
-        setAvailableRegNumbers(result.data || []);
+        // 转换 API 返回的字段名
+        const mappedData = (result.data || []).map(mapRegNumberFromAPI);
+        setAvailableRegNumbers(mappedData);
       }
     } catch (error) {
       console.error("获取可用工位号失败:", error);
