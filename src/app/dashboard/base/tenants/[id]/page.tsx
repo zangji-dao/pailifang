@@ -20,10 +20,21 @@ import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 企业状态
-type EnterpriseStatus = "active" | "inactive" | "pending";
+type EnterpriseStatus = 
+  | "active" 
+  | "inactive" 
+  | "pending"
+  | "new"
+  | "pending_address" 
+  | "pending_registration" 
+  | "pending_change"
+  | "pending_contract" 
+  | "pending_payment" 
+  | "moved_out"
+  | "terminated";
 
 // 企业类型
-type EnterpriseType = "tenant" | "service";
+type EnterpriseType = "tenant" | "non_tenant";
 
 // 企业信息接口
 interface Enterprise {
@@ -38,27 +49,36 @@ interface Enterprise {
   入驻Date: string;
   status: EnterpriseStatus;
   type: EnterpriseType;
+  processStatus?: string;
   remarks: string;
 }
 
-// 状态配置
-const statusConfig: Record<EnterpriseStatus, { label: string; className: string }> = {
+// 状态配置 - 包含所有可能的状态
+const statusConfig: Record<string, { label: string; className: string }> = {
   active: { label: "入驻中", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   inactive: { label: "已迁出", className: "bg-gray-50 text-gray-600 border-gray-200" },
   pending: { label: "待入驻", className: "bg-amber-50 text-amber-600 border-amber-200" },
+  new: { label: "新建", className: "bg-slate-50 text-slate-600 border-slate-200" },
+  pending_address: { label: "待分配地址", className: "bg-orange-50 text-orange-600 border-orange-200" },
+  pending_registration: { label: "待工商注册", className: "bg-purple-50 text-purple-600 border-purple-200" },
+  pending_change: { label: "待工商变更", className: "bg-blue-50 text-blue-600 border-blue-200" },
+  pending_contract: { label: "待签合同", className: "bg-cyan-50 text-cyan-600 border-cyan-200" },
+  pending_payment: { label: "待缴费", className: "bg-amber-50 text-amber-600 border-amber-200" },
+  moved_out: { label: "已迁出", className: "bg-gray-50 text-gray-600 border-gray-200" },
+  terminated: { label: "已终止", className: "bg-red-50 text-red-600 border-red-200" },
 };
 
 // 企业类型配置
-const typeConfig: Record<EnterpriseType, { label: string; description: string; className: string }> = {
+const typeConfig: Record<string, { label: string; description: string; className: string }> = {
   tenant: {
     label: "入驻企业",
     description: "在基地内注册的企业",
-    className: "bg-blue-50 text-blue-600 border-blue-200",
+    className: "bg-primary/10 text-primary border-primary/20",
   },
-  service: {
-    label: "服务企业",
+  non_tenant: {
+    label: "非入驻企业",
     description: "不在基地内注册的企业",
-    className: "bg-purple-50 text-purple-600 border-purple-200",
+    className: "bg-muted text-muted-foreground border-border",
   },
 };
 
@@ -220,13 +240,13 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                 <div
                   className={cn(
                     "w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0",
-                    enterprise.type === "tenant" ? "bg-blue-100" : "bg-purple-100"
+                    enterprise.type === "tenant" ? "bg-primary/10" : "bg-muted"
                   )}
                 >
                   <Building2
                     className={cn(
                       "h-8 w-8",
-                      enterprise.type === "tenant" ? "text-blue-600" : "text-purple-600"
+                      enterprise.type === "tenant" ? "text-primary" : "text-muted-foreground"
                     )}
                   />
                 </div>
@@ -235,15 +255,15 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                     <h2 className="text-2xl font-semibold text-slate-900">{enterprise.name}</h2>
                     <Badge
                       variant="outline"
-                      className={cn("text-sm", typeConfig[enterprise.type].className)}
+                      className={cn("text-sm", typeConfig[enterprise.type]?.className)}
                     >
-                      {typeConfig[enterprise.type].label}
+                      {typeConfig[enterprise.type]?.label || enterprise.type}
                     </Badge>
                     <Badge
                       variant="outline"
-                      className={cn("text-sm", statusConfig[enterprise.status].className)}
+                      className={cn("text-sm", statusConfig[enterprise.status]?.className)}
                     >
-                      {statusConfig[enterprise.status].label}
+                      {statusConfig[enterprise.status]?.label || enterprise.status}
                     </Badge>
                   </div>
                   <p className="text-slate-500 font-mono text-sm">{enterprise.creditCode}</p>
@@ -337,8 +357,8 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
             </div>
             <div className="p-6">
               <p className="text-slate-600 text-sm leading-relaxed">
-                {enterprise.type === "service"
-                  ? "服务企业：不在基地内注册的企业，如合作会计师事务所、律师事务所等专业服务机构。"
+                {enterprise.type === "non_tenant"
+                  ? "非入驻企业：不在基地内注册的企业，仅使用园区提供的服务。"
                   : "入驻企业：在基地内注册的企业，享受基地提供的各项服务和支持。"}
               </p>
             </div>
