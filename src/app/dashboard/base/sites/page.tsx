@@ -390,49 +390,16 @@ export default function BaseListPage() {
               />
             </div>
             
-            {/* 所在城市 */}
+            {/* 所在城市（从地图选点自动带出） */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 所在城市
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                {/* 省份选择 */}
-                <select
-                  value={selectedProvince?.code || ""}
-                  onChange={(e) => {
-                    const province = provinces.find(p => p.code === e.target.value);
-                    setSelectedProvince(province || null);
-                    setSelectedCity(null);
-                    setFormData({ ...formData, city_code: "" });
-                  }}
-                  className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white"
-                >
-                  <option value="">选择省份</option>
-                  {provinces.map((province) => (
-                    <option key={province.code} value={province.code}>
-                      {province.name}
-                    </option>
-                  ))}
-                </select>
-                
-                {/* 城市选择 */}
-                <select
-                  value={selectedCity?.code || ""}
-                  onChange={(e) => {
-                    const city = selectedProvince?.cities.find(c => c.code === e.target.value);
-                    setSelectedCity(city || null);
-                    setFormData({ ...formData, city_code: e.target.value });
-                  }}
-                  disabled={!selectedProvince}
-                  className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white disabled:bg-slate-50 disabled:text-slate-400"
-                >
-                  <option value="">选择城市</option>
-                  {selectedProvince?.cities.map((city) => (
-                    <option key={city.code} value={city.code}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="h-10 px-3 flex items-center border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-600">
+                {selectedProvince && selectedCity
+                  ? `${selectedProvince.name} ${selectedCity.name}`
+                  : "请通过下方地图选点自动填充"
+                }
               </div>
             </div>
             
@@ -453,7 +420,7 @@ export default function BaseListPage() {
             {/* 地图选点 */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                在地图上选择位置
+                在地图上选择位置 <span className="text-red-500">*</span>
               </label>
               <MapPicker
                 value={
@@ -462,6 +429,8 @@ export default function BaseListPage() {
                         lng: formData.longitude || 0,
                         lat: formData.latitude || 0,
                         address: formData.address,
+                        province: selectedProvince?.name.replace(/省|市|自治区|特别行政区/g, ''),
+                        city: selectedCity?.name.replace(/市|县|区/g, ''),
                       }
                     : undefined
                 }
