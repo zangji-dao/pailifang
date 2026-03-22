@@ -135,6 +135,11 @@ export default function AddressManagementPage() {
   const [editingManualCodeValue, setEditingManualCodeValue] = useState<string>("");
   const [savingManualCode, setSavingManualCode] = useState(false);
 
+  // 行内编辑预分配企业状态
+  const [editingEnterpriseId, setEditingEnterpriseId] = useState<string | null>(null);
+  const [editingEnterpriseValue, setEditingEnterpriseValue] = useState<string>("");
+  const [savingEnterprise, setSavingEnterprise] = useState(false);
+
   // 编辑弹窗状态
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRegNumber, setEditingRegNumber] = useState<RegNumber | null>(null);
@@ -312,6 +317,43 @@ export default function AddressManagementPage() {
   const cancelEditManualCode = () => {
     setEditingManualCodeId(null);
     setEditingManualCodeValue("");
+  };
+
+  // 开始编辑预分配企业
+  const startEditEnterprise = (reg: RegNumber) => {
+    setEditingEnterpriseId(reg.id);
+    setEditingEnterpriseValue(reg.assigned_enterprise_name || "");
+  };
+
+  // 保存预分配企业
+  const saveEnterprise = async (regId: string) => {
+    setSavingEnterprise(true);
+    try {
+      const res = await fetch(`/api/registration-numbers/${regId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigned_enterprise_name: editingEnterpriseValue || null }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("保存成功");
+        setEditingEnterpriseId(null);
+        await fetchRegNumbers();
+      } else {
+        toast.error(result.error || "保存失败");
+      }
+    } catch (error) {
+      console.error("保存失败:", error);
+      toast.error("保存失败");
+    } finally {
+      setSavingEnterprise(false);
+    }
+  };
+
+  // 取消编辑预分配企业
+  const cancelEditEnterprise = () => {
+    setEditingEnterpriseId(null);
+    setEditingEnterpriseValue("");
   };
 
   // 获取显示的注册号（优先人工编号）
@@ -629,7 +671,29 @@ export default function AddressManagementPage() {
                       {getAddressName(reg)}
                     </td>
                     <td className="px-4 py-3 text-sm truncate max-w-[140px]" title={reg.assigned_enterprise_name || "-"}>
-                      {reg.assigned_enterprise_name || <span className="text-slate-300">-</span>}
+                      {editingEnterpriseId === reg.id ? (
+                        <Input
+                          autoFocus
+                          value={editingEnterpriseValue}
+                          onChange={(e) => setEditingEnterpriseValue(e.target.value)}
+                          onBlur={() => saveEnterprise(reg.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEnterprise(reg.id);
+                            if (e.key === "Escape") cancelEditEnterprise();
+                          }}
+                          disabled={savingEnterprise}
+                          className="h-7 text-sm"
+                          placeholder="输入企业名称"
+                        />
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => startEditEnterprise(reg)}
+                          title="点击编辑"
+                        >
+                          {reg.assigned_enterprise_name || <span className="text-muted-foreground/50 italic text-xs">点击设置</span>}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formatDate(reg.created_at)}
