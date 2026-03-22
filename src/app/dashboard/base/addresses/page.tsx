@@ -130,6 +130,11 @@ export default function AddressManagementPage() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
   const [assignedEnterpriseName, setAssignedEnterpriseName] = useState<string>("");
 
+  // 行内编辑人工编号状态
+  const [editingManualCodeId, setEditingManualCodeId] = useState<string | null>(null);
+  const [editingManualCodeValue, setEditingManualCodeValue] = useState<string>("");
+  const [savingManualCode, setSavingManualCode] = useState(false);
+
   // 编辑弹窗状态
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRegNumber, setEditingRegNumber] = useState<RegNumber | null>(null);
@@ -270,6 +275,43 @@ export default function AddressManagementPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // 开始编辑人工编号
+  const startEditManualCode = (reg: RegNumber) => {
+    setEditingManualCodeId(reg.id);
+    setEditingManualCodeValue(reg.manual_code || "");
+  };
+
+  // 保存人工编号
+  const saveManualCode = async (regId: string) => {
+    setSavingManualCode(true);
+    try {
+      const res = await fetch(`/api/registration-numbers/${regId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual_code: editingManualCodeValue || null }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("保存成功");
+        setEditingManualCodeId(null);
+        await fetchRegNumbers();
+      } else {
+        toast.error(result.error || "保存失败");
+      }
+    } catch (error) {
+      console.error("保存失败:", error);
+      toast.error("保存失败");
+    } finally {
+      setSavingManualCode(false);
+    }
+  };
+
+  // 取消编辑人工编号
+  const cancelEditManualCode = () => {
+    setEditingManualCodeId(null);
+    setEditingManualCodeValue("");
   };
 
   // 获取显示的注册号（优先人工编号）
@@ -559,7 +601,29 @@ export default function AddressManagementPage() {
                       {reg.code}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {reg.manual_code || <span className="text-muted-foreground/50 italic text-xs">未设置</span>}
+                      {editingManualCodeId === reg.id ? (
+                        <Input
+                          autoFocus
+                          value={editingManualCodeValue}
+                          onChange={(e) => setEditingManualCodeValue(e.target.value)}
+                          onBlur={() => saveManualCode(reg.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveManualCode(reg.id);
+                            if (e.key === "Escape") cancelEditManualCode();
+                          }}
+                          disabled={savingManualCode}
+                          className="h-7 text-sm"
+                          placeholder="输入编号"
+                        />
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => startEditManualCode(reg)}
+                          title="点击编辑"
+                        >
+                          {reg.manual_code || <span className="text-muted-foreground/50 italic text-xs">点击设置</span>}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[240px]" title={getAddressName(reg)}>
                       {getAddressName(reg)}
