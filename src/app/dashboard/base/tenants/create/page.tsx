@@ -91,6 +91,8 @@ export default function NewTenantPage() {
   // 步骤2：选择工位号
   const [availableRegNumbers, setAvailableRegNumbers] = useState<AvailableRegNumber[]>([]);
   const [selectedRegNumber, setSelectedRegNumber] = useState<AvailableRegNumber | null>(null);
+  const [selectedMeter, setSelectedMeter] = useState<string | null>(null);
+  const [selectedSpace, setSelectedSpace] = useState<string | null>(null);
   
   // 步骤3：上传证明
   const [proofFiles, setProofFiles] = useState<{ name: string; url: string; size: number }[]>([]);
@@ -641,66 +643,162 @@ export default function NewTenantPage() {
   );
 
   // 步骤2：选择工位号（入驻企业）
-  const renderStep2 = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>选择工位号</CardTitle>
-        <CardDescription>请从可用工位号中选择一个</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : availableRegNumbers.length === 0 ? (
-          <div className="text-center py-8">
-            <Hash className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4">该基地暂无可用工位号</p>
-            <Button variant="outline" onClick={() => router.push("/dashboard/base/addresses")}>
-              前往地址管理生成工位号
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableRegNumbers.map((reg) => (
-              <Card
-                key={reg.id}
-                className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
-                  selectedRegNumber?.id === reg.id ? "border-primary ring-2 ring-primary/20" : ""
-                }`}
-                onClick={() => setSelectedRegNumber(reg)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-semibold text-lg">
-                          {reg.manual_code || reg.code}
-                        </span>
+  const renderStep2 = () => {
+    // 提取唯一的物业列表
+    const meters = [...new Set(availableRegNumbers.map(r => r.meterName))];
+    
+    // 根据物业筛选后的空间列表
+    const spaces = [...new Set(
+      availableRegNumbers
+        .filter(r => !selectedMeter || r.meterName === selectedMeter)
+        .map(r => r.spaceName)
+    )];
+    
+    // 筛选后的工位号列表
+    const filteredRegNumbers = availableRegNumbers.filter(r => {
+      if (selectedMeter && r.meterName !== selectedMeter) return false;
+      if (selectedSpace && r.spaceName !== selectedSpace) return false;
+      return true;
+    });
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>选择工位号</CardTitle>
+          <CardDescription>请从可用工位号中选择一个</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 筛选器 */}
+          {availableRegNumbers.length > 0 && (
+            <div className="flex items-center gap-3 pb-4 border-b">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center gap-2 flex-1 flex-wrap">
+                {/* 物业筛选 */}
+                <select
+                  value={selectedMeter || ""}
+                  onChange={(e) => {
+                    setSelectedMeter(e.target.value || null);
+                    setSelectedSpace(null); // 切换物业时清空空间选择
+                  }}
+                  className="h-9 px-3 text-sm border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                >
+                  <option value="">全部物业</option>
+                  {meters.map((meter) => (
+                    <option key={meter} value={meter}>
+                      {meter}
+                    </option>
+                  ))}
+                </select>
+                
+                {/* 空间筛选 */}
+                <select
+                  value={selectedSpace || ""}
+                  onChange={(e) => setSelectedSpace(e.target.value || null)}
+                  className="h-9 px-3 text-sm border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                >
+                  <option value="">全部空间</option>
+                  {spaces.map((space) => (
+                    <option key={space} value={space}>
+                      {space}
+                    </option>
+                  ))}
+                </select>
+                
+                {/* 清除筛选 */}
+                {(selectedMeter || selectedSpace) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedMeter(null);
+                      setSelectedSpace(null);
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    清除
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* 结果统计 */}
+          {availableRegNumbers.length > 0 && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>共 {filteredRegNumbers.length} 个可用工位号</span>
+              {(selectedMeter || selectedSpace) && (
+                <span className="text-xs">
+                  已筛选：{selectedMeter || '全部物业'}{selectedSpace ? ` / ${selectedSpace}` : ''}
+                </span>
+              )}
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : availableRegNumbers.length === 0 ? (
+            <div className="text-center py-8">
+              <Hash className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">该基地暂无可用工位号</p>
+              <Button variant="outline" onClick={() => router.push("/dashboard/base/addresses")}>
+                前往地址管理生成工位号
+              </Button>
+            </div>
+          ) : filteredRegNumbers.length === 0 ? (
+            <div className="text-center py-8">
+              <Hash className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">当前筛选条件下无可用工位号</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredRegNumbers.map((reg) => (
+                <Card
+                  key={reg.id}
+                  className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
+                    selectedRegNumber?.id === reg.id ? "border-primary ring-2 ring-primary/20" : ""
+                  }`}
+                  onClick={() => setSelectedRegNumber(reg)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Hash className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-semibold text-lg">
+                            {reg.manual_code || reg.code}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                          <p className="flex items-center gap-1">
+                            <Home className="w-3 h-3" />
+                            {reg.meterName} - {reg.spaceName}
+                          </p>
+                          {reg.fullAddress && (
+                            <p className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {reg.fullAddress}
+                            </p>
+                          )}
+                          {reg.assigned_enterprise_name && (
+                            <p className="text-primary">预分配：{reg.assigned_enterprise_name}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm text-muted-foreground space-y-1">
-                        <p className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {reg.fullAddress || `${reg.baseAddress} ${reg.meterName} ${reg.spaceName}`}
-                        </p>
-                        {reg.assigned_enterprise_name && (
-                          <p className="text-primary">预分配：{reg.assigned_enterprise_name}</p>
-                        )}
-                      </div>
+                      {selectedRegNumber?.id === reg.id && (
+                        <Check className="w-5 h-5 text-primary" />
+                      )}
                     </div>
-                    {selectedRegNumber?.id === reg.id && (
-                      <Check className="w-5 h-5 text-primary" />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   // 步骤3：上传证明
   const renderStep3 = () => (
