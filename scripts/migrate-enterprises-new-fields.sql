@@ -35,9 +35,18 @@ ADD COLUMN IF NOT EXISTS city VARCHAR(100);
 ALTER TABLE bases 
 ADD COLUMN IF NOT EXISTS city_code VARCHAR(20);
 
+-- 3. 添加经纬度字段
+ALTER TABLE bases 
+ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 7);
+
+ALTER TABLE bases 
+ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 7);
+
 -- 添加注释
 COMMENT ON COLUMN bases.city IS '所在城市名称';
 COMMENT ON COLUMN bases.city_code IS '城市代码（行政区划代码）';
+COMMENT ON COLUMN bases.longitude IS '经度';
+COMMENT ON COLUMN bases.latitude IS '纬度';
 
 -- ============================================
 -- 工位号表添加字段（如果不存在）

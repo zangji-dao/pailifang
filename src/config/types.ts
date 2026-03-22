@@ -37,6 +37,17 @@ export interface DebugConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
+export interface MapConfig {
+  // 高德地图 API Key（Web端）
+  amapKey: string;
+  // 默认中心点经度
+  defaultCenterLng: number;
+  // 默认中心点纬度
+  defaultCenterLat: number;
+  // 默认缩放级别
+  defaultZoom: number;
+}
+
 export interface AppConfig {
   env: Environment;
   api: ApiConfig;
@@ -46,4 +57,5 @@ export interface AppConfig {
   cors: CorsConfig;
   frontend: FrontendConfig;
   debug: DebugConfig;
+  map: MapConfig;
 }

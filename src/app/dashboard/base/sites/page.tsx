@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
 import { provinces, Province, City } from "@/lib/cities";
+import { MapPicker } from "@/components/map/MapPicker";
 
 interface Base {
   id: string;
@@ -28,6 +29,8 @@ interface Base {
   address: string | null;
   city: string | null;
   city_code: string | null;
+  longitude: number | null;
+  latitude: number | null;
   status: string;
   meterCount: number;
   createdAt: string;
@@ -77,6 +80,8 @@ export default function BaseListPage() {
     name: "",
     address: "",
     city_code: "",
+    longitude: 0,
+    latitude: 0,
     status: "active",
   });
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
@@ -153,13 +158,15 @@ export default function BaseListPage() {
         body: JSON.stringify({
           ...formData,
           city: selectedCity?.name || null,
+          longitude: formData.longitude || null,
+          latitude: formData.latitude || null,
         }),
       });
       
       const result = await response.json();
       if (result.success) {
         setShowAddDialog(false);
-        setFormData({ name: "", address: "", city_code: "", status: "active" });
+        setFormData({ name: "", address: "", city_code: "", longitude: 0, latitude: 0, status: "active" });
         setSelectedProvince(null);
         setSelectedCity(null);
         // 刷新列表
@@ -510,6 +517,33 @@ export default function BaseListPage() {
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="请输入详细地址"
                   className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                />
+              </div>
+              
+              {/* 地图选点 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  在地图上选择位置
+                </label>
+                <MapPicker
+                  value={
+                    formData.longitude && formData.latitude
+                      ? {
+                          lng: formData.longitude,
+                          lat: formData.latitude,
+                          address: formData.address,
+                        }
+                      : undefined
+                  }
+                  onChange={(location) => {
+                    setFormData({
+                      ...formData,
+                      longitude: location.lng,
+                      latitude: location.lat,
+                      address: location.address || formData.address,
+                    });
+                  }}
+                  placeholder="点击在地图上选择基地位置"
                 />
               </div>
               
