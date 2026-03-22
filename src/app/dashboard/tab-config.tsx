@@ -46,7 +46,7 @@ const SETTLEMENT_TAB_CONFIGS: Record<string, TabConfig> = {
  * 基地管理标签页配置
  */
 const BASE_TAB_CONFIGS: Record<string, TabConfig> = {
-  sites: { id: "base-sites", label: "物业运营中心", icon: <Building className="h-3.5 w-3.5" />, group: "base" },
+  sites: { id: "base-sites", label: "基地管理", icon: <Building className="h-3.5 w-3.5" />, group: "base" },
   addresses: { id: "base-addresses", label: "地址管理", icon: <MapPin className="h-3.5 w-3.5" />, group: "base" },
   tenants: { id: "base-tenants", label: "企业管理", icon: <Users className="h-3.5 w-3.5" />, group: "base" },
   contracts: { id: "base-contracts", label: "合同管理", icon: <FileSignature className="h-3.5 w-3.5" />, group: "base" },
