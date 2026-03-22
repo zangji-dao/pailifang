@@ -119,7 +119,7 @@ export default function BaseDetailPage() {
 
         {/* 物业卡片网格 */}
         <div className="mb-4">
-          <h2 className="text-lg font-semibold" style={{ color: "#1C1917" }}>物业列表</h2>
+          <h2 className="text-lg font-semibold" style={{ color: "#1C1917" }}>物业信息监控</h2>
           <p className="text-sm mt-0.5" style={{ color: "#A8A29E" }}>点击物业卡片查看详细信息</p>
         </div>
 
