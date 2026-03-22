@@ -187,3 +187,15 @@
 body {
   @apply font-sans;
 }
+
+/* Leaflet 地图样式修复 */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+}
+
+.leaflet-control-container .leaflet-top,
+.leaflet-control-container .leaflet-bottom {
+  z-index: 400;
+}

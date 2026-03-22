@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, Search, Loader2, AlertCircle, X } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { MapPin, Search, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import config from "@/config";
+import dynamic from "next/dynamic";
+
+// 动态导入地图组件，避免 SSR 问题
+const MapComponent = dynamic(() => import("./MapComponent"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[300px] flex items-center justify-center bg-muted/50">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span>加载地图中...</span>
+      </div>
+    </div>
+  ),
+});
 
 interface Location {
   lng: number;
@@ -20,221 +33,73 @@ interface MapPickerProps {
   className?: string;
 }
 
-// 高德地图 API 类型声明
-declare global {
-  interface Window {
-    AMap: any;
-    AMapUI: any;
+// 搜索功能使用 Nominatim（OpenStreetMap 的免费地理编码服务）
+async function searchAddress(query: string): Promise<Location[]> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+    );
+    const data = await response.json();
+    
+    return data.map((item: any) => ({
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+      address: item.display_name,
+      name: item.name || item.display_name.split(",")[0],
+    }));
+  } catch (error) {
+    console.error("搜索失败:", error);
+    return [];
+  }
+}
+
+// 逆地理编码
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+    );
+    const data = await response.json();
+    return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  } catch (error) {
+    console.error("逆地理编码失败:", error);
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   }
 }
 
 export function MapPicker({ value, onChange, placeholder = "点击选择地址", className = "" }: MapPickerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searching, setSearching] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [searchResults, setSearchResults] = useState<Location[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
 
-  const amapKey = config.map.amapKey;
+  // 处理地图点击选择
+  const handleLocationSelect = useCallback(async (lat: number, lng: number) => {
+    const address = await reverseGeocode(lat, lng);
+    onChange({ lat, lng, address });
+  }, [onChange]);
 
-  // 初始化地图
-  const initMap = useCallback(() => {
-    if (!containerRef.current || !amapKey) return;
-
-    const defaultCenter = [config.map.defaultCenterLng, config.map.defaultCenterLat];
-    const center = value ? [value.lng, value.lat] : defaultCenter;
-
-    // 创建地图实例
-    const map = new window.AMap.Map(containerRef.current, {
-      zoom: config.map.defaultZoom,
-      center: center,
-    });
-
-    mapRef.current = map;
-
-    // 创建标记点
-    const marker = new window.AMap.Marker({
-      position: center,
-      draggable: true,
-    });
-
-    markerRef.current = marker;
-    map.add(marker);
-
-    // 点击地图选择位置
-    map.on("click", async (e: any) => {
-      const { lng, lat } = e.lnglat;
-      marker.setPosition([lng, lat]);
-
-      // 逆地理编码获取地址
-      try {
-        const address = await getAddressByLngLat(lng, lat);
-        onChange({
-          lng,
-          lat,
-          address: address,
-        });
-      } catch (err) {
-        console.error("获取地址失败:", err);
-        onChange({
-          lng,
-          lat,
-          address: `${lng.toFixed(6)}, ${lat.toFixed(6)}`,
-        });
-      }
-    });
-
-    // 拖拽结束获取地址
-    marker.on("dragend", async () => {
-      const position = marker.getPosition();
-      const { lng, lat } = position;
-
-      try {
-        const address = await getAddressByLngLat(lng, lat);
-        onChange({
-          lng,
-          lat,
-          address: address,
-        });
-      } catch (err) {
-        console.error("获取地址失败:", err);
-        onChange({
-          lng,
-          lat,
-          address: `${lng.toFixed(6)}, ${lat.toFixed(6)}`,
-        });
-      }
-    });
-
-    setLoading(false);
-  }, [amapKey, value, onChange]);
-
-  // 逆地理编码
-  const getAddressByLngLat = async (lng: number, lat: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      window.AMap.plugin("AMap.Geocoder", () => {
-        const geocoder = new window.AMap.Geocoder();
-        geocoder.getAddress([lng, lat], (status: string, result: any) => {
-          if (status === "complete" && result.regeocode) {
-            resolve(result.regeocode.formattedAddress);
-          } else {
-            reject(new Error("获取地址失败"));
-          }
-        });
-      });
-    });
-  };
-
-  // 搜索地址
+  // 处理搜索
   const handleSearch = async () => {
-    if (!searchKeyword.trim() || !mapRef.current) return;
-
+    if (!searchKeyword.trim()) return;
+    
     setSearching(true);
-    try {
-      window.AMap.plugin("AMap.PlaceSearch", () => {
-        const placeSearch = new window.AMap.PlaceSearch({
-          pageSize: 5,
-          pageIndex: 1,
-        });
-
-        placeSearch.search(searchKeyword, (status: string, result: any) => {
-          if (status === "complete" && result.poiList?.pois?.length > 0) {
-            const poi = result.poiList.pois[0];
-            const { lng, lat } = poi.location;
-            const address = poi.address || poi.name;
-
-            // 移动地图到搜索结果
-            mapRef.current.setCenter([lng, lat]);
-            mapRef.current.setZoom(15);
-
-            // 设置标记点
-            markerRef.current.setPosition([lng, lat]);
-
-            onChange({
-              lng,
-              lat,
-              address: address,
-              name: poi.name,
-            });
-          }
-          setSearching(false);
-        });
-      });
-    } catch (err) {
-      console.error("搜索失败:", err);
-      setSearching(false);
-    }
+    setShowResults(true);
+    const results = await searchAddress(searchKeyword);
+    setSearchResults(results);
+    setSearching(false);
   };
 
-  // 加载高德地图 API
-  useEffect(() => {
-    if (!showMap || !amapKey) return;
-
-    // 检查是否已加载
-    if (window.AMap) {
-      initMap();
-      return;
-    }
-
-    // 动态加载高德地图 JS API
-    const script = document.createElement("script");
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}`;
-    script.async = true;
-    script.onload = () => {
-      initMap();
-    };
-    script.onerror = () => {
-      setError("地图加载失败，请检查网络连接");
-      setLoading(false);
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      // 清理地图实例
-      if (mapRef.current) {
-        mapRef.current.destroy();
-      }
-    };
-  }, [showMap, amapKey, initMap]);
-
-  // 如果没有配置 API Key
-  if (!amapKey) {
-    return (
-      <div className={`border rounded-lg p-4 ${className}`}>
-        <div className="flex items-start gap-3 text-amber-600">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">地图功能未配置</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              请在环境变量中配置 <code className="bg-muted px-1 rounded">AMAP_KEY</code> 以启用地图选点功能
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              获取高德地图 API Key: 
-              <a 
-                href="https://lbs.amap.com/api/javascript-api/guide/abc/prepare" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline ml-1"
-              >
-                高德开放平台
-              </a>
-            </p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <label className="text-sm font-medium text-muted-foreground mb-1.5 block">手动输入地址</label>
-          <Input
-            value={value?.address || ""}
-            onChange={(e) => onChange({ lng: 0, lat: 0, address: e.target.value })}
-            placeholder="请输入详细地址"
-          />
-        </div>
-      </div>
-    );
-  }
+  // 选择搜索结果
+  const selectSearchResult = async (location: Location) => {
+    const address = await reverseGeocode(location.lat, location.lng);
+    onChange({ ...location, address });
+    setShowResults(false);
+    setSearchKeyword("");
+    setSearchResults([]);
+  };
 
   // 已选择位置但未展开地图
   if (!showMap && value?.address) {
@@ -242,10 +107,10 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
       <div className={`border rounded-lg p-3 ${className}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="truncate">{value.address}</span>
+            <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+            <span className="truncate flex-1">{value.address}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -264,6 +129,11 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
             </Button>
           </div>
         </div>
+        {value.lat && value.lng && (
+          <p className="text-xs text-muted-foreground mt-2 pl-6">
+            经度: {value.lng.toFixed(6)} 纬度: {value.lat.toFixed(6)}
+          </p>
+        )}
       </div>
     );
   }
@@ -272,11 +142,15 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
   if (!showMap) {
     return (
       <button
-        onClick={() => setShowMap(true)}
+        onClick={() => {
+          setShowMap(true);
+          setMapKey(prev => prev + 1);
+        }}
         className={`w-full border-2 border-dashed rounded-lg p-4 text-center hover:border-primary hover:bg-primary/5 transition-colors ${className}`}
       >
         <MapPin className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
         <p className="text-sm text-muted-foreground">{placeholder}</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">使用 OpenStreetMap（免费）</p>
       </button>
     );
   }
@@ -289,6 +163,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">选择地址</span>
+          <span className="text-xs text-muted-foreground">(OpenStreetMap)</span>
         </div>
         <Button
           variant="ghost"
@@ -300,7 +175,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
       </div>
 
       {/* 搜索栏 */}
-      <div className="p-3 border-b">
+      <div className="p-3 border-b relative">
         <div className="flex items-center gap-2">
           <Input
             value={searchKeyword}
@@ -317,39 +192,38 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
             )}
           </Button>
         </div>
+        
+        {/* 搜索结果下拉 */}
+        {showResults && searchResults.length > 0 && (
+          <div className="absolute left-3 right-3 top-full mt-1 bg-background border rounded-lg shadow-lg z-[1000] max-h-60 overflow-y-auto">
+            {searchResults.map((result, index) => (
+              <button
+                key={index}
+                onClick={() => selectSearchResult(result)}
+                className="w-full px-3 py-2 text-left hover:bg-muted text-sm border-b last:border-b-0"
+              >
+                <div className="font-medium truncate">{result.name}</div>
+                <div className="text-xs text-muted-foreground truncate">{result.address}</div>
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {showResults && searching && (
+          <div className="absolute left-3 right-3 top-full mt-1 bg-background border rounded-lg shadow-lg z-[1000] p-3 text-center text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+            搜索中...
+          </div>
+        )}
       </div>
 
       {/* 地图容器 */}
-      <div className="relative">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>加载地图中...</span>
-            </div>
-          </div>
-        )}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
-            <div className="text-center text-muted-foreground">
-              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-destructive" />
-              <p>{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  setLoading(true);
-                  initMap();
-                }}
-                className="mt-2"
-              >
-                重试
-              </Button>
-            </div>
-          </div>
-        )}
-        <div ref={containerRef} className="w-full h-[300px]" />
+      <div className="w-full h-[300px]">
+        <MapComponent
+          key={mapKey}
+          position={value ? [value.lat, value.lng] : undefined}
+          onLocationSelect={handleLocationSelect}
+        />
       </div>
 
       {/* 已选地址 */}
@@ -358,7 +232,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
           <div className="flex items-start gap-2">
             <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{value.address}</p>
+              <p className="text-sm font-medium">{value.address}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 经度: {value.lng.toFixed(6)} 纬度: {value.lat.toFixed(6)}
               </p>
@@ -369,7 +243,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
 
       {/* 提示 */}
       <div className="p-2 bg-muted/30 text-xs text-muted-foreground text-center">
-        点击地图或拖拽标记点选择位置
+        点击地图选择位置，或使用搜索功能定位
       </div>
     </div>
   );
