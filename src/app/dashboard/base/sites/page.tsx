@@ -13,7 +13,7 @@ import {
   Users,
   Hash,
   DoorOpen,
-  X,
+  ArrowLeft,
   Briefcase,
   MapPinned,
 } from "lucide-react";
@@ -66,6 +66,9 @@ interface BaseDetail {
   meters?: Meter[];
 }
 
+// 视图模式类型
+type ViewMode = "list" | "add";
+
 export default function BaseListPage() {
   const router = useRouter();
   const tabs = useTabs();
@@ -74,8 +77,10 @@ export default function BaseListPage() {
   const [enterpriseStats, setEnterpriseStats] = useState<EnterpriseStats>({ total: 0, tenant: 0, service: 0, active: 0 });
   const [loading, setLoading] = useState(true);
   
-  // 新增基地弹窗状态
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  // 视图模式：列表或新增
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  
+  // 新增基地表单数据
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -165,10 +170,13 @@ export default function BaseListPage() {
       
       const result = await response.json();
       if (result.success) {
-        setShowAddDialog(false);
+        toast.success("基地创建成功");
+        // 重置表单
         setFormData({ name: "", address: "", city_code: "", longitude: 0, latitude: 0, status: "active" });
         setSelectedProvince(null);
         setSelectedCity(null);
+        // 返回列表
+        setViewMode("list");
         // 刷新列表
         fetchData();
       } else {
@@ -208,13 +216,204 @@ export default function BaseListPage() {
     );
   }
 
+  // 新增基地视图
+  if (viewMode === "add") {
+    return (
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+        {/* 头部 */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="text-slate-600"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            返回列表
+          </Button>
+        </div>
+
+        {/* 表单卡片 */}
+        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
+          {/* 头部 */}
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="text-lg font-semibold text-slate-900">新增基地</h2>
+            <p className="text-sm text-slate-500 mt-1">填写基地基本信息</p>
+          </div>
+          
+          {/* 表单内容 */}
+          <div className="p-6 space-y-5">
+            {/* 基地名称 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                基地名称 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="请输入基地名称"
+                className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+              />
+            </div>
+            
+            {/* 所在城市 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                所在城市
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* 省份选择 */}
+                <select
+                  value={selectedProvince?.code || ""}
+                  onChange={(e) => {
+                    const province = provinces.find(p => p.code === e.target.value);
+                    setSelectedProvince(province || null);
+                    setSelectedCity(null);
+                    setFormData({ ...formData, city_code: "" });
+                  }}
+                  className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white"
+                >
+                  <option value="">选择省份</option>
+                  {provinces.map((province) => (
+                    <option key={province.code} value={province.code}>
+                      {province.name}
+                    </option>
+                  ))}
+                </select>
+                
+                {/* 城市选择 */}
+                <select
+                  value={selectedCity?.code || ""}
+                  onChange={(e) => {
+                    const city = selectedProvince?.cities.find(c => c.code === e.target.value);
+                    setSelectedCity(city || null);
+                    setFormData({ ...formData, city_code: e.target.value });
+                  }}
+                  disabled={!selectedProvince}
+                  className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="">选择城市</option>
+                  {selectedProvince?.cities.map((city) => (
+                    <option key={city.code} value={city.code}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            {/* 基地地址 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                详细地址
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="请输入详细地址"
+                className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+              />
+            </div>
+            
+            {/* 地图选点 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                在地图上选择位置
+              </label>
+              <MapPicker
+                value={
+                  formData.longitude && formData.latitude
+                    ? {
+                        lng: formData.longitude,
+                        lat: formData.latitude,
+                        address: formData.address,
+                      }
+                    : undefined
+                }
+                onChange={(location) => {
+                  setFormData({
+                    ...formData,
+                    longitude: location.lng,
+                    latitude: location.lat,
+                    address: location.address || formData.address,
+                  });
+                }}
+                placeholder="点击在地图上选择基地位置"
+              />
+            </div>
+            
+            {/* 状态 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                状态
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    checked={formData.status === "active"}
+                    onChange={() => setFormData({ ...formData, status: "active" })}
+                    className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
+                  />
+                  <span className="text-sm text-slate-700">运营中</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    checked={formData.status === "inactive"}
+                    onChange={() => setFormData({ ...formData, status: "inactive" })}
+                    className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
+                  />
+                  <span className="text-sm text-slate-700">已停用</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          {/* 底部按钮 */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-xl">
+            <Button
+              variant="outline"
+              onClick={() => setViewMode("list")}
+              disabled={submitting}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleCreateBase}
+              disabled={submitting}
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  创建基地
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 列表视图
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* 操作栏 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Button 
           className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0 sm:ml-auto"
-          onClick={() => setShowAddDialog(true)}
+          onClick={() => setViewMode("add")}
         >
           <Plus className="h-4 w-4 mr-2" />
           新增基地
@@ -421,192 +620,6 @@ export default function BaseListPage() {
           </div>
         )}
       </div>
-
-      {/* 新增基地弹窗 */}
-      {showAddDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* 遮罩 */}
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowAddDialog(false)}
-          />
-          
-          {/* 弹窗内容 */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            {/* 头部 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 className="text-lg font-semibold text-slate-900">新增基地</h3>
-              <button
-                onClick={() => setShowAddDialog(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            {/* 表单 */}
-            <div className="p-6 space-y-4">
-              {/* 基地名称 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  基地名称 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="请输入基地名称"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-              
-              {/* 所在城市 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  所在城市
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* 省份选择 */}
-                  <select
-                    value={selectedProvince?.code || ""}
-                    onChange={(e) => {
-                      const province = provinces.find(p => p.code === e.target.value);
-                      setSelectedProvince(province || null);
-                      setSelectedCity(null);
-                      setFormData({ ...formData, city_code: "" });
-                    }}
-                    className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white"
-                  >
-                    <option value="">选择省份</option>
-                    {provinces.map((province) => (
-                      <option key={province.code} value={province.code}>
-                        {province.name}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  {/* 城市选择 */}
-                  <select
-                    value={selectedCity?.code || ""}
-                    onChange={(e) => {
-                      const city = selectedProvince?.cities.find(c => c.code === e.target.value);
-                      setSelectedCity(city || null);
-                      setFormData({ ...formData, city_code: e.target.value });
-                    }}
-                    disabled={!selectedProvince}
-                    className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white disabled:bg-slate-50 disabled:text-slate-400"
-                  >
-                    <option value="">选择城市</option>
-                    {selectedProvince?.cities.map((city) => (
-                      <option key={city.code} value={city.code}>
-                        {city.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              {/* 基地地址 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  详细地址
-                </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="请输入详细地址"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-              
-              {/* 地图选点 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  在地图上选择位置
-                </label>
-                <MapPicker
-                  value={
-                    formData.longitude && formData.latitude
-                      ? {
-                          lng: formData.longitude,
-                          lat: formData.latitude,
-                          address: formData.address,
-                        }
-                      : undefined
-                  }
-                  onChange={(location) => {
-                    setFormData({
-                      ...formData,
-                      longitude: location.lng,
-                      latitude: location.lat,
-                      address: location.address || formData.address,
-                    });
-                  }}
-                  placeholder="点击在地图上选择基地位置"
-                />
-              </div>
-              
-              {/* 状态 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  状态
-                </label>
-                <div className="flex gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="status"
-                      checked={formData.status === "active"}
-                      onChange={() => setFormData({ ...formData, status: "active" })}
-                      className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
-                    />
-                    <span className="text-sm text-slate-700">运营中</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="status"
-                      checked={formData.status === "inactive"}
-                      onChange={() => setFormData({ ...formData, status: "inactive" })}
-                      className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
-                    />
-                    <span className="text-sm text-slate-700">已停用</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-            
-            {/* 底部按钮 */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
-              <Button
-                variant="outline"
-                onClick={() => setShowAddDialog(false)}
-                disabled={submitting}
-              >
-                取消
-              </Button>
-              <Button
-                onClick={handleCreateBase}
-                disabled={submitting}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    创建中...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    创建基地
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
