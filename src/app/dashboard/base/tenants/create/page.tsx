@@ -393,9 +393,6 @@ export default function NewTenantPage() {
       }
       return true;
     });
-
-    // 获取所有有基地的城市代码
-    const baseCityCodes = new Set(bases.map(b => b.city_code).filter(Boolean));
     
     return (
       <Card>
@@ -437,13 +434,11 @@ export default function NewTenantPage() {
                 className="h-9 px-3 text-sm border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:text-muted-foreground"
               >
                 <option value="">全部城市</option>
-                {filterProvince?.cities
-                  .filter(city => baseCityCodes.has(city.code))
-                  .map((city) => (
-                    <option key={city.code} value={city.code}>
-                      {city.name}
-                    </option>
-                  ))}
+                {filterProvince?.cities.map((city) => (
+                  <option key={city.code} value={city.code}>
+                    {city.name}
+                  </option>
+                ))}
               </select>
               
               {/* 清除筛选 */}
