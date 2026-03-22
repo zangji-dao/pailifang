@@ -457,10 +457,10 @@ export default function BaseListPage() {
               </label>
               <MapPicker
                 value={
-                  formData.longitude && formData.latitude
+                  formData.address || (formData.longitude && formData.latitude)
                     ? {
-                        lng: formData.longitude,
-                        lat: formData.latitude,
+                        lng: formData.longitude || 0,
+                        lat: formData.latitude || 0,
                         address: formData.address,
                       }
                     : undefined

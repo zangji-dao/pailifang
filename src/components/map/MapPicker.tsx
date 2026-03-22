@@ -258,7 +258,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
             </Button>
           </div>
         </div>
-        {value.lat && value.lng && (
+        {value.lat !== 0 && value.lng !== 0 && (
           <p className="text-xs text-muted-foreground mt-2 pl-6">
             经度: {value.lng.toFixed(6)} 纬度: {value.lat.toFixed(6)}
           </p>

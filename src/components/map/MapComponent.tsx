@@ -59,9 +59,17 @@ function MapPositionUpdater({ position }: { position?: [number, number] }) {
   return null;
 }
 
+// 检查位置是否有效（非零坐标）
+function isValidPosition(position?: [number, number]): boolean {
+  if (!position) return false;
+  const [lat, lng] = position;
+  return lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng);
+}
+
 export default function MapComponent({ position, onLocationSelect }: MapComponentProps) {
-  const center = position || DEFAULT_CENTER;
-  const zoom = position ? 15 : DEFAULT_ZOOM;
+  const hasValidPosition = isValidPosition(position);
+  const center = hasValidPosition ? position! : DEFAULT_CENTER;
+  const zoom = hasValidPosition ? 15 : DEFAULT_ZOOM;
 
   return (
     <MapContainer
@@ -73,9 +81,9 @@ export default function MapComponent({ position, onLocationSelect }: MapComponen
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {position && <Marker position={position} />}
+      {hasValidPosition && <Marker position={position!} />}
       <MapEventHandler onLocationSelect={onLocationSelect} />
-      <MapPositionUpdater position={position} />
+      <MapPositionUpdater position={hasValidPosition ? position : undefined} />
     </MapContainer>
   );
 }
