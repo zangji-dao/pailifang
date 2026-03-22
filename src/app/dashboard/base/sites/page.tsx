@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
 import { provinces, Province, City } from "@/lib/cities";
-import { MapPicker } from "@/components/map/MapPicker";
+import { MapPicker, Location } from "@/components/map/MapPicker";
 
 interface Base {
   id: string;
@@ -449,11 +449,45 @@ export default function BaseListPage() {
                     : undefined
                 }
                 onChange={(location) => {
+                  // 根据地图返回的省市信息自动填充
+                  let newProvince = selectedProvince;
+                  let newCity = selectedCity;
+                  
+                  if (location.province) {
+                    const provinceName = location.province;
+                    // 查找匹配的省份
+                    const matchedProvince = provinces.find(p => 
+                      p.name === provinceName || 
+                      p.name.includes(provinceName) ||
+                      provinceName.includes(p.name)
+                    );
+                    if (matchedProvince) {
+                      newProvince = matchedProvince;
+                      
+                      // 如果有城市信息，查找匹配的城市
+                      if (location.city) {
+                        const cityName = location.city;
+                        const matchedCity = matchedProvince.cities.find(c =>
+                          c.name === cityName ||
+                          c.name.includes(cityName) ||
+                          cityName.includes(c.name)
+                        );
+                        if (matchedCity) {
+                          newCity = matchedCity;
+                        }
+                      }
+                    }
+                  }
+                  
+                  setSelectedProvince(newProvince);
+                  setSelectedCity(newCity);
+                  
                   setFormData({
                     ...formData,
                     longitude: location.lng,
                     latitude: location.lat,
                     address: location.address || formData.address,
+                    city_code: newCity?.code || formData.city_code,
                   });
                 }}
                 placeholder="点击在地图上选择基地位置"

@@ -19,11 +19,16 @@ const MapComponent = dynamic(() => import("./MapComponent"), {
   ),
 });
 
-interface Location {
+export interface Location {
   lng: number;
   lat: number;
   address: string;
   name?: string;
+  // 地址详情
+  province?: string;  // 省/直辖市
+  city?: string;      // 市
+  district?: string;  // 区/县
+  street?: string;    // 街道
 }
 
 interface MapPickerProps {
@@ -41,30 +46,137 @@ async function searchAddress(query: string): Promise<Location[]> {
     );
     const data = await response.json();
     
-    return data.map((item: any) => ({
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      address: item.display_name,
-      name: item.name || item.display_name.split(",")[0],
-    }));
+    return data.map((item: any) => {
+      const addr = item.address || {};
+      return {
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+        address: item.display_name,
+        name: item.name || item.display_name.split(",")[0],
+        province: addr.province || addr.state || addr['ISO3166-2-lvl4']?.split('-')[0] || '',
+        city: addr.city || addr.town || addr.village || addr.county || '',
+        district: addr.suburb || addr.district || addr.county || '',
+        street: addr.road || addr.street || '',
+      };
+    });
   } catch (error) {
     console.error("搜索失败:", error);
     return [];
   }
 }
 
-// 逆地理编码
-async function reverseGeocode(lat: number, lng: number): Promise<string> {
+// 逆地理编码 - 返回完整地址信息
+async function reverseGeocode(lat: number, lng: number): Promise<Location> {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
     );
     const data = await response.json();
-    return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    const addr = data.address || {};
+    
+    return {
+      lat,
+      lng,
+      address: data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+      province: addr.province || addr.state || addr['ISO3166-2-lvl4']?.split('-')[0] || '',
+      city: addr.city || addr.town || addr.village || addr.county || '',
+      district: addr.suburb || addr.district || addr.county || '',
+      street: addr.road || addr.street || '',
+    };
   } catch (error) {
     console.error("逆地理编码失败:", error);
-    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    return {
+      lat,
+      lng,
+      address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+    };
   }
+}
+
+// 中国省份名称映射（用于匹配）
+const provinceNames: Record<string, string> = {
+  '北京市': '北京',
+  '北京': '北京',
+  '天津市': '天津',
+  '天津': '天津',
+  '河北省': '河北',
+  '河北': '河北',
+  '山西省': '山西',
+  '山西': '山西',
+  '内蒙古自治区': '内蒙古',
+  '内蒙古': '内蒙古',
+  '辽宁省': '辽宁',
+  '辽宁': '辽宁',
+  '吉林省': '吉林',
+  '吉林': '吉林',
+  '黑龙江省': '黑龙江',
+  '黑龙江': '黑龙江',
+  '上海市': '上海',
+  '上海': '上海',
+  '江苏省': '江苏',
+  '江苏': '江苏',
+  '浙江省': '浙江',
+  '浙江': '浙江',
+  '安徽省': '安徽',
+  '安徽': '安徽',
+  '福建省': '福建',
+  '福建': '福建',
+  '江西省': '江西',
+  '江西': '江西',
+  '山东省': '山东',
+  '山东': '山东',
+  '河南省': '河南',
+  '河南': '河南',
+  '湖北省': '湖北',
+  '湖北': '湖北',
+  '湖南省': '湖南',
+  '湖南': '湖南',
+  '广东省': '广东',
+  '广东': '广东',
+  '广西壮族自治区': '广西',
+  '广西': '广西',
+  '海南省': '海南',
+  '海南': '海南',
+  '重庆市': '重庆',
+  '重庆': '重庆',
+  '四川省': '四川',
+  '四川': '四川',
+  '贵州省': '贵州',
+  '贵州': '贵州',
+  '云南省': '云南',
+  '云南': '云南',
+  '西藏自治区': '西藏',
+  '西藏': '西藏',
+  '陕西省': '陕西',
+  '陕西': '陕西',
+  '甘肃省': '甘肃',
+  '甘肃': '甘肃',
+  '青海省': '青海',
+  '青海': '青海',
+  '宁夏回族自治区': '宁夏',
+  '宁夏': '宁夏',
+  '新疆维吾尔自治区': '新疆',
+  '新疆': '新疆',
+  '香港特别行政区': '香港',
+  '香港': '香港',
+  '澳门特别行政区': '澳门',
+  '澳门': '澳门',
+  '台湾省': '台湾',
+  '台湾': '台湾',
+};
+
+// 标准化省份名称
+function normalizeProvinceName(province: string): string {
+  if (!province) return '';
+  // 直接匹配
+  if (provinceNames[province]) return provinceNames[province];
+  // 模糊匹配
+  for (const [key, value] of Object.entries(provinceNames)) {
+    if (province.includes(key) || key.includes(province)) {
+      return value;
+    }
+  }
+  return province;
 }
 
 export function MapPicker({ value, onChange, placeholder = "点击选择地址", className = "" }: MapPickerProps) {
@@ -77,8 +189,12 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
 
   // 处理地图点击选择
   const handleLocationSelect = useCallback(async (lat: number, lng: number) => {
-    const address = await reverseGeocode(lat, lng);
-    onChange({ lat, lng, address });
+    const location = await reverseGeocode(lat, lng);
+    // 标准化省份名称
+    if (location.province) {
+      location.province = normalizeProvinceName(location.province);
+    }
+    onChange(location);
   }, [onChange]);
 
   // 处理搜索
@@ -88,14 +204,24 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
     setSearching(true);
     setShowResults(true);
     const results = await searchAddress(searchKeyword);
+    // 标准化省份名称
+    results.forEach(r => {
+      if (r.province) {
+        r.province = normalizeProvinceName(r.province);
+      }
+    });
     setSearchResults(results);
     setSearching(false);
   };
 
   // 选择搜索结果
   const selectSearchResult = async (location: Location) => {
-    const address = await reverseGeocode(location.lat, location.lng);
-    onChange({ ...location, address });
+    const fullLocation = await reverseGeocode(location.lat, location.lng);
+    // 标准化省份名称
+    if (fullLocation.province) {
+      fullLocation.province = normalizeProvinceName(fullLocation.province);
+    }
+    onChange(fullLocation);
     setShowResults(false);
     setSearchKeyword("");
     setSearchResults([]);
