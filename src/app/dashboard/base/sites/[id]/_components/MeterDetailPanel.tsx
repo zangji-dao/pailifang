@@ -22,18 +22,13 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
   const [submitting, setSubmitting] = useState(false);
   
   // 新增空间表单
-  const [spaceForm, setSpaceForm] = useState({ code: "", name: "", area: "" });
+  const [spaceForm, setSpaceForm] = useState({ name: "", area: "" });
   
   // 新增工位号表单
   const [regNumberForm, setRegNumberForm] = useState({ code: "" });
 
   // 新增物理空间
   const handleAddSpace = async () => {
-    if (!spaceForm.code.trim()) {
-      toast.error("请输入空间编码");
-      return;
-    }
-    
     setSubmitting(true);
     try {
       const res = await fetch("/api/spaces", {
@@ -41,8 +36,7 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           meter_id: meter.id,
-          code: spaceForm.code,
-          name: spaceForm.name || spaceForm.code,
+          name: spaceForm.name || undefined,
           area: spaceForm.area ? parseFloat(spaceForm.area) : null,
           status: "active",
         }),
@@ -50,9 +44,9 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
       
       const result = await res.json();
       if (result.success) {
-        toast.success("空间创建成功");
+        toast.success(`空间创建成功，编号：${result.data.code}`);
         setShowAddSpace(false);
-        setSpaceForm({ code: "", name: "", area: "" });
+        setSpaceForm({ name: "", area: "" });
         onRefresh?.();
       } else {
         toast.error(result.error || "创建失败");
@@ -180,18 +174,12 @@ export function MeterDetailPanel({ meter, onClose, onRefresh }: MeterDetailPanel
         {/* 新增空间表单 */}
         {showAddSpace && (
           <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <p className="text-xs mb-3" style={{ color: "#78716C" }}>
+              编号将自动生成，格式：{meter.code}-序号（如 {meter.code}-1）
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>编码 *</label>
-                <Input
-                  value={spaceForm.code}
-                  onChange={(e) => setSpaceForm({ ...spaceForm, code: e.target.value })}
-                  placeholder="如：1-101-1"
-                  className="h-9"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>名称</label>
+                <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>名称（可选）</label>
                 <Input
                   value={spaceForm.name}
                   onChange={(e) => setSpaceForm({ ...spaceForm, name: e.target.value })}
