@@ -202,6 +202,11 @@ export default function AddressManagementPage() {
       return;
     }
 
+    if (!assignedEnterpriseName.trim()) {
+      toast.error("请输入预分配企业名称");
+      return;
+    }
+
     setGenerating(true);
     try {
       const res = await fetch("/api/registration-numbers/generate", {
@@ -430,101 +435,92 @@ export default function AddressManagementPage() {
             <CardTitle className="text-base">生成新地址</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-4 items-end">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-6 items-end">
+              {/* 第一列：选择基地（三级联动） */}
+              <div className="space-y-3">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Building2 className="h-3 w-3" />
-                  基地
+                  选择基地
                 </Label>
-                <Select value={selectedBaseId} onValueChange={handleBaseChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择基地" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cascadeData.map((base) => (
-                      <SelectItem key={base.id} value={base.id}>
-                        {base.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={selectedBaseId} onValueChange={handleBaseChange}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="基地" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cascadeData.map((base) => (
+                        <SelectItem key={base.id} value={base.id}>
+                          {base.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={selectedMeterId}
+                    onValueChange={handleMeterChange}
+                    disabled={!selectedBaseId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={selectedBaseId ? "物业" : "-"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedBase?.meters.map((meter) => (
+                        <SelectItem key={meter.id} value={meter.id}>
+                          {meter.name || meter.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={selectedSpaceId}
+                    onValueChange={setSelectedSpaceId}
+                    disabled={!selectedMeterId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={selectedMeterId ? "空间" : "-"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMeter?.spaces.map((space) => (
+                        <SelectItem key={space.id} value={space.id}>
+                          {space.name || space.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Home className="h-3 w-3" />
-                  物业
-                </Label>
-                <Select
-                  value={selectedMeterId}
-                  onValueChange={handleMeterChange}
-                  disabled={!selectedBaseId}
+              {/* 第二列：预分配企业 */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 space-y-3">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />
+                    预分配企业 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="输入企业名称（必填）"
+                    value={assignedEnterpriseName}
+                    onChange={(e) => setAssignedEnterpriseName(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={generateRegNumber}
+                  disabled={generating || !selectedSpaceId || !assignedEnterpriseName.trim()}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={selectedBaseId ? "选择物业" : "请先选基地"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedBase?.meters.map((meter) => (
-                      <SelectItem key={meter.id} value={meter.id}>
-                        {meter.name || meter.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      生成注册号
+                    </>
+                  )}
+                </Button>
               </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <DoorOpen className="h-3 w-3" />
-                  物理空间
-                </Label>
-                <Select
-                  value={selectedSpaceId}
-                  onValueChange={setSelectedSpaceId}
-                  disabled={!selectedMeterId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={selectedMeterId ? "选择空间" : "请先选物业"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedMeter?.spaces.map((space) => (
-                      <SelectItem key={space.id} value={space.id}>
-                        {space.name || space.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Building2 className="h-3 w-3" />
-                  预分配企业（可选）
-                </Label>
-                <Input
-                  placeholder="输入企业名称"
-                  value={assignedEnterpriseName}
-                  onChange={(e) => setAssignedEnterpriseName(e.target.value)}
-                />
-              </div>
-
-              <Button
-                onClick={generateRegNumber}
-                disabled={generating || !selectedSpaceId}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                    生成中...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    生成注册号
-                  </>
-                )}
-              </Button>
             </div>
           </CardContent>
         </Card>

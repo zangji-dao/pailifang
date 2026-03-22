@@ -6,9 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
  * 为指定的物理空间生成注册号（每个空间可生成多个）
  * 
  * 请求体：
- * - space_id: 物理空间ID
+ * - space_id: 物理空间ID（必填）
  * - enterprise_id: 企业ID（可选，分配时提供）
- * - assigned_enterprise_name: 预分配企业名称（可选）
+ * - assigned_enterprise_name: 预分配企业名称（必填）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +20,13 @@ export async function POST(request: NextRequest) {
     if (!space_id) {
       return NextResponse.json(
         { success: false, error: '请选择物理空间' },
+        { status: 400 }
+      );
+    }
+
+    if (!assigned_enterprise_name || !assigned_enterprise_name.trim()) {
+      return NextResponse.json(
+        { success: false, error: '请输入预分配企业名称' },
         { status: 400 }
       );
     }
