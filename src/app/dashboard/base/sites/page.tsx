@@ -15,15 +15,19 @@ import {
   DoorOpen,
   X,
   Briefcase,
+  MapPinned,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
+import { provinces, Province, City } from "@/lib/cities";
 
 interface Base {
   id: string;
   name: string;
   address: string | null;
+  city: string | null;
+  city_code: string | null;
   status: string;
   meterCount: number;
   createdAt: string;
@@ -72,8 +76,11 @@ export default function BaseListPage() {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
+    city_code: "",
     status: "active",
   });
+  const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
@@ -143,13 +150,18 @@ export default function BaseListPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          city: selectedCity?.name || null,
+        }),
       });
       
       const result = await response.json();
       if (result.success) {
         setShowAddDialog(false);
-        setFormData({ name: "", address: "", status: "active" });
+        setFormData({ name: "", address: "", city_code: "", status: "active" });
+        setSelectedProvince(null);
+        setSelectedCity(null);
         // 刷新列表
         fetchData();
       } else {
@@ -307,6 +319,12 @@ export default function BaseListPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-medium text-slate-900 group-hover:text-slate-700 truncate">{base.name}</h3>
+                        {base.city && (
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600 shrink-0 flex items-center gap-1">
+                            <MapPinned className="h-3 w-3" />
+                            {base.city}
+                          </span>
+                        )}
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium shrink-0",
                           base.status === "active" 
@@ -435,16 +453,62 @@ export default function BaseListPage() {
                 />
               </div>
               
+              {/* 所在城市 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  所在城市
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* 省份选择 */}
+                  <select
+                    value={selectedProvince?.code || ""}
+                    onChange={(e) => {
+                      const province = provinces.find(p => p.code === e.target.value);
+                      setSelectedProvince(province || null);
+                      setSelectedCity(null);
+                      setFormData({ ...formData, city_code: "" });
+                    }}
+                    className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white"
+                  >
+                    <option value="">选择省份</option>
+                    {provinces.map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {/* 城市选择 */}
+                  <select
+                    value={selectedCity?.code || ""}
+                    onChange={(e) => {
+                      const city = selectedProvince?.cities.find(c => c.code === e.target.value);
+                      setSelectedCity(city || null);
+                      setFormData({ ...formData, city_code: e.target.value });
+                    }}
+                    disabled={!selectedProvince}
+                    className="h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                  >
+                    <option value="">选择城市</option>
+                    {selectedProvince?.cities.map((city) => (
+                      <option key={city.code} value={city.code}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
               {/* 基地地址 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  基地地址
+                  详细地址
                 </label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="请输入基地地址"
+                  placeholder="请输入详细地址"
                   className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
                 />
               </div>

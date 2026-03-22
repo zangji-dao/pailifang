@@ -23,7 +23,26 @@ COMMENT ON COLUMN enterprises.proof_document_url IS '产权证明文件URL';
 COMMENT ON COLUMN enterprises.registration_number_id IS '关联的工位号ID';
 COMMENT ON COLUMN enterprises.registration_number IS '工位号';
 
--- 添加工位号表字段（如果不存在）
+-- ============================================
+-- 基地表添加城市字段
+-- ============================================
+
+-- 1. 添加城市名称字段
+ALTER TABLE bases 
+ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+
+-- 2. 添加城市代码字段
+ALTER TABLE bases 
+ADD COLUMN IF NOT EXISTS city_code VARCHAR(20);
+
+-- 添加注释
+COMMENT ON COLUMN bases.city IS '所在城市名称';
+COMMENT ON COLUMN bases.city_code IS '城市代码（行政区划代码）';
+
+-- ============================================
+-- 工位号表添加字段（如果不存在）
+-- ============================================
+
 ALTER TABLE registration_numbers 
 ADD COLUMN IF NOT EXISTS manual_code VARCHAR(50);
 
@@ -42,7 +61,10 @@ COMMENT ON COLUMN registration_numbers.assigned_enterprise_name IS '预分配企
 COMMENT ON COLUMN registration_numbers.property_owner IS '产权单位';
 COMMENT ON COLUMN registration_numbers.management_company IS '管理单位';
 
--- 添加流程状态（如果不存在）
+-- ============================================
+-- 流程状态更新
+-- ============================================
+
 -- 入驻企业状态：pending_address, pending_registration, pending_contract, pending_payment, active, moved_out
 -- 非入驻企业状态：negotiating, serving, terminated, pending_change
 

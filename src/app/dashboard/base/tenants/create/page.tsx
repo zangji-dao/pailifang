@@ -7,13 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -30,9 +23,12 @@ import {
   Home,
   Hash,
   MapPin,
+  MapPinned,
+  Filter,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { provinces, Province, City } from "@/lib/cities";
 
 // 步骤定义
 const STEPS = [
@@ -51,6 +47,8 @@ interface Base {
   id: string;
   name: string;
   address: string | null;
+  city: string | null;
+  city_code: string | null;
 }
 
 // 可用工位号信息
@@ -80,6 +78,11 @@ export default function NewTenantPage() {
   // 步骤0：选择基地
   const [bases, setBases] = useState<Base[]>([]);
   const [selectedBaseId, setSelectedBaseId] = useState<string>("");
+  
+  // 城市筛选
+  const [filterProvince, setFilterProvince] = useState<Province | null>(null);
+  const [filterCity, setFilterCity] = useState<City | null>(null);
+  const [showCityFilter, setShowCityFilter] = useState(false);
   
   // 步骤1：选择类型
   const [enterpriseType, setEnterpriseType] = useState<EnterpriseType | null>(null);
@@ -375,47 +378,135 @@ export default function NewTenantPage() {
   };
 
   // 步骤0：选择基地
-  const renderStep0 = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>选择合作基地</CardTitle>
-        <CardDescription>请选择企业入驻的合作基地</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {bases.map((base) => (
-            <Card
-              key={base.id}
-              className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
-                selectedBaseId === base.id ? "border-primary ring-2 ring-primary/20" : ""
-              }`}
-              onClick={() => setSelectedBaseId(base.id)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{base.name}</h3>
-                    {base.address && (
-                      <p className="text-sm text-muted-foreground mt-1">{base.address}</p>
+  const renderStep0 = () => {
+    // 根据城市筛选基地
+    const filteredBases = bases.filter((base) => {
+      if (!filterCity) return true;
+      return base.city_code === filterCity.code;
+    });
+
+    // 获取所有有基地的城市代码
+    const baseCityCodes = new Set(bases.map(b => b.city_code).filter(Boolean));
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>选择合作基地</CardTitle>
+          <CardDescription>请选择企业入驻的合作基地</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 城市筛选 */}
+          <div className="flex items-center gap-3 pb-4 border-b">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 flex-1">
+              {/* 省份选择 */}
+              <select
+                value={filterProvince?.code || ""}
+                onChange={(e) => {
+                  const province = provinces.find(p => p.code === e.target.value);
+                  setFilterProvince(province || null);
+                  setFilterCity(null);
+                }}
+                className="h-9 px-3 text-sm border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              >
+                <option value="">全部省份</option>
+                {provinces.map((province) => (
+                  <option key={province.code} value={province.code}>
+                    {province.name}
+                  </option>
+                ))}
+              </select>
+              
+              {/* 城市选择 */}
+              <select
+                value={filterCity?.code || ""}
+                onChange={(e) => {
+                  const city = filterProvince?.cities.find(c => c.code === e.target.value);
+                  setFilterCity(city || null);
+                }}
+                disabled={!filterProvince}
+                className="h-9 px-3 text-sm border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:text-muted-foreground"
+              >
+                <option value="">全部城市</option>
+                {filterProvince?.cities
+                  .filter(city => baseCityCodes.has(city.code))
+                  .map((city) => (
+                    <option key={city.code} value={city.code}>
+                      {city.name}
+                    </option>
+                  ))}
+              </select>
+              
+              {/* 清除筛选 */}
+              {(filterProvince || filterCity) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterProvince(null);
+                    setFilterCity(null);
+                  }}
+                  className="text-muted-foreground"
+                >
+                  清除
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* 基地列表 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredBases.map((base) => (
+              <Card
+                key={base.id}
+                className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
+                  selectedBaseId === base.id ? "border-primary ring-2 ring-primary/20" : ""
+                }`}
+                onClick={() => setSelectedBaseId(base.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold">{base.name}</h3>
+                        {base.city && (
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                            <MapPinned className="w-3 h-3" />
+                            {base.city}
+                          </Badge>
+                        )}
+                      </div>
+                      {base.address && (
+                        <p className="text-sm text-muted-foreground mt-1 truncate">{base.address}</p>
+                      )}
+                    </div>
+                    {selectedBaseId === base.id && (
+                      <Check className="w-5 h-5 text-primary flex-shrink-0" />
                     )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        
-        {bases.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            暂无可用基地，请先添加基地
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+          
+          {filteredBases.length === 0 && bases.length > 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              该城市暂无基地，请选择其他城市
+            </div>
+          )}
+          
+          {bases.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              暂无可用基地，请先添加基地
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   // 步骤1：选择类型
   const renderStep1 = () => (
