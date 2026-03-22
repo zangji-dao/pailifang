@@ -108,45 +108,62 @@ export default function BaseListPage() {
 
   const fetchData = async () => {
     try {
-      // 获取基地列表
-      const basesResponse = await fetch("/api/bases");
+      // 并行获取所有数据
+      const [basesResponse, enterpriseResponse] = await Promise.all([
+        fetch("/api/bases"),
+        fetch('/api/enterprises/stats').catch(() => null),
+      ]);
+      
       const basesResult = await basesResponse.json();
+      
       if (basesResult.success) {
         setBases(basesResult.data);
         
-        // 获取每个基地的详细统计
+        // 并行获取所有基地的详细统计（而不是串行）
         const stats: Record<string, BaseStats> = {};
-        for (const base of basesResult.data) {
+        const detailPromises = basesResult.data.map(async (base: Base) => {
           try {
             const detailResponse = await fetch(`/api/bases/${base.id}`);
             const detailResult = await detailResponse.json();
             if (detailResult.success && detailResult.data.meters) {
               const meters: Meter[] = detailResult.data.meters;
-              stats[base.id] = {
-                totalSpaces: meters.reduce((sum: number, m: Meter) => sum + (m.spaces?.length || 0), 0),
-                totalRegNumbers: meters.reduce((sum: number, m: Meter) => 
-                  sum + (m.spaces?.reduce((s: number, sp: Space) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
-                allocatedRegNumbers: meters.reduce((sum: number, m: Meter) => 
-                  sum + (m.spaces?.reduce((s: number, sp: Space) => 
-                    s + (sp.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0), 0) || 0), 0),
+              return {
+                id: base.id,
+                stats: {
+                  totalSpaces: meters.reduce((sum: number, m: Meter) => sum + (m.spaces?.length || 0), 0),
+                  totalRegNumbers: meters.reduce((sum: number, m: Meter) => 
+                    sum + (m.spaces?.reduce((s: number, sp: Space) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
+                  allocatedRegNumbers: meters.reduce((sum: number, m: Meter) => 
+                    sum + (m.spaces?.reduce((s: number, sp: Space) => 
+                      s + (sp.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0), 0) || 0), 0),
+                },
               };
             }
           } catch (e) {
             console.error("获取基地详情失败:", e);
           }
-        }
+          return null;
+        });
+        
+        const detailResults = await Promise.all(detailPromises);
+        detailResults.forEach((result) => {
+          if (result) {
+            stats[result.id] = result.stats;
+          }
+        });
         setBaseStats(stats);
       }
 
-      // 获取企业统计
-      try {
-        const enterpriseResponse = await fetch('/api/enterprises/stats');
-        const enterpriseResult = await enterpriseResponse.json();
-        if (enterpriseResult.success) {
-          setEnterpriseStats(enterpriseResult.data);
+      // 处理企业统计
+      if (enterpriseResponse) {
+        try {
+          const enterpriseResult = await enterpriseResponse.json();
+          if (enterpriseResult.success) {
+            setEnterpriseStats(enterpriseResult.data);
+          }
+        } catch (e) {
+          console.error("获取企业统计失败:", e);
         }
-      } catch (e) {
-        console.error("获取企业统计失败:", e);
       }
     } catch (error) {
       console.error("获取基地列表失败:", error);

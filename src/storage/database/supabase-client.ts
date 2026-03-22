@@ -2,6 +2,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { execSync } from 'child_process';
 
 let envLoaded = false;
+let cachedCredentials: { url: string; anonKey: string } | null = null;
+let cachedClient: SupabaseClient | null = null;
 
 interface SupabaseCredentials {
   url: string;
@@ -9,7 +11,13 @@ interface SupabaseCredentials {
 }
 
 function loadEnv(): void {
-  if (envLoaded || (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY)) {
+  if (envLoaded) {
+    return;
+  }
+
+  // 首先检查环境变量是否已经存在
+  if (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY) {
+    envLoaded = true;
     return;
   }
 
@@ -68,6 +76,11 @@ except Exception as e:
 }
 
 function getSupabaseCredentials(): SupabaseCredentials {
+  // 使用缓存的凭据
+  if (cachedCredentials) {
+    return cachedCredentials;
+  }
+
   loadEnv();
 
   const url = process.env.COZE_SUPABASE_URL;
@@ -80,11 +93,17 @@ function getSupabaseCredentials(): SupabaseCredentials {
     throw new Error('COZE_SUPABASE_ANON_KEY is not set');
   }
 
-  return { url, anonKey };
+  cachedCredentials = { url, anonKey };
+  return cachedCredentials;
 }
 
 function getSupabaseClient(token?: string): SupabaseClient {
   const { url, anonKey } = getSupabaseCredentials();
+
+  // 如果没有 token，复用缓存的客户端
+  if (!token && cachedClient) {
+    return cachedClient;
+  }
 
   if (token) {
     return createClient(url, anonKey, {
@@ -101,7 +120,8 @@ function getSupabaseClient(token?: string): SupabaseClient {
     });
   }
 
-  return createClient(url, anonKey, {
+  // 创建并缓存客户端
+  cachedClient = createClient(url, anonKey, {
     db: {
       timeout: 60000,
     },
@@ -110,6 +130,8 @@ function getSupabaseClient(token?: string): SupabaseClient {
       persistSession: false,
     },
   });
+
+  return cachedClient;
 }
 
 export { loadEnv, getSupabaseCredentials, getSupabaseClient };
