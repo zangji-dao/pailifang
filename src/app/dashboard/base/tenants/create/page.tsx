@@ -183,17 +183,17 @@ export default function NewTenantPage() {
       formData.append("file", file);
       formData.append("folder", "enterprise-proofs");
       
-      const res = await fetch("/api/upload", {
+      const res = await fetch("/api/storage/upload", {
         method: "POST",
         body: formData,
       });
       const result = await res.json();
-      if (result.success) {
-        setProofUrl(result.data.url);
+      if (result.success || result.url) {
+        setProofUrl(result.data?.url || result.url);
         setProofFile(file);
         toast({ title: "上传成功" });
       } else {
-        throw new Error(result.error || "上传失败");
+        throw new Error(result.error || result.message || "上传失败");
       }
     } catch (error: any) {
       console.error("上传失败:", error);
