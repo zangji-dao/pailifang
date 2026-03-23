@@ -130,20 +130,20 @@ export function PaymentStep({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-violet-600" />
+            <Receipt className="w-5 h-5 text-step-violet" />
             费用缴纳
           </CardTitle>
           <CardDescription>请缴纳相关费用并上传缴费凭证</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 bg-violet-50 rounded-lg border border-violet-100">
+          <div className="flex items-center justify-between p-4 bg-step-violet-muted rounded-lg border border-step-violet/30">
             <div>
-              <p className="text-sm text-violet-600">企业名称</p>
-              <p className="font-semibold text-violet-900">{enterpriseName || "未填写"}</p>
+              <p className="text-sm text-step-violet">企业名称</p>
+              <p className="font-semibold text-step-violet-foreground">{enterpriseName || "未填写"}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-violet-600">应缴总额</p>
-              <p className="text-2xl font-bold text-violet-700">¥{totalAmount.toLocaleString()}</p>
+              <p className="text-sm text-step-violet">应缴总额</p>
+              <p className="text-2xl font-bold text-step-violet">¥{totalAmount.toLocaleString()}</p>
             </div>
           </div>
         </CardContent>
@@ -169,8 +169,8 @@ export function PaymentStep({
         <CardContent className="space-y-4">
           {fees.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <div className="w-16 h-16 mx-auto rounded-full bg-violet-100 flex items-center justify-center mb-4">
-                <Receipt className="w-8 h-8 text-violet-600" />
+              <div className="w-16 h-16 mx-auto rounded-full bg-step-violet-muted flex items-center justify-center mb-4">
+                <Receipt className="w-8 h-8 text-step-violet" />
               </div>
               <p>暂无费用项，点击"添加费用"按钮添加</p>
             </div>
@@ -243,11 +243,11 @@ export function PaymentStep({
                 <div className="space-y-2">
                   <Label>缴费凭证</Label>
                   {fee.proofUrl ? (
-                    <div className="flex items-center gap-3 p-3 bg-violet-50 rounded-lg">
-                      <FileText className="w-8 h-8 text-violet-600" />
+                    <div className="flex items-center gap-3 p-3 bg-step-violet-muted rounded-lg">
+                      <FileText className="w-8 h-8 text-step-violet" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-violet-900">凭证已上传</p>
-                        <p className="text-xs text-violet-600">点击可查看</p>
+                        <p className="text-sm font-medium text-step-violet-foreground">凭证已上传</p>
+                        <p className="text-xs text-step-violet">点击可查看</p>
                       </div>
                       <Button
                         variant="outline"
@@ -270,8 +270,8 @@ export function PaymentStep({
                         disabled={uploading === fee.id}
                       />
                       <div
-                        className={`border-2 border-dashed border-violet-200 rounded-lg p-4 text-center cursor-pointer transition-colors bg-violet-50/30
-                          ${uploading === fee.id ? "opacity-50" : "hover:border-violet-400 hover:bg-violet-50"}`}
+                        className={`border-2 border-dashed border-step-violet/30 rounded-lg p-4 text-center cursor-pointer transition-colors bg-step-violet-muted/50
+                          ${uploading === fee.id ? "opacity-50" : "hover:border-step-violet hover:bg-step-violet-muted"}`}
                       >
                         {uploading === fee.id ? (
                           <div className="flex items-center justify-center gap-2">
@@ -280,8 +280,8 @@ export function PaymentStep({
                           </div>
                         ) : (
                           <>
-                            <Upload className="w-6 h-6 mx-auto text-violet-600 mb-2" />
-                            <p className="text-sm text-violet-700">点击上传缴费凭证</p>
+                            <Upload className="w-6 h-6 mx-auto text-step-violet mb-2" />
+                            <p className="text-sm text-step-violet-foreground">点击上传缴费凭证</p>
                           </>
                         )}
                       </div>

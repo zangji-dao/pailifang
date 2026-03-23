@@ -552,7 +552,7 @@ export default function NewTenantPage() {
                 <Button 
                   onClick={handleSubmit} 
                   disabled={submitting}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="bg-step-emerald hover:bg-step-emerald/90 text-step-emerald-foreground"
                 >
                   {submitting ? (
                     <>
@@ -569,7 +569,7 @@ export default function NewTenantPage() {
               ) : (
                 <Button 
                   onClick={handleNext}
-                  className="bg-sky-600 hover:bg-sky-700 text-white"
+                  className="bg-step-sky hover:bg-step-sky/90 text-step-sky-foreground"
                 >
                   下一步
                   <ArrowRight className="w-4 h-4 ml-2" />

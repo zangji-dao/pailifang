@@ -162,8 +162,8 @@ export function SelectStationStep({
         {/* 工位号列表 */}
         {availableRegNumbers.length === 0 ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-              <Hash className="w-8 h-8 text-emerald-600" />
+            <div className="w-16 h-16 mx-auto rounded-full bg-step-emerald-muted flex items-center justify-center mb-4">
+              <Hash className="w-8 h-8 text-step-emerald" />
             </div>
             <p className="text-muted-foreground mb-4">该基地暂无可用工位号</p>
             <Button variant="outline" onClick={() => window.location.href = "/dashboard/base/addresses"}>
@@ -172,8 +172,8 @@ export function SelectStationStep({
           </div>
         ) : filteredRegNumbers.length === 0 ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-              <Hash className="w-8 h-8 text-emerald-600" />
+            <div className="w-16 h-16 mx-auto rounded-full bg-step-emerald-muted flex items-center justify-center mb-4">
+              <Hash className="w-8 h-8 text-step-emerald" />
             </div>
             <p className="text-muted-foreground">当前筛选条件下无可用工位号</p>
           </div>
@@ -191,8 +191,8 @@ export function SelectStationStep({
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-emerald-600" />
-                        <span className="font-semibold text-lg text-emerald-700">
+                        <Hash className="w-4 h-4 text-step-emerald" />
+                        <span className="font-semibold text-lg text-step-emerald">
                           {reg.manualCode || reg.code}
                         </span>
                       </div>
@@ -208,12 +208,12 @@ export function SelectStationStep({
                           </p>
                         )}
                         {reg.assignedEnterpriseName && (
-                          <p className="text-emerald-600 font-medium">预分配：{reg.assignedEnterpriseName}</p>
+                          <p className="text-step-emerald font-medium">预分配：{reg.assignedEnterpriseName}</p>
                         )}
                       </div>
                     </div>
                     {selectedRegNumber?.id === reg.id && (
-                      <Check className="w-5 h-5 text-emerald-600" />
+                      <Check className="w-5 h-5 text-step-emerald" />
                     )}
                   </div>
                 </CardContent>

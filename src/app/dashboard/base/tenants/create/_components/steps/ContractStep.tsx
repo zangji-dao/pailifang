@@ -271,15 +271,15 @@ export function ContractStep({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 签名提示 */}
-          <Alert className="border-sky-200 bg-sky-50">
-            <Info className="h-4 w-4 text-sky-600" />
-            <AlertDescription className="text-sky-800">
+          <Alert className="border-step-sky/30 bg-step-sky-muted">
+            <Info className="h-4 w-4 text-step-sky" />
+            <AlertDescription className="text-step-sky-foreground">
               请使用鼠标或触摸屏在白色区域内手写签名，签名后将作为合同确认依据
             </AlertDescription>
           </Alert>
 
           {/* 签名区域 */}
-          <div className="border-2 border-dashed border-sky-200 rounded-lg p-4 bg-sky-50/30">
+          <div className="border-2 border-dashed border-step-sky/30 rounded-lg p-4 bg-step-sky-muted/50">
             <canvas
               ref={canvasRef}
               width={400}
@@ -323,7 +323,7 @@ export function ContractStep({
 
           {/* 签名状态 */}
           {contract.signature && (
-            <div className="flex items-center gap-2 text-sm text-sky-600">
+            <div className="flex items-center gap-2 text-sm text-step-sky">
               <Check className="w-4 h-4" />
               已签名确认
             </div>

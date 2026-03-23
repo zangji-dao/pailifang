@@ -88,10 +88,10 @@ export function BusinessRegistrationStep({
         <CardContent className="space-y-4">
           {/* 已上传的执照 */}
           {businessLicense && (
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-amber-50/50 border-amber-200">
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-step-amber-muted border-step-amber/30">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded bg-amber-100 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 rounded bg-step-amber-muted flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-step-amber" />
                 </div>
                 <div>
                   <p className="font-medium">{businessLicense.name}</p>
@@ -126,8 +126,8 @@ export function BusinessRegistrationStep({
                 disabled={uploading}
               />
               <div className="space-y-3">
-                <div className="w-14 h-14 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
-                  <Upload className="w-7 h-7 text-amber-600" />
+                <div className="w-14 h-14 mx-auto rounded-full bg-step-amber-muted flex items-center justify-center">
+                  <Upload className="w-7 h-7 text-step-amber" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">点击上传营业执照</p>
@@ -218,9 +218,9 @@ export function BusinessRegistrationStep({
           </div>
 
           {/* 企业名称显示 */}
-          <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
-            <p className="text-sm text-amber-700">企业名称</p>
-            <p className="font-semibold text-lg text-amber-900">{enterpriseName || "未填写"}</p>
+          <div className="p-4 bg-step-amber-muted rounded-lg border border-step-amber/30">
+            <p className="text-sm text-step-amber">企业名称</p>
+            <p className="font-semibold text-lg text-step-amber-foreground">{enterpriseName || "未填写"}</p>
           </div>
         </CardContent>
       </Card>

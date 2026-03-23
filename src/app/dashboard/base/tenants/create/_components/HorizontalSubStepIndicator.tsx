@@ -44,7 +44,7 @@ export function HorizontalSubStepIndicator({
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
                   isActive && `${colors.light} ring-2 ${colors.ring}`,
-                  isCompleted && !isActive && "bg-green-50 text-green-600 ring-1 ring-green-200",
+                  isCompleted && !isActive && "bg-step-emerald-muted text-step-emerald ring-1 ring-step-emerald/30",
                   !isActive && !isCompleted && "text-muted-foreground hover:bg-muted/30"
                 )}
               >
@@ -52,8 +52,8 @@ export function HorizontalSubStepIndicator({
                 <div
                   className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-xs",
-                    isCompleted && "bg-green-400 text-white",
-                    isActive && !isCompleted && `${colors.bg} text-white`,
+                    isCompleted && "bg-step-emerald text-step-emerald-foreground",
+                    isActive && !isCompleted && `${colors.bg} text-step-sky-foreground`,
                     !isActive && !isCompleted && "bg-muted text-muted-foreground"
                   )}
                 >
@@ -69,7 +69,7 @@ export function HorizontalSubStepIndicator({
                   className={cn(
                     "text-sm font-medium whitespace-nowrap",
                     isActive && colors.text,
-                    isCompleted && !isActive && "text-green-600",
+                    isCompleted && !isActive && "text-step-emerald",
                     !isActive && !isCompleted && "text-muted-foreground"
                   )}
                 >
@@ -89,7 +89,7 @@ export function HorizontalSubStepIndicator({
                 <div
                   className={cn(
                     "w-8 h-0.5 mx-1 rounded-full",
-                    isCompleted ? "bg-green-300" : "bg-muted"
+                    isCompleted ? "bg-step-emerald/50" : "bg-muted"
                   )}
                 />
               )}

@@ -19,6 +19,23 @@
   --text-stat-number: 1.5rem;
   --text-stat-number--line-height: 2rem;
 
+  /* 七彩配色 - 入驻流程步骤颜色 */
+  --color-step-sky: var(--step-sky);
+  --color-step-sky-foreground: var(--step-sky-foreground);
+  --color-step-sky-muted: var(--step-sky-muted);
+  --color-step-violet: var(--step-violet);
+  --color-step-violet-foreground: var(--step-violet-foreground);
+  --color-step-violet-muted: var(--step-violet-muted);
+  --color-step-amber: var(--step-amber);
+  --color-step-amber-foreground: var(--step-amber-foreground);
+  --color-step-amber-muted: var(--step-amber-muted);
+  --color-step-emerald: var(--step-emerald);
+  --color-step-emerald-foreground: var(--step-emerald-foreground);
+  --color-step-emerald-muted: var(--step-emerald-muted);
+  --color-step-rose: var(--step-rose);
+  --color-step-rose-foreground: var(--step-rose-foreground);
+  --color-step-rose-muted: var(--step-rose-muted);
+
   /* 颜色变量 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -107,6 +124,28 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* 七彩配色 - 入驻流程步骤颜色（柔和纯色） */
+  /* 天蓝色 - 分配地址 */
+  --step-sky: oklch(0.65 0.18 230);
+  --step-sky-foreground: oklch(0.98 0 0);
+  --step-sky-muted: oklch(0.92 0.04 230);
+  /* 紫罗兰色 - 工商注册 */
+  --step-violet: oklch(0.62 0.18 290);
+  --step-violet-foreground: oklch(0.98 0 0);
+  --step-violet-muted: oklch(0.93 0.04 290);
+  /* 琥珀色 - 签订合同 */
+  --step-amber: oklch(0.75 0.15 85);
+  --step-amber-foreground: oklch(0.15 0 0);
+  --step-amber-muted: oklch(0.94 0.04 85);
+  /* 翡翠绿 - 费用缴纳 */
+  --step-emerald: oklch(0.65 0.16 160);
+  --step-emerald-foreground: oklch(0.98 0 0);
+  --step-emerald-muted: oklch(0.92 0.04 160);
+  /* 玫瑰粉 - 完成入驻 */
+  --step-rose: oklch(0.68 0.16 350);
+  --step-rose-foreground: oklch(0.98 0 0);
+  --step-rose-muted: oklch(0.93 0.04 350);
 }
 
 .dark {

@@ -4,37 +4,37 @@ import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import type { MainStep } from "../_constants/steps";
 
-// 柔和的七彩配色方案
+// 柔和的七彩配色方案 - 使用语义化变量
 const stepColors: Record<string, { bg: string; text: string; light: string; ring: string }> = {
   address: {
-    bg: "bg-sky-400",
-    text: "text-sky-600",
-    light: "bg-sky-50",
-    ring: "ring-sky-200",
+    bg: "bg-step-sky",
+    text: "text-step-sky",
+    light: "bg-step-sky-muted",
+    ring: "ring-step-sky/30",
   },
   registration: {
-    bg: "bg-violet-400",
-    text: "text-violet-600",
-    light: "bg-violet-50",
-    ring: "ring-violet-200",
+    bg: "bg-step-violet",
+    text: "text-step-violet",
+    light: "bg-step-violet-muted",
+    ring: "ring-step-violet/30",
   },
   contract: {
-    bg: "bg-amber-400",
-    text: "text-amber-600",
-    light: "bg-amber-50",
-    ring: "ring-amber-200",
+    bg: "bg-step-amber",
+    text: "text-step-amber",
+    light: "bg-step-amber-muted",
+    ring: "ring-step-amber/30",
   },
   payment: {
-    bg: "bg-emerald-400",
-    text: "text-emerald-600",
-    light: "bg-emerald-50",
-    ring: "ring-emerald-200",
+    bg: "bg-step-emerald",
+    text: "text-step-emerald",
+    light: "bg-step-emerald-muted",
+    ring: "ring-step-emerald/30",
   },
   complete: {
-    bg: "bg-rose-400",
-    text: "text-rose-600",
-    light: "bg-rose-50",
-    ring: "ring-rose-200",
+    bg: "bg-step-rose",
+    text: "text-step-rose",
+    light: "bg-step-rose-muted",
+    ring: "ring-step-rose/30",
   },
 };
 
@@ -74,16 +74,16 @@ export function VerticalStepIndicator({
               className={cn(
                 "w-full flex items-start gap-3 p-3 rounded-lg transition-all text-left",
                 isActive && `${colors.light} ring-2 ${colors.ring}`,
-                isCompleted && !isActive && "bg-green-50 ring-1 ring-green-200",
+                isCompleted && !isActive && "bg-step-emerald-muted ring-1 ring-step-emerald/30",
                 !isActive && !isCompleted && "hover:bg-muted/30"
               )}
             >
               {/* 步骤图标 */}
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                  isCompleted && "bg-green-400 text-white",
-                  isActive && !isCompleted && `${colors.bg} text-white`,
+                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors text-step-emerald-foreground",
+                  isCompleted && "bg-step-emerald",
+                  isActive && !isCompleted && `${colors.bg} text-step-sky-foreground`,
                   !isActive && !isCompleted && "bg-muted text-muted-foreground"
                 )}
               >
@@ -101,7 +101,7 @@ export function VerticalStepIndicator({
                     className={cn(
                       "text-sm font-medium truncate",
                       isActive && colors.text,
-                      isCompleted && "text-green-600",
+                      isCompleted && "text-step-emerald",
                       !isActive && !isCompleted && "text-muted-foreground"
                     )}
                   >

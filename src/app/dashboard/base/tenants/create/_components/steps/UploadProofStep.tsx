@@ -79,10 +79,10 @@ export function UploadProofStep({
       <CardContent className="space-y-6">
         {/* 显示工位号信息 */}
         {selectedRegNumber && (
-          <Alert className="border-rose-200 bg-rose-50">
-            <Hash className="h-4 w-4 text-rose-600" />
-            <AlertDescription className="text-rose-800">
-              已选择工位号：<strong className="text-rose-900">{selectedRegNumber.manualCode || selectedRegNumber.code}</strong>
+          <Alert className="border-step-rose/30 bg-step-rose-muted">
+            <Hash className="h-4 w-4 text-step-rose" />
+            <AlertDescription className="text-step-rose-foreground">
+              已选择工位号：<strong className="text-step-rose">{selectedRegNumber.manualCode || selectedRegNumber.code}</strong>
               {selectedRegNumber.assignedEnterpriseName && (
                 <span className="ml-2">预分配企业：{selectedRegNumber.assignedEnterpriseName}</span>
               )}
@@ -98,8 +98,8 @@ export function UploadProofStep({
               {proofFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-rose-100 flex items-center justify-center">
-                      <FileText className="w-4 h-4 text-rose-600" />
+                    <div className="w-8 h-8 rounded bg-step-rose-muted flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-step-rose" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{file.name}</p>
@@ -122,8 +122,8 @@ export function UploadProofStep({
 
         {/* 上传区域 */}
         <label
-          className={`border-2 border-dashed border-rose-200 rounded-lg p-8 text-center cursor-pointer transition-colors block bg-rose-50/30
-            ${uploading ? "opacity-50 cursor-not-allowed" : "hover:border-rose-400 hover:bg-rose-50"}`}
+          className={`border-2 border-dashed border-step-rose/30 rounded-lg p-8 text-center cursor-pointer transition-colors block bg-step-rose-muted/50
+            ${uploading ? "opacity-50 cursor-not-allowed" : "hover:border-step-rose hover:bg-step-rose-muted"}`}
         >
           <input
             type="file"
@@ -136,8 +136,8 @@ export function UploadProofStep({
             disabled={uploading}
           />
           <div className="space-y-3">
-            <div className="w-14 h-14 mx-auto rounded-full bg-rose-100 flex items-center justify-center">
-              <Upload className="w-7 h-7 text-rose-600" />
+            <div className="w-14 h-14 mx-auto rounded-full bg-step-rose-muted flex items-center justify-center">
+              <Upload className="w-7 h-7 text-step-rose" />
             </div>
             <div>
               <p className="text-sm font-medium">点击上传文件</p>
