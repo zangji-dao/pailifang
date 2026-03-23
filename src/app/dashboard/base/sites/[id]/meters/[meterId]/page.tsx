@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { Meter, Space, Enterprise, RegNumber, MeterType } from "../../types";
@@ -29,6 +39,13 @@ export default function MeterDetailPage() {
   const [showAddSpace, setShowAddSpace] = useState(false);
   const [showAddRegNumber, setShowAddRegNumber] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // 空间编辑状态
+  const [editingSpace, setEditingSpace] = useState<string | null>(null);
+  const [spaceEditForm, setSpaceEditForm] = useState({ name: "", area: "" });
+
+  // 删除空间确认
+  const [deleteSpaceId, setDeleteSpaceId] = useState<string | null>(null);
 
   // 表单数据
   const [form, setForm] = useState({
@@ -201,6 +218,65 @@ export default function MeterDetailPage() {
     }
   };
 
+  // 更新空间
+  const handleUpdateSpace = async (spaceId: string) => {
+    if (!spaceEditForm.name.trim()) {
+      toast.error("请输入空间名称");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/spaces/${spaceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: spaceEditForm.name,
+          area: spaceEditForm.area ? parseFloat(spaceEditForm.area) : null,
+        }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("空间更新成功");
+        setEditingSpace(null);
+        refreshMeter();
+      } else {
+        toast.error(result.error || "更新失败");
+      }
+    } catch (error) {
+      toast.error("更新失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 删除空间
+  const handleDeleteSpace = async () => {
+    if (!deleteSpaceId) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/spaces/${deleteSpaceId}`, {
+        method: "DELETE",
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("空间删除成功");
+        setDeleteSpaceId(null);
+        setExpandedSpace(null);
+        refreshMeter();
+      } else {
+        toast.error(result.error || "删除失败");
+      }
+    } catch (error) {
+      toast.error("删除失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // 新增工位号
   const handleAddRegNumber = async (spaceId: string) => {
     if (!regNumberForm.code.trim()) {
@@ -234,6 +310,15 @@ export default function MeterDetailPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // 开始编辑空间
+  const startEditSpace = (space: Space) => {
+    setEditingSpace(space.id);
+    setSpaceEditForm({
+      name: space.name,
+      area: space.area?.toString() || "",
+    });
   };
 
   if (loading) {
@@ -508,6 +593,7 @@ export default function MeterDetailPage() {
             <div className="space-y-3">
               {meter.spaces?.map((space: Space) => (
                 <div key={space.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                  {/* 空间头部 */}
                   <div
                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => setExpandedSpace(expandedSpace === space.id ? null : space.id)}
@@ -534,66 +620,128 @@ export default function MeterDetailPage() {
                     </div>
                   </div>
 
-                  {/* 工位号列表 */}
+                  {/* 展开内容 */}
                   {expandedSpace === space.id && (
                     <div className="px-4 pb-4 border-t border-slate-100 bg-slate-50/50">
-                      <div className="flex items-center justify-between mt-3 mb-3">
-                        <span className="text-xs font-medium" style={{ color: "#78716C" }}>工位号</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddRegNumber(space.id);
-                          }}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />新增
-                        </Button>
-                      </div>
-
-                      {/* 新增工位号表单 */}
-                      {showAddRegNumber === space.id && (
-                        <div className="bg-white rounded-lg p-3 mb-3 border border-slate-200">
-                          <div className="flex gap-2 items-end">
-                            <div className="flex-1">
-                              <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>工位号 *</label>
+                      {/* 空间编辑表单 */}
+                      {editingSpace === space.id ? (
+                        <div className="bg-white rounded-lg p-4 mt-3 border border-slate-200">
+                          <h4 className="text-sm font-medium mb-3" style={{ color: "#1C1917" }}>编辑空间信息</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>空间名称 *</Label>
                               <Input
-                                value={regNumberForm.code}
-                                onChange={(e) => setRegNumberForm({ code: e.target.value })}
-                                placeholder="如：101-1"
-                                className="h-8"
+                                value={spaceEditForm.name}
+                                onChange={(e) => setSpaceEditForm({ ...spaceEditForm, name: e.target.value })}
+                                placeholder="如：主办公区"
                               />
                             </div>
-                            <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAddRegNumber(null)}>取消</Button>
-                            <Button size="sm" className="h-8" onClick={() => handleAddRegNumber(space.id)} disabled={submitting}>
+                            <div className="space-y-2">
+                              <Label>面积（㎡）</Label>
+                              <Input
+                                type="number"
+                                value={spaceEditForm.area}
+                                onChange={(e) => setSpaceEditForm({ ...spaceEditForm, area: e.target.value })}
+                                placeholder="如：50"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 mt-4">
+                            <Button variant="outline" size="sm" onClick={() => setEditingSpace(null)}>取消</Button>
+                            <Button size="sm" onClick={() => handleUpdateSpace(space.id)} disabled={submitting}>
                               {submitting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                              确认
+                              保存
                             </Button>
                           </div>
                         </div>
-                      )}
-
-                      {(space.regNumbers?.length || 0) === 0 ? (
-                        <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
                       ) : (
-                        <div className="grid grid-cols-3 gap-2">
-                          {space.regNumbers?.map((reg: RegNumber) => (
-                            <div
-                              key={reg.id}
-                              className={`px-3 py-2.5 rounded-lg border text-center ${
-                                reg.status === "allocated"
-                                  ? "bg-emerald-50 border-emerald-200"
-                                  : "bg-white border-slate-200"
-                              }`}
+                        <>
+                          {/* 操作按钮 */}
+                          <div className="flex items-center gap-2 mt-3 mb-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditSpace(space);
+                              }}
                             >
-                              <span className="font-mono text-sm font-medium" style={{ color: "#1C1917" }}>{reg.code}</span>
-                              {reg.enterprise && (
-                                <p className="text-xs mt-0.5 truncate" style={{ color: "#A8A29E" }}>{reg.enterprise.name}</p>
-                              )}
+                              <Pencil className="h-3 w-3 mr-1" />编辑
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteSpaceId(space.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />删除
+                            </Button>
+                          </div>
+
+                          {/* 工位号 */}
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-medium" style={{ color: "#78716C" }}>工位号</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowAddRegNumber(space.id);
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />新增
+                            </Button>
+                          </div>
+
+                          {/* 新增工位号表单 */}
+                          {showAddRegNumber === space.id && (
+                            <div className="bg-white rounded-lg p-3 mb-3 border border-slate-200">
+                              <div className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                  <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>工位号 *</label>
+                                  <Input
+                                    value={regNumberForm.code}
+                                    onChange={(e) => setRegNumberForm({ code: e.target.value })}
+                                    placeholder="如：101-1"
+                                    className="h-8"
+                                  />
+                                </div>
+                                <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAddRegNumber(null)}>取消</Button>
+                                <Button size="sm" className="h-8" onClick={() => handleAddRegNumber(space.id)} disabled={submitting}>
+                                  {submitting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                  确认
+                                </Button>
+                              </div>
                             </div>
-                          ))}
-                        </div>
+                          )}
+
+                          {(space.regNumbers?.length || 0) === 0 ? (
+                            <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-2">
+                              {space.regNumbers?.map((reg: RegNumber) => (
+                                <div
+                                  key={reg.id}
+                                  className={`px-3 py-2.5 rounded-lg border text-center ${
+                                    reg.status === "allocated"
+                                      ? "bg-emerald-50 border-emerald-200"
+                                      : "bg-white border-slate-200"
+                                  }`}
+                                >
+                                  <span className="font-mono text-sm font-medium" style={{ color: "#1C1917" }}>{reg.code}</span>
+                                  {reg.enterprise && (
+                                    <p className="text-xs mt-0.5 truncate" style={{ color: "#A8A29E" }}>{reg.enterprise.name}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -603,6 +751,35 @@ export default function MeterDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 删除空间确认对话框 */}
+      <AlertDialog open={!!deleteSpaceId} onOpenChange={(open) => !open && setDeleteSpaceId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除空间</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除该空间吗？如果空间下有工位号将无法删除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSpace}
+              disabled={submitting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                '确认删除'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
