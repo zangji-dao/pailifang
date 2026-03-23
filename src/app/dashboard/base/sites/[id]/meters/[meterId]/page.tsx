@@ -1,13 +1,20 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Settings, DoorOpen, Plus, X, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import type { Meter, Space, Enterprise, RegNumber } from "../../types";
-import { MeterBillCard } from "../../_components/MeterBillCard";
+import type { Meter, Space, Enterprise, RegNumber, MeterType } from "../../types";
 
 export default function MeterDetailPage() {
   const params = useParams();
@@ -17,16 +24,36 @@ export default function MeterDetailPage() {
 
   const [meter, setMeter] = useState<Meter | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [expandedSpace, setExpandedSpace] = useState<string | null>(null);
+  const [showAddSpace, setShowAddSpace] = useState(false);
   const [showAddRegNumber, setShowAddRegNumber] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // 企业列表
-  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
-  const [loadingEnterprises, setLoadingEnterprises] = useState(false);
+  // 表单数据
+  const [form, setForm] = useState({
+    code: "",
+    name: "",
+    area: "",
+    electricityNumber: "",
+    electricityType: "base" as MeterType,
+    electricityEnterpriseId: "",
+    waterNumber: "",
+    waterType: "base" as MeterType,
+    waterEnterpriseId: "",
+    heatingNumber: "",
+    heatingType: "base" as MeterType,
+    heatingEnterpriseId: "",
+  });
+
+  // 新增空间表单
+  const [spaceForm, setSpaceForm] = useState({ name: "" });
 
   // 新增工位号表单
   const [regNumberForm, setRegNumberForm] = useState({ code: "" });
+
+  // 企业列表
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
 
   // 获取物业详情
   useEffect(() => {
@@ -37,6 +64,23 @@ export default function MeterDetailPage() {
         if (result.success) {
           const foundMeter = result.data.meters?.find((m: Meter) => m.id === meterId);
           setMeter(foundMeter || null);
+          // 初始化表单
+          if (foundMeter) {
+            setForm({
+              code: foundMeter.code || "",
+              name: foundMeter.name || "",
+              area: foundMeter.area?.toString() || "",
+              electricityNumber: foundMeter.electricityNumber || "",
+              electricityType: foundMeter.electricityType || "base",
+              electricityEnterpriseId: foundMeter.electricityEnterpriseId || "",
+              waterNumber: foundMeter.waterNumber || "",
+              waterType: foundMeter.waterType || "base",
+              waterEnterpriseId: foundMeter.waterEnterpriseId || "",
+              heatingNumber: foundMeter.heatingNumber || "",
+              heatingType: foundMeter.heatingType || "base",
+              heatingEnterpriseId: foundMeter.heatingEnterpriseId || "",
+            });
+          }
         }
       } catch (error) {
         console.error("获取物业详情失败:", error);
@@ -50,10 +94,9 @@ export default function MeterDetailPage() {
     }
   }, [baseId, meterId]);
 
-  // 获取入驻企业列表（负责公司）
+  // 获取入驻企业列表
   useEffect(() => {
     const fetchEnterprises = async () => {
-      setLoadingEnterprises(true);
       try {
         const res = await fetch("/api/enterprises?type=tenant");
         const result = await res.json();
@@ -62,8 +105,6 @@ export default function MeterDetailPage() {
         }
       } catch (error) {
         console.error("获取企业列表失败:", error);
-      } finally {
-        setLoadingEnterprises(false);
       }
     };
 
@@ -81,6 +122,82 @@ export default function MeterDetailPage() {
       }
     } catch (error) {
       console.error("刷新物业详情失败:", error);
+    }
+  };
+
+  // 保存物业信息
+  const handleSave = async () => {
+    if (!form.code.trim()) {
+      toast.error("请输入物业编号");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/meters/${meterId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: form.code,
+          name: form.name || form.code,
+          area: form.area ? parseFloat(form.area) : null,
+          electricityNumber: form.electricityNumber || null,
+          electricityType: form.electricityType,
+          electricityEnterpriseId: form.electricityEnterpriseId || null,
+          waterNumber: form.waterNumber || null,
+          waterType: form.waterType,
+          waterEnterpriseId: form.waterEnterpriseId || null,
+          heatingNumber: form.heatingNumber || null,
+          heatingType: form.heatingType,
+          heatingEnterpriseId: form.heatingEnterpriseId || null,
+        }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("保存成功");
+        refreshMeter();
+      } else {
+        toast.error(result.error || "保存失败");
+      }
+    } catch (error) {
+      toast.error("保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 新增空间
+  const handleAddSpace = async () => {
+    if (!spaceForm.name.trim()) {
+      toast.error("请输入空间名称");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/spaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meter_id: meterId,
+          name: spaceForm.name,
+        }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("空间创建成功");
+        setShowAddSpace(false);
+        setSpaceForm({ name: "" });
+        refreshMeter();
+      } else {
+        toast.error(result.error || "创建失败");
+      }
+    } catch (error) {
+      toast.error("创建失败");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -152,98 +269,245 @@ export default function MeterDetailPage() {
             返回基地详情
           </button>
 
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 via-amber-50 to-orange-100 flex items-center justify-center shadow-inner">
-              <Building2 className="h-7 w-7 text-amber-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 via-amber-50 to-orange-100 flex items-center justify-center shadow-inner">
+                <Building2 className="h-7 w-7 text-amber-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1C1917" }}>
+                  物业信息
+                </h1>
+                <p className="text-sm" style={{ color: "#78716C" }}>编辑物业基本信息和表号</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1C1917" }}>
-                {meter.code}
-              </h1>
-              <p className="text-sm" style={{ color: "#78716C" }}>{meter.name}</p>
+            <Button onClick={handleSave} disabled={saving} className="h-10 px-6">
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  保存中...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  保存
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* 基本信息表单 */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+          <h2 className="text-base font-semibold mb-5" style={{ color: "#1C1917" }}>基本信息</h2>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="code">物业编号 *</Label>
+              <Input
+                id="code"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                placeholder="如：1-101"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">物业名称</Label>
+              <Input
+                id="name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="如：1号楼101室"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="area">建筑面积（㎡）</Label>
+              <Input
+                id="area"
+                type="number"
+                value={form.area}
+                onChange={(e) => setForm({ ...form, area: e.target.value })}
+                placeholder="如：100.5"
+              />
             </div>
           </div>
         </div>
 
-        {/* 面积信息 */}
-        {meter.area && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-5 mb-6 border border-amber-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                  <Building2 className="h-5 w-5 text-amber-600" />
+        {/* 表号信息表单 */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+          <h2 className="text-base font-semibold mb-5 flex items-center gap-2" style={{ color: "#1C1917" }}>
+            <Settings className="h-5 w-5" style={{ color: "#A8A29E" }} />
+            表号信息
+          </h2>
+          
+          <div className="space-y-8">
+            {/* 电表 */}
+            <div>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100" style={{ color: "#78716C" }}>电表</h3>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label>电表号</Label>
+                  <Input
+                    value={form.electricityNumber}
+                    onChange={(e) => setForm({ ...form, electricityNumber: e.target.value })}
+                    placeholder="输入电表号"
+                  />
                 </div>
-                <span className="text-sm font-medium" style={{ color: "#78716C" }}>建筑面积</span>
+                <div className="space-y-2">
+                  <Label>类型</Label>
+                  <Select value={form.electricityType} onValueChange={(v) => setForm({ ...form, electricityType: v as MeterType })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base">基地电表</SelectItem>
+                      <SelectItem value="customer">客户电表</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>负责公司</Label>
+                  <Select value={form.electricityEnterpriseId || "none"} onValueChange={(v) => setForm({ ...form, electricityEnterpriseId: v === "none" ? "" : v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择负责公司" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">无</SelectItem>
+                      {enterprises.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <span className="text-2xl font-bold" style={{ color: "#1C1917" }}>
-                {meter.area} <span className="text-base font-normal" style={{ color: "#A8A29E" }}>㎡</span>
-              </span>
+            </div>
+
+            {/* 水表 */}
+            <div>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100" style={{ color: "#78716C" }}>水表</h3>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label>水表号</Label>
+                  <Input
+                    value={form.waterNumber}
+                    onChange={(e) => setForm({ ...form, waterNumber: e.target.value })}
+                    placeholder="输入水表号"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>类型</Label>
+                  <Select value={form.waterType} onValueChange={(v) => setForm({ ...form, waterType: v as MeterType })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base">基地水表</SelectItem>
+                      <SelectItem value="customer">客户水表</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>负责公司</Label>
+                  <Select value={form.waterEnterpriseId || "none"} onValueChange={(v) => setForm({ ...form, waterEnterpriseId: v === "none" ? "" : v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择负责公司" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">无</SelectItem>
+                      {enterprises.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* 取暖号 */}
+            <div>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100" style={{ color: "#78716C" }}>取暖号</h3>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label>取暖号</Label>
+                  <Input
+                    value={form.heatingNumber}
+                    onChange={(e) => setForm({ ...form, heatingNumber: e.target.value })}
+                    placeholder="输入取暖号"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>类型</Label>
+                  <Select value={form.heatingType} onValueChange={(v) => setForm({ ...form, heatingType: v as MeterType })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base">基地取暖号</SelectItem>
+                      <SelectItem value="customer">客户取暖号</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>负责公司</Label>
+                  <Select value={form.heatingEnterpriseId || "none"} onValueChange={(v) => setForm({ ...form, heatingEnterpriseId: v === "none" ? "" : v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择负责公司" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">无</SelectItem>
+                      {enterprises.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-
-        {/* 表号详情 */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "#1C1917" }}>
-            <Settings className="h-4 w-4" style={{ color: "#A8A29E" }} />
-            表号信息
-          </h3>
-          {loadingEnterprises ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <MeterBillCard
-                meterId={meter.id}
-                type="electricity"
-                label="电表"
-                meterNumber={meter.electricityNumber}
-                meterType={meter.electricityType}
-                enterpriseId={meter.electricityEnterpriseId}
-                enterprises={enterprises}
-                onEnterpriseUpdate={refreshMeter}
-              />
-              <MeterBillCard
-                meterId={meter.id}
-                type="water"
-                label="水表"
-                meterNumber={meter.waterNumber}
-                meterType={meter.waterType}
-                enterpriseId={meter.waterEnterpriseId}
-                enterprises={enterprises}
-                onEnterpriseUpdate={refreshMeter}
-              />
-              <MeterBillCard
-                meterId={meter.id}
-                type="heating"
-                label="取暖号"
-                meterNumber={meter.heatingNumber}
-                meterType={meter.heatingType}
-                enterpriseId={meter.heatingEnterpriseId}
-                enterprises={enterprises}
-                onEnterpriseUpdate={refreshMeter}
-              />
-            </div>
-          )}
         </div>
 
         {/* 物理空间 */}
-        <div>
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "#1C1917" }}>
-            <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
-            物理空间
-          </h3>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: "#1C1917" }}>
+              <DoorOpen className="h-5 w-5" style={{ color: "#A8A29E" }} />
+              物理空间
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => setShowAddSpace(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              新增空间
+            </Button>
+          </div>
+
+          {/* 新增空间表单 */}
+          {showAddSpace && (
+            <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 space-y-2">
+                  <Label>空间名称 *</Label>
+                  <Input
+                    value={spaceForm.name}
+                    onChange={(e) => setSpaceForm({ ...spaceForm, name: e.target.value })}
+                    placeholder="如：主办公区、会议室"
+                  />
+                </div>
+                <Button variant="outline" onClick={() => setShowAddSpace(false)}>取消</Button>
+                <Button onClick={handleAddSpace} disabled={submitting}>
+                  {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  确认
+                </Button>
+              </div>
+            </div>
+          )}
 
           {(meter.spaces?.length || 0) === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+            <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl">
               <DoorOpen className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-sm" style={{ color: "#A8A29E" }}>暂无物理空间</p>
+              <p className="text-sm" style={{ color: "#A8A29E" }}>暂无物理空间，点击上方按钮新增</p>
             </div>
           ) : (
             <div className="space-y-3">
               {meter.spaces?.map((space: Space) => (
-                <div key={space.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <div key={space.id} className="border border-slate-200 rounded-xl overflow-hidden">
                   <div
                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => setExpandedSpace(expandedSpace === space.id ? null : space.id)}
@@ -264,7 +528,7 @@ export default function MeterDetailPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
-                        {(space.regNumbers?.filter(r => r.status === "allocated")?.length || 0)}/{space.regNumbers?.length || 0} 已分配
+                        {(space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0)}/{space.regNumbers?.length || 0} 已分配
                       </div>
                       <ChevronRight className={`h-4 w-4 transition-transform ${expandedSpace === space.id ? "rotate-90" : ""}`} style={{ color: "#A8A29E" }} />
                     </div>
@@ -272,7 +536,7 @@ export default function MeterDetailPage() {
 
                   {/* 工位号列表 */}
                   {expandedSpace === space.id && (
-                    <div className="px-4 pb-4 border-t border-slate-100">
+                    <div className="px-4 pb-4 border-t border-slate-100 bg-slate-50/50">
                       <div className="flex items-center justify-between mt-3 mb-3">
                         <span className="text-xs font-medium" style={{ color: "#78716C" }}>工位号</span>
                         <Button
@@ -290,7 +554,7 @@ export default function MeterDetailPage() {
 
                       {/* 新增工位号表单 */}
                       {showAddRegNumber === space.id && (
-                        <div className="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-200">
+                        <div className="bg-white rounded-lg p-3 mb-3 border border-slate-200">
                           <div className="flex gap-2 items-end">
                             <div className="flex-1">
                               <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>工位号 *</label>
@@ -313,14 +577,14 @@ export default function MeterDetailPage() {
                       {(space.regNumbers?.length || 0) === 0 ? (
                         <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
                       ) : (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {space.regNumbers?.map((reg: RegNumber) => (
                             <div
                               key={reg.id}
-                              className={`px-3 py-2.5 rounded-xl border text-center ${
+                              className={`px-3 py-2.5 rounded-lg border text-center ${
                                 reg.status === "allocated"
                                   ? "bg-emerald-50 border-emerald-200"
-                                  : "bg-slate-50 border-slate-200"
+                                  : "bg-white border-slate-200"
                               }`}
                             >
                               <span className="font-mono text-sm font-medium" style={{ color: "#1C1917" }}>{reg.code}</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight, Plus } from "lucide-react";
+import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight } from "lucide-react";
 import type { Meter } from "../types";
 
 interface MeterCardProps {
@@ -115,14 +115,11 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
 
         {/* 底部统计 */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
-              <span className="text-sm font-medium" style={{ color: "#57534E" }}>{allocatedRegNumbers}/{totalRegNumbers}</span>
-              <span className="text-sm" style={{ color: "#A8A29E" }}>工位号已分配</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
+            <span className="text-sm font-medium" style={{ color: "#57534E" }}>{allocatedRegNumbers}/{totalRegNumbers}</span>
+            <span className="text-sm" style={{ color: "#A8A29E" }}>工位号已分配</span>
           </div>
-          <span className="text-xs" style={{ color: "#A8A29E" }}>点击查看详情 →</span>
         </div>
       </div>
     </div>
