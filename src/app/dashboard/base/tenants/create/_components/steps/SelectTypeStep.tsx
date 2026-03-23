@@ -62,8 +62,8 @@ export function SelectTypeStep({
             onClick={() => onSelectType("tenant")}
           >
             <CardContent className="p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Home className="w-8 h-8 text-primary" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-violet-100 flex items-center justify-center">
+                <Home className="w-8 h-8 text-violet-600" />
               </div>
               <h3 className="text-lg font-semibold mb-2">入驻企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -85,8 +85,8 @@ export function SelectTypeStep({
             onClick={() => onSelectType("non_tenant")}
           >
             <CardContent className="p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                <Store className="w-8 h-8 text-muted-foreground" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
+                <Store className="w-8 h-8 text-amber-600" />
               </div>
               <h3 className="text-lg font-semibold mb-2">服务企业</h3>
               <p className="text-sm text-muted-foreground mb-4">

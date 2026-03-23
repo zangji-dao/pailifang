@@ -131,11 +131,11 @@ export function ConfirmInfoStep({
         </div>
 
         {/* 创建后状态提示 */}
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
             创建后企业将进入
-            <strong className="text-primary">
+            <strong className="text-amber-900">
               {enterpriseType === "tenant" ? "待工商注册" : "待工商变更"}
             </strong>
             状态，可在企业管理中继续完善信息

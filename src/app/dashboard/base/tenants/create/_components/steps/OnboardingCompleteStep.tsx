@@ -66,14 +66,14 @@ export function OnboardingCompleteStep({
   return (
     <div className="space-y-6">
       {/* 成功提示 */}
-      <Card className="border-green-200 bg-green-50/50">
+      <Card className="border-emerald-200 bg-emerald-50/50">
         <CardContent className="py-8 text-center">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-bold text-green-700 mb-2">入驻流程完成</h2>
-          <p className="text-green-600">
-            企业 <strong>{enterpriseName}</strong> 已完成所有入驻流程
+          <h2 className="text-2xl font-bold text-emerald-700 mb-2">入驻流程完成</h2>
+          <p className="text-emerald-600">
+            企业 <strong className="text-emerald-700">{enterpriseName}</strong> 已完成所有入驻流程
           </p>
         </CardContent>
       </Card>
@@ -260,7 +260,7 @@ export function OnboardingCompleteStep({
                 ))}
                 <div className="flex items-center justify-between pt-2 border-t">
                   <span className="font-medium">已缴总额</span>
-                  <span className="font-bold text-primary">¥{totalPaid.toLocaleString()}</span>
+                  <span className="font-bold text-emerald-600">¥{totalPaid.toLocaleString()}</span>
                 </div>
               </div>
             </div>

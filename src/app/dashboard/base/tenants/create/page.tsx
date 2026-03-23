@@ -542,13 +542,18 @@ export default function NewTenantPage() {
                 variant="outline"
                 onClick={handlePrev}
                 disabled={currentMainStepId === "address" && currentSubStepId === "select_base"}
+                className="border-slate-300 hover:bg-slate-50 hover:text-slate-700"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 上一步
               </Button>
 
               {isLastStep ? (
-                <Button onClick={handleSubmit} disabled={submitting}>
+                <Button 
+                  onClick={handleSubmit} 
+                  disabled={submitting}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -562,7 +567,10 @@ export default function NewTenantPage() {
                   )}
                 </Button>
               ) : (
-                <Button onClick={handleNext}>
+                <Button 
+                  onClick={handleNext}
+                  className="bg-sky-600 hover:bg-sky-700 text-white"
+                >
                   下一步
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
