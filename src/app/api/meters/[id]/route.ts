@@ -76,12 +76,12 @@ export async function PUT(
       // 取暖
       heatingNumber,
       heatingType,
-      heatingArrears,
+      heatingStatus,
       heatingEnterpriseId,
       // 网络
       networkNumber,
       networkType,
-      networkArrears,
+      networkStatus,
     } = body;
 
     // 构建更新对象
@@ -106,13 +106,13 @@ export async function PUT(
     // 取暖
     if (heatingNumber !== undefined) updateData.heating_number = heatingNumber;
     if (heatingType !== undefined) updateData.heating_type = heatingType;
-    if (heatingArrears !== undefined) updateData.heating_arrears = heatingArrears;
+    if (heatingStatus !== undefined) updateData.heating_status = heatingStatus;
     if (heatingEnterpriseId !== undefined) updateData.heating_enterprise_id = heatingEnterpriseId || null;
     
     // 网络
     if (networkNumber !== undefined) updateData.network_number = networkNumber;
     if (networkType !== undefined) updateData.network_type = networkType;
-    if (networkArrears !== undefined) updateData.network_arrears = networkArrears;
+    if (networkStatus !== undefined) updateData.network_status = networkStatus;
 
     const { data, error } = await supabase
       .from('meters')
@@ -168,11 +168,11 @@ export async function PATCH(
       updateData.water_balance = body.water_balance;
       updateData.water_balance_updated_at = new Date().toISOString();
     }
-    if (body.heating_arrears !== undefined) {
-      updateData.heating_arrears = body.heating_arrears;
+    if (body.heating_status !== undefined) {
+      updateData.heating_status = body.heating_status;
     }
-    if (body.network_arrears !== undefined) {
-      updateData.network_arrears = body.network_arrears;
+    if (body.network_status !== undefined) {
+      updateData.network_status = body.network_status;
     }
 
     const { data, error } = await supabase

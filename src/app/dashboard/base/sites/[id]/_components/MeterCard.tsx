@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight } from "lucide-react";
-import type { Meter } from "../types";
+import type { Meter, NetworkStatus, HeatingStatus } from "../types";
 
 interface MeterCardProps {
   meter: Meter;
@@ -32,6 +32,27 @@ function formatUpdateTime(dateStr: string | null): string {
   return date.toLocaleDateString("zh-CN");
 }
 
+// 网络状态显示
+function getNetworkStatusDisplay(status: NetworkStatus) {
+  const statusMap = {
+    normal: { text: "正常", color: "text-emerald-600", bg: "bg-emerald-50" },
+    arrears: { text: "欠费", color: "text-red-500", bg: "bg-red-50" },
+    unused: { text: "未使用", color: "text-slate-400", bg: "bg-slate-50" },
+  };
+  return statusMap[status] || statusMap.normal;
+}
+
+// 取暖状态显示
+function getHeatingStatusDisplay(status: HeatingStatus) {
+  const statusMap = {
+    full_paid: { text: "全额缴纳", color: "text-emerald-600", bg: "bg-emerald-50" },
+    base_paid: { text: "基础缴纳", color: "text-amber-600", bg: "bg-amber-50" },
+    arrears: { text: "欠费", color: "text-red-500", bg: "bg-red-50" },
+    off_season: { text: "未到取暖季", color: "text-slate-400", bg: "bg-slate-50" },
+  };
+  return statusMap[status] || statusMap.full_paid;
+}
+
 export function MeterCard({ meter, baseId }: MeterCardProps) {
   const router = useRouter();
 
@@ -50,6 +71,9 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
     (sum, sp) => sum + (sp.regNumbers?.length || 0),
     0
   ) || 0;
+
+  const networkDisplay = getNetworkStatusDisplay(meter.networkStatus);
+  const heatingDisplay = getHeatingStatusDisplay(meter.heatingStatus);
 
   return (
     <div onClick={handleClick} className="group cursor-pointer">
@@ -95,21 +119,21 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
             )}
           </div>
 
-          {/* 暖 - 显示是否欠费 */}
-          <div className="flex flex-col items-center p-2.5 rounded-xl bg-orange-50/50">
-            <Flame className={`h-5 w-5 ${meter.heatingArrears ? 'text-red-500' : 'text-orange-500'}`} />
+          {/* 暖 - 显示状态 */}
+          <div className={`flex flex-col items-center p-2.5 rounded-xl ${heatingDisplay.bg}`}>
+            <Flame className={`h-5 w-5 ${heatingDisplay.color}`} />
             <span className="text-xs mt-1" style={{ color: "#78716C" }}>暖</span>
-            <span className={`text-xs font-medium mt-0.5 ${meter.heatingArrears ? 'text-red-500' : 'text-emerald-600'}`}>
-              {meter.heatingArrears ? '欠费' : '正常'}
+            <span className={`text-xs font-medium mt-0.5 ${heatingDisplay.color}`}>
+              {heatingDisplay.text}
             </span>
           </div>
 
-          {/* 网 - 显示是否欠费 */}
-          <div className="flex flex-col items-center p-2.5 rounded-xl bg-violet-50/50">
-            <Wifi className={`h-5 w-5 ${meter.networkArrears ? 'text-red-500' : 'text-violet-500'}`} />
+          {/* 网 - 显示状态 */}
+          <div className={`flex flex-col items-center p-2.5 rounded-xl ${networkDisplay.bg}`}>
+            <Wifi className={`h-5 w-5 ${networkDisplay.color}`} />
             <span className="text-xs mt-1" style={{ color: "#78716C" }}>网</span>
-            <span className={`text-xs font-medium mt-0.5 ${meter.networkArrears ? 'text-red-500' : 'text-emerald-600'}`}>
-              {meter.networkArrears ? '欠费' : '正常'}
+            <span className={`text-xs font-medium mt-0.5 ${networkDisplay.color}`}>
+              {networkDisplay.text}
             </span>
           </div>
         </div>

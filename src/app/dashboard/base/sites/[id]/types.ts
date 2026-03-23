@@ -1,6 +1,12 @@
 // 表号类型
 export type MeterType = "base" | "customer";
 
+// 网络状态
+export type NetworkStatus = "normal" | "arrears" | "unused";
+
+// 取暖状态
+export type HeatingStatus = "full_paid" | "base_paid" | "arrears" | "off_season";
+
 // 企业信息
 export interface Enterprise {
   id: string;
@@ -43,15 +49,15 @@ export interface Meter {
   waterBalance: number | null; // 余额
   waterBalanceUpdatedAt: string | null; // 余额更新时间
   waterEnterpriseId: string | null;
-  // 取暖（是否欠费）
+  // 取暖
   heatingNumber: string | null;
   heatingType: MeterType;
-  heatingArrears: boolean; // 是否欠费
+  heatingStatus: HeatingStatus;
   heatingEnterpriseId: string | null;
-  // 网络（是否欠费）
+  // 网络
   networkNumber: string | null;
   networkType: MeterType;
-  networkArrears: boolean; // 是否欠费
+  networkStatus: NetworkStatus;
   // 面积
   area: number | null;
   spaces: Space[];

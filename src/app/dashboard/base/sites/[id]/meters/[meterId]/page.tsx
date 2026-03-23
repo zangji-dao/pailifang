@@ -5,7 +5,6 @@ import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -25,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import type { Meter, Space, Enterprise, RegNumber, MeterType } from "../../types";
+import type { Meter, Space, Enterprise, RegNumber, MeterType, NetworkStatus, HeatingStatus } from "../../types";
 
 export default function MeterDetailPage() {
   const params = useParams();
@@ -64,12 +63,12 @@ export default function MeterDetailPage() {
     // 取暖
     heatingNumber: "",
     heatingType: "base" as MeterType,
-    heatingArrears: false,
+    heatingStatus: "full_paid" as HeatingStatus,
     heatingEnterpriseId: "",
     // 网络
     networkNumber: "",
     networkType: "base" as MeterType,
-    networkArrears: false,
+    networkStatus: "normal" as NetworkStatus,
   });
 
   // 新增空间表单
@@ -104,11 +103,11 @@ export default function MeterDetailPage() {
               waterEnterpriseId: foundMeter.waterEnterpriseId || "",
               heatingNumber: foundMeter.heatingNumber || "",
               heatingType: foundMeter.heatingType || "base",
-              heatingArrears: foundMeter.heatingArrears || false,
+              heatingStatus: foundMeter.heatingStatus || "full_paid",
               heatingEnterpriseId: foundMeter.heatingEnterpriseId || "",
               networkNumber: foundMeter.networkNumber || "",
               networkType: foundMeter.networkType || "base",
-              networkArrears: foundMeter.networkArrears || false,
+              networkStatus: foundMeter.networkStatus || "normal",
             });
           }
         }
@@ -179,11 +178,11 @@ export default function MeterDetailPage() {
           waterEnterpriseId: form.waterEnterpriseId || null,
           heatingNumber: form.heatingNumber || null,
           heatingType: form.heatingType,
-          heatingArrears: form.heatingArrears,
+          heatingStatus: form.heatingStatus,
           heatingEnterpriseId: form.heatingEnterpriseId || null,
           networkNumber: form.networkNumber || null,
           networkType: form.networkType,
-          networkArrears: form.networkArrears,
+          networkStatus: form.networkStatus,
         }),
       });
 
@@ -562,7 +561,7 @@ export default function MeterDetailPage() {
               </div>
             </div>
 
-            {/* 取暖 - 是否欠费开关 */}
+            {/* 取暖 - 状态选择 */}
             <div>
               <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
                 <Flame className="h-4 w-4 text-orange-500" />
@@ -604,27 +603,29 @@ export default function MeterDetailPage() {
                   </Select>
                 </div>
               </div>
-              {/* 是否欠费开关 */}
+              {/* 状态选择 */}
               <div className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium" style={{ color: "#1C1917" }}>缴费状态</span>
-                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置取暖费是否欠费</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置取暖费缴纳状态</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium ${form.heatingArrears ? 'text-red-500' : 'text-emerald-600'}`}>
-                      {form.heatingArrears ? '欠费' : '正常'}
-                    </span>
-                    <Switch
-                      checked={form.heatingArrears}
-                      onCheckedChange={(checked) => setForm({ ...form, heatingArrears: checked })}
-                    />
-                  </div>
+                  <Select value={form.heatingStatus} onValueChange={(v) => setForm({ ...form, heatingStatus: v as HeatingStatus })}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full_paid">全额缴纳</SelectItem>
+                      <SelectItem value="base_paid">基础缴纳</SelectItem>
+                      <SelectItem value="arrears">欠费</SelectItem>
+                      <SelectItem value="off_season">未到取暖季</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
 
-            {/* 网络 - 是否欠费开关 */}
+            {/* 网络 - 状态选择 */}
             <div>
               <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
                 <Wifi className="h-4 w-4 text-violet-500" />
@@ -653,22 +654,23 @@ export default function MeterDetailPage() {
                 </div>
                 <div></div>
               </div>
-              {/* 是否欠费开关 */}
+              {/* 状态选择 */}
               <div className="mt-4 p-4 bg-violet-50 rounded-xl border border-violet-100">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium" style={{ color: "#1C1917" }}>缴费状态</span>
-                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置网络费是否欠费</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置网络费状态</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium ${form.networkArrears ? 'text-red-500' : 'text-emerald-600'}`}>
-                      {form.networkArrears ? '欠费' : '正常'}
-                    </span>
-                    <Switch
-                      checked={form.networkArrears}
-                      onCheckedChange={(checked) => setForm({ ...form, networkArrears: checked })}
-                    />
-                  </div>
+                  <Select value={form.networkStatus} onValueChange={(v) => setForm({ ...form, networkStatus: v as NetworkStatus })}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">正常</SelectItem>
+                      <SelectItem value="arrears">欠费</SelectItem>
+                      <SelectItem value="unused">未使用</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

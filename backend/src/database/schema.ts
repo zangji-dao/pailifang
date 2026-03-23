@@ -625,15 +625,15 @@ export const meters = pgTable("meters", {
 	waterBalance: decimal("water_balance", { precision: 10, scale: 2 }), // 水表余额（支付宝获取）
 	waterBalanceUpdatedAt: timestamp("water_balance_updated_at"), // 余额更新时间
 	waterEnterpriseId: varchar("water_enterprise_id", { length: 36 }),
-	// 取暖（人工维护是否欠费）
+	// 取暖（人工维护状态）
 	heatingNumber: varchar("heating_number", { length: 50 }),
 	heatingType: varchar("heating_type", { length: 20 }).default('base'),
-	heatingArrears: boolean("heating_arrears").default(false), // 是否欠费
+	heatingStatus: varchar("heating_status", { length: 20 }).default('full_paid'), // full_paid=全额缴纳, base_paid=基础缴纳, arrears=欠费, off_season=未到取暖季
 	heatingEnterpriseId: varchar("heating_enterprise_id", { length: 36 }),
-	// 网络（人工维护是否欠费）
+	// 网络（人工维护状态）
 	networkNumber: varchar("network_number", { length: 50 }),
 	networkType: varchar("network_type", { length: 20 }).default('base'),
-	networkArrears: boolean("network_arrears").default(false), // 是否欠费
+	networkStatus: varchar("network_status", { length: 20 }).default('normal'), // normal=正常, arrears=欠费, unused=未使用
 	// 面积
 	area: decimal("area", { precision: 10, scale: 2 }),
 	status: varchar({ length: 20 }).default('active').notNull(),
