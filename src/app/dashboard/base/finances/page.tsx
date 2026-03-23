@@ -522,6 +522,7 @@ function CreateFinanceDialog({
   // 初始化加载
   useEffect(() => {
     if (open) {
+      setEnterpriseSearch("");
       loadEnterprises("");
 
       fetch("/api/dashboard/base/sites")
@@ -537,12 +538,24 @@ function CreateFinanceDialog({
   // 搜索防抖
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (open) {
+      if (open && enterpriseSearch) {
         loadEnterprises(enterpriseSearch);
       }
     }, 300);
     return () => clearTimeout(timer);
   }, [enterpriseSearch, open, loadEnterprises]);
+
+  // 处理企业选择
+  const handleEnterpriseChange = (value: string) => {
+    setEnterpriseSearch(value);
+    // 根据名称查找企业 ID
+    const matched = enterprises.find(e => e.name === value);
+    if (matched) {
+      setFormData({ ...formData, enterprise_id: matched.id });
+    } else {
+      setFormData({ ...formData, enterprise_id: "" });
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.enterprise_id || !formData.item_name || !formData.amount) {
@@ -605,26 +618,17 @@ function CreateFinanceDialog({
             <div>
               <label className="text-sm font-medium">企业 <span className="text-rose-500">*</span></label>
               <p className="text-xs text-muted-foreground mt-0.5 mb-2">仅显示已分配地址的企业和服务企业</p>
-              <div className="relative">
-                <Input
-                  className="mb-2"
-                  placeholder="搜索企业名称..."
-                  value={enterpriseSearch}
-                  onChange={(e) => setEnterpriseSearch(e.target.value)}
-                />
-                <select
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.enterprise_id}
-                  onChange={(e) => setFormData({ ...formData, enterprise_id: e.target.value })}
-                >
-                  <option value="">请选择企业</option>
-                  {enterprises.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} {e.address_code ? `(${e.address_code})` : ""} {e.type === 'non_tenant' ? '[服务企业]' : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Input
+                placeholder="输入搜索并选择企业..."
+                value={enterpriseSearch}
+                onChange={(e) => handleEnterpriseChange(e.target.value)}
+                list="enterprises-list"
+              />
+              <datalist id="enterprises-list">
+                {enterprises.map((e) => (
+                  <option key={e.id} value={e.name} />
+                ))}
+              </datalist>
             </div>
 
             {/* 收费类型 */}
