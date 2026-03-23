@@ -207,9 +207,28 @@ export const baseController = {
                 .from(regNumbers)
                 .where(eq(regNumbers.spaceId, space.id));
 
+              // 获取每个工位号关联的企业信息
+              const regNumbersWithEnterprise = await Promise.all(
+                regNumberList.map(async (regNum) => {
+                  let enterprise = null;
+                  if (regNum.enterpriseId) {
+                    const enterpriseResult = await db
+                      .select({ id: enterprises.id, name: enterprises.name })
+                      .from(enterprises)
+                      .where(eq(enterprises.id, regNum.enterpriseId))
+                      .limit(1);
+                    enterprise = enterpriseResult[0] || null;
+                  }
+                  return {
+                    ...regNum,
+                    enterprise,
+                  };
+                })
+              );
+
               return {
                 ...space,
-                regNumbers: regNumberList || [],
+                regNumbers: regNumbersWithEnterprise || [],
               };
             })
           );
