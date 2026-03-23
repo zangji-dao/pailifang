@@ -118,32 +118,47 @@ export default function NewApplicationPage() {
       {/* 步骤指示器 - 固定不滚动 */}
       <div className="px-6 py-3 border-b bg-muted/30 shrink-0">
         <div className="flex items-center justify-center gap-2">
-          {formSteps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium",
-                  currentStep === index 
-                    ? "bg-primary text-primary-foreground" 
-                    : index < currentStep 
-                      ? "bg-primary/10 text-primary cursor-pointer hover:bg-primary/20" 
-                      : "text-muted-foreground"
-                )}
-                onClick={() => {
-                  // 只能返回已完成的步骤
-                  if (index < currentStep) {
-                    setCurrentStep(index);
-                  }
-                }}
-              >
-                <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs", currentStep === index ? "bg-primary-foreground text-primary" : index < currentStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {index < currentStep ? "✓" : index + 1}
-                </span>
-                {step.title}
+          {formSteps.map((step, index) => {
+            // 七彩配色方案
+            const stepColors = [
+              { active: "bg-step-sky text-step-sky-foreground", completed: "bg-step-sky/10 text-step-sky", icon: "bg-step-sky text-step-sky-foreground" },
+              { active: "bg-step-violet text-step-violet-foreground", completed: "bg-step-violet/10 text-step-violet", icon: "bg-step-violet text-step-violet-foreground" },
+              { active: "bg-step-amber text-step-amber-foreground", completed: "bg-step-amber/10 text-step-amber", icon: "bg-step-amber text-step-amber-foreground" },
+              { active: "bg-step-emerald text-step-emerald-foreground", completed: "bg-step-emerald/10 text-step-emerald", icon: "bg-step-emerald text-step-emerald-foreground" },
+              { active: "bg-step-rose text-step-rose-foreground", completed: "bg-step-rose/10 text-step-rose", icon: "bg-step-rose text-step-rose-foreground" },
+            ];
+            const colors = stepColors[index] || stepColors[0];
+            
+            return (
+              <div key={step.id} className="flex items-center">
+                <div
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                    currentStep === index 
+                      ? colors.active
+                      : index < currentStep 
+                        ? `${colors.completed} cursor-pointer hover:opacity-80` 
+                        : "text-muted-foreground"
+                  )}
+                  onClick={() => {
+                    // 只能返回已完成的步骤
+                    if (index < currentStep) {
+                      setCurrentStep(index);
+                    }
+                  }}
+                >
+                  <span className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center text-xs", 
+                    currentStep === index ? colors.icon : index < currentStep ? colors.icon : "bg-muted text-muted-foreground"
+                  )}>
+                    {index < currentStep ? "✓" : index + 1}
+                  </span>
+                  {step.title}
+                </div>
+                {index < formSteps.length - 1 && <div className={cn("w-12 h-0.5 mx-2 transition-colors", index < currentStep ? "bg-step-emerald" : "bg-muted")} />}
               </div>
-              {index < formSteps.length - 1 && <div className={cn("w-12 h-0.5 mx-2", index < currentStep ? "bg-primary" : "bg-muted")} />}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -243,7 +258,7 @@ export default function NewApplicationPage() {
                   size="sm"
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="bg-primary hover:bg-primary/90"
+                  className="bg-step-rose hover:bg-step-rose/90 text-step-rose-foreground"
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -255,7 +270,13 @@ export default function NewApplicationPage() {
                   )}
                 </Button>
               ) : (
-                <Button type="button" size="sm" onClick={goToNextStep} disabled={saving}>
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  onClick={goToNextStep} 
+                  disabled={saving}
+                  className="bg-step-sky hover:bg-step-sky/90 text-step-sky-foreground"
+                >
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (

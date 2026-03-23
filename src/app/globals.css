@@ -226,6 +226,16 @@
     line-height: var(--text-stat-number--line-height);
     font-weight: 600;
   }
+  
+  /* 步骤序号样式 - 七彩配色 */
+  .step-number {
+    @apply flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold;
+  }
+  .step-number-1 { @apply bg-step-sky/10 text-step-sky; }
+  .step-number-2 { @apply bg-step-violet/10 text-step-violet; }
+  .step-number-3 { @apply bg-step-amber/10 text-step-amber; }
+  .step-number-4 { @apply bg-step-emerald/10 text-step-emerald; }
+  .step-number-5 { @apply bg-step-rose/10 text-step-rose; }
 }
 
 body {

@@ -26,9 +26,9 @@ export function AddressStep({
       {isMigration && (
         <div className="rounded-lg border bg-card p-5">
           <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">1</span>
+            <span className="step-number step-number-1">1</span>
             迁移前地址
-            <Badge variant="outline" className="ml-2 text-xs font-normal bg-amber-50 text-amber-700 border-amber-200">迁移企业必填</Badge>
+            <Badge variant="outline" className="ml-2 text-xs font-normal bg-step-amber-muted text-step-amber border-step-amber/30">迁移企业必填</Badge>
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -62,7 +62,7 @@ export function AddressStep({
       {/* 邮寄地址 */}
       <div className="rounded-lg border bg-card p-5">
         <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+          <span className="step-number step-number-2">
             {stepNumber}
           </span>
           邮寄地址

@@ -127,7 +127,7 @@ export function PersonnelStep({
           {/* 人员头部 */}
           <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
             <div className="flex items-center gap-3">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+              <span className="step-number step-number-4">
                 {index + 1}
               </span>
               <span className="font-medium">{person.name || `人员 ${index + 1}`}</span>
@@ -293,7 +293,7 @@ export function PersonnelStep({
       {/* 中介人信息 */}
       <div className="rounded-lg border bg-card p-4 space-y-4">
         <h3 className="font-medium flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+          <span className="step-number step-number-4">
             {formData.personnel.length + 1}
           </span>
           中介人信息

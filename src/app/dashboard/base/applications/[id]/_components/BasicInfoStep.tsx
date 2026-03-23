@@ -31,7 +31,7 @@ export function BasicInfoStep({
       {/* 企业名称 */}
       <div className="rounded-lg border bg-card p-5">
         <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">1</span>
+          <span className="step-number step-number-1">1</span>
           企业名称
         </h3>
         <div className="grid grid-cols-2 gap-4">
@@ -128,7 +128,7 @@ export function BasicInfoStep({
       {/* 注册信息 */}
       <div className="rounded-lg border bg-card p-5">
         <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">2</span>
+          <span className="step-number step-number-2">2</span>
           注册信息
         </h3>
         <div className="grid grid-cols-4 gap-4">
@@ -187,7 +187,7 @@ export function BasicInfoStep({
       {/* 预计经营数据 */}
       <div className="rounded-lg border bg-card p-5">
         <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">3</span>
+          <span className="step-number step-number-3">3</span>
           预计经营数据
         </h3>
         <div className="grid grid-cols-2 gap-6">
