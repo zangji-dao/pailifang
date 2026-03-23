@@ -99,6 +99,52 @@ export default function BaseDetailPage() {
     }
   };
 
+  // 新增空间状态
+  const [showAddSpaceDialog, setShowAddSpaceDialog] = useState(false);
+  const [addingSpace, setAddingSpace] = useState(false);
+  const [targetMeterId, setTargetMeterId] = useState<string | null>(null);
+  const [spaceForm, setSpaceForm] = useState({
+    name: "",
+  });
+
+  // 打开新增空间对话框
+  const handleOpenAddSpace = (meterId: string) => {
+    setTargetMeterId(meterId);
+    setSpaceForm({ name: "" });
+    setShowAddSpaceDialog(true);
+  };
+
+  // 新增空间
+  const handleAddSpace = async () => {
+    if (!targetMeterId) return;
+
+    setAddingSpace(true);
+    try {
+      const res = await fetch("/api/spaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meter_id: targetMeterId,
+          name: spaceForm.name || "新空间",
+        }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("空间创建成功");
+        setShowAddSpaceDialog(false);
+        setSpaceForm({ name: "" });
+        refreshBaseDetail?.();
+      } else {
+        toast.error(result.error || "创建失败");
+      }
+    } catch (error) {
+      toast.error("创建失败");
+    } finally {
+      setAddingSpace(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]" style={{ background: "linear-gradient(180deg, #FDFBF7 0%, #F8F5F0 100%)" }}>
@@ -154,10 +200,6 @@ export default function BaseDetailPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Button className="h-11 px-5 bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-white rounded-xl shadow-lg shadow-slate-900/10 font-medium">
-                <Plus className="h-4 w-4 mr-2" />
-                新增物业
-              </Button>
               <Button
                 variant="outline"
                 className="h-11 px-5 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-xl font-medium"
@@ -186,6 +228,7 @@ export default function BaseDetailPage() {
               meter={meter}
               isExpanded={expandedMeter === meter.id}
               onClick={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
+              onAddSpace={handleOpenAddSpace}
             />
           ))}
           
@@ -288,6 +331,37 @@ export default function BaseDetailPage() {
             </Button>
             <Button onClick={handleAddMeter} disabled={addingMeter}>
               {addingMeter && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              确认添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 新增空间对话框 */}
+      <Dialog open={showAddSpaceDialog} onOpenChange={setShowAddSpaceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新增空间</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" style={{ color: "#1C1917" }}>空间名称</label>
+              <Input
+                value={spaceForm.name}
+                onChange={(e) => setSpaceForm({ ...spaceForm, name: e.target.value })}
+                placeholder="如：主办公区、会议室"
+              />
+              <p className="text-xs" style={{ color: "#A8A29E" }}>
+                空间编号将自动生成
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSpaceDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleAddSpace} disabled={addingSpace}>
+              {addingSpace && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               确认添加
             </Button>
           </DialogFooter>

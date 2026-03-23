@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight } from "lucide-react";
+import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Meter } from "../types";
 
@@ -8,9 +8,15 @@ interface MeterCardProps {
   meter: Meter;
   isExpanded: boolean;
   onClick: () => void;
+  onAddSpace?: (meterId: string) => void;
 }
 
-export function MeterCard({ meter, isExpanded, onClick }: MeterCardProps) {
+export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardProps) {
+  const handleAddSpace = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 阻止冒泡，避免触发卡片的onClick
+    onAddSpace?.(meter.id);
+  };
+
   return (
     <div onClick={onClick} className="group cursor-pointer">
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-0.5">
@@ -64,20 +70,29 @@ export function MeterCard({ meter, isExpanded, onClick }: MeterCardProps) {
           </div>
         </div>
 
-        {/* 底部统计 */}
-        <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100">
-          <div className="flex items-center gap-1.5">
-            <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
-            <span className="text-sm font-medium" style={{ color: "#57534E" }}>{meter.spaces?.length || 0}</span>
-            <span className="text-sm" style={{ color: "#A8A29E" }}>空间</span>
+        {/* 底部统计和新增按钮 */}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
+              <span className="text-sm font-medium" style={{ color: "#57534E" }}>{meter.spaces?.length || 0}</span>
+              <span className="text-sm" style={{ color: "#A8A29E" }}>空间</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
+              <span className="text-sm font-medium" style={{ color: "#57534E" }}>
+                {meter.spaces?.reduce((s, sp) => s + (sp.regNumbers?.length || 0), 0) || 0}
+              </span>
+              <span className="text-sm" style={{ color: "#A8A29E" }}>工位号</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
-            <span className="text-sm font-medium" style={{ color: "#57534E" }}>
-              {meter.spaces?.reduce((s, sp) => s + (sp.regNumbers?.length || 0), 0) || 0}
-            </span>
-            <span className="text-sm" style={{ color: "#A8A29E" }}>工位号</span>
-          </div>
+          <button
+            onClick={handleAddSpace}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-medium transition-colors"
+          >
+            <Plus className="h-3 w-3" />
+            新增空间
+          </button>
         </div>
       </div>
     </div>
