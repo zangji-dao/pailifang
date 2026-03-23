@@ -11,6 +11,7 @@ import {
   Eye,
   Edit,
   Store,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ type EnterpriseType = "tenant" | "non_tenant";
 
 // 流程状态
 type ProcessStatus = 
+  | "draft"
   | "new" 
   | "pending_address" 
   | "pending_registration" 
@@ -47,7 +49,7 @@ interface Enterprise {
   createdAt: string;
 }
 
-// 入驻企业流程状态配置（不包含new）
+// 入驻企业流程状态配置
 const tenantStatusConfig: Record<string, { 
   label: string; 
   color: string; 
@@ -55,6 +57,13 @@ const tenantStatusConfig: Record<string, {
   borderColor: string;
   dotColor: string;
 }> = {
+  draft: { 
+    label: "草稿", 
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-300",
+    dotColor: "bg-slate-400",
+  },
   pending_address: { 
     label: "待分配地址", 
     color: "text-orange-600",
@@ -199,6 +208,7 @@ export default function EnterpriseListPage() {
   // 入驻企业统计
   const tenantStats = {
     total: enterprises.filter((e) => e.type === "tenant").length,
+    draft: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "draft").length,
     pending_address: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_address").length,
     pending_registration: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_registration").length,
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
@@ -289,7 +299,7 @@ export default function EnterpriseListPage() {
       {/* 入驻企业 - 状态卡片 */}
       {activeTab === "tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-7 gap-2">
             {Object.entries(tenantStatusConfig).map(([key, config]) => {
               const count = tenantStats[key as keyof typeof tenantStats];
               return (
@@ -440,6 +450,18 @@ export default function EnterpriseListPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
+                        {/* 继续注册按钮 - 对于未完成的企业显示 */}
+                        {['draft', 'pending_registration', 'pending_change', 'pending_contract', 'pending_payment'].includes(processStatus) && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => router.push(`/dashboard/base/tenants/create?continue=${enterprise.id}`)}
+                            className="gap-1 bg-primary hover:bg-primary/90"
+                          >
+                            <ArrowRight className="h-3.5 w-3.5" />
+                            继续注册
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"

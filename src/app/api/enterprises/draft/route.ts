@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * 创建或更新企业草稿
  * 
  * 用于在新建企业流程中，完成每个大步骤后保存进度
+ * - 完成分配地址后：status='pending_registration' 或 'pending_change'
+ * - 未完成分配地址：status='draft'（仅本地暂存）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const {
-      draft_id, // 如果有草稿ID则更新，否则创建新的
+      draft_id,
       name,
       enterprise_code,
       type,
@@ -25,8 +27,27 @@ export async function POST(request: NextRequest) {
       legal_person,
       phone,
       industry,
-      current_step, // 当前完成到哪一步
+      current_step,
     } = body;
+
+    // 判断是否完成分配地址步骤（有企业名称表示完成）
+    const isCompletedAddress = name && name !== `草稿-${enterprise_code}`;
+    
+    // 根据完成步骤确定状态
+    let status = 'draft';
+    let processStatus = 'draft';
+    
+    if (isCompletedAddress) {
+      status = 'active'; // 正常状态
+      processStatus = type === 'tenant' ? 'pending_registration' : 'pending_change';
+    }
+    
+    // 如果完成了更多步骤，更新流程状态
+    if (current_step === 'registration') {
+      processStatus = 'pending_contract';
+    } else if (current_step === 'contract') {
+      processStatus = 'pending_payment';
+    }
 
     // 如果有草稿ID，更新现有记录
     if (draft_id) {
@@ -34,7 +55,6 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       };
 
-      // 只更新提供的字段（仅使用数据库已有的字段）
       if (name !== undefined) updateData.name = name;
       if (type !== undefined) updateData.type = type;
       if (space_id !== undefined) updateData.space_id = space_id;
@@ -45,16 +65,11 @@ export async function POST(request: NextRequest) {
       if (legal_person !== undefined) updateData.legal_person = legal_person;
       if (phone !== undefined) updateData.phone = phone;
       if (industry !== undefined) updateData.industry = industry;
-
-      // 根据当前步骤更新流程状态
-      if (current_step) {
-        if (current_step === 'address') {
-          updateData.process_status = type === 'tenant' ? 'pending_registration' : 'pending_change';
-        } else if (current_step === 'registration') {
-          updateData.process_status = 'registered';
-        } else if (current_step === 'contract') {
-          updateData.process_status = 'contracted';
-        }
+      
+      // 更新状态
+      if (isCompletedAddress) {
+        updateData.status = status;
+        updateData.process_status = processStatus;
       }
 
       const { data, error } = await supabase
@@ -72,7 +87,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: { id: draft_id, ...data },
-        message: '草稿已更新',
+        message: '进度已保存',
+        isCompleted: isCompletedAddress,
       });
     }
 
@@ -103,8 +119,8 @@ export async function POST(request: NextRequest) {
       name: name || `草稿-${enterprise_code}`,
       enterprise_code,
       type: type || 'tenant',
-      status: 'draft', // 草稿状态
-      process_status: 'draft',
+      status: status, // 根据完成情况设置状态
+      process_status: processStatus,
       space_id: space_id || null,
       registered_address: registered_address || null,
       business_address: business_address || null,
@@ -128,8 +144,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '创建草稿失败' }, { status: 500 });
     }
 
-    // 如果有空间ID，标记为已预留
-    if (space_id) {
+    // 如果有空间ID，标记为已预留（仅在完成分配地址后）
+    if (space_id && isCompletedAddress) {
       await supabase
         .from('spaces')
         .update({
@@ -143,7 +159,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { id: data.id, ...data },
-      message: '草稿已保存',
+      message: isCompletedAddress ? '进度已保存' : '草稿已保存',
+      isCompleted: isCompletedAddress,
     });
   } catch (error) {
     console.error('保存草稿失败:', error);

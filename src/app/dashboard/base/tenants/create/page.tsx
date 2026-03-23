@@ -168,9 +168,10 @@ export default function NewTenantPage() {
     fees,
   } = formState;
 
-  // 加载基地列表
+  // 加载基地列表和继续注册的企业数据
   useEffect(() => {
-    const fetchBases = async () => {
+    const fetchData = async () => {
+      // 加载基地列表
       try {
         const res = await fetch("/api/bases");
         const result = await res.json();
@@ -180,9 +181,76 @@ export default function NewTenantPage() {
       } catch (error) {
         console.error("获取基地列表失败:", error);
       }
+
+      // 检查是否有继续注册的企业ID
+      const continueId = searchParams.get('continue');
+      if (continueId && !draftId) {
+        try {
+          const res = await fetch(`/api/enterprises/${continueId}`);
+          const result = await res.json();
+          if (result.success && result.data) {
+            const enterprise = result.data;
+            
+            // 根据企业状态确定当前步骤
+            let mainStepId = "registration";
+            let subStepId = "upload_license";
+            
+            if (enterprise.process_status === 'draft') {
+              mainStepId = "address";
+              subStepId = "select_base";
+            } else if (enterprise.process_status === 'pending_registration' || enterprise.process_status === 'pending_change') {
+              mainStepId = "registration";
+              subStepId = "upload_license";
+            } else if (enterprise.process_status === 'pending_contract') {
+              mainStepId = "contract";
+              subStepId = "review_contract";
+            } else if (enterprise.process_status === 'pending_payment') {
+              mainStepId = "payment";
+              subStepId = "view_fees";
+            }
+
+            // 填充表单数据
+            updateFormState({
+              draftId: enterprise.id,
+              enterpriseCode: enterprise.enterprise_code,
+              enterpriseName: enterprise.name,
+              enterpriseType: enterprise.type,
+              creditCode: enterprise.credit_code || "",
+              legalPerson: enterprise.legal_person || "",
+              phone: enterprise.phone || "",
+              industry: enterprise.industry || "",
+              remarks: enterprise.business_scope || "",
+              currentMainStepId: mainStepId,
+              currentSubStepId: subStepId,
+              selectedRegNumber: enterprise.space_id ? {
+                id: "",
+                code: enterprise.registration_number || "",
+                manualCode: enterprise.registration_number,
+                spaceId: enterprise.space_id,
+                spaceName: "",
+                meterName: "",
+                fullAddress: enterprise.registered_address,
+                assignedEnterpriseName: null,
+              } : null,
+            });
+
+            toast({
+              title: "已加载企业数据",
+              description: `继续为「${enterprise.name}」完成注册流程`,
+            });
+          }
+        } catch (error) {
+          console.error("加载企业数据失败:", error);
+          toast({
+            title: "加载失败",
+            description: "无法加载企业数据",
+            variant: "destructive",
+          });
+        }
+      }
     };
-    fetchBases();
-  }, []);
+    fetchData();
+  }, [searchParams, draftId, updateFormState, toast]);
 
   // 获取当前大步骤和子步骤信息
   const currentMainStep = mainSteps.find(s => s.id === currentMainStepId);
