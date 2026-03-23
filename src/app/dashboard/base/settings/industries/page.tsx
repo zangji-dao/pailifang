@@ -329,7 +329,7 @@ export default function IndustriesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Tags className="h-6 w-6 text-primary" />
+          <Tags className="h-6 w-6 text-violet-500" />
           <h1 className="text-2xl font-semibold text-foreground">行业管理</h1>
         </div>
         <Button onClick={handleAdd}>

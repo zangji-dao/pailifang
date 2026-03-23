@@ -244,7 +244,7 @@ export default function NewApplicationPage() {
                 第 {currentStep + 1} 步，共 {formSteps.length} 步
               </span>
               {isLastStep && (
-                <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
                   最后一步
                 </span>
               )}

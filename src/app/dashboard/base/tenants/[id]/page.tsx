@@ -73,7 +73,7 @@ const typeConfig: Record<string, { label: string; description: string; className
   tenant: {
     label: "入驻企业",
     description: "在基地内注册的企业",
-    className: "bg-primary/10 text-primary border-primary/20",
+    className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
   },
   non_tenant: {
     label: "服务企业",
@@ -245,13 +245,13 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                 <div
                   className={cn(
                     "w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0",
-                    enterprise.type === "tenant" ? "bg-primary/10" : "bg-muted"
+                    enterprise.type === "tenant" ? "bg-emerald-500/10" : "bg-muted"
                   )}
                 >
                   <Building2
                     className={cn(
                       "h-8 w-8",
-                      enterprise.type === "tenant" ? "text-primary" : "text-muted-foreground"
+                      enterprise.type === "tenant" ? "text-emerald-600" : "text-muted-foreground"
                     )}
                   />
                 </div>

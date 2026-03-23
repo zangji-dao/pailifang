@@ -726,7 +726,7 @@ export default function AddressManagementPage() {
                         />
                       ) : (
                         <span
-                          className="cursor-pointer hover:text-primary transition-colors"
+                          className="cursor-pointer hover:text-cyan-600 transition-colors"
                           onClick={() => startEditManualCode(reg)}
                           title="点击编辑"
                         >
@@ -754,7 +754,7 @@ export default function AddressManagementPage() {
                         />
                       ) : (
                         <span
-                          className="cursor-pointer hover:text-primary transition-colors"
+                          className="cursor-pointer hover:text-cyan-600 transition-colors"
                           onClick={() => startEditEnterprise(reg)}
                           title="点击编辑"
                         >

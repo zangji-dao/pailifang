@@ -410,7 +410,7 @@ export default function EnterpriseListPage() {
                 return (
                   <tr key={enterprise.id} className="border-b last:border-b-0 hover:bg-muted/50">
                     <td className="p-4">
-                      <span className="text-sm font-mono text-primary">{enterprise.enterpriseCode || "-"}</span>
+                      <span className="text-sm font-mono text-cyan-600">{enterprise.enterpriseCode || "-"}</span>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">

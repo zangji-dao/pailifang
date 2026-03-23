@@ -85,7 +85,7 @@ export default function ApplicationDetailPage() {
   if (loading || !formData) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
         <span className="ml-2">加载中...</span>
       </div>
     );
@@ -160,9 +160,9 @@ export default function ApplicationDetailPage() {
                 className={cn(
                   "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium",
                   currentStep === index 
-                    ? "bg-primary text-primary-foreground" 
+                    ? "bg-gradient-to-r from-rose-500 to-orange-500 text-white" 
                     : index < currentStep 
-                      ? "bg-primary/10 text-primary cursor-pointer hover:bg-primary/20" 
+                      ? "bg-emerald-500/10 text-emerald-600 cursor-pointer hover:bg-emerald-500/20" 
                       : canEdit 
                         ? "text-muted-foreground cursor-not-allowed" 
                         : "text-muted-foreground bg-muted/50 cursor-pointer hover:bg-muted"
@@ -175,12 +175,12 @@ export default function ApplicationDetailPage() {
                   }
                 }}
               >
-                <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs", currentStep === index ? "bg-primary-foreground text-primary" : index < currentStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs", currentStep === index ? "bg-white/20 text-white" : index < currentStep ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}>
                   {index < currentStep ? "✓" : index + 1}
                 </span>
                 {step.title}
               </div>
-              {index < formSteps.length - 1 && <div className={cn("w-12 h-0.5 mx-2", index < currentStep ? "bg-primary" : "bg-muted")} />}
+              {index < formSteps.length - 1 && <div className={cn("w-12 h-0.5 mx-2", index < currentStep ? "bg-emerald-500" : "bg-muted")} />}
             </div>
           ))}
         </div>
@@ -269,7 +269,7 @@ export default function ApplicationDetailPage() {
                   第 {currentStep + 1} 步，共 {formSteps.length} 步
                 </span>
                 {isLastStep && (
-                  <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
                     最后一步
                   </span>
                 )}
@@ -283,7 +283,7 @@ export default function ApplicationDetailPage() {
                     size="sm"
                     onClick={handleSubmitForApproval}
                     disabled={submitting}
-                    className="bg-primary hover:bg-primary/90"
+                    className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white"
                   >
                     {submitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

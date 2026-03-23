@@ -764,10 +764,10 @@ export default function ApplicationsPage() {
           {/* 新建申请按钮 */}
           <button
             onClick={handleCreate}
-            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary px-6 py-4 transition-all hover:bg-primary/5 min-w-[140px]"
+            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-rose-400 px-6 py-4 transition-all hover:bg-rose-50 min-w-[140px]"
           >
-            <Plus className="h-8 w-8 text-primary mb-2" />
-            <span className="text-sm font-medium text-primary">新建申请</span>
+            <Plus className="h-8 w-8 text-rose-500 mb-2" />
+            <span className="text-sm font-medium text-rose-600">新建申请</span>
           </button>
 
           {/* 状态统计 */}

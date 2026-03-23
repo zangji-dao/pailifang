@@ -106,7 +106,7 @@ export function SelectTypeStep({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              系统已分配企业编号：<strong className="text-primary">{generatedCode}</strong>
+              系统已分配企业编号：<strong className="text-cyan-600">{generatedCode}</strong>
             </AlertDescription>
           </Alert>
         )}

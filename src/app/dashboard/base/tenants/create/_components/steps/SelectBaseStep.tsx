@@ -99,7 +99,7 @@ export function SelectBaseStep({ selectedBaseId, onSelectBase }: SelectBaseStepP
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
       </div>
     );
   }
@@ -205,7 +205,7 @@ export function SelectBaseStep({ selectedBaseId, onSelectBase }: SelectBaseStepP
                     )}
                   </div>
                   {selectedBaseId === base.id && (
-                    <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                    <Check className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                   )}
                 </div>
               </CardContent>
