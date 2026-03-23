@@ -501,6 +501,7 @@ export default function NewTenantPage() {
             subSteps={currentMainStep.subSteps}
             currentSubStepId={currentSubStepId}
             completedSubSteps={completedSubSteps}
+            mainStepId={currentMainStepId}
             onSubStepClick={handleSubStepClick}
           />
         )}

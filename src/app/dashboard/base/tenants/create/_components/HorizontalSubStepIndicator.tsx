@@ -8,6 +8,7 @@ interface HorizontalSubStepIndicatorProps {
   subSteps: SubStep[];
   currentSubStepId: string;
   completedSubSteps: Set<string>;
+  mainStepId?: string;
   onSubStepClick?: (subStepId: string) => void;
   className?: string;
 }
@@ -16,6 +17,7 @@ export function HorizontalSubStepIndicator({
   subSteps,
   currentSubStepId,
   completedSubSteps,
+  mainStepId,
   onSubStepClick,
   className,
 }: HorizontalSubStepIndicatorProps) {
@@ -28,7 +30,7 @@ export function HorizontalSubStepIndicator({
       <div className="flex items-center justify-center gap-2">
         {subSteps.map((subStep, index) => {
           const isActive = subStep.id === currentSubStepId;
-          const isCompleted = completedSubSteps.has(subStep.id);
+          const isCompleted = completedSubSteps.has(`${mainStepId}_${subStep.id}`);
           const Icon = subStep.icon;
           const isLast = index === subSteps.length - 1;
 
