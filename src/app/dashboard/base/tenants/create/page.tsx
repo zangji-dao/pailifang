@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw, Save, Cloud, CloudOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
@@ -62,6 +62,9 @@ interface Fee {
 
 // 表单状态接口
 interface FormState {
+  // 草稿ID（保存到数据库后返回）
+  draftId: string | null;
+
   // 步骤状态
   currentMainStepId: string;
   currentSubStepId: string;
@@ -100,6 +103,8 @@ interface FormState {
 
 // 初始状态
 const initialFormState: FormState = {
+  draftId: null,
+
   currentMainStepId: "address",
   currentSubStepId: "select_base",
   completedMainSteps: [],
@@ -125,6 +130,7 @@ const initialFormState: FormState = {
 
 export default function NewTenantPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   // 基地列表（不需要持久化）
@@ -136,9 +142,12 @@ export default function NewTenantPage() {
   // 状态
   const [submitting, setSubmitting] = useState(false);
   const [createdEnterpriseId, setCreatedEnterpriseId] = useState<string | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // 解构表单状态
   const {
+    draftId,
     currentMainStepId,
     currentSubStepId,
     completedMainSteps,
@@ -216,6 +225,51 @@ export default function NewTenantPage() {
     }
   }, [currentMainStepId, currentSubStepId, selectedBaseId, enterpriseType, selectedRegNumber, proofFiles, enterpriseName, businessLicense, creditCode, legalPerson, contract, fees, isNonTenant]);
 
+  // 保存草稿到数据库
+  const saveDraft = useCallback(async (step?: string) => {
+    if (!enterpriseCode || submitting) return;
+
+    setSavingDraft(true);
+    try {
+      const requestData: Record<string, any> = {
+        draft_id: draftId,
+        enterprise_code: enterpriseCode,
+        name: enterpriseName || `草稿-${enterpriseCode}`,
+        type: enterpriseType,
+        space_id: selectedRegNumber?.spaceId || null,
+        registered_address: selectedRegNumber?.fullAddress || null,
+        business_address: selectedRegNumber?.fullAddress || null,
+        business_scope: remarks || null,
+        credit_code: creditCode || null,
+        legal_person: legalPerson || null,
+        phone: phone || null,
+        industry: industry || null,
+        current_step: step || currentMainStepId,
+      };
+
+      const res = await fetch("/api/enterprises/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        // 更新草稿ID
+        if (result.data?.id && !draftId) {
+          updateFormState({ draftId: result.data.id });
+        }
+        setLastSavedAt(new Date());
+      } else {
+        console.error("保存草稿失败:", result.error);
+      }
+    } catch (error) {
+      console.error("保存草稿失败:", error);
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [draftId, enterpriseCode, enterpriseName, enterpriseType, selectedBaseId, selectedRegNumber, proofFiles, remarks, creditCode, legalPerson, phone, industry, currentMainStepId, submitting, updateFormState]);
+
   // 下一步
   const handleNext = useCallback(() => {
     if (!validateCurrentStep()) {
@@ -237,7 +291,8 @@ export default function NewTenantPage() {
     const nextStep = getNextStep(currentMainStepId, currentSubStepId, isNonTenant);
     if (nextStep) {
       // 检查是否需要标记大步骤完成
-      const newCompletedMainSteps = nextStep.mainStepId !== currentMainStepId
+      const isCompletingMainStep = nextStep.mainStepId !== currentMainStepId;
+      const newCompletedMainSteps = isCompletingMainStep
         ? completedMainSteps.includes(currentMainStepId)
           ? completedMainSteps
           : [...completedMainSteps, currentMainStepId]
@@ -249,8 +304,17 @@ export default function NewTenantPage() {
         completedMainSteps: newCompletedMainSteps,
         completedSubSteps: newCompletedSubSteps,
       });
+
+      // 如果完成了某个大步骤，自动保存草稿
+      if (isCompletingMainStep && currentMainStepId !== "complete") {
+        saveDraft(currentMainStepId);
+        toast({
+          title: "进度已保存",
+          description: `${mainSteps.find(s => s.id === currentMainStepId)?.title || "当前步骤"}已完成并保存`,
+        });
+      }
     }
-  }, [currentMainStepId, currentSubStepId, isNonTenant, validateCurrentStep, toast, completedMainSteps, completedSubSteps, updateFormState]);
+  }, [currentMainStepId, currentSubStepId, isNonTenant, validateCurrentStep, toast, completedMainSteps, completedSubSteps, updateFormState, saveDraft]);
 
   // 上一步
   const handlePrev = useCallback(() => {
@@ -290,12 +354,22 @@ export default function NewTenantPage() {
   }, [currentMainStep, currentSubStepId, completedSubSteps, currentMainStepId, updateFormState]);
 
   // 重置表单
-  const handleReset = useCallback(() => {
-    if (confirm("确定要重置表单吗？所有已填写的数据将被清除。")) {
-      clearFormCache();
-      toast({ title: "表单已重置" });
+  const handleReset = useCallback(async () => {
+    if (!confirm("确定要重置表单吗？所有已填写的数据将被清除。")) return;
+
+    // 如果有草稿ID，删除数据库中的草稿
+    if (draftId) {
+      try {
+        await fetch(`/api/enterprises/draft?id=${draftId}`, { method: "DELETE" });
+      } catch (e) {
+        console.error("删除草稿失败:", e);
+      }
     }
-  }, [clearFormCache, toast]);
+
+    clearFormCache();
+    setLastSavedAt(null);
+    toast({ title: "表单已重置" });
+  }, [draftId, clearFormCache, toast]);
 
   // 提交企业
   const handleSubmit = useCallback(async () => {
@@ -602,17 +676,45 @@ export default function NewTenantPage() {
               </div>
               {/* 草稿提示和重置按钮 */}
               {hasDraftData && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                    草稿已自动保存
-                  </span>
+                <div className="flex items-center gap-3">
+                  {/* 保存状态 */}
+                  <div className="flex items-center gap-2">
+                    {savingDraft ? (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        保存中...
+                      </span>
+                    ) : draftId ? (
+                      <span className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                        <Check className="w-3 h-3" />
+                        {lastSavedAt ? `已保存 ${lastSavedAt.toLocaleTimeString()}` : "已保存到云端"}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                        <CloudOff className="w-3 h-3" />
+                        本地暂存
+                      </span>
+                    )}
+                  </div>
+                  {/* 手动保存按钮 */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => saveDraft()}
+                    disabled={savingDraft || !enterpriseCode}
+                    className="h-7 text-xs"
+                  >
+                    <Save className="w-3 h-3 mr-1" />
+                    保存
+                  </Button>
+                  {/* 重置按钮 */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleReset}
-                    className="text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive h-7 text-xs"
                   >
-                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    <RotateCcw className="w-3 h-3 mr-1" />
                     重置
                   </Button>
                 </div>
