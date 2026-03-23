@@ -9,10 +9,12 @@ interface MeterCardProps {
   baseId: string;
 }
 
-// 格式化余额显示
-function formatBalance(balance: number | null): string {
+// 格式化余额显示（数据库返回的可能是字符串或数字）
+function formatBalance(balance: number | string | null): string {
   if (balance === null || balance === undefined) return "--";
-  return `¥${balance.toFixed(2)}`;
+  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+  if (isNaN(num)) return "--";
+  return `¥${num.toFixed(2)}`;
 }
 
 // 格式化时间
@@ -130,7 +132,7 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
           <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-100">
             <Zap className="h-5 w-5 text-amber-500" />
             <span className="text-xs mt-1 font-medium text-amber-700">电</span>
-            <span className={`text-sm font-bold mt-0.5 ${(meter.electricityBalance ?? 0) < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
+            <span className={`text-sm font-bold mt-0.5 ${parseFloat(String(meter.electricityBalance ?? 0)) < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
               {formatBalance(meter.electricityBalance)}
             </span>
             {meter.electricityBalanceUpdatedAt && (
@@ -144,7 +146,7 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
           <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-sky-50 to-sky-100/50 border border-sky-100">
             <Droplets className="h-5 w-5 text-sky-500" />
             <span className="text-xs mt-1 font-medium text-sky-700">水</span>
-            <span className={`text-sm font-bold mt-0.5 ${(meter.waterBalance ?? 0) < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
+            <span className={`text-sm font-bold mt-0.5 ${parseFloat(String(meter.waterBalance ?? 0)) < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
               {formatBalance(meter.waterBalance)}
             </span>
             {meter.waterBalanceUpdatedAt && (

@@ -546,8 +546,8 @@ export default function MeterDetailPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-medium text-amber-700">当前余额</span>
-                    <p className={`text-2xl font-bold mt-1 ${meter.electricityBalance !== null && meter.electricityBalance < 50 ? 'text-red-500' : 'text-amber-600'}`}>
-                      ¥{meter.electricityBalance?.toFixed(2) || '--'}
+                    <p className={`text-2xl font-bold mt-1 ${meter.electricityBalance !== null && parseFloat(String(meter.electricityBalance)) < 50 ? 'text-red-500' : 'text-amber-600'}`}>
+                      ¥{meter.electricityBalance ? parseFloat(String(meter.electricityBalance)).toFixed(2) : '--'}
                     </p>
                     {meter.electricityBalanceUpdatedAt && (
                       <span className="text-[10px] text-amber-600/60">
@@ -625,8 +625,8 @@ export default function MeterDetailPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-medium text-sky-700">当前余额</span>
-                    <p className={`text-2xl font-bold mt-1 ${meter.waterBalance !== null && meter.waterBalance < 50 ? 'text-red-500' : 'text-sky-600'}`}>
-                      ¥{meter.waterBalance?.toFixed(2) || '--'}
+                    <p className={`text-2xl font-bold mt-1 ${meter.waterBalance !== null && parseFloat(String(meter.waterBalance)) < 50 ? 'text-red-500' : 'text-sky-600'}`}>
+                      ¥{meter.waterBalance ? parseFloat(String(meter.waterBalance)).toFixed(2) : '--'}
                     </p>
                     {meter.waterBalanceUpdatedAt && (
                       <span className="text-[10px] text-sky-600/60">
