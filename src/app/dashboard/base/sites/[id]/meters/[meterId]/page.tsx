@@ -1,10 +1,11 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2, Zap, Droplets, Flame, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -52,15 +53,23 @@ export default function MeterDetailPage() {
     code: "",
     name: "",
     area: "",
+    // 电表
     electricityNumber: "",
     electricityType: "base" as MeterType,
     electricityEnterpriseId: "",
+    // 水表
     waterNumber: "",
     waterType: "base" as MeterType,
     waterEnterpriseId: "",
+    // 取暖
     heatingNumber: "",
     heatingType: "base" as MeterType,
+    heatingArrears: false,
     heatingEnterpriseId: "",
+    // 网络
+    networkNumber: "",
+    networkType: "base" as MeterType,
+    networkArrears: false,
   });
 
   // 新增空间表单
@@ -95,7 +104,11 @@ export default function MeterDetailPage() {
               waterEnterpriseId: foundMeter.waterEnterpriseId || "",
               heatingNumber: foundMeter.heatingNumber || "",
               heatingType: foundMeter.heatingType || "base",
+              heatingArrears: foundMeter.heatingArrears || false,
               heatingEnterpriseId: foundMeter.heatingEnterpriseId || "",
+              networkNumber: foundMeter.networkNumber || "",
+              networkType: foundMeter.networkType || "base",
+              networkArrears: foundMeter.networkArrears || false,
             });
           }
         }
@@ -166,7 +179,11 @@ export default function MeterDetailPage() {
           waterEnterpriseId: form.waterEnterpriseId || null,
           heatingNumber: form.heatingNumber || null,
           heatingType: form.heatingType,
+          heatingArrears: form.heatingArrears,
           heatingEnterpriseId: form.heatingEnterpriseId || null,
+          networkNumber: form.networkNumber || null,
+          networkType: form.networkType,
+          networkArrears: form.networkArrears,
         }),
       });
 
@@ -425,9 +442,12 @@ export default function MeterDetailPage() {
           </h2>
           
           <div className="space-y-8">
-            {/* 电表 */}
+            {/* 电表 - 显示余额（只读） */}
             <div>
-              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100" style={{ color: "#78716C" }}>电表</h3>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
+                <Zap className="h-4 w-4 text-amber-500" />
+                电表
+              </h3>
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label>电表号</Label>
@@ -464,11 +484,30 @@ export default function MeterDetailPage() {
                   </Select>
                 </div>
               </div>
+              {/* 余额显示 */}
+              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs" style={{ color: "#78716C" }}>当前余额（支付宝同步）</span>
+                    <p className={`text-2xl font-bold mt-1 ${meter.electricityBalance !== null && meter.electricityBalance < 50 ? 'text-red-500' : 'text-amber-600'}`}>
+                      ¥{meter.electricityBalance?.toFixed(2) || '--'}
+                    </p>
+                  </div>
+                  {meter.electricityBalanceUpdatedAt && (
+                    <span className="text-xs" style={{ color: "#A8A29E" }}>
+                      更新于 {new Date(meter.electricityBalanceUpdatedAt).toLocaleString("zh-CN")}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* 水表 */}
+            {/* 水表 - 显示余额（只读） */}
             <div>
-              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100" style={{ color: "#78716C" }}>水表</h3>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
+                <Droplets className="h-4 w-4 text-sky-500" />
+                水表
+              </h3>
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label>水表号</Label>
@@ -505,11 +544,30 @@ export default function MeterDetailPage() {
                   </Select>
                 </div>
               </div>
+              {/* 余额显示 */}
+              <div className="mt-4 p-4 bg-sky-50 rounded-xl border border-sky-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs" style={{ color: "#78716C" }}>当前余额（支付宝同步）</span>
+                    <p className={`text-2xl font-bold mt-1 ${meter.waterBalance !== null && meter.waterBalance < 50 ? 'text-red-500' : 'text-sky-600'}`}>
+                      ¥{meter.waterBalance?.toFixed(2) || '--'}
+                    </p>
+                  </div>
+                  {meter.waterBalanceUpdatedAt && (
+                    <span className="text-xs" style={{ color: "#A8A29E" }}>
+                      更新于 {new Date(meter.waterBalanceUpdatedAt).toLocaleString("zh-CN")}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* 取暖号 */}
+            {/* 取暖 - 是否欠费开关 */}
             <div>
-              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100" style={{ color: "#78716C" }}>取暖号</h3>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
+                <Flame className="h-4 w-4 text-orange-500" />
+                取暖号
+              </h3>
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label>取暖号</Label>
@@ -544,6 +602,73 @@ export default function MeterDetailPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+              {/* 是否欠费开关 */}
+              <div className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium" style={{ color: "#1C1917" }}>缴费状态</span>
+                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置取暖费是否欠费</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${form.heatingArrears ? 'text-red-500' : 'text-emerald-600'}`}>
+                      {form.heatingArrears ? '欠费' : '正常'}
+                    </span>
+                    <Switch
+                      checked={form.heatingArrears}
+                      onCheckedChange={(checked) => setForm({ ...form, heatingArrears: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 网络 - 是否欠费开关 */}
+            <div>
+              <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
+                <Wifi className="h-4 w-4 text-violet-500" />
+                网络
+              </h3>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label>网络账号</Label>
+                  <Input
+                    value={form.networkNumber}
+                    onChange={(e) => setForm({ ...form, networkNumber: e.target.value })}
+                    placeholder="输入网络账号"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>类型</Label>
+                  <Select value={form.networkType} onValueChange={(v) => setForm({ ...form, networkType: v as MeterType })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base">基地网络</SelectItem>
+                      <SelectItem value="customer">客户网络</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div></div>
+              </div>
+              {/* 是否欠费开关 */}
+              <div className="mt-4 p-4 bg-violet-50 rounded-xl border border-violet-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium" style={{ color: "#1C1917" }}>缴费状态</span>
+                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置网络费是否欠费</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${form.networkArrears ? 'text-red-500' : 'text-emerald-600'}`}>
+                      {form.networkArrears ? '欠费' : '正常'}
+                    </span>
+                    <Switch
+                      checked={form.networkArrears}
+                      onCheckedChange={(checked) => setForm({ ...form, networkArrears: checked })}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,35 +1,6 @@
 // 表号类型
 export type MeterType = "base" | "customer";
 
-// 表号状态
-export type MeterStatus = "normal" | "abnormal";
-
-// 账单查询结果类型
-export interface BillResult {
-  billKey: string;
-  billDate: string;
-  billAmount: string;
-  billStatus: string;
-  ownerName?: string;
-  address?: string;
-}
-
-// 查询状态类型
-export interface QueryState {
-  loading: boolean;
-  result: BillResult | null;
-  error: string | null;
-  needAuth?: boolean;
-}
-
-// 授权状态类型
-export interface AuthStatus {
-  hasAuth: boolean;
-  status: 'active' | 'expired' | 'needs_refresh' | 'revoked';
-  expiresAt?: Date;
-  refreshExpiresAt?: Date;
-}
-
 // 企业信息
 export interface Enterprise {
   id: string;
@@ -60,21 +31,28 @@ export interface Meter {
   baseId: string;
   code: string;
   name: string;
+  // 电表
   electricityNumber: string | null;
   electricityType: MeterType;
-  electricityStatus: MeterStatus;
+  electricityBalance: number | null; // 余额
+  electricityBalanceUpdatedAt: string | null; // 余额更新时间
   electricityEnterpriseId: string | null;
+  // 水表
   waterNumber: string | null;
   waterType: MeterType;
-  waterStatus: MeterStatus;
+  waterBalance: number | null; // 余额
+  waterBalanceUpdatedAt: string | null; // 余额更新时间
   waterEnterpriseId: string | null;
+  // 取暖（是否欠费）
   heatingNumber: string | null;
   heatingType: MeterType;
-  heatingStatus: MeterStatus;
+  heatingArrears: boolean; // 是否欠费
   heatingEnterpriseId: string | null;
+  // 网络（是否欠费）
   networkNumber: string | null;
   networkType: MeterType;
-  networkStatus: MeterStatus;
+  networkArrears: boolean; // 是否欠费
+  // 面积
   area: number | null;
   spaces: Space[];
 }

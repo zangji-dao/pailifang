@@ -65,15 +65,23 @@ export async function PUT(
       code,
       name,
       area,
+      // 电表
       electricityNumber,
       electricityType,
       electricityEnterpriseId,
+      // 水表
       waterNumber,
       waterType,
       waterEnterpriseId,
+      // 取暖
       heatingNumber,
       heatingType,
+      heatingArrears,
       heatingEnterpriseId,
+      // 网络
+      networkNumber,
+      networkType,
+      networkArrears,
     } = body;
 
     // 构建更新对象
@@ -84,15 +92,27 @@ export async function PUT(
     if (code !== undefined) updateData.code = code;
     if (name !== undefined) updateData.name = name;
     if (area !== undefined) updateData.area = area;
+    
+    // 电表
     if (electricityNumber !== undefined) updateData.electricity_number = electricityNumber;
     if (electricityType !== undefined) updateData.electricity_type = electricityType;
     if (electricityEnterpriseId !== undefined) updateData.electricity_enterprise_id = electricityEnterpriseId || null;
+    
+    // 水表
     if (waterNumber !== undefined) updateData.water_number = waterNumber;
     if (waterType !== undefined) updateData.water_type = waterType;
     if (waterEnterpriseId !== undefined) updateData.water_enterprise_id = waterEnterpriseId || null;
+    
+    // 取暖
     if (heatingNumber !== undefined) updateData.heating_number = heatingNumber;
     if (heatingType !== undefined) updateData.heating_type = heatingType;
+    if (heatingArrears !== undefined) updateData.heating_arrears = heatingArrears;
     if (heatingEnterpriseId !== undefined) updateData.heating_enterprise_id = heatingEnterpriseId || null;
+    
+    // 网络
+    if (networkNumber !== undefined) updateData.network_number = networkNumber;
+    if (networkType !== undefined) updateData.network_type = networkType;
+    if (networkArrears !== undefined) updateData.network_arrears = networkArrears;
 
     const { data, error } = await supabase
       .from('meters')
@@ -124,7 +144,7 @@ export async function PUT(
 
 /**
  * PATCH /api/meters/[id]
- * 部分更新物业信息（如各表号的负责公司）
+ * 部分更新物业信息
  */
 export async function PATCH(
   request: NextRequest,
@@ -135,29 +155,24 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const { 
-      enterprise_id,
-      electricity_enterprise_id, 
-      water_enterprise_id, 
-      heating_enterprise_id 
-    } = body;
-
-    // 构建更新对象
     const updateData: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
 
-    if (enterprise_id !== undefined) {
-      updateData.enterprise_id = enterprise_id || null;
+    // 支持部分更新
+    if (body.electricity_balance !== undefined) {
+      updateData.electricity_balance = body.electricity_balance;
+      updateData.electricity_balance_updated_at = new Date().toISOString();
     }
-    if (electricity_enterprise_id !== undefined) {
-      updateData.electricity_enterprise_id = electricity_enterprise_id || null;
+    if (body.water_balance !== undefined) {
+      updateData.water_balance = body.water_balance;
+      updateData.water_balance_updated_at = new Date().toISOString();
     }
-    if (water_enterprise_id !== undefined) {
-      updateData.water_enterprise_id = water_enterprise_id || null;
+    if (body.heating_arrears !== undefined) {
+      updateData.heating_arrears = body.heating_arrears;
     }
-    if (heating_enterprise_id !== undefined) {
-      updateData.heating_enterprise_id = heating_enterprise_id || null;
+    if (body.network_arrears !== undefined) {
+      updateData.network_arrears = body.network_arrears;
     }
 
     const { data, error } = await supabase

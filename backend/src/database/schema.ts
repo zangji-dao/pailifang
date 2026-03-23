@@ -616,22 +616,24 @@ export const meters = pgTable("meters", {
 	// 电表
 	electricityNumber: varchar("electricity_number", { length: 50 }),
 	electricityType: varchar("electricity_type", { length: 20 }).default('base'), // base=基地负责, customer=客户负责
-	electricityStatus: varchar("electricity_status", { length: 20 }).default('normal'), // normal=正常, abnormal=异常
+	electricityBalance: decimal("electricity_balance", { precision: 10, scale: 2 }), // 电表余额（支付宝获取）
+	electricityBalanceUpdatedAt: timestamp("electricity_balance_updated_at"), // 余额更新时间
 	electricityEnterpriseId: varchar("electricity_enterprise_id", { length: 36 }),
 	// 水表
 	waterNumber: varchar("water_number", { length: 50 }),
 	waterType: varchar("water_type", { length: 20 }).default('base'),
-	waterStatus: varchar("water_status", { length: 20 }).default('normal'),
+	waterBalance: decimal("water_balance", { precision: 10, scale: 2 }), // 水表余额（支付宝获取）
+	waterBalanceUpdatedAt: timestamp("water_balance_updated_at"), // 余额更新时间
 	waterEnterpriseId: varchar("water_enterprise_id", { length: 36 }),
-	// 取暖
+	// 取暖（人工维护是否欠费）
 	heatingNumber: varchar("heating_number", { length: 50 }),
 	heatingType: varchar("heating_type", { length: 20 }).default('base'),
-	heatingStatus: varchar("heating_status", { length: 20 }).default('normal'),
+	heatingArrears: boolean("heating_arrears").default(false), // 是否欠费
 	heatingEnterpriseId: varchar("heating_enterprise_id", { length: 36 }),
-	// 网络
+	// 网络（人工维护是否欠费）
 	networkNumber: varchar("network_number", { length: 50 }),
 	networkType: varchar("network_type", { length: 20 }).default('base'),
-	networkStatus: varchar("network_status", { length: 20 }).default('normal'),
+	networkArrears: boolean("network_arrears").default(false), // 是否欠费
 	// 面积
 	area: decimal("area", { precision: 10, scale: 2 }),
 	status: varchar({ length: 20 }).default('active').notNull(),
