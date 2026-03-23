@@ -89,20 +89,26 @@ export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardP
               <span className="text-xs font-medium" style={{ color: "#78716C" }}>空间 ({meter.spaces.length})</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {meter.spaces.map((space) => (
-                <span
-                  key={space.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 text-xs"
-                  style={{ color: "#57534E" }}
-                >
-                  {space.name}
-                  {space.regNumbers && space.regNumbers.length > 0 && (
-                    <span className="text-xs" style={{ color: "#A8A29E" }}>
-                      #{space.regNumbers.length}
-                    </span>
-                  )}
-                </span>
-              ))}
+              {meter.spaces.map((space) => {
+                // 计算该空间的工位号分配情况
+                const spaceTotal = space.regNumbers?.length || 0;
+                const spaceAllocated = space.regNumbers?.filter(r => r.status === "allocated")?.length || 0;
+                
+                return (
+                  <span
+                    key={space.id}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 text-xs"
+                    style={{ color: "#57534E" }}
+                  >
+                    {space.name}
+                    {spaceTotal > 0 && (
+                      <span className={spaceAllocated > 0 ? "text-emerald-600" : "text-slate-400"}>
+                        {spaceAllocated}/{spaceTotal}
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
