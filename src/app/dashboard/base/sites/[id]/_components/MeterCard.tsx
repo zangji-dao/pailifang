@@ -49,8 +49,8 @@ function getNetworkStatusDisplay(status: NetworkStatus) {
       textColor: "text-red-700",
       bgColor: "bg-red-100 border-red-200"
     },
-    unused: { 
-      text: "未使用", 
+    not_applicable: { 
+      text: "不涉及", 
       dotColor: "bg-slate-400",
       textColor: "text-slate-600",
       bgColor: "bg-slate-100 border-slate-200"
@@ -62,14 +62,14 @@ function getNetworkStatusDisplay(status: NetworkStatus) {
 // 取暖状态显示 - 带图标和徽章样式
 function getHeatingStatusDisplay(status: HeatingStatus) {
   const statusMap = {
-    full_paid: { 
-      text: "全额缴纳", 
+    full: { 
+      text: "全额", 
       dotColor: "bg-emerald-500",
       textColor: "text-emerald-700",
       bgColor: "bg-emerald-100 border-emerald-200"
     },
-    base_paid: { 
-      text: "基础缴纳", 
+    base: { 
+      text: "基础", 
       dotColor: "bg-amber-500",
       textColor: "text-amber-700",
       bgColor: "bg-amber-100 border-amber-200"
@@ -80,14 +80,14 @@ function getHeatingStatusDisplay(status: HeatingStatus) {
       textColor: "text-red-700",
       bgColor: "bg-red-100 border-red-200"
     },
-    off_season: { 
-      text: "未到取暖季", 
+    not_applicable: { 
+      text: "不涉及", 
       dotColor: "bg-slate-400",
       textColor: "text-slate-600",
       bgColor: "bg-slate-100 border-slate-200"
     },
   };
-  return statusMap[status] || statusMap.full_paid;
+  return statusMap[status] || statusMap.full;
 }
 
 export function MeterCard({ meter, baseId }: MeterCardProps) {

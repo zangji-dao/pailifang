@@ -67,7 +67,7 @@ export default function MeterDetailPage() {
     // 取暖
     heatingNumber: "",
     heatingType: "base" as MeterType,
-    heatingStatus: "full_paid" as HeatingStatus,
+    heatingStatus: "full" as HeatingStatus,
     heatingEnterpriseId: "",
     // 网络
     networkNumber: "",
@@ -107,7 +107,7 @@ export default function MeterDetailPage() {
               waterEnterpriseId: foundMeter.waterEnterpriseId || "",
               heatingNumber: foundMeter.heatingNumber || "",
               heatingType: foundMeter.heatingType || "base",
-              heatingStatus: foundMeter.heatingStatus || "full_paid",
+              heatingStatus: foundMeter.heatingStatus || "full",
               heatingEnterpriseId: foundMeter.heatingEnterpriseId || "",
               networkNumber: foundMeter.networkNumber || "",
               networkType: foundMeter.networkType || "base",
@@ -711,10 +711,10 @@ export default function MeterDetailPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="full_paid">全额缴纳</SelectItem>
-                      <SelectItem value="base_paid">基础缴纳</SelectItem>
+                      <SelectItem value="full">全额</SelectItem>
+                      <SelectItem value="base">基础</SelectItem>
                       <SelectItem value="arrears">欠费</SelectItem>
-                      <SelectItem value="off_season">未到取暖季</SelectItem>
+                      <SelectItem value="not_applicable">不涉及</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -764,7 +764,7 @@ export default function MeterDetailPage() {
                     <SelectContent>
                       <SelectItem value="normal">正常</SelectItem>
                       <SelectItem value="arrears">欠费</SelectItem>
-                      <SelectItem value="unused">未使用</SelectItem>
+                      <SelectItem value="not_applicable">不涉及</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

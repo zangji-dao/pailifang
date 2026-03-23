@@ -2,10 +2,10 @@
 export type MeterType = "base" | "customer";
 
 // 网络状态
-export type NetworkStatus = "normal" | "arrears" | "unused";
+export type NetworkStatus = "normal" | "arrears" | "not_applicable";
 
 // 取暖状态
-export type HeatingStatus = "full_paid" | "base_paid" | "arrears" | "off_season";
+export type HeatingStatus = "full" | "base" | "arrears" | "not_applicable";
 
 // 企业信息
 export interface Enterprise {
