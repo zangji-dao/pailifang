@@ -545,18 +545,6 @@ function CreateFinanceDialog({
     return () => clearTimeout(timer);
   }, [enterpriseSearch, open, loadEnterprises]);
 
-  // 处理企业选择
-  const handleEnterpriseChange = (value: string) => {
-    setEnterpriseSearch(value);
-    // 根据名称查找企业 ID
-    const matched = enterprises.find(e => e.name === value);
-    if (matched) {
-      setFormData({ ...formData, enterprise_id: matched.id });
-    } else {
-      setFormData({ ...formData, enterprise_id: "" });
-    }
-  };
-
   const handleSubmit = async () => {
     if (!formData.enterprise_id || !formData.item_name || !formData.amount) {
       alert("请填写必填字段");
@@ -618,17 +606,13 @@ function CreateFinanceDialog({
             <div>
               <label className="text-sm font-medium">企业 <span className="text-rose-500">*</span></label>
               <p className="text-xs text-muted-foreground mt-0.5 mb-2">仅显示已分配地址的企业和服务企业</p>
-              <Input
-                placeholder="输入搜索并选择企业..."
-                value={enterpriseSearch}
-                onChange={(e) => handleEnterpriseChange(e.target.value)}
-                list="enterprises-list"
+              <EnterpriseSelect
+                enterprises={enterprises}
+                value={formData.enterprise_id}
+                onChange={(id) => setFormData({ ...formData, enterprise_id: id })}
+                searchValue={enterpriseSearch}
+                onSearchChange={setEnterpriseSearch}
               />
-              <datalist id="enterprises-list">
-                {enterprises.map((e) => (
-                  <option key={e.id} value={e.name} />
-                ))}
-              </datalist>
             </div>
 
             {/* 收费类型 */}
@@ -1074,5 +1058,118 @@ function FinanceDetailDialog({
         </div>
       </div>
     )
+  );
+}
+
+// 可搜索的企业下拉选择组件
+function EnterpriseSelect({
+  enterprises,
+  value,
+  onChange,
+  searchValue,
+  onSearchChange,
+}: {
+  enterprises: { id: string; name: string; address_code?: string | null; type?: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  
+  const selectedEnterprise = enterprises.find(e => e.id === value);
+  
+  // 本地过滤
+  const filteredEnterprises = enterprises.filter(e => 
+    !searchValue || e.name.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-left flex items-center justify-between hover:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+      >
+        <span className={selectedEnterprise ? "text-foreground" : "text-muted-foreground"}>
+          {selectedEnterprise ? (
+            <>
+              {selectedEnterprise.name}
+              {selectedEnterprise.address_code && (
+                <span className="text-muted-foreground ml-1">({selectedEnterprise.address_code})</span>
+              )}
+              {selectedEnterprise.type === 'non_tenant' && (
+                <span className="text-violet-600 ml-1">[服务企业]</span>
+              )}
+            </>
+          ) : "请选择企业"}
+        </span>
+        <svg 
+          className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-card border rounded-lg shadow-lg overflow-hidden">
+          {/* 搜索框 */}
+          <div className="p-2 border-b">
+            <input
+              type="text"
+              placeholder="搜索企业..."
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full h-8 px-3 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              autoFocus
+            />
+          </div>
+          
+          {/* 企业列表 */}
+          <div className="max-h-60 overflow-auto">
+            {filteredEnterprises.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                {searchValue ? "未找到匹配的企业" : "暂无企业数据"}
+              </div>
+            ) : (
+              filteredEnterprises.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(e.id);
+                    setOpen(false);
+                    onSearchChange("");
+                  }}
+                  className={cn(
+                    "w-full px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors",
+                    value === e.id && "bg-cyan-50 text-cyan-600"
+                  )}
+                >
+                  <span className="font-medium">{e.name}</span>
+                  {e.address_code && (
+                    <span className="text-muted-foreground ml-1">({e.address_code})</span>
+                  )}
+                  {e.type === 'non_tenant' && (
+                    <span className="text-violet-600 ml-1">[服务企业]</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* 点击外部关闭 */}
+      {open && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setOpen(false)}
+        />
+      )}
+    </div>
   );
 }
