@@ -26,7 +26,7 @@ export async function GET() {
     const stats = {
       total: enterprises?.length || 0,
       tenant: enterprises?.filter(e => e.type === 'tenant').length || 0,
-      non_tenant: enterprises?.filter(e => e.type === 'non_tenant').length || 0,
+      service: enterprises?.filter(e => e.type === 'non_tenant').length || 0,
       active: enterprises?.filter(e => e.status === 'active').length || 0,
     };
 
