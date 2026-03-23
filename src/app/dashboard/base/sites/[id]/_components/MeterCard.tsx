@@ -17,6 +17,17 @@ export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardP
     onAddSpace?.(meter.id);
   };
 
+  // 计算已分配工位号数量
+  const allocatedRegNumbers = meter.spaces?.reduce(
+    (sum, sp) => sum + (sp.regNumbers?.filter(r => r.status === "allocated")?.length || 0),
+    0
+  ) || 0;
+
+  const totalRegNumbers = meter.spaces?.reduce(
+    (sum, sp) => sum + (sp.regNumbers?.length || 0),
+    0
+  ) || 0;
+
   return (
     <div onClick={onClick} className="group cursor-pointer">
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-0.5">
@@ -70,20 +81,39 @@ export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardP
           </div>
         </div>
 
+        {/* 空间列表 */}
+        {meter.spaces && meter.spaces.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
+              <span className="text-xs font-medium" style={{ color: "#78716C" }}>空间 ({meter.spaces.length})</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {meter.spaces.map((space) => (
+                <span
+                  key={space.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 text-xs"
+                  style={{ color: "#57534E" }}
+                >
+                  {space.name}
+                  {space.regNumbers && space.regNumbers.length > 0 && (
+                    <span className="text-xs" style={{ color: "#A8A29E" }}>
+                      #{space.regNumbers.length}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 底部统计和新增按钮 */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
-              <span className="text-sm font-medium" style={{ color: "#57534E" }}>{meter.spaces?.length || 0}</span>
-              <span className="text-sm" style={{ color: "#A8A29E" }}>空间</span>
-            </div>
-            <div className="flex items-center gap-1.5">
               <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
-              <span className="text-sm font-medium" style={{ color: "#57534E" }}>
-                {meter.spaces?.reduce((s, sp) => s + (sp.regNumbers?.length || 0), 0) || 0}
-              </span>
-              <span className="text-sm" style={{ color: "#A8A29E" }}>工位号</span>
+              <span className="text-sm font-medium" style={{ color: "#57534E" }}>{allocatedRegNumbers}/{totalRegNumbers}</span>
+              <span className="text-sm" style={{ color: "#A8A29E" }}>工位号已分配</span>
             </div>
           </div>
           <button
