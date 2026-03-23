@@ -73,6 +73,12 @@ fi
 # 返回项目根目录
 cd "${COZE_WORKSPACE_PATH}"
 
+# 检查前端依赖是否安装
+if [[ ! -f "node_modules/.bin/next" ]]; then
+    echo "Installing frontend dependencies..."
+    pnpm install --ignore-scripts 2>/dev/null || pnpm install --ignore-scripts
+fi
+
 # 启动前端服务
 echo "Starting frontend service on port ${PORT}..."
 echo ""
