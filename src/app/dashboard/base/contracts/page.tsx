@@ -117,28 +117,17 @@ export default function ContractsPage() {
 
   // 打开新增合同标签页
   const handleAdd = () => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: "contract-create",
-        label: "新增合同",
-        path: "/dashboard/base/contracts/create",
-      });
-    } else {
-      router.push("/dashboard/base/contracts/create");
-    }
+    router.push("/dashboard/base/contracts/new");
   };
 
   // 打开合同详情标签页
   const handleView = (contract: Contract) => {
-    if (tabsContext) {
-      tabsContext.openTab({
-        id: `contract-${contract.id}`,
-        label: contract.contractNo || "合同详情",
-        path: `/dashboard/base/contracts/${contract.id}`,
-      });
-    } else {
-      router.push(`/dashboard/base/contracts/${contract.id}`);
-    }
+    router.push(`/dashboard/base/contracts/${contract.id}`);
+  };
+
+  // 打开编辑页面
+  const handleEdit = (contract: Contract) => {
+    router.push(`/dashboard/base/contracts/${contract.id}/edit`);
   };
 
   // 格式化金额
@@ -384,6 +373,7 @@ export default function ContractsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-slate-400 hover:text-amber-600"
+                            onClick={() => handleEdit(contract)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>

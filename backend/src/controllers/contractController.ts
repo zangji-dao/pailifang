@@ -100,10 +100,10 @@ export const contractController = {
     try {
       const data = req.body;
 
-      if (!data.enterpriseId || !data.contractType) {
+      if (!data.contractType) {
         return res.status(400).json({
           success: false,
-          error: '企业ID和合同类型不能为空',
+          error: '合同类型不能为空',
         });
       }
 
@@ -111,9 +111,9 @@ export const contractController = {
       const contractNo = data.contractNo || `CON-${Date.now()}`;
 
       const result = await db.insert(contracts).values({
-        enterpriseId: data.enterpriseId,
-        applicationId: data.applicationId,
-        processId: data.processId,
+        enterpriseId: data.enterpriseId || null,
+        applicationId: data.applicationId || null,
+        processId: data.processId || null,
         contractNo: contractNo,
         contractName: data.contractName,
         contractType: data.contractType,
