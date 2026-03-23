@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * GET /api/dashboard/base/finances/enterprises
  * 搜索可用于资金管理的企业：
- * 1. 已分配地址的企业
- * 2. 非入驻企业（服务企业）
+ * 1. 从 customers 表获取合作企业
+ * 2. 从 pi_registered_addresses 获取已分配地址的企业
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,34 +16,56 @@ export async function GET(request: NextRequest) {
     const enterpriseMap = new Map<string, {
       id: string;
       name: string;
-      credit_code?: string | null;
-      enterprise_code?: string | null;
       type?: string;
       status?: string;
       address_code?: string | null;
+      source?: string;
     }>();
 
-    // 1. 获取已分配地址的企业
+    // 1. 从 customers 表获取企业
+    let customerQuery = supabase
+      .from('customers')
+      .select('id, name, status')
+      .eq('status', 'cooperative'); // 只获取合作中的企业
+
+    if (keyword) {
+      customerQuery = customerQuery.ilike('name', `%${keyword}%`);
+    }
+
+    const { data: customers, error: customerError } = await customerQuery;
+
+    if (customerError) {
+      console.error('获取客户企业失败:', customerError);
+    }
+
+    // 添加客户企业
+    (customers || []).forEach((c: Record<string, unknown>) => {
+      enterpriseMap.set(c.id as string, {
+        id: c.id as string,
+        name: c.name as string,
+        status: c.status as string,
+        source: 'customer',
+      });
+    });
+
+    // 2. 从 pi_registered_addresses 获取已分配地址的企业
     let regQuery = supabase
       .from('pi_registered_addresses')
       .select(`
         id,
         enterprise_id,
-        assigned_enterprise_name,
-        manual_code,
+        address_code,
         enterprises (
           id,
           name,
-          credit_code,
-          enterprise_code,
           type,
           status
         )
       `)
-      .not('assigned_enterprise_name', 'is', null);
+      .not('enterprise_id', 'is', null);
 
     if (keyword) {
-      regQuery = regQuery.ilike('assigned_enterprise_name', `%${keyword}%`);
+      regQuery = regQuery.ilike('enterprises.name', `%${keyword}%`);
     }
 
     const { data: regAddresses, error: regError } = await regQuery;
@@ -54,51 +76,44 @@ export async function GET(request: NextRequest) {
 
     // 添加已分配地址的企业
     (regAddresses || []).forEach((reg: Record<string, unknown>) => {
-      const enterpriseId = (reg.enterprise_id as string) || `reg_${reg.id}`;
+      const enterpriseId = reg.enterprise_id as string;
       
-      if (!enterpriseMap.has(enterpriseId)) {
+      if (enterpriseId && !enterpriseMap.has(enterpriseId)) {
         const enterpriseData = reg.enterprises as Record<string, unknown> | null;
         
         enterpriseMap.set(enterpriseId, {
           id: enterpriseId,
-          name: (enterpriseData?.name as string) || (reg.assigned_enterprise_name as string),
-          credit_code: enterpriseData?.credit_code as string | null,
-          enterprise_code: enterpriseData?.enterprise_code as string | null,
+          name: enterpriseData?.name as string || '未知企业',
           type: enterpriseData?.type as string,
           status: enterpriseData?.status as string,
-          address_code: reg.manual_code as string | null,
+          address_code: reg.address_code as string | null,
+          source: 'registered',
         });
       }
     });
 
-    // 2. 获取非入驻企业（服务企业）
-    let nonTenantQuery = supabase
-      .from('enterprises')
-      .select('id, name, credit_code, enterprise_code, type, status')
-      .eq('type', 'non_tenant');
+    // 3. 从 meters 获取关联了企业的物业
+    const { data: meterEnterprises, error: meterError } = await supabase
+      .from('meters')
+      .select('enterprise_id, enterprises (id, name, type, status)')
+      .not('enterprise_id', 'is', null);
 
-    if (keyword) {
-      nonTenantQuery = nonTenantQuery.or(
-        `name.ilike.%${keyword}%,enterprise_code.ilike.%${keyword}%,credit_code.ilike.%${keyword}%`
-      );
+    if (meterError) {
+      console.error('获取物业关联企业失败:', meterError);
     }
 
-    const { data: nonTenantEnterprises, error: nonTenantError } = await nonTenantQuery;
-
-    if (nonTenantError) {
-      console.error('获取非入驻企业失败:', nonTenantError);
-    }
-
-    // 添加非入驻企业
-    (nonTenantEnterprises || []).forEach((e: Record<string, unknown>) => {
-      if (!enterpriseMap.has(e.id as string)) {
-        enterpriseMap.set(e.id as string, {
-          id: e.id as string,
-          name: e.name as string,
-          credit_code: e.credit_code as string | null,
-          enterprise_code: e.enterprise_code as string | null,
-          type: e.type as string,
-          status: e.status as string,
+    // 添加物业关联的企业
+    (meterEnterprises || []).forEach((m: Record<string, unknown>) => {
+      const enterpriseId = m.enterprise_id as string;
+      const enterpriseData = m.enterprises as Record<string, unknown> | null;
+      
+      if (enterpriseId && !enterpriseMap.has(enterpriseId)) {
+        enterpriseMap.set(enterpriseId, {
+          id: enterpriseId,
+          name: enterpriseData?.name as string || '未知企业',
+          type: enterpriseData?.type as string,
+          status: enterpriseData?.status as string,
+          source: 'meter',
         });
       }
     });
