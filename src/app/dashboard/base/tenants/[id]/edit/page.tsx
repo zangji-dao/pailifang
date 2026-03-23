@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTabs } from "@/app/dashboard/tabs-context";
+import { useIndustries } from "@/hooks/useIndustries";
 import { cn } from "@/lib/utils";
 
 // 企业状态
@@ -60,23 +61,6 @@ interface ApiEnterprise {
   remarks: string | null;
 }
 
-// 行业选项
-const INDUSTRIES = [
-  "制造业",
-  "批发和零售业",
-  "信息技术服务业",
-  "科学研究和技术服务业",
-  "租赁和商务服务业",
-  "建筑业",
-  "交通运输业",
-  "住宿和餐饮业",
-  "金融业",
-  "教育",
-  "卫生和社会工作",
-  "文化、体育和娱乐业",
-  "其他",
-];
-
 // 转换API数据到前端格式
 function transformEnterprise(api: ApiEnterprise): Enterprise {
   return {
@@ -99,6 +83,7 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
   const resolvedParams = use(params);
   const router = useRouter();
   const tabsContext = useTabs();
+  const { industries, loading: industriesLoading } = useIndustries();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -346,11 +331,17 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
                       <SelectValue placeholder="请选择行业" />
                     </SelectTrigger>
                     <SelectContent>
-                      {INDUSTRIES.map((industry) => (
-                        <SelectItem key={industry} value={industry}>
-                          {industry}
-                        </SelectItem>
-                      ))}
+                      {industriesLoading ? (
+                        <SelectItem value="_loading" disabled>加载中...</SelectItem>
+                      ) : industries.length === 0 ? (
+                        <SelectItem value="_empty" disabled>暂无行业数据</SelectItem>
+                      ) : (
+                        industries.map((industry) => (
+                          <SelectItem key={industry.id} value={industry.name}>
+                            {industry.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

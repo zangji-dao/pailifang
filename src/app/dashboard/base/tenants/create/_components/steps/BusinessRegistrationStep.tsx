@@ -5,8 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIndustries } from "@/hooks/useIndustries";
 
 interface BusinessRegistrationStepProps {
   enterpriseName: string;
@@ -37,6 +45,7 @@ export function BusinessRegistrationStep({
 }: BusinessRegistrationStepProps) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  const { industries, loading: industriesLoading } = useIndustries();
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
@@ -186,16 +195,25 @@ export function BusinessRegistrationStep({
             </div>
             <div className="space-y-2">
               <Label htmlFor="industry">所属行业</Label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="industry"
-                  value={industry}
-                  onChange={(e) => onUpdateIndustry(e.target.value)}
-                  placeholder="请输入所属行业"
-                  className="pl-9"
-                />
-              </div>
+              <Select value={industry} onValueChange={onUpdateIndustry}>
+                <SelectTrigger className="relative">
+                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <SelectValue placeholder="请选择行业" className="pl-6" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industriesLoading ? (
+                    <SelectItem value="_loading" disabled>加载中...</SelectItem>
+                  ) : industries.length === 0 ? (
+                    <SelectItem value="_empty" disabled>暂无行业数据</SelectItem>
+                  ) : (
+                    industries.map((ind) => (
+                      <SelectItem key={ind.id} value={ind.name}>
+                        {ind.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

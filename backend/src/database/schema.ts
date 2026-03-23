@@ -716,3 +716,17 @@ export const alipayAuthTokens = pgTable("alipay_auth_tokens", {
 	index("alipay_auth_tokens_user_id_idx").on(table.userId),
 	index("alipay_auth_tokens_alipay_user_id_idx").on(table.alipayUserId),
 ]);
+
+// 行业表
+export const industries = pgTable("industries", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	sortOrder: integer("sort_order").default(0),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("industries_name_idx").on(table.name),
+	index("industries_sort_order_idx").on(table.sortOrder),
+]);

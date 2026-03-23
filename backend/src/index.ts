@@ -23,6 +23,7 @@ import addressRoutes from './routes/addressRoutes';
 import applicationRoutes from './routes/applicationRoutes';
 import processRoutes from './routes/processRoutes';
 import contractRoutes from './routes/contractRoutes';
+import industryRoutes from './routes/industryRoutes';
 
 const app = express();
 const PORT = config.server.port;
@@ -67,6 +68,7 @@ app.use('/api/settlement/addresses', addressRoutes);
 app.use('/api/settlement/applications', applicationRoutes);
 app.use('/api/settlement/processes', processRoutes);
 app.use('/api/settlement/contracts', contractRoutes);
+app.use('/api/industries', industryRoutes);
 
 // 文件存储路由（需要文件上传中间件）
 app.use('/api/storage', upload.single('file'), storageRoutes);

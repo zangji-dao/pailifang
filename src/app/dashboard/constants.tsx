@@ -26,6 +26,8 @@ import {
   Building,
   Home,
   FileCheck,
+  Settings,
+  Tags,
 } from "lucide-react";
 import { NavItem, NavChildItem, RoleMap } from "./types";
 
@@ -67,6 +69,13 @@ export const ENTERPRISE_CHILDREN: NavChildItem[] = [
 ];
 
 /**
+ * 设置子菜单
+ */
+export const SETTINGS_CHILDREN: NavChildItem[] = [
+  { name: "行业管理", href: "/dashboard/base/settings/industries", icon: Tags },
+];
+
+/**
  * 基地管理子菜单
  */
 export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
@@ -75,6 +84,7 @@ export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
   { name: "企业管理", href: "", icon: Users, children: ENTERPRISE_CHILDREN },
   { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
+  { name: "设置", href: "", icon: Settings, children: SETTINGS_CHILDREN },
 ];
 
 /**
