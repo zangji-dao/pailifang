@@ -16,23 +16,24 @@ export function useSiteDetail(baseId: string) {
   const [deleting, setDeleting] = useState(false);
 
   // 获取基地详情
-  useEffect(() => {
-    const fetchBaseDetail = async () => {
-      try {
-        const response = await fetch(`/api/bases/${baseId}`);
-        const result = await response.json();
-        if (result.success) {
-          setBaseDetail(result.data);
-        }
-      } catch (error) {
-        console.error("获取基地详情失败:", error);
-      } finally {
-        setLoading(false);
+  const fetchBaseDetail = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/bases/${baseId}`);
+      const result = await response.json();
+      if (result.success) {
+        setBaseDetail(result.data);
       }
-    };
-
-    if (baseId) fetchBaseDetail();
+    } catch (error) {
+      console.error("获取基地详情失败:", error);
+    }
   }, [baseId]);
+
+  // 初始加载
+  useEffect(() => {
+    if (baseId) {
+      fetchBaseDetail().finally(() => setLoading(false));
+    }
+  }, [baseId, fetchBaseDetail]);
 
   // 计算统计信息
   const stats: StatsInfo = useMemo(() => {
@@ -104,5 +105,6 @@ export function useSiteDetail(baseId: string) {
 
     // 方法
     handleDeleteBase,
+    refreshBaseDetail: fetchBaseDetail,
   };
 }

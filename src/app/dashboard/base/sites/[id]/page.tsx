@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +21,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useSiteDetail } from "./useSiteDetail";
 import { StatsCards } from "./_components/StatsCards";
 import { MeterCard } from "./_components/MeterCard";
 import { MeterDetailPanel } from "./_components/MeterDetailPanel";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function BaseDetailPage() {
   const params = useParams();
@@ -41,7 +51,53 @@ export default function BaseDetailPage() {
     stats,
     selectedMeter,
     handleDeleteBase,
+    refreshBaseDetail,
   } = useSiteDetail(baseId);
+
+  // 新增物业状态
+  const [showAddMeterDialog, setShowAddMeterDialog] = useState(false);
+  const [addingMeter, setAddingMeter] = useState(false);
+  const [meterForm, setMeterForm] = useState({
+    code: "",
+    name: "",
+    area: "",
+  });
+
+  // 新增物业
+  const handleAddMeter = async () => {
+    if (!meterForm.code.trim()) {
+      toast.error("请输入物业编号");
+      return;
+    }
+
+    setAddingMeter(true);
+    try {
+      const res = await fetch("/api/meters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base_id: baseId,
+          code: meterForm.code,
+          name: meterForm.name || meterForm.code,
+          area: meterForm.area ? parseFloat(meterForm.area) : null,
+        }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("物业创建成功");
+        setShowAddMeterDialog(false);
+        setMeterForm({ code: "", name: "", area: "" });
+        refreshBaseDetail?.();
+      } else {
+        toast.error(result.error || "创建失败");
+      }
+    } catch (error) {
+      toast.error("创建失败");
+    } finally {
+      setAddingMeter(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -132,6 +188,20 @@ export default function BaseDetailPage() {
               onClick={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
             />
           ))}
+          
+          {/* 新增物业卡片 */}
+          <div
+            onClick={() => setShowAddMeterDialog(true)}
+            className="group cursor-pointer"
+          >
+            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-5 shadow-sm hover:shadow-xl hover:border-amber-300 transition-all duration-300 hover:-translate-y-0.5 flex flex-col items-center justify-center min-h-[180px]">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-3 group-hover:bg-amber-100 transition-colors">
+                <Plus className="h-6 w-6 text-amber-500" />
+              </div>
+              <span className="text-sm font-medium" style={{ color: "#78716C" }}>新增物业</span>
+              <span className="text-xs mt-1" style={{ color: "#A8A29E" }}>添加新的物业空间</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -178,6 +248,51 @@ export default function BaseDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 新增物业对话框 */}
+      <Dialog open={showAddMeterDialog} onOpenChange={setShowAddMeterDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新增物业</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" style={{ color: "#1C1917" }}>物业编号 *</label>
+              <Input
+                value={meterForm.code}
+                onChange={(e) => setMeterForm({ ...meterForm, code: e.target.value })}
+                placeholder="如：1-101"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" style={{ color: "#1C1917" }}>物业名称</label>
+              <Input
+                value={meterForm.name}
+                onChange={(e) => setMeterForm({ ...meterForm, name: e.target.value })}
+                placeholder="如：1号楼101室"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" style={{ color: "#1C1917" }}>建筑面积（㎡）</label>
+              <Input
+                type="number"
+                value={meterForm.area}
+                onChange={(e) => setMeterForm({ ...meterForm, area: e.target.value })}
+                placeholder="如：100.5"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMeterDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleAddMeter} disabled={addingMeter}>
+              {addingMeter && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              确认添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
