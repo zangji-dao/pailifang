@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * POST /api/spaces
  * 创建物理空间
- * 编号自动生成，格式：物业编号-序号（如 101-1）
+ * 编号自动生成，格式：KJ + 6位数字（如 KJ000001）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -34,22 +34,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 查询该物业下已有的空间数量
-    const { data: existingSpaces, error: countError } = await supabase
+    // 2. 生成新的空间编号：KJ + 6位数字
+    const { data: maxSpace, error: maxError } = await supabase
       .from('spaces')
-      .select('id')
-      .eq('meter_id', meter_id);
+      .select('code')
+      .like('code', 'KJ%')
+      .order('code', { ascending: false })
+      .limit(1);
 
-    if (countError) {
-      console.error('查询空间数量失败:', countError);
+    let sequence = 1;
+    if (maxSpace && maxSpace.length > 0) {
+      const lastCode = maxSpace[0].code;
+      const lastSequence = parseInt(lastCode.replace('KJ', ''), 10);
+      if (!isNaN(lastSequence)) {
+        sequence = lastSequence + 1;
+      }
     }
 
-    const nextIndex = (existingSpaces?.length || 0) + 1;
+    // 生成8位编号：KJ + 6位数字
+    const autoCode = `KJ${String(sequence).padStart(6, '0')}`;
 
-    // 3. 自动生成编号：物业编号-序号
-    const autoCode = `${meter.code}-${nextIndex}`;
-
-    // 4. 创建空间
+    // 3. 创建空间
     const { data, error } = await supabase
       .from('spaces')
       .insert({
