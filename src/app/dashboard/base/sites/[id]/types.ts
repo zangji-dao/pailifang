@@ -38,6 +38,7 @@ export interface Meter {
   code: string;
   name: string;
   enterpriseId: string | null; // 入驻企业ID
+  sortOrder: number; // 排序号
   // 电表
   electricityNumber: string | null;
   electricityType: MeterType;

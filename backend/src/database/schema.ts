@@ -636,6 +636,8 @@ export const meters = pgTable("meters", {
 	networkStatus: varchar("network_status", { length: 20 }).default('normal'), // normal=正常, arrears=欠费, not_applicable=不涉及
 	// 面积
 	area: decimal("area", { precision: 10, scale: 2 }),
+	// 排序
+	sortOrder: integer("sort_order").default(0),
 	status: varchar({ length: 20 }).default('active').notNull(),
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at"),

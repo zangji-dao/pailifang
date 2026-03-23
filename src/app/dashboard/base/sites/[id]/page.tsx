@@ -30,9 +30,24 @@ import {
 } from "@/components/ui/dialog";
 import { useSiteDetail } from "./useSiteDetail";
 import { StatsCards } from "./_components/StatsCards";
-import { MeterCard } from "./_components/MeterCard";
-import { useState } from "react";
+import { DraggableMeterCard } from "./_components/DraggableMeterCard";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
 
 export default function BaseDetailPage() {
   const params = useParams();
@@ -58,6 +73,73 @@ export default function BaseDetailPage() {
     name: "",
     area: "",
   });
+
+  // 拖拽排序状态
+  const [meterIds, setMeterIds] = useState<string[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  // 当 baseDetail 变化时更新 meterIds
+  useEffect(() => {
+    if (baseDetail?.meters && baseDetail.meters.length > 0) {
+      // 按 sortOrder 排序后再生成 ID 列表
+      const sortedMeters = [...baseDetail.meters].sort((a, b) => 
+        (a.sortOrder || 0) - (b.sortOrder || 0)
+      );
+      setMeterIds(sortedMeters.map((m) => m.id));
+    }
+  }, [baseDetail?.meters]);
+
+  // 拖拽传感器配置
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 需要移动 8px 才开始拖拽
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // 拖拽结束处理
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = meterIds.indexOf(active.id as string);
+      const newIndex = meterIds.indexOf(over.id as string);
+      
+      const newMeterIds = arrayMove(meterIds, oldIndex, newIndex);
+      setMeterIds(newMeterIds);
+
+      // 保存新顺序到服务器
+      setSavingOrder(true);
+      try {
+        const res = await fetch("/api/meters/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            baseId,
+            meterIds: newMeterIds,
+          }),
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          toast.success("排序已保存");
+        } else {
+          toast.error(result.error || "保存排序失败");
+          // 恢复原顺序
+          setMeterIds(meterIds);
+        }
+      } catch (error) {
+        toast.error("保存排序失败");
+        setMeterIds(meterIds);
+      } finally {
+        setSavingOrder(false);
+      }
+    }
+  }, [meterIds, baseId]);
 
   // 新增物业
   const handleAddMeter = async () => {
@@ -166,34 +248,54 @@ export default function BaseDetailPage() {
         <StatsCards stats={stats} />
 
         {/* 物业卡片网格 */}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold" style={{ color: "#1C1917" }}>物业信息监控</h2>
-          <p className="text-sm mt-0.5" style={{ color: "#A8A29E" }}>点击物业卡片查看详细信息</p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold" style={{ color: "#1C1917" }}>物业信息监控</h2>
+            <p className="text-sm mt-0.5" style={{ color: "#A8A29E" }}>拖拽卡片可调整顺序，点击查看详细信息</p>
+          </div>
+          {savingOrder && (
+            <span className="text-sm text-amber-600 flex items-center gap-1.5">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              保存中...
+            </span>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {baseDetail.meters.map((meter) => (
-            <MeterCard
-              key={meter.id}
-              meter={meter}
-              baseId={baseId}
-            />
-          ))}
-          
-          {/* 新增物业卡片 */}
-          <div
-            onClick={() => setShowAddMeterDialog(true)}
-            className="group cursor-pointer"
-          >
-            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-5 shadow-sm hover:shadow-xl hover:border-amber-300 transition-all duration-300 hover:-translate-y-0.5 flex flex-col items-center justify-center min-h-[180px]">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-3 group-hover:bg-amber-100 transition-colors">
-                <Plus className="h-6 w-6 text-amber-500" />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={meterIds} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {meterIds.map((meterId) => {
+                const meter = baseDetail.meters.find((m) => m.id === meterId);
+                if (!meter) return null;
+                return (
+                  <DraggableMeterCard
+                    key={meter.id}
+                    meter={meter}
+                    baseId={baseId}
+                  />
+                );
+              })}
+              
+              {/* 新增物业卡片 */}
+              <div
+                onClick={() => setShowAddMeterDialog(true)}
+                className="group cursor-pointer"
+              >
+                <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-5 shadow-sm hover:shadow-xl hover:border-amber-300 transition-all duration-300 hover:-translate-y-0.5 flex flex-col items-center justify-center min-h-[180px]">
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-3 group-hover:bg-amber-100 transition-colors">
+                    <Plus className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: "#78716C" }}>新增物业</span>
+                  <span className="text-xs mt-1" style={{ color: "#A8A29E" }}>添加新的物业空间</span>
+                </div>
               </div>
-              <span className="text-sm font-medium" style={{ color: "#78716C" }}>新增物业</span>
-              <span className="text-xs mt-1" style={{ color: "#A8A29E" }}>添加新的物业空间</span>
             </div>
-          </div>
-        </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* 删除确认对话框 */}

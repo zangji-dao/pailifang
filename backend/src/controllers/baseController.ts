@@ -3,7 +3,7 @@
  */
 
 import { Request, Response } from 'express';
-import { db, bases, meters, spaces, regNumbers, enterprises, eq, desc, sql } from '../database/client';
+import { db, bases, meters, spaces, regNumbers, enterprises, eq, desc, asc, sql } from '../database/client';
 
 // Π立方基地物业数据
 const METER_DATA = [
@@ -173,11 +173,12 @@ export const baseController = {
         });
       }
 
-      // 获取物业列表
+      // 获取物业列表（按排序号排序）
       const meterList = await db
         .select()
         .from(meters)
-        .where(eq(meters.baseId, id));
+        .where(eq(meters.baseId, id))
+        .orderBy(asc(meters.sortOrder), asc(meters.createdAt));
 
       // 获取每个物业的空间和enterprise信息
       const metersWithDetails = await Promise.all(
