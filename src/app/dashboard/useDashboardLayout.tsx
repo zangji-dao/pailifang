@@ -40,16 +40,18 @@ export function useDashboardLayout() {
     "基地管理": pathname?.startsWith("/dashboard/base") || false,
   }));
 
-  // 当路由变化时，自动展开对应的菜单
+  // 当路由变化时，自动展开对应的菜单（仅当菜单从未被手动操作过时）
   useEffect(() => {
-    setExpandedMenus((prev) => ({
-      ...prev,
-      "账务中心": prev["账务中心"] || pathname?.startsWith("/accounting") || false,
-      "工单管理": prev["工单管理"] || pathname?.startsWith("/dashboard/orders") || false,
-      "销售中心": prev["销售中心"] || pathname?.startsWith("/dashboard/sales") || false,
-      "人力资源": prev["人力资源"] || pathname?.startsWith("/dashboard/hr") || false,
-      "基地管理": prev["基地管理"] || pathname?.startsWith("/dashboard/base") || false,
-    }));
+    // 不再强制展开，尊重用户的手动操作
+    // 如果需要自动展开，可以取消下面的注释
+    // setExpandedMenus((prev) => ({
+    //   ...prev,
+    //   "账务中心": prev["账务中心"] || pathname?.startsWith("/accounting") || false,
+    //   "工单管理": prev["工单管理"] || pathname?.startsWith("/dashboard/orders") || false,
+    //   "销售中心": prev["销售中心"] || pathname?.startsWith("/dashboard/sales") || false,
+    //   "人力资源": prev["人力资源"] || pathname?.startsWith("/dashboard/hr") || false,
+    //   "基地管理": prev["基地管理"] || pathname?.startsWith("/dashboard/base") || false,
+    // }));
   }, [pathname]);
 
   // 标签页状态
