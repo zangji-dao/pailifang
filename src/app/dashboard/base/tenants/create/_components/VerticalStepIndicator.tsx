@@ -4,6 +4,40 @@ import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import type { MainStep } from "../_constants/steps";
 
+// 柔和的七彩配色方案
+const stepColors: Record<string, { bg: string; text: string; light: string; ring: string }> = {
+  address: {
+    bg: "bg-sky-400",
+    text: "text-sky-600",
+    light: "bg-sky-50",
+    ring: "ring-sky-200",
+  },
+  registration: {
+    bg: "bg-violet-400",
+    text: "text-violet-600",
+    light: "bg-violet-50",
+    ring: "ring-violet-200",
+  },
+  contract: {
+    bg: "bg-amber-400",
+    text: "text-amber-600",
+    light: "bg-amber-50",
+    ring: "ring-amber-200",
+  },
+  payment: {
+    bg: "bg-emerald-400",
+    text: "text-emerald-600",
+    light: "bg-emerald-50",
+    ring: "ring-emerald-200",
+  },
+  complete: {
+    bg: "bg-rose-400",
+    text: "text-rose-600",
+    light: "bg-rose-50",
+    ring: "ring-rose-200",
+  },
+};
+
 interface VerticalStepIndicatorProps {
   steps: MainStep[];
   currentMainStepId: string;
@@ -31,6 +65,7 @@ export function VerticalStepIndicator({
           const isActive = step.id === currentMainStepId;
           const isCompleted = completedMainSteps.has(step.id);
           const Icon = step.icon;
+          const colors = stepColors[step.id] || stepColors.address;
 
           return (
             <button
@@ -38,8 +73,8 @@ export function VerticalStepIndicator({
               onClick={() => onStepClick?.(step.id)}
               className={cn(
                 "w-full flex items-start gap-3 p-3 rounded-lg transition-all text-left",
-                isActive && "bg-primary/10 border border-primary/20",
-                isCompleted && !isActive && "bg-muted/50",
+                isActive && `${colors.light} ring-2 ${colors.ring}`,
+                isCompleted && !isActive && "bg-green-50 ring-1 ring-green-200",
                 !isActive && !isCompleted && "hover:bg-muted/30"
               )}
             >
@@ -47,8 +82,8 @@ export function VerticalStepIndicator({
               <div
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                  isCompleted && "bg-primary text-primary-foreground",
-                  isActive && !isCompleted && "bg-primary text-primary-foreground",
+                  isCompleted && "bg-green-400 text-white",
+                  isActive && !isCompleted && `${colors.bg} text-white`,
                   !isActive && !isCompleted && "bg-muted text-muted-foreground"
                 )}
               >
@@ -65,8 +100,8 @@ export function VerticalStepIndicator({
                   <span
                     className={cn(
                       "text-sm font-medium truncate",
-                      isActive && "text-primary",
-                      isCompleted && "text-foreground",
+                      isActive && colors.text,
+                      isCompleted && "text-green-600",
                       !isActive && !isCompleted && "text-muted-foreground"
                     )}
                   >
@@ -89,7 +124,7 @@ export function VerticalStepIndicator({
                         className={cn(
                           "h-1 flex-1 rounded-full transition-colors",
                           isActive && subIndex === 0
-                            ? "bg-primary"
+                            ? colors.bg
                             : "bg-muted"
                         )}
                       />
@@ -104,3 +139,5 @@ export function VerticalStepIndicator({
     </div>
   );
 }
+
+export { stepColors };
