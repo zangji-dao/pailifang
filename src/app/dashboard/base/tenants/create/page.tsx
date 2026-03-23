@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
@@ -22,6 +22,7 @@ import {
   PaymentStep,
   OnboardingCompleteStep,
 } from "./_components/steps";
+import { useFormPersistence } from "./_hooks/useFormPersistence";
 
 // 类型定义
 type EnterpriseType = "tenant" | "non_tenant";
@@ -59,50 +60,104 @@ interface Fee {
   status: "pending" | "paid" | "verified";
 }
 
-export default function NewTenantPage() {
-  const router = useRouter();
-  const { toast } = useToast();
+// 表单状态接口
+interface FormState {
+  // 步骤状态
+  currentMainStepId: string;
+  currentSubStepId: string;
+  completedMainSteps: string[];
+  completedSubSteps: string[];
 
-  // ========== 步骤状态 ==========
-  const [currentMainStepId, setCurrentMainStepId] = useState("address");
-  const [currentSubStepId, setCurrentSubStepId] = useState("select_base");
-  const [completedMainSteps, setCompletedMainSteps] = useState<Set<string>>(new Set());
-  const [completedSubSteps, setCompletedSubSteps] = useState<Set<string>>(new Set());
-
-  // ========== 表单数据 ==========
   // 步骤1：分配地址
-  const [bases, setBases] = useState<Base[]>([]);
-  const [selectedBaseId, setSelectedBaseId] = useState<string>("");
-  const [enterpriseType, setEnterpriseType] = useState<EnterpriseType | null>(null);
-  const [enterpriseCode, setEnterpriseCode] = useState<string>("");
-  const [selectedRegNumber, setSelectedRegNumber] = useState<AvailableRegNumber | null>(null);
-  const [proofFiles, setProofFiles] = useState<ProofFile[]>([]);
-  const [enterpriseName, setEnterpriseName] = useState("");
-  const [remarks, setRemarks] = useState("");
+  selectedBaseId: string;
+  enterpriseType: EnterpriseType | null;
+  enterpriseCode: string;
+  selectedRegNumber: AvailableRegNumber | null;
+  proofFiles: ProofFile[];
+  enterpriseName: string;
+  remarks: string;
 
   // 步骤2：工商注册
-  const [businessLicense, setBusinessLicense] = useState<{ name: string; url: string } | null>(null);
-  const [creditCode, setCreditCode] = useState("");
-  const [legalPerson, setLegalPerson] = useState("");
-  const [phone, setPhone] = useState("");
-  const [industry, setIndustry] = useState("");
+  businessLicense: { name: string; url: string } | null;
+  creditCode: string;
+  legalPerson: string;
+  phone: string;
+  industry: string;
 
   // 步骤3：签订合同
-  const [contract, setContract] = useState<{
+  contract: {
     contractNumber: string;
     startDate: string;
     endDate: string;
     monthlyRent: number;
     deposit: number;
     signature: string | null;
-  } | null>(null);
+  } | null;
 
   // 步骤4：费用缴纳
-  const [fees, setFees] = useState<Fee[]>([]);
+  fees: Fee[];
+}
 
-  // ========== 状态 ==========
+// 初始状态
+const initialFormState: FormState = {
+  currentMainStepId: "address",
+  currentSubStepId: "select_base",
+  completedMainSteps: [],
+  completedSubSteps: [],
+
+  selectedBaseId: "",
+  enterpriseType: null,
+  enterpriseCode: "",
+  selectedRegNumber: null,
+  proofFiles: [],
+  enterpriseName: "",
+  remarks: "",
+
+  businessLicense: null,
+  creditCode: "",
+  legalPerson: "",
+  phone: "",
+  industry: "",
+
+  contract: null,
+  fees: [],
+};
+
+export default function NewTenantPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // 基地列表（不需要持久化）
+  const [bases, setBases] = useState<Base[]>([]);
+
+  // 使用持久化 hook 管理表单状态
+  const [formState, updateFormState, clearFormCache] = useFormPersistence<FormState>(initialFormState);
+
+  // 状态
   const [submitting, setSubmitting] = useState(false);
   const [createdEnterpriseId, setCreatedEnterpriseId] = useState<string | null>(null);
+
+  // 解构表单状态
+  const {
+    currentMainStepId,
+    currentSubStepId,
+    completedMainSteps,
+    completedSubSteps,
+    selectedBaseId,
+    enterpriseType,
+    enterpriseCode,
+    selectedRegNumber,
+    proofFiles,
+    enterpriseName,
+    remarks,
+    businessLicense,
+    creditCode,
+    legalPerson,
+    phone,
+    industry,
+    contract,
+    fees,
+  } = formState;
 
   // 加载基地列表
   useEffect(() => {
@@ -126,12 +181,6 @@ export default function NewTenantPage() {
 
   // 判断是否是非入驻企业
   const isNonTenant = enterpriseType === "non_tenant";
-
-  // 判断是否可以跳过当前步骤
-  const canSkipCurrentStep = useCallback(() => {
-    if (!currentSubStep) return false;
-    return isNonTenant && currentSubStep.isOptional;
-  }, [currentSubStep, isNonTenant]);
 
   // 步骤验证
   const validateCurrentStep = useCallback((): boolean => {
@@ -179,54 +228,74 @@ export default function NewTenantPage() {
     }
 
     // 标记当前步骤完成
-    setCompletedSubSteps(prev => new Set([...prev, `${currentMainStepId}_${currentSubStepId}`]));
+    const stepKey = `${currentMainStepId}_${currentSubStepId}`;
+    const newCompletedSubSteps = completedSubSteps.includes(stepKey)
+      ? completedSubSteps
+      : [...completedSubSteps, stepKey];
 
     // 获取下一步
     const nextStep = getNextStep(currentMainStepId, currentSubStepId, isNonTenant);
     if (nextStep) {
       // 检查是否需要标记大步骤完成
-      if (nextStep.mainStepId !== currentMainStepId) {
-        setCompletedMainSteps(prev => new Set([...prev, currentMainStepId]));
-      }
-      setCurrentMainStepId(nextStep.mainStepId);
-      setCurrentSubStepId(nextStep.subStepId);
+      const newCompletedMainSteps = nextStep.mainStepId !== currentMainStepId
+        ? completedMainSteps.includes(currentMainStepId)
+          ? completedMainSteps
+          : [...completedMainSteps, currentMainStepId]
+        : completedMainSteps;
+
+      updateFormState({
+        currentMainStepId: nextStep.mainStepId,
+        currentSubStepId: nextStep.subStepId,
+        completedMainSteps: newCompletedMainSteps,
+        completedSubSteps: newCompletedSubSteps,
+      });
     }
-  }, [currentMainStepId, currentSubStepId, isNonTenant, validateCurrentStep, toast]);
+  }, [currentMainStepId, currentSubStepId, isNonTenant, validateCurrentStep, toast, completedMainSteps, completedSubSteps, updateFormState]);
 
   // 上一步
   const handlePrev = useCallback(() => {
     const prevStep = getPrevStep(currentMainStepId, currentSubStepId);
     if (prevStep) {
-      setCurrentMainStepId(prevStep.mainStepId);
-      setCurrentSubStepId(prevStep.subStepId);
+      updateFormState({
+        currentMainStepId: prevStep.mainStepId,
+        currentSubStepId: prevStep.subStepId,
+      });
     }
-  }, [currentMainStepId, currentSubStepId]);
+  }, [currentMainStepId, currentSubStepId, updateFormState]);
 
   // 跳转到大步骤
   const handleMainStepClick = useCallback((stepId: string) => {
-    // 只能跳转到已完成或当前大步骤
     const stepIndex = mainSteps.findIndex(s => s.id === stepId);
     const currentIndex = mainSteps.findIndex(s => s.id === currentMainStepId);
     
-    if (stepIndex <= currentIndex || completedMainSteps.has(stepId)) {
+    if (stepIndex <= currentIndex || completedMainSteps.includes(stepId)) {
       const targetStep = mainSteps[stepIndex];
-      setCurrentMainStepId(stepId);
-      setCurrentSubStepId(targetStep.subSteps[0].id);
+      updateFormState({
+        currentMainStepId: stepId,
+        currentSubStepId: targetStep.subSteps[0].id,
+      });
     }
-  }, [currentMainStepId, completedMainSteps]);
+  }, [currentMainStepId, completedMainSteps, updateFormState]);
 
   // 跳转到子步骤
   const handleSubStepClick = useCallback((subStepId: string) => {
     if (!currentMainStep) return;
     
-    // 只能跳转到已完成的子步骤
     const subStepIndex = currentMainStep.subSteps.findIndex(s => s.id === subStepId);
     const currentIndex = currentMainStep.subSteps.findIndex(s => s.id === currentSubStepId);
     
-    if (subStepIndex <= currentIndex || completedSubSteps.has(`${currentMainStepId}_${subStepId}`)) {
-      setCurrentSubStepId(subStepId);
+    if (subStepIndex <= currentIndex || completedSubSteps.includes(`${currentMainStepId}_${subStepId}`)) {
+      updateFormState({ currentSubStepId: subStepId });
     }
-  }, [currentMainStep, currentSubStepId, completedSubSteps]);
+  }, [currentMainStep, currentSubStepId, completedSubSteps, currentMainStepId, updateFormState]);
+
+  // 重置表单
+  const handleReset = useCallback(() => {
+    if (confirm("确定要重置表单吗？所有已填写的数据将被清除。")) {
+      clearFormCache();
+      toast({ title: "表单已重置" });
+    }
+  }, [clearFormCache, toast]);
 
   // 提交企业
   const handleSubmit = useCallback(async () => {
@@ -299,6 +368,8 @@ export default function NewTenantPage() {
         throw new Error(result.error || "创建企业失败");
       }
 
+      // 创建成功，清除缓存
+      clearFormCache();
       setCreatedEnterpriseId(result.data?.id);
       toast({ title: "创建成功", description: `企业 ${enterpriseName} 已成功创建` });
     } catch (error: any) {
@@ -307,7 +378,7 @@ export default function NewTenantPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [enterpriseName, enterpriseCode, enterpriseType, selectedBaseId, remarks, selectedRegNumber, proofFiles, creditCode, legalPerson, phone, industry, contract, fees, bases, toast]);
+  }, [enterpriseName, enterpriseCode, enterpriseType, selectedBaseId, remarks, selectedRegNumber, proofFiles, creditCode, legalPerson, phone, industry, contract, fees, bases, toast, clearFormCache]);
 
   // 获取基地名称
   const getBaseName = () => bases.find(b => b.id === selectedBaseId)?.name || "";
@@ -345,7 +416,7 @@ export default function NewTenantPage() {
           return (
             <SelectBaseStep
               selectedBaseId={selectedBaseId}
-              onSelectBase={setSelectedBaseId}
+              onSelectBase={(id) => updateFormState({ selectedBaseId: id })}
             />
           );
         case "select_type":
@@ -354,17 +425,18 @@ export default function NewTenantPage() {
               enterpriseType={enterpriseType}
               enterpriseCode={enterpriseCode}
               onSelectType={(type) => {
-                setEnterpriseType(type);
-                // 生成企业编号
                 const prefix = type === "tenant" ? "RQ" : "NQ";
                 const timestamp = Date.now().toString().slice(-8);
-                setEnterpriseCode(`${prefix}-${timestamp}`);
+                updateFormState({
+                  enterpriseType: type,
+                  enterpriseCode: `${prefix}-${timestamp}`,
+                });
               }}
             />
           );
         case "select_station":
           if (isNonTenant) {
-            return null; // 非入驻企业跳过
+            return null;
           }
           return (
             <SelectStationStep
@@ -380,16 +452,16 @@ export default function NewTenantPage() {
                 assignedEnterpriseName: selectedRegNumber.assignedEnterpriseName,
               } : null}
               onSelectRegNumber={(reg) => {
-                setSelectedRegNumber(reg);
-                if (reg?.assignedEnterpriseName) {
-                  setEnterpriseName(reg.assignedEnterpriseName);
-                }
+                updateFormState({
+                  selectedRegNumber: reg,
+                  ...(reg?.assignedEnterpriseName ? { enterpriseName: reg.assignedEnterpriseName } : {}),
+                });
               }}
             />
           );
         case "upload_proof":
           if (isNonTenant) {
-            return null; // 非入驻企业跳过
+            return null;
           }
           return (
             <UploadProofStep
@@ -400,7 +472,7 @@ export default function NewTenantPage() {
                 assignedEnterpriseName: selectedRegNumber.assignedEnterpriseName,
               } : null}
               proofFiles={proofFiles}
-              onUpdateProofFiles={setProofFiles}
+              onUpdateProofFiles={(files) => updateFormState({ proofFiles: files })}
             />
           );
         case "confirm_info":
@@ -418,8 +490,8 @@ export default function NewTenantPage() {
               } : null}
               proofFiles={proofFiles}
               remarks={remarks}
-              onUpdateEnterpriseName={setEnterpriseName}
-              onUpdateRemarks={setRemarks}
+              onUpdateEnterpriseName={(name) => updateFormState({ enterpriseName: name })}
+              onUpdateRemarks={(text) => updateFormState({ remarks: text })}
             />
           );
       }
@@ -438,11 +510,11 @@ export default function NewTenantPage() {
               legalPerson={legalPerson}
               phone={phone}
               industry={industry}
-              onUpdateBusinessLicense={setBusinessLicense}
-              onUpdateCreditCode={setCreditCode}
-              onUpdateLegalPerson={setLegalPerson}
-              onUpdatePhone={setPhone}
-              onUpdateIndustry={setIndustry}
+              onUpdateBusinessLicense={(license) => updateFormState({ businessLicense: license })}
+              onUpdateCreditCode={(code) => updateFormState({ creditCode: code })}
+              onUpdateLegalPerson={(person) => updateFormState({ legalPerson: person })}
+              onUpdatePhone={(p) => updateFormState({ phone: p })}
+              onUpdateIndustry={(ind) => updateFormState({ industry: ind })}
             />
           );
       }
@@ -454,7 +526,7 @@ export default function NewTenantPage() {
         <ContractStep
           enterpriseName={enterpriseName}
           contract={contract}
-          onUpdateContract={setContract}
+          onUpdateContract={(c) => updateFormState({ contract: c })}
         />
       );
     }
@@ -465,7 +537,7 @@ export default function NewTenantPage() {
         <PaymentStep
           enterpriseName={enterpriseName}
           fees={fees}
-          onUpdateFees={setFees}
+          onUpdateFees={(f) => updateFormState({ fees: f })}
         />
       );
     }
@@ -476,20 +548,23 @@ export default function NewTenantPage() {
   // 判断是否是最后一步
   const isLastStep = currentMainStepId === "complete";
 
+  // 检查是否有草稿数据
+  const hasDraftData = selectedBaseId || enterpriseType || enterpriseName || selectedRegNumber;
+
   return (
     <div className="flex h-[calc(100vh-7rem)]">
       {/* 左侧垂直步骤指示器 */}
       <VerticalStepIndicator
         steps={mainSteps.map(s => ({
           ...s,
-          status: completedMainSteps.has(s.id) 
-            ? "completed" 
-            : s.id === currentMainStepId 
-              ? "in_progress" 
+          status: completedMainSteps.includes(s.id)
+            ? "completed"
+            : s.id === currentMainStepId
+              ? "in_progress"
               : "pending"
         }))}
         currentMainStepId={currentMainStepId}
-        completedMainSteps={completedMainSteps}
+        completedMainSteps={new Set(completedMainSteps)}
         onStepClick={handleMainStepClick}
       />
 
@@ -500,7 +575,7 @@ export default function NewTenantPage() {
           <HorizontalSubStepIndicator
             subSteps={currentMainStep.subSteps}
             currentSubStepId={currentSubStepId}
-            completedSubSteps={completedSubSteps}
+            completedSubSteps={new Set(completedSubSteps)}
             mainStepId={currentMainStepId}
             onSubStepClick={handleSubStepClick}
           />
@@ -509,20 +584,39 @@ export default function NewTenantPage() {
         {/* 页面标题 */}
         {!createdEnterpriseId && (
           <div className="px-6 py-4 border-b bg-card">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard/base/tenants">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold">
-                  {currentMainStep?.title || "企业入驻"}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {currentSubStep?.description || ""}
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/dashboard/base/tenants">
+                  <Button variant="ghost" size="icon">
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-xl font-bold">
+                    {currentMainStep?.title || "企业入驻"}
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    {currentSubStep?.description || ""}
+                  </p>
+                </div>
               </div>
+              {/* 草稿提示和重置按钮 */}
+              {hasDraftData && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                    草稿已自动保存
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReset}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    重置
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
