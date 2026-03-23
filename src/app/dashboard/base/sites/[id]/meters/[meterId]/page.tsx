@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2, Zap, Droplets, Flame, Wifi } from "lucide-react";
+import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2, Zap, Droplets, Flame, Wifi, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,10 @@ export default function MeterDetailPage() {
 
   // 删除空间确认
   const [deleteSpaceId, setDeleteSpaceId] = useState<string | null>(null);
+
+  // 同步余额状态
+  const [syncingElectricity, setSyncingElectricity] = useState(false);
+  const [syncingWater, setSyncingWater] = useState(false);
 
   // 表单数据
   const [form, setForm] = useState({
@@ -337,6 +341,60 @@ export default function MeterDetailPage() {
     });
   };
 
+  // 同步电表余额
+  const handleSyncElectricity = async () => {
+    if (!meter?.electricityNumber) {
+      toast.error("请先填写电表号");
+      return;
+    }
+    setSyncingElectricity(true);
+    try {
+      const res = await fetch(`/api/meters/${meterId}/sync-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "electricity" }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(`余额同步成功：¥${result.data.balance?.toFixed(2)}`);
+        refreshMeter();
+      } else {
+        toast.error(result.error || "同步失败");
+      }
+    } catch (error) {
+      toast.error("同步失败，请稍后重试");
+    } finally {
+      setSyncingElectricity(false);
+    }
+  };
+
+  // 同步水表余额
+  const handleSyncWater = async () => {
+    if (!meter?.waterNumber) {
+      toast.error("请先填写水表号");
+      return;
+    }
+    setSyncingWater(true);
+    try {
+      const res = await fetch(`/api/meters/${meterId}/sync-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "water" }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(`余额同步成功：¥${result.data.balance?.toFixed(2)}`);
+        refreshMeter();
+      } else {
+        toast.error(result.error || "同步失败");
+      }
+    } catch (error) {
+      toast.error("同步失败，请稍后重试");
+    } finally {
+      setSyncingWater(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]" style={{ background: "linear-gradient(180deg, #FDFBF7 0%, #F8F5F0 100%)" }}>
@@ -484,19 +542,38 @@ export default function MeterDetailPage() {
                 </div>
               </div>
               {/* 余额显示 */}
-              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+              <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs" style={{ color: "#78716C" }}>当前余额（支付宝同步）</span>
+                    <span className="text-xs font-medium text-amber-700">当前余额</span>
                     <p className={`text-2xl font-bold mt-1 ${meter.electricityBalance !== null && meter.electricityBalance < 50 ? 'text-red-500' : 'text-amber-600'}`}>
                       ¥{meter.electricityBalance?.toFixed(2) || '--'}
                     </p>
+                    {meter.electricityBalanceUpdatedAt && (
+                      <span className="text-[10px] text-amber-600/60">
+                        {new Date(meter.electricityBalanceUpdatedAt).toLocaleString("zh-CN")}
+                      </span>
+                    )}
                   </div>
-                  {meter.electricityBalanceUpdatedAt && (
-                    <span className="text-xs" style={{ color: "#A8A29E" }}>
-                      更新于 {new Date(meter.electricityBalanceUpdatedAt).toLocaleString("zh-CN")}
-                    </span>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
+                    onClick={handleSyncElectricity}
+                    disabled={syncingElectricity || !form.electricityNumber}
+                  >
+                    {syncingElectricity ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        同步中
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        支付宝同步
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -544,19 +621,38 @@ export default function MeterDetailPage() {
                 </div>
               </div>
               {/* 余额显示 */}
-              <div className="mt-4 p-4 bg-sky-50 rounded-xl border border-sky-100">
+              <div className="mt-4 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-xl border border-sky-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs" style={{ color: "#78716C" }}>当前余额（支付宝同步）</span>
+                    <span className="text-xs font-medium text-sky-700">当前余额</span>
                     <p className={`text-2xl font-bold mt-1 ${meter.waterBalance !== null && meter.waterBalance < 50 ? 'text-red-500' : 'text-sky-600'}`}>
                       ¥{meter.waterBalance?.toFixed(2) || '--'}
                     </p>
+                    {meter.waterBalanceUpdatedAt && (
+                      <span className="text-[10px] text-sky-600/60">
+                        {new Date(meter.waterBalanceUpdatedAt).toLocaleString("zh-CN")}
+                      </span>
+                    )}
                   </div>
-                  {meter.waterBalanceUpdatedAt && (
-                    <span className="text-xs" style={{ color: "#A8A29E" }}>
-                      更新于 {new Date(meter.waterBalanceUpdatedAt).toLocaleString("zh-CN")}
-                    </span>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 border-sky-200 hover:bg-sky-100 hover:border-sky-300"
+                    onClick={handleSyncWater}
+                    disabled={syncingWater || !form.waterNumber}
+                  >
+                    {syncingWater ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        同步中
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        支付宝同步
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
