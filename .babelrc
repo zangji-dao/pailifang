@@ -1,4 +1,5 @@
 {
+  "compact": "auto",
   "presets": [
     [
       "next/babel",
