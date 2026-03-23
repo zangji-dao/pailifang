@@ -31,7 +31,6 @@ import {
 import { useSiteDetail } from "./useSiteDetail";
 import { StatsCards } from "./_components/StatsCards";
 import { MeterCard } from "./_components/MeterCard";
-import { MeterDetailPanel } from "./_components/MeterDetailPanel";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -43,13 +42,10 @@ export default function BaseDetailPage() {
   const {
     baseDetail,
     loading,
-    expandedMeter,
-    setExpandedMeter,
     showDeleteDialog,
     setShowDeleteDialog,
     deleting,
     stats,
-    selectedMeter,
     handleDeleteBase,
     refreshBaseDetail,
   } = useSiteDetail(baseId);
@@ -96,52 +92,6 @@ export default function BaseDetailPage() {
       toast.error("创建失败");
     } finally {
       setAddingMeter(false);
-    }
-  };
-
-  // 新增空间状态
-  const [showAddSpaceDialog, setShowAddSpaceDialog] = useState(false);
-  const [addingSpace, setAddingSpace] = useState(false);
-  const [targetMeterId, setTargetMeterId] = useState<string | null>(null);
-  const [spaceForm, setSpaceForm] = useState({
-    name: "",
-  });
-
-  // 打开新增空间对话框
-  const handleOpenAddSpace = (meterId: string) => {
-    setTargetMeterId(meterId);
-    setSpaceForm({ name: "" });
-    setShowAddSpaceDialog(true);
-  };
-
-  // 新增空间
-  const handleAddSpace = async () => {
-    if (!targetMeterId) return;
-
-    setAddingSpace(true);
-    try {
-      const res = await fetch("/api/spaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meter_id: targetMeterId,
-          name: spaceForm.name || "新空间",
-        }),
-      });
-
-      const result = await res.json();
-      if (result.success) {
-        toast.success("空间创建成功");
-        setShowAddSpaceDialog(false);
-        setSpaceForm({ name: "" });
-        refreshBaseDetail?.();
-      } else {
-        toast.error(result.error || "创建失败");
-      }
-    } catch (error) {
-      toast.error("创建失败");
-    } finally {
-      setAddingSpace(false);
     }
   };
 
@@ -226,9 +176,7 @@ export default function BaseDetailPage() {
             <MeterCard
               key={meter.id}
               meter={meter}
-              isExpanded={expandedMeter === meter.id}
-              onClick={() => setExpandedMeter(expandedMeter === meter.id ? null : meter.id)}
-              onAddSpace={handleOpenAddSpace}
+              baseId={baseId}
             />
           ))}
           
@@ -247,21 +195,6 @@ export default function BaseDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* 展开的物业详情面板 */}
-      {expandedMeter && selectedMeter && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setExpandedMeter(null)}>
-          <div
-            className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MeterDetailPanel
-              meter={selectedMeter}
-              onClose={() => setExpandedMeter(null)}
-            />
-          </div>
-        </div>
-      )}
 
       {/* 删除确认对话框 */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -331,37 +264,6 @@ export default function BaseDetailPage() {
             </Button>
             <Button onClick={handleAddMeter} disabled={addingMeter}>
               {addingMeter && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              确认添加
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 新增空间对话框 */}
-      <Dialog open={showAddSpaceDialog} onOpenChange={setShowAddSpaceDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>新增空间</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" style={{ color: "#1C1917" }}>空间名称</label>
-              <Input
-                value={spaceForm.name}
-                onChange={(e) => setSpaceForm({ ...spaceForm, name: e.target.value })}
-                placeholder="如：主办公区、会议室"
-              />
-              <p className="text-xs" style={{ color: "#A8A29E" }}>
-                空间编号将自动生成
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddSpaceDialog(false)}>
-              取消
-            </Button>
-            <Button onClick={handleAddSpace} disabled={addingSpace}>
-              {addingSpace && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               确认添加
             </Button>
           </DialogFooter>

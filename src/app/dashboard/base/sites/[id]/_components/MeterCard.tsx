@@ -1,20 +1,20 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Meter } from "../types";
 
 interface MeterCardProps {
   meter: Meter;
-  isExpanded: boolean;
-  onClick: () => void;
-  onAddSpace?: (meterId: string) => void;
+  baseId: string;
 }
 
-export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardProps) {
-  const handleAddSpace = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 阻止冒泡，避免触发卡片的onClick
-    onAddSpace?.(meter.id);
+export function MeterCard({ meter, baseId }: MeterCardProps) {
+  const router = useRouter();
+
+  // 点击卡片跳转到物业详情页
+  const handleClick = () => {
+    router.push(`/dashboard/base/sites/${baseId}/meters/${meter.id}`);
   };
 
   // 计算已分配工位号数量
@@ -29,7 +29,7 @@ export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardP
   ) || 0;
 
   return (
-    <div onClick={onClick} className="group cursor-pointer">
+    <div onClick={handleClick} className="group cursor-pointer">
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-0.5">
         {/* 物业编号和面积 */}
         <div className="flex items-center justify-between mb-4">
@@ -113,7 +113,7 @@ export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardP
           </div>
         )}
 
-        {/* 底部统计和新增按钮 */}
+        {/* 底部统计 */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
@@ -122,13 +122,7 @@ export function MeterCard({ meter, isExpanded, onClick, onAddSpace }: MeterCardP
               <span className="text-sm" style={{ color: "#A8A29E" }}>工位号已分配</span>
             </div>
           </div>
-          <button
-            onClick={handleAddSpace}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-medium transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-            新增空间
-          </button>
+          <span className="text-xs" style={{ color: "#A8A29E" }}>点击查看详情 →</span>
         </div>
       </div>
     </div>
