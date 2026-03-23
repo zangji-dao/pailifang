@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Target,
   Wallet,
+  Receipt,
 } from "lucide-react";
 import { Tab } from "./types";
 
@@ -48,6 +49,7 @@ const SETTLEMENT_TAB_CONFIGS: Record<string, TabConfig> = {
 const BASE_TAB_CONFIGS: Record<string, TabConfig> = {
   sites: { id: "base-sites", label: "基地管理", icon: <Building className="h-3.5 w-3.5" />, group: "base" },
   addresses: { id: "base-addresses", label: "地址管理", icon: <MapPin className="h-3.5 w-3.5" />, group: "base" },
+  finances: { id: "base-finances", label: "资金管理", icon: <Receipt className="h-3.5 w-3.5" />, group: "base" },
   tenants: { id: "base-tenants", label: "企业管理", icon: <Users className="h-3.5 w-3.5" />, group: "base" },
   contracts: { id: "base-contracts", label: "合同管理", icon: <FileSignature className="h-3.5 w-3.5" />, group: "base" },
 };
