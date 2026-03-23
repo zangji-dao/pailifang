@@ -62,29 +62,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 生成新的工位号
-    // 规则：REG-年份-月份-序号（如 REG-2026-03-001）
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-
-    // 获取当月最大序号
+    // 规则：KJ + 6位数字（如 KJ000001）
+    // 获取当前最大编号
     const { data: maxReg, error: maxError } = await supabase
       .from('registration_numbers')
       .select('code')
-      .like('code', `REG-${year}-${month}-%`)
+      .like('code', 'KJ%')
       .order('code', { ascending: false })
       .limit(1);
 
     let sequence = 1;
     if (maxReg && maxReg.length > 0) {
       const lastCode = maxReg[0].code;
-      const lastSequence = parseInt(lastCode.split('-')[3], 10);
+      // 提取数字部分
+      const lastSequence = parseInt(lastCode.replace('KJ', ''), 10);
       if (!isNaN(lastSequence)) {
         sequence = lastSequence + 1;
       }
     }
 
-    const newCode = `REG-${year}-${month}-${String(sequence).padStart(3, '0')}`;
+    // 生成8位编号：KJ + 6位数字
+    const newCode = `KJ${String(sequence).padStart(6, '0')}`;
 
     // 3. 插入新工位号（带默认产权单位和管理单位）
     const { data: newReg, error: insertError } = await supabase
