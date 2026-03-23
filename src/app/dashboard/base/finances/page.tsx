@@ -483,7 +483,8 @@ function CreateFinanceDialog({
   onSuccess: () => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [enterprises, setEnterprises] = useState<{ id: string; name: string }[]>([]);
+  const [enterprises, setEnterprises] = useState<{ id: string; name: string; address_code?: string | null; type?: string }[]>([]);
+  const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     enterprise_id: "",
@@ -497,16 +498,31 @@ function CreateFinanceDialog({
     site_id: "",
   });
 
-  // 加载企业列表
+  // 加载已分配地址的企业列表
+  const loadEnterprises = useCallback((searchKeyword: string) => {
+    const params = new URLSearchParams();
+    if (searchKeyword) {
+      params.set('keyword', searchKeyword);
+    }
+    
+    fetch(`/api/dashboard/base/finances/enterprises?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.data) {
+          setEnterprises(data.data.map((e: { id: string; name: string; address_code?: string | null; type?: string }) => ({
+            id: e.id,
+            name: e.name,
+            address_code: e.address_code,
+            type: e.type,
+          })));
+        }
+      });
+  }, []);
+
+  // 初始化加载
   useEffect(() => {
     if (open) {
-      fetch("/api/dashboard/base/tenants")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.enterprises) {
-            setEnterprises(data.enterprises.map((e: { id: string; name: string }) => ({ id: e.id, name: e.name })));
-          }
-        });
+      loadEnterprises("");
 
       fetch("/api/dashboard/base/sites")
         .then((res) => res.json())
@@ -516,7 +532,17 @@ function CreateFinanceDialog({
           }
         });
     }
-  }, [open]);
+  }, [open, loadEnterprises]);
+
+  // 搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (open) {
+        loadEnterprises(enterpriseSearch);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [enterpriseSearch, open, loadEnterprises]);
 
   const handleSubmit = async () => {
     if (!formData.enterprise_id || !formData.item_name || !formData.amount) {
@@ -578,16 +604,27 @@ function CreateFinanceDialog({
             {/* 企业选择 */}
             <div>
               <label className="text-sm font-medium">企业 <span className="text-rose-500">*</span></label>
-              <select
-                className="w-full mt-1.5 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={formData.enterprise_id}
-                onChange={(e) => setFormData({ ...formData, enterprise_id: e.target.value })}
-              >
-                <option value="">请选择企业</option>
-                {enterprises.map((e) => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">仅显示已分配地址的企业和服务企业</p>
+              <div className="relative">
+                <Input
+                  className="mb-2"
+                  placeholder="搜索企业名称..."
+                  value={enterpriseSearch}
+                  onChange={(e) => setEnterpriseSearch(e.target.value)}
+                />
+                <select
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={formData.enterprise_id}
+                  onChange={(e) => setFormData({ ...formData, enterprise_id: e.target.value })}
+                >
+                  <option value="">请选择企业</option>
+                  {enterprises.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name} {e.address_code ? `(${e.address_code})` : ""} {e.type === 'non_tenant' ? '[服务企业]' : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* 收费类型 */}
