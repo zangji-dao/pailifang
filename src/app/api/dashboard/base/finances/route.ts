@@ -98,19 +98,25 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
-    const { type, amount, enterprise_id, summary, remarks } = body;
+    const { type, category, amount, enterprise_id, summary, remarks } = body;
 
     // 验证必填字段
-    if (!type || !amount || !summary) {
+    if (!type || !amount || !summary || !category) {
       return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
+    }
+
+    // 验证企业必填
+    if (!enterprise_id) {
+      return NextResponse.json({ error: "请选择关联企业" }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from('finances')
       .insert({
         type,
+        category,
         amount,
-        enterprise_id: enterprise_id || null,
+        enterprise_id,
         summary,
         remarks: remarks || null,
       })

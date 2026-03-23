@@ -1,10 +1,42 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, RefreshCw, Loader2, Eye, ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
+import { Plus, RefreshCw, Loader2, ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
+// 收入类型配置
+const incomeTypes = [
+  { value: "service_fee", label: "服务费" },
+  { value: "deposit", label: "押金" },
+  { value: "utility", label: "水电费" },
+  { value: "network", label: "网络费" },
+  { value: "heating", label: "取暖费" },
+  { value: "other_income", label: "其他收入" },
+];
+
+// 支出类型配置
+const expenseTypes = [
+  { value: "refund_deposit", label: "退押金" },
+  { value: "refund_utility", label: "退水电费" },
+  { value: "refund_prepayment", label: "退预存款" },
+  { value: "other_expense", label: "其他支出" },
+];
+
+// 类型映射
+const typeLabels: Record<string, string> = {
+  service_fee: "服务费",
+  deposit: "押金",
+  utility: "水电费",
+  network: "网络费",
+  heating: "取暖费",
+  other_income: "其他收入",
+  refund_deposit: "退押金",
+  refund_utility: "退水电费",
+  refund_prepayment: "退预存款",
+  other_expense: "其他支出",
+};
 
 // 类型定义
 interface FinanceRecord {
@@ -12,6 +44,7 @@ interface FinanceRecord {
   enterprise_id: string;
   enterprise_name: string;
   type: "income" | "expense";
+  category: string;
   amount: number;
   summary: string;
   remarks: string | null;
@@ -221,12 +254,13 @@ export default function FinancesPage() {
             <table className="w-full">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground w-32">日期</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground w-36">日期</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground w-24">类型</th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">摘要</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground w-40">企业</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-32">收入</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-32">支出</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-32">余额</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground w-36">企业</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28">收入</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28">支出</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground w-28">余额</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -239,6 +273,14 @@ export default function FinancesPage() {
                     <tr key={record.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 text-sm text-muted-foreground">
                         {formatDateTime(record.created_at)}
+                      </td>
+                      <td className="p-4">
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded",
+                          record.type === "income" ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                        )}>
+                          {typeLabels[record.category] || record.category}
+                        </span>
                       </td>
                       <td className="p-4">
                         <div className="font-medium">{record.summary}</div>
@@ -333,20 +375,31 @@ function RecordDialog({
   onSuccess: () => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [enterprises, setEnterprises] = useState<{ id: string; name: string; address_code?: string | null; type?: string }[]>([]);
+  const [enterprises, setEnterprises] = useState<{ id: string; name: string; address_code?: string | null }[]>([]);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
   const [formData, setFormData] = useState({
     enterprise_id: "",
+    category: "",
     amount: "",
     summary: "",
     remarks: "",
   });
 
+  const categoryOptions = type === "income" ? incomeTypes : expenseTypes;
+
   // 加载企业
   useEffect(() => {
     if (open) {
       setEnterpriseSearch("");
-      setFormData({ enterprise_id: "", amount: "", summary: "", remarks: "" });
+      setEnterpriseOpen(false);
+      setFormData({
+        enterprise_id: "",
+        category: categoryOptions[0]?.value || "",
+        amount: "",
+        summary: "",
+        remarks: "",
+      });
       
       fetch("/api/dashboard/base/finances/enterprises")
         .then((res) => res.json())
@@ -356,11 +409,23 @@ function RecordDialog({
           }
         });
     }
-  }, [open]);
+  }, [open, type]);
 
   const handleSubmit = async () => {
-    if (!formData.amount || !formData.summary) {
-      alert("请填写金额和摘要");
+    if (!formData.enterprise_id) {
+      alert("请选择企业");
+      return;
+    }
+    if (!formData.category) {
+      alert("请选择类型");
+      return;
+    }
+    if (!formData.amount) {
+      alert("请填写金额");
+      return;
+    }
+    if (!formData.summary) {
+      alert("请填写摘要");
       return;
     }
 
@@ -371,8 +436,9 @@ function RecordDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
+          category: formData.category,
           amount: parseFloat(formData.amount),
-          enterprise_id: formData.enterprise_id || null,
+          enterprise_id: formData.enterprise_id,
           summary: formData.summary,
           remarks: formData.remarks || null,
         }),
@@ -421,38 +487,18 @@ function RecordDialog({
             </h2>
           </div>
           <div className="p-6 space-y-4">
-            {/* 金额 */}
+            {/* 关联企业 - 必填 */}
             <div>
-              <label className="text-sm font-medium">金额 <span className="text-rose-500">*</span></label>
-              <Input
-                type="number"
-                className="mt-1.5 text-xl font-semibold"
-                placeholder="0.00"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                autoFocus
-              />
-            </div>
-
-            {/* 摘要 */}
-            <div>
-              <label className="text-sm font-medium">摘要 <span className="text-rose-500">*</span></label>
-              <Input
-                className="mt-1.5"
-                placeholder="例如：收取服务费、退回押金、支付水电费..."
-                value={formData.summary}
-                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-              />
-            </div>
-
-            {/* 关联企业 */}
-            <div>
-              <label className="text-sm font-medium">关联企业</label>
+              <label className="text-sm font-medium">企业 <span className="text-rose-500">*</span></label>
               <div className="relative mt-1.5">
                 <button
                   type="button"
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-left flex items-center justify-between hover:border-cyan-400"
-                  onClick={() => document.getElementById('enterprise-dropdown')?.classList.toggle('hidden')}
+                  onClick={() => setEnterpriseOpen(!enterpriseOpen)}
+                  className={cn(
+                    "w-full h-10 rounded-md border px-3 py-2 text-sm text-left flex items-center justify-between",
+                    !selectedEnterprise && "border-rose-300 bg-rose-50/50",
+                    selectedEnterprise && "border-input bg-background"
+                  )}
                 >
                   <span className={selectedEnterprise ? "text-foreground" : "text-muted-foreground"}>
                     {selectedEnterprise ? (
@@ -462,53 +508,92 @@ function RecordDialog({
                           <span className="text-muted-foreground ml-1">({selectedEnterprise.address_code})</span>
                         )}
                       </>
-                    ) : "选择企业（可选）"}
+                    ) : "请选择企业"}
                   </span>
-                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className={cn("h-4 w-4 text-muted-foreground transition-transform", enterpriseOpen && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <div id="enterprise-dropdown" className="hidden absolute z-50 w-full mt-1 bg-card border rounded-lg shadow-lg">
-                  <div className="p-2 border-b">
-                    <input
-                      type="text"
-                      placeholder="搜索企业..."
-                      value={enterpriseSearch}
-                      onChange={(e) => setEnterpriseSearch(e.target.value)}
-                      className="w-full h-8 px-3 text-sm border rounded-md bg-background"
-                    />
+                
+                {enterpriseOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-card border rounded-lg shadow-lg">
+                    <div className="p-2 border-b">
+                      <input
+                        type="text"
+                        placeholder="搜索企业..."
+                        value={enterpriseSearch}
+                        onChange={(e) => setEnterpriseSearch(e.target.value)}
+                        className="w-full h-8 px-3 text-sm border rounded-md bg-background focus:outline-none"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-auto">
+                      {filteredEnterprises.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                          {enterpriseSearch ? "未找到匹配企业" : "暂无企业"}
+                        </div>
+                      ) : (
+                        filteredEnterprises.map((e) => (
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, enterprise_id: e.id });
+                              setEnterpriseOpen(false);
+                              setEnterpriseSearch("");
+                            }}
+                            className={cn(
+                              "w-full px-3 py-2 text-sm text-left hover:bg-muted/50",
+                              formData.enterprise_id === e.id && "bg-cyan-50 text-cyan-600"
+                            )}
+                          >
+                            {e.name}
+                            {e.address_code && <span className="text-muted-foreground ml-1">({e.address_code})</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <div className="max-h-48 overflow-auto">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, enterprise_id: "" });
-                        document.getElementById('enterprise-dropdown')?.classList.add('hidden');
-                      }}
-                      className="w-full px-3 py-2 text-sm text-left hover:bg-muted/50 text-muted-foreground"
-                    >
-                      不关联企业
-                    </button>
-                    {filteredEnterprises.map((e) => (
-                      <button
-                        key={e.id}
-                        type="button"
-                        onClick={() => {
-                          setFormData({ ...formData, enterprise_id: e.id });
-                          document.getElementById('enterprise-dropdown')?.classList.add('hidden');
-                        }}
-                        className={cn(
-                          "w-full px-3 py-2 text-sm text-left hover:bg-muted/50",
-                          formData.enterprise_id === e.id && "bg-cyan-50 text-cyan-600"
-                        )}
-                      >
-                        {e.name}
-                        {e.address_code && <span className="text-muted-foreground ml-1">({e.address_code})</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
+            </div>
+
+            {/* 类型 - 必填 */}
+            <div>
+              <label className="text-sm font-medium">类型 <span className="text-rose-500">*</span></label>
+              <select
+                className="w-full mt-1.5 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              >
+                <option value="">请选择类型</option>
+                {categoryOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 金额 */}
+            <div>
+              <label className="text-sm font-medium">金额 <span className="text-rose-500">*</span></label>
+              <Input
+                type="number"
+                className="mt-1.5 text-lg"
+                placeholder="0.00"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              />
+            </div>
+
+            {/* 摘要 */}
+            <div>
+              <label className="text-sm font-medium">摘要 <span className="text-rose-500">*</span></label>
+              <Input
+                className="mt-1.5"
+                placeholder="请输入摘要说明..."
+                value={formData.summary}
+                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+              />
             </div>
 
             {/* 备注 */}
