@@ -51,6 +51,10 @@ export default function MeterDetailPage() {
   const [syncingElectricity, setSyncingElectricity] = useState(false);
   const [syncingWater, setSyncingWater] = useState(false);
 
+  // 删除物业确认
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   // 表单数据
   const [form, setForm] = useState({
     code: "",
@@ -395,6 +399,53 @@ export default function MeterDetailPage() {
     }
   };
 
+  // 检查物业是否可以删除
+  const canDeleteMeter = () => {
+    if (!meter) return false;
+    // 不能有入驻企业
+    if (meter.enterpriseId) return false;
+    // 不能有已分配的工位号
+    const hasAllocatedRegNumbers = meter.spaces?.some(space => 
+      space.regNumbers?.some(reg => reg.status === "allocated")
+    );
+    if (hasAllocatedRegNumbers) return false;
+    return true;
+  };
+
+  // 获取不可删除原因
+  const getDeleteDisabledReason = () => {
+    if (!meter) return "物业不存在";
+    if (meter.enterpriseId) return "该物业已入驻企业";
+    const hasAllocatedRegNumbers = meter.spaces?.some(space => 
+      space.regNumbers?.some(reg => reg.status === "allocated")
+    );
+    if (hasAllocatedRegNumbers) return "该物业有已分配的工位号";
+    return "";
+  };
+
+  // 删除物业
+  const handleDeleteMeter = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/meters/${meterId}`, {
+        method: "DELETE",
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("物业删除成功");
+        router.push(`/dashboard/base/sites/${baseId}`);
+      } else {
+        toast.error(result.error || "删除失败");
+      }
+    } catch (error) {
+      toast.error("删除失败");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]" style={{ background: "linear-gradient(180deg, #FDFBF7 0%, #F8F5F0 100%)" }}>
@@ -440,19 +491,31 @@ export default function MeterDetailPage() {
                 <p className="text-sm" style={{ color: "#78716C" }}>编辑物业基本信息和表号</p>
               </div>
             </div>
-            <Button onClick={handleSave} disabled={saving} className="h-10 px-6">
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  保存中...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  保存
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteConfirm(true)} 
+                disabled={!canDeleteMeter()}
+                className="h-10 px-4 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 disabled:text-slate-400 disabled:border-slate-200 disabled:hover:bg-transparent"
+                title={!canDeleteMeter() ? getDeleteDisabledReason() : "删除物业"}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="h-10 px-6">
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    保存
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -992,6 +1055,40 @@ export default function MeterDetailPage() {
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
               {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                '确认删除'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 删除物业确认对话框 */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除物业</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除物业 <strong>{meter?.code}</strong> 吗？删除后不可恢复。
+              {!canDeleteMeter() && (
+                <span className="block mt-2 text-red-600 font-medium">
+                  {getDeleteDisabledReason()}，无法删除。
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteMeter}
+              disabled={deleting || !canDeleteMeter()}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   删除中...

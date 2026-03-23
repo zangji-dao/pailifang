@@ -37,6 +37,7 @@ export interface Meter {
   baseId: string;
   code: string;
   name: string;
+  enterpriseId: string | null; // 入驻企业ID
   // 电表
   electricityNumber: string | null;
   electricityType: MeterType;

@@ -202,3 +202,87 @@ export async function PATCH(
     );
   }
 }
+
+/**
+ * DELETE /api/meters/[id]
+ * 删除物业（需要检查是否有入驻企业和已分配的工位号）
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = createClient();
+    const { id } = await params;
+
+    // 先获取物业信息，检查是否可以删除
+    const { data: meter, error: fetchError } = await supabase
+      .from('meters')
+      .select(`
+        id,
+        enterprise_id,
+        spaces (
+          id,
+          reg_numbers (
+            id,
+            status
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !meter) {
+      return NextResponse.json(
+        { success: false, error: '物业不存在' },
+        { status: 404 }
+      );
+    }
+
+    // 检查是否有入驻企业
+    if (meter.enterprise_id) {
+      return NextResponse.json(
+        { success: false, error: '该物业已入驻企业，无法删除' },
+        { status: 400 }
+      );
+    }
+
+    // 检查是否有已分配的工位号
+    const hasAllocatedRegNumbers = meter.spaces?.some((space: any) => 
+      space.reg_numbers?.some((reg: any) => reg.status === 'allocated')
+    );
+
+    if (hasAllocatedRegNumbers) {
+      return NextResponse.json(
+        { success: false, error: '该物业有已分配的工位号，无法删除' },
+        { status: 400 }
+      );
+    }
+
+    // 可以删除，先删除关联的空间和工位号
+    // 由于数据库有级联删除，直接删除物业即可
+    const { error: deleteError } = await supabase
+      .from('meters')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('删除物业失败:', deleteError);
+      return NextResponse.json(
+        { success: false, error: '删除物业失败' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: '物业删除成功',
+    });
+  } catch (error) {
+    console.error('删除物业失败:', error);
+    return NextResponse.json(
+      { success: false, error: '删除物业失败' },
+      { status: 500 }
+    );
+  }
+}
