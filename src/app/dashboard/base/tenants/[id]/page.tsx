@@ -76,7 +76,7 @@ const typeConfig: Record<string, { label: string; description: string; className
     className: "bg-primary/10 text-primary border-primary/20",
   },
   non_tenant: {
-    label: "非入驻企业",
+    label: "服务企业",
     description: "不在基地内注册的企业",
     className: "bg-muted text-muted-foreground border-border",
   },
@@ -363,7 +363,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
             <div className="p-6">
               <p className="text-slate-600 text-sm leading-relaxed">
                 {enterprise.type === "non_tenant"
-                  ? "非入驻企业：不在基地内注册的企业，仅使用园区提供的服务。"
+                  ? "服务企业：不在基地内注册的企业，仅使用园区提供的服务。"
                   : "入驻企业：在基地内注册的企业，享受基地提供的各项服务和支持。"}
               </p>
             </div>

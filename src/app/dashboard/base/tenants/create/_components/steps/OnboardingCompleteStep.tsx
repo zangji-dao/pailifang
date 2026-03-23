@@ -118,7 +118,7 @@ export function OnboardingCompleteStep({
                 <div>
                   <p className="text-xs text-muted-foreground">企业类型</p>
                   <Badge variant={enterpriseType === "tenant" ? "default" : "secondary"}>
-                    {enterpriseType === "tenant" ? "入驻企业" : "非入驻企业"}
+                    {enterpriseType === "tenant" ? "入驻企业" : "服务企业"}
                   </Badge>
                 </div>
               </div>

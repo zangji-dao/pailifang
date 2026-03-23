@@ -64,7 +64,7 @@ export function ConfirmInfoStep({
             <div>
               <Label className="text-muted-foreground">企业类型</Label>
               <p className="font-semibold">
-                {enterpriseType === "tenant" ? "入驻企业" : "非入驻企业"}
+                {enterpriseType === "tenant" ? "入驻企业" : "服务企业"}
               </p>
             </div>
             <div>

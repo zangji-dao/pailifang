@@ -77,7 +77,7 @@ export function SelectTypeStep({
             </CardContent>
           </Card>
 
-          {/* 非入驻企业 */}
+          {/* 服务企业 */}
           <Card 
             className={`cursor-pointer transition-all hover:border-primary hover:shadow-lg ${
               enterpriseType === "non_tenant" ? "border-primary ring-2 ring-primary/20" : ""
@@ -88,7 +88,7 @@ export function SelectTypeStep({
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
                 <Store className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">非入驻企业</h3>
+              <h3 className="text-lg font-semibold mb-2">服务企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 不在园区入驻，仅使用园区服务
               </p>

@@ -99,7 +99,7 @@ const tenantStatusConfig: Record<string, {
   },
 };
 
-// 非入驻企业状态配置
+// 服务企业状态配置
 const nonTenantStatusConfig: Record<string, { 
   label: string; 
   color: string; 
@@ -207,7 +207,7 @@ export default function EnterpriseListPage() {
     moved_out: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "moved_out").length,
   };
 
-  // 非入驻企业统计
+  // 服务企业统计
   const nonTenantStats = {
     total: enterprises.filter((e) => e.type === "non_tenant").length,
     new: enterprises.filter((e) => e.type === "non_tenant" && (e.processStatus === "new" || e.processStatus === undefined)).length,
@@ -239,7 +239,7 @@ export default function EnterpriseListPage() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">企业管理</h1>
           <p className="text-sm text-slate-500 mt-1">
-            管理入驻企业和非入驻企业
+            管理入驻企业和服务企业
           </p>
         </div>
         <Button
@@ -280,7 +280,7 @@ export default function EnterpriseListPage() {
             )}
           >
             <Store className="h-4 w-4" />
-            <span className="font-medium">非入驻企业</span>
+            <span className="font-medium">服务企业</span>
             <Badge variant="secondary" className="ml-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{nonTenantStats.total}</Badge>
           </button>
         </div>
@@ -317,7 +317,7 @@ export default function EnterpriseListPage() {
         </div>
       )}
 
-      {/* 非入驻企业 - 状态卡片 */}
+      {/* 服务企业 - 状态卡片 */}
       {activeTab === "non_tenant" && (
         <div className="pb-4">
           <div className="grid grid-cols-4 gap-2">
@@ -370,7 +370,7 @@ export default function EnterpriseListPage() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Building2 className="h-16 w-16 text-muted-foreground/30 mb-4" />
           <div className="text-muted-foreground mb-2">
-            暂无{activeTab === "tenant" ? "入驻企业" : "非入驻企业"}
+            暂无{activeTab === "tenant" ? "入驻企业" : "服务企业"}
           </div>
           <div className="text-sm text-muted-foreground">点击右上角「新建企业」创建</div>
         </div>
