@@ -19,22 +19,27 @@
   --text-stat-number: 1.5rem;
   --text-stat-number--line-height: 2rem;
 
-  /* 七彩配色 - 入驻流程步骤颜色 */
-  --color-step-sky: var(--step-sky);
-  --color-step-sky-foreground: var(--step-sky-foreground);
-  --color-step-sky-muted: var(--step-sky-muted);
-  --color-step-violet: var(--step-violet);
-  --color-step-violet-foreground: var(--step-violet-foreground);
-  --color-step-violet-muted: var(--step-violet-muted);
-  --color-step-amber: var(--step-amber);
-  --color-step-amber-foreground: var(--step-amber-foreground);
-  --color-step-amber-muted: var(--step-amber-muted);
-  --color-step-emerald: var(--step-emerald);
-  --color-step-emerald-foreground: var(--step-emerald-foreground);
-  --color-step-emerald-muted: var(--step-emerald-muted);
-  --color-step-rose: var(--step-rose);
-  --color-step-rose-foreground: var(--step-rose-foreground);
-  --color-step-rose-muted: var(--step-rose-muted);
+  /* 七彩配色 - 入驻流程步骤颜色（更鲜艳的颜色） */
+  /* 天蓝色 - 分配地址 */
+  --color-step-sky: #3b82f6;
+  --color-step-sky-foreground: #ffffff;
+  --color-step-sky-muted: #dbeafe;
+  /* 紫罗兰色 - 工商注册 */
+  --color-step-violet: #8b5cf6;
+  --color-step-violet-foreground: #ffffff;
+  --color-step-violet-muted: #ede9fe;
+  /* 琥珀色 - 签订合同 */
+  --color-step-amber: #f59e0b;
+  --color-step-amber-foreground: #1f2937;
+  --color-step-amber-muted: #fef3c7;
+  /* 翡翠绿 - 费用缴纳 */
+  --color-step-emerald: #10b981;
+  --color-step-emerald-foreground: #ffffff;
+  --color-step-emerald-muted: #d1fae5;
+  /* 玫瑰粉 - 完成入驻 */
+  --color-step-rose: #f43f5e;
+  --color-step-rose-foreground: #ffffff;
+  --color-step-rose-muted: #ffe4e6;
 
   /* 颜色变量 */
   --color-background: var(--background);
