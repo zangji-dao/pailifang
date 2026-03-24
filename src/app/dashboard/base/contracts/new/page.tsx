@@ -17,6 +17,7 @@ import {
   Check,
   Clock,
   FileCheck,
+  Landmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,15 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+// 甲方信息（服务方）
+const PARTY_A = {
+  name: "Π立方企业服务中心",
+  creditCode: "91220700MAE5DWN98Y", // 示例信用代码，实际应从配置或数据库获取
+  legalPerson: "",
+  address: "吉林省松原市宁江区",
+  contactPhone: "",
+};
 
 // 场地类型配置（根据合同范本）
 const spaceTypeOptions = [
@@ -230,6 +240,22 @@ export default function NewContractPage() {
           depositAmount: formData.deposit,
           startDate: formData.startDate,
           endDate: formData.endDate,
+          // 甲方信息
+          partyA: {
+            name: PARTY_A.name,
+            creditCode: PARTY_A.creditCode,
+            legalPerson: PARTY_A.legalPerson,
+            address: PARTY_A.address,
+            contactPhone: PARTY_A.contactPhone,
+          },
+          // 乙方信息
+          partyB: {
+            name: selectedEnterprise.name,
+            creditCode: selectedEnterprise.creditCode,
+            legalPerson: selectedEnterprise.legalPerson,
+            phone: selectedEnterprise.phone,
+            address: selectedEnterprise.registeredAddress || selectedEnterprise.businessAddress,
+          },
           remarks: JSON.stringify({
             spaceType: formData.spaceType,
             spaceTypeLabel: selectedSpace?.label,
@@ -435,6 +461,44 @@ export default function NewContractPage() {
       {/* 步骤3：确认合同信息 */}
       {step === 3 && selectedEnterprise && (
         <div className="space-y-6">
+          {/* 甲方信息 */}
+          <Card className="border-primary/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Landmark className="h-5 w-5 text-primary" />
+                甲方信息（服务方）
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">企业名称：</span>
+                  <span className="font-medium">{PARTY_A.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">统一社会信用代码：</span>
+                  <span className="font-mono">{PARTY_A.creditCode}</span>
+                </div>
+                {PARTY_A.legalPerson && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">法定代表人：</span>
+                    <span>{PARTY_A.legalPerson}</span>
+                  </div>
+                )}
+                {PARTY_A.contactPhone && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">联系电话：</span>
+                    <span>{PARTY_A.contactPhone}</span>
+                  </div>
+                )}
+                <div className="col-span-2 flex items-start gap-2">
+                  <span className="text-muted-foreground">地址：</span>
+                  <span>{PARTY_A.address}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 乙方信息 */}
           <Card>
             <CardHeader>
