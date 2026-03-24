@@ -41,6 +41,12 @@ interface Contract {
   createdAt: string;
 }
 
+interface EnterpriseInfo {
+  id: string;
+  name: string;
+  processStatus?: string;
+}
+
 // 状态配置 - 使用统一的七彩配色风格
 const statusConfig: Record<ContractStatus, { 
   label: string; 
@@ -91,6 +97,7 @@ export default function ContractDetailPage() {
   const contractId = params.id as string;
 
   const [contract, setContract] = useState<Contract | null>(null);
+  const [enterprise, setEnterprise] = useState<EnterpriseInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
@@ -104,10 +111,26 @@ export default function ContractDetailPage() {
       if (!response.ok) throw new Error("获取合同详情失败");
       const result = await response.json();
       // 标准化状态
-      setContract({
+      const contractData = {
         ...result.data,
         status: normalizeStatus(result.data.status),
-      });
+      };
+      setContract(contractData);
+
+      // 如果有 enterpriseId 但没有 enterpriseName，则获取企业信息
+      if (contractData.enterpriseId && !contractData.enterpriseName) {
+        const enterpriseRes = await fetch(`/api/enterprises/${contractData.enterpriseId}`);
+        if (enterpriseRes.ok) {
+          const enterpriseResult = await enterpriseRes.json();
+          // 处理蛇形命名到小驼峰命名的转换
+          const enterpriseData = enterpriseResult.data;
+          setEnterprise({
+            id: enterpriseData.id,
+            name: enterpriseData.name,
+            processStatus: enterpriseData.process_status,
+          });
+        }
+      }
     } catch (error) {
       console.error("获取合同详情失败:", error);
       toast.error("获取合同详情失败");
@@ -314,7 +337,7 @@ export default function ContractDetailPage() {
                   <p className="text-sm text-muted-foreground">关联企业</p>
                   <p className="font-medium flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    {contract.enterpriseName || contract.contractName?.replace(/合同$/, '') || "-"}
+                    {contract.enterpriseName || enterprise?.name || contract.contractName?.replace(/合同$/, '') || "-"}
                   </p>
                 </div>
                 <div className="space-y-1">
