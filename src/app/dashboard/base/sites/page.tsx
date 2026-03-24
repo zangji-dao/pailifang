@@ -37,6 +37,12 @@ interface Base {
   status: string;
   meterCount: number;
   createdAt: string;
+  // 管理公司信息（甲方）
+  management_company_name?: string | null;
+  management_company_credit_code?: string | null;
+  management_company_legal_person?: string | null;
+  management_company_address?: string | null;
+  management_company_phone?: string | null;
 }
 
 interface BaseStats {
@@ -94,6 +100,12 @@ export default function BaseListPage() {
     longitude: 0,
     latitude: 0,
     status: "active",
+    // 管理公司信息（甲方）
+    management_company_name: "",
+    management_company_credit_code: "",
+    management_company_legal_person: "",
+    management_company_address: "",
+    management_company_phone: "",
   });
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
@@ -186,6 +198,12 @@ export default function BaseListPage() {
       longitude: base.longitude || 0,
       latitude: base.latitude || 0,
       status: base.status,
+      // 管理公司信息
+      management_company_name: base.management_company_name || "",
+      management_company_credit_code: base.management_company_credit_code || "",
+      management_company_legal_person: base.management_company_legal_person || "",
+      management_company_address: base.management_company_address || "",
+      management_company_phone: base.management_company_phone || "",
     });
     
     // 根据城市代码找到对应的省份和城市
@@ -312,7 +330,19 @@ export default function BaseListPage() {
 
   // 重置表单
   const resetForm = () => {
-    setFormData({ name: "", address: "", city_code: "", longitude: 0, latitude: 0, status: "active" });
+    setFormData({
+      name: "",
+      address: "",
+      city_code: "",
+      longitude: 0,
+      latitude: 0,
+      status: "active",
+      management_company_name: "",
+      management_company_credit_code: "",
+      management_company_legal_person: "",
+      management_company_address: "",
+      management_company_phone: "",
+    });
     setSelectedProvince(null);
     setSelectedCity(null);
     setEditingBase(null);
@@ -534,6 +564,89 @@ export default function BaseListPage() {
                   />
                   <span className="text-sm text-slate-700">已停用</span>
                 </label>
+              </div>
+            </div>
+            
+            {/* 分隔线 */}
+            <div className="border-t border-slate-200 pt-5 mt-5">
+              <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-amber-500" />
+                管理公司信息（合同甲方）
+              </h3>
+              <p className="text-sm text-slate-500 mb-4">
+                填写该基地的管理公司信息，用于生成入驻合同时作为甲方信息
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* 管理公司名称 */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    管理公司名称
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.management_company_name}
+                    onChange={(e) => setFormData({ ...formData, management_company_name: e.target.value })}
+                    placeholder="例如：XX企业服务中心"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+                
+                {/* 统一社会信用代码 */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    统一社会信用代码
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.management_company_credit_code}
+                    onChange={(e) => setFormData({ ...formData, management_company_credit_code: e.target.value })}
+                    placeholder="18位信用代码"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 font-mono"
+                  />
+                </div>
+                
+                {/* 法定代表人 */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    法定代表人
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.management_company_legal_person}
+                    onChange={(e) => setFormData({ ...formData, management_company_legal_person: e.target.value })}
+                    placeholder="法人姓名"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+                
+                {/* 联系电话 */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    联系电话
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.management_company_phone}
+                    onChange={(e) => setFormData({ ...formData, management_company_phone: e.target.value })}
+                    placeholder="联系电话"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+                
+                {/* 公司地址 */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    公司地址
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.management_company_address}
+                    onChange={(e) => setFormData({ ...formData, management_company_address: e.target.value })}
+                    placeholder="详细地址"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
               </div>
             </div>
           </div>

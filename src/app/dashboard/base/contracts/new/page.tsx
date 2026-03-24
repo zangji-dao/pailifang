@@ -36,15 +36,6 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// 甲方信息（服务方）
-const PARTY_A = {
-  name: "Π立方企业服务中心",
-  creditCode: "91220700MAE5DWN98Y", // 示例信用代码，实际应从配置或数据库获取
-  legalPerson: "",
-  address: "吉林省松原市宁江区",
-  contactPhone: "",
-};
-
 // 场地类型配置（根据合同范本）
 const spaceTypeOptions = [
   { 
@@ -92,6 +83,17 @@ interface Enterprise {
   businessAddress?: string;
   type: string;
   processStatus: string;
+  baseId?: string;
+  baseName?: string;
+}
+
+// 管理公司（甲方）信息
+interface ManagementCompany {
+  name: string;
+  creditCode: string;
+  legalPerson: string;
+  address: string;
+  phone: string;
 }
 
 export default function NewContractPage() {
@@ -104,6 +106,10 @@ export default function NewContractPage() {
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [selectedEnterprise, setSelectedEnterprise] = useState<Enterprise | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
+  
+  // 管理公司（甲方）信息 - 从企业关联的基地获取
+  const [managementCompany, setManagementCompany] = useState<ManagementCompany | null>(null);
+  const [loadingManagement, setLoadingManagement] = useState(false);
 
   // 合同信息
   const [formData, setFormData] = useState({
@@ -143,9 +149,38 @@ export default function NewContractPage() {
     fetchEnterprises();
   }, []);
 
-  // 选择企业
-  const handleSelectEnterprise = (enterprise: Enterprise) => {
+  // 选择企业后获取基地的管理公司信息
+  const handleSelectEnterprise = async (enterprise: Enterprise) => {
     setSelectedEnterprise(enterprise);
+    
+    // 如果企业有关联基地，获取基地的管理公司信息
+    if (enterprise.baseId) {
+      setLoadingManagement(true);
+      try {
+        const response = await fetch(`/api/bases/${enterprise.baseId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const base = result.data;
+            setManagementCompany({
+              name: base.management_company_name || "",
+              creditCode: base.management_company_credit_code || "",
+              legalPerson: base.management_company_legal_person || "",
+              address: base.management_company_address || "",
+              phone: base.management_company_phone || "",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("获取基地管理公司信息失败:", error);
+        setManagementCompany(null);
+      } finally {
+        setLoadingManagement(false);
+      }
+    } else {
+      setManagementCompany(null);
+    }
+    
     setStep(2);
   };
 
@@ -240,14 +275,14 @@ export default function NewContractPage() {
           depositAmount: formData.deposit,
           startDate: formData.startDate,
           endDate: formData.endDate,
-          // 甲方信息
-          partyA: {
-            name: PARTY_A.name,
-            creditCode: PARTY_A.creditCode,
-            legalPerson: PARTY_A.legalPerson,
-            address: PARTY_A.address,
-            contactPhone: PARTY_A.contactPhone,
-          },
+          // 甲方信息（从基地管理公司获取）
+          partyA: managementCompany ? {
+            name: managementCompany.name,
+            creditCode: managementCompany.creditCode,
+            legalPerson: managementCompany.legalPerson,
+            address: managementCompany.address,
+            contactPhone: managementCompany.phone,
+          } : undefined,
           // 乙方信息
           partyB: {
             name: selectedEnterprise.name,
@@ -462,7 +497,7 @@ export default function NewContractPage() {
       {step === 3 && selectedEnterprise && (
         <div className="space-y-6">
           {/* 甲方信息 */}
-          <Card className="border-primary/30">
+          <Card className={managementCompany ? "border-primary/30" : "border-amber-200 bg-amber-50/50"}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Landmark className="h-5 w-5 text-primary" />
@@ -470,32 +505,49 @@ export default function NewContractPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">企业名称：</span>
-                  <span className="font-medium">{PARTY_A.name}</span>
+              {loadingManagement ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>正在加载管理公司信息...</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">统一社会信用代码：</span>
-                  <span className="font-mono">{PARTY_A.creditCode}</span>
-                </div>
-                {PARTY_A.legalPerson && (
+              ) : managementCompany ? (
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">法定代表人：</span>
-                    <span>{PARTY_A.legalPerson}</span>
+                    <span className="text-muted-foreground">企业名称：</span>
+                    <span className="font-medium">{managementCompany.name || "-"}</span>
                   </div>
-                )}
-                {PARTY_A.contactPhone && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">联系电话：</span>
-                    <span>{PARTY_A.contactPhone}</span>
+                    <span className="text-muted-foreground">统一社会信用代码：</span>
+                    <span className="font-mono">{managementCompany.creditCode || "-"}</span>
                   </div>
-                )}
-                <div className="col-span-2 flex items-start gap-2">
-                  <span className="text-muted-foreground">地址：</span>
-                  <span>{PARTY_A.address}</span>
+                  {managementCompany.legalPerson && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">法定代表人：</span>
+                      <span>{managementCompany.legalPerson}</span>
+                    </div>
+                  )}
+                  {managementCompany.phone && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">联系电话：</span>
+                      <span>{managementCompany.phone}</span>
+                    </div>
+                  )}
+                  <div className="col-span-2 flex items-start gap-2">
+                    <span className="text-muted-foreground">地址：</span>
+                    <span>{managementCompany.address || "-"}</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-start gap-2 text-amber-600">
+                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">未配置管理公司信息</p>
+                    <p className="text-sm text-amber-600/80 mt-1">
+                      该企业关联的基地尚未配置管理公司信息。请先在「基地管理」中为该基地设置管理公司信息，或手动填写甲方信息。
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
