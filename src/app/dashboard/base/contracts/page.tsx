@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 类型定义
 type ContractStatus = "pending" | "signed" | "expired" | "terminated";
@@ -103,6 +104,7 @@ const normalizeStatus = (status: string): ContractStatus => {
 
 export default function ContractsPage() {
   const router = useRouter();
+  const tabs = useTabs();
 
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -199,7 +201,18 @@ export default function ContractsPage() {
           <h1 className="text-2xl font-semibold">合同管理</h1>
           <p className="text-muted-foreground mt-1">管理企业入驻合同</p>
         </div>
-        <Button onClick={() => router.push("/dashboard/base/contracts/new")}>
+        <Button onClick={() => {
+          if (tabs) {
+            tabs.openTab({
+              id: "new-contract",
+              label: "新建合同",
+              path: "/dashboard/base/contracts/new",
+              icon: <Plus className="h-3.5 w-3.5" />,
+            });
+          } else {
+            router.push("/dashboard/base/contracts/new");
+          }
+        }}>
           <Plus className="h-4 w-4 mr-2" />
           新建合同
         </Button>
@@ -351,7 +364,18 @@ export default function ContractsPage() {
               : `暂无${statusConfig[statusFilter as ContractStatus].label}状态的合同`}
           </p>
           {statusFilter === "pending" && (
-            <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/base/contracts/new")}>
+            <Button variant="outline" className="mt-4" onClick={() => {
+              if (tabs) {
+                tabs.openTab({
+                  id: "new-contract",
+                  label: "新建合同",
+                  path: "/dashboard/base/contracts/new",
+                  icon: <Plus className="h-3.5 w-3.5" />,
+                });
+              } else {
+                router.push("/dashboard/base/contracts/new");
+              }
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               新建合同
             </Button>
@@ -365,7 +389,18 @@ export default function ContractsPage() {
               <div
                 key={contract.id}
                 className="p-4 hover:bg-muted/50 cursor-pointer transition-colors flex items-center justify-between"
-                onClick={() => router.push(`/dashboard/base/contracts/${contract.id}`)}
+                onClick={() => {
+                  if (tabs) {
+                    tabs.openTab({
+                      id: `contract-${contract.id}`,
+                      label: contract.contractName || contract.enterpriseName || "合同详情",
+                      path: `/dashboard/base/contracts/${contract.id}`,
+                      icon: <Eye className="h-3.5 w-3.5" />,
+                    });
+                  } else {
+                    router.push(`/dashboard/base/contracts/${contract.id}`);
+                  }
+                }}
               >
                 <div className="flex items-center gap-4">
                   <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center", statusInfo.bgColor)}>

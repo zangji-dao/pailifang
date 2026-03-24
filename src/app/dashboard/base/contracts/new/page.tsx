@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 企业类型
 interface Enterprise {
@@ -48,6 +49,7 @@ const steps = [
 
 export default function NewContractPage() {
   const router = useRouter();
+  const tabs = useTabs();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -271,7 +273,12 @@ export default function NewContractPage() {
       const result = await response.json();
       if (result.success) {
         toast.success("合同创建成功");
-        router.push(`/dashboard/base/contracts/${result.data.id}`);
+        // 关闭当前标签页并打开合同详情页
+        if (tabs) {
+          tabs.closeCurrentTabAndNavigate(`/dashboard/base/contracts/${result.data.id}`);
+        } else {
+          router.push(`/dashboard/base/contracts/${result.data.id}`);
+        }
       } else {
         toast.error(result.error || "创建失败");
       }

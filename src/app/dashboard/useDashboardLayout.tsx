@@ -113,6 +113,40 @@ export function useDashboardLayout() {
     setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, label } : t)));
   }, []);
 
+  // 关闭当前标签页并导航到目标页面
+  // 用于完成创建后关闭新建标签页，跳转到列表页或详情页
+  const closeCurrentTabAndNavigate = useCallback(
+    (targetPath: string, targetLabel?: string) => {
+      const currentTabId = activeTab;
+      const currentTabIndex = tabs.findIndex((t) => t.id === currentTabId);
+      
+      // 关闭当前标签页
+      const newTabs = tabs.filter((t) => t.id !== currentTabId);
+      setTabs(newTabs);
+      
+      // 如果目标路径已存在标签页，切换到该标签页
+      const existingTab = newTabs.find((t) => t.path === targetPath);
+      if (existingTab) {
+        setActiveTab(existingTab.id);
+        router.push(existingTab.path);
+      } else {
+        // 计算新的激活标签页索引
+        const newActiveIndex = Math.min(currentTabIndex, newTabs.length - 1);
+        if (newTabs.length > 0 && newActiveIndex >= 0) {
+          // 切换到相邻标签页
+          const newActiveTab = newTabs[newActiveIndex];
+          setActiveTab(newActiveTab.id);
+          // 然后导航到目标路径（会自动创建新标签页）
+          router.push(targetPath);
+        } else {
+          // 如果没有其他标签页，直接导航
+          router.push(targetPath);
+        }
+      }
+    },
+    [activeTab, tabs, router]
+  );
+
   // 切换菜单展开状态
   const toggleMenu = useCallback((menuName: string) => {
     setExpandedMenus((prev) => ({ ...prev, [menuName]: !prev[menuName] }));
@@ -188,6 +222,7 @@ export function useDashboardLayout() {
     closeTab,
     switchTab,
     updateTabLabel,
+    closeCurrentTabAndNavigate,
     // 菜单操作
     toggleMenu,
     // 用户操作

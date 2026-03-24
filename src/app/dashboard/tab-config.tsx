@@ -22,6 +22,8 @@ import {
   Target,
   Wallet,
   Receipt,
+  Plus,
+  Eye,
 } from "lucide-react";
 import { Tab } from "./types";
 
@@ -33,6 +35,7 @@ interface TabConfig {
   label: string;
   icon: ReactNode;
   group?: string;
+  dynamic?: boolean; // 动态标签页，需要根据路径参数生成唯一ID
 }
 
 /**
@@ -115,6 +118,56 @@ export function getTabConfig(path: string): Tab | null {
 
   // 基地管理
   if (path.startsWith("/dashboard/base/")) {
+    // 新建企业页面
+    if (path === "/dashboard/base/tenants/create" || path.startsWith("/dashboard/base/tenants/create?")) {
+      return {
+        id: "new-enterprise",
+        label: "新建企业",
+        path: path,
+        icon: <Plus className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    
+    // 企业详情页面
+    const tenantDetailMatch = path.match(/^\/dashboard\/base\/tenants\/([a-f0-9-]{36})$/);
+    if (tenantDetailMatch) {
+      return {
+        id: `enterprise-${tenantDetailMatch[1]}`,
+        label: "企业详情",
+        path: path,
+        icon: <Eye className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    
+    // 新建合同页面
+    if (path === "/dashboard/base/contracts/new") {
+      return {
+        id: "new-contract",
+        label: "新建合同",
+        path: path,
+        icon: <Plus className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    
+    // 合同详情页面
+    const contractDetailMatch = path.match(/^\/dashboard\/base\/contracts\/([a-f0-9-]{36})$/);
+    if (contractDetailMatch) {
+      return {
+        id: `contract-${contractDetailMatch[1]}`,
+        label: "合同详情",
+        path: path,
+        icon: <Eye className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+
     const baseMatch = path.match(/^\/dashboard\/base\/([^/]+)$/);
     if (baseMatch) {
       const subPath = baseMatch[1];

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw, Save, Cloud, CloudOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 步骤配置和组件
 import { mainSteps, getNextStep, getPrevStep } from "./_constants/steps";
@@ -129,6 +130,7 @@ export default function NewTenantPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const tabs = useTabs();
 
   // 基地列表（不需要持久化）
   const [bases, setBases] = useState<Base[]>([]);
@@ -556,8 +558,22 @@ export default function NewTenantPage() {
           contract={contract}
           paymentRecordCount={paymentRecordCount}
           totalPaymentAmount={totalPaymentAmount}
-          onViewDetails={() => window.open(`/dashboard/base/tenants/${createdEnterpriseId}`, "_blank")}
-          onReturnToList={() => window.close()}
+          onViewDetails={() => {
+            // 关闭当前标签页并打开企业详情页
+            if (tabs) {
+              tabs.closeCurrentTabAndNavigate(`/dashboard/base/tenants/${createdEnterpriseId}`);
+            } else {
+              router.push(`/dashboard/base/tenants/${createdEnterpriseId}`);
+            }
+          }}
+          onReturnToList={() => {
+            // 关闭当前标签页并返回企业列表
+            if (tabs) {
+              tabs.closeCurrentTabAndNavigate("/dashboard/base/tenants");
+            } else {
+              router.push("/dashboard/base/tenants");
+            }
+          }}
         />
       );
     }

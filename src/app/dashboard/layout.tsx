@@ -29,6 +29,7 @@ export default function DashboardLayout({
     closeTab,
     switchTab,
     updateTabLabel,
+    closeCurrentTabAndNavigate,
     toggleMenu,
     handleLogout,
   } = useDashboardLayout();
@@ -57,7 +58,7 @@ export default function DashboardLayout({
   return (
     <ToastProvider>
       <TabsContext.Provider
-        value={{ tabs, activeTab, openTab, closeTab, switchTab, updateTabLabel }}
+        value={{ tabs, activeTab, openTab, closeTab, switchTab, updateTabLabel, closeCurrentTabAndNavigate }}
       >
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30">
           {/* 顶部导航栏 */}
