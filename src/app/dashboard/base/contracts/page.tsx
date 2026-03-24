@@ -13,6 +13,7 @@ import {
   Building2,
   Calendar,
   DollarSign,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -360,23 +361,47 @@ export default function ContractsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
-                          onClick={() => handleView(contract)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {contract.status === "draft" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-slate-400 hover:text-amber-600"
-                            onClick={() => handleEdit(contract)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                        {contract.status === "draft" ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-3 text-amber-600 border-amber-200 hover:bg-amber-50"
+                              onClick={() => handleEdit(contract)}
+                            >
+                              继续
+                              <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                              onClick={() => handleView(contract)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                              onClick={() => handleView(contract)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {contract.status === "pending" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-slate-400 hover:text-amber-600"
+                                onClick={() => handleEdit(contract)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

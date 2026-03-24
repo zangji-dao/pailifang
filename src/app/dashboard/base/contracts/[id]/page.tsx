@@ -17,6 +17,7 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -243,6 +244,12 @@ export default function ContractDetailPage() {
         <div className="flex items-center gap-2">
           {contract.status === "draft" && (
             <>
+              <Button asChild className="bg-amber-500 hover:bg-amber-600">
+                <a href={`/dashboard/base/contracts/${contractId}/edit`}>
+                  继续
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </a>
+              </Button>
               <Button variant="outline" asChild>
                 <a href={`/dashboard/base/contracts/${contractId}/edit`}>
                   <Edit className="h-4 w-4 mr-2" />
