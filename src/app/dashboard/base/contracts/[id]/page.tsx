@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -205,6 +206,75 @@ export default function ContractDetailPage() {
 
   const statusInfo = statusConfig[contract.status];
   const StatusIcon = statusInfo.icon;
+
+  // 计算距离到期天数
+  const getDaysRemaining = () => {
+    if (!contract.endDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(contract.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    const diffTime = endDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysRemaining = getDaysRemaining();
+
+  // 获取到期状态样式
+  const getExpiryStyle = () => {
+    if (daysRemaining === null) return null;
+    if (daysRemaining < 0) {
+      return {
+        bg: "bg-rose-50",
+        border: "border-rose-200",
+        text: "text-rose-600",
+        icon: "text-rose-500",
+        label: "已过期",
+        value: `${Math.abs(daysRemaining)} 天`,
+      };
+    }
+    if (daysRemaining === 0) {
+      return {
+        bg: "bg-amber-50",
+        border: "border-amber-200",
+        text: "text-amber-600",
+        icon: "text-amber-500",
+        label: "今天到期",
+        value: "今天",
+      };
+    }
+    if (daysRemaining <= 30) {
+      return {
+        bg: "bg-amber-50",
+        border: "border-amber-200",
+        text: "text-amber-600",
+        icon: "text-amber-500",
+        label: "即将到期",
+        value: `${daysRemaining} 天`,
+      };
+    }
+    if (daysRemaining <= 90) {
+      return {
+        bg: "bg-sky-50",
+        border: "border-sky-200",
+        text: "text-sky-600",
+        icon: "text-sky-500",
+        label: "剩余时间",
+        value: `${daysRemaining} 天`,
+      };
+    }
+    return {
+      bg: "bg-emerald-50",
+      border: "border-emerald-200",
+      text: "text-emerald-600",
+      icon: "text-emerald-500",
+      label: "剩余时间",
+      value: `${daysRemaining} 天`,
+    };
+  };
+
+  const expiryStyle = getExpiryStyle();
 
   return (
     <div className="space-y-6">
@@ -435,6 +505,28 @@ export default function ContractDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 到期倒计时 */}
+          {expiryStyle && (
+            <Card className={cn("border-l-4", expiryStyle.border)}>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", expiryStyle.bg)}>
+                    <Timer className={cn("h-7 w-7", expiryStyle.icon)} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{expiryStyle.label}</p>
+                    <p className={cn("text-xl font-semibold", expiryStyle.text)}>{expiryStyle.value}</p>
+                  </div>
+                </div>
+                {contract.endDate && (
+                  <p className="text-xs text-muted-foreground mt-3 ml-[72px]">
+                    到期日期：{contract.endDate}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* 操作提示 */}
           {contract.status === "draft" && !contract.contractFileUrl && (
