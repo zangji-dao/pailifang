@@ -421,6 +421,9 @@ export function BusinessRegistrationStep({
                 src={businessLicense.url}
                 alt="营业执照"
                 className="max-w-full max-h-[70vh] object-contain"
+                onError={(e) => {
+                  console.error('图片加载失败:', businessLicense.url);
+                }}
               />
             )}
           </div>

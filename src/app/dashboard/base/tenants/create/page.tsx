@@ -219,10 +219,10 @@ export default function NewTenantPage() {
               subStepId = "upload_license";
             } else if (enterprise.process_status === 'pending_contract') {
               mainStepId = "contract";
-              subStepId = "review_contract";
+              subStepId = "select_contract";
             } else if (enterprise.process_status === 'pending_payment') {
               mainStepId = "payment";
-              subStepId = "view_fees";
+              subStepId = "pay_fees";
             }
 
             // 填充表单数据

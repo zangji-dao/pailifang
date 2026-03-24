@@ -146,7 +146,8 @@ export default function HLSPlayer({ src, srcHd, onError }: HLSPlayerProps) {
         HlsConstructor = (window as unknown as { Hls: HlsConstructor }).Hls;
         initHls();
       };
-      script.onerror = () => {
+      script.onerror = (e) => {
+        console.error('HLS.js 脚本加载失败:', e);
         setError('播放器加载失败');
         setLoading(false);
       };

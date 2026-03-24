@@ -194,6 +194,9 @@ export function UploadProofStep({
                   src={previewFile.url}
                   alt={previewFile.name}
                   className="max-w-full max-h-[70vh] object-contain"
+                  onError={(e) => {
+                    console.error('图片加载失败:', previewFile.url);
+                  }}
                 />
               ) : (
                 <Button asChild size="lg">
