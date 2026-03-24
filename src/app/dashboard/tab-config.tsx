@@ -24,6 +24,7 @@ import {
   Receipt,
   Plus,
   Eye,
+  Pencil,
 } from "lucide-react";
 import { Tab } from "./types";
 
@@ -143,6 +144,31 @@ export function getTabConfig(path: string): Tab | null {
 
   // 基地管理
   if (path.startsWith("/dashboard/base/")) {
+    // 新建基地页面
+    if (path === "/dashboard/base/sites/new") {
+      return {
+        id: "new-base",
+        label: "新建基地",
+        path: path,
+        icon: <Plus className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    
+    // 编辑基地页面
+    const editBaseMatch = path.match(/^\/dashboard\/base\/sites\/([a-f0-9-]{36})\/edit$/);
+    if (editBaseMatch) {
+      return {
+        id: `edit-base-${editBaseMatch[1]}`,
+        label: "编辑基地",
+        path: path,
+        icon: <Pencil className="h-3.5 w-3.5" />,
+        closable: true,
+        group: "base",
+      };
+    }
+    
     // 新建企业页面
     if (path === "/dashboard/base/tenants/create" || path.startsWith("/dashboard/base/tenants/create?")) {
       return {

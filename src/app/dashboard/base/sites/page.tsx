@@ -9,20 +9,16 @@ import {
   Home,
   Plus,
   Loader2,
-  ChevronRight,
   Users,
   Hash,
   DoorOpen,
-  ArrowLeft,
-  Briefcase,
   Pencil,
   Trash2,
-  MoreHorizontal,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
-import { MapPicker } from "@/components/map/MapPicker";
 
 interface Base {
   id: string;
@@ -69,9 +65,6 @@ interface BaseDetail {
   meters?: Meter[];
 }
 
-// 视图模式类型
-type ViewMode = "list" | "add" | "edit";
-
 export default function BaseListPage() {
   const router = useRouter();
   const tabs = useTabs();
@@ -79,26 +72,6 @@ export default function BaseListPage() {
   const [baseStats, setBaseStats] = useState<Record<string, BaseStats>>({});
   const [enterpriseStats, setEnterpriseStats] = useState<EnterpriseStats>({ total: 0, tenant: 0, service: 0, active: 0 });
   const [loading, setLoading] = useState(true);
-  
-  // 视图模式：列表、新增或编辑
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-  
-  // 正在编辑的基地
-  const [editingBase, setEditingBase] = useState<Base | null>(null);
-  
-  // 表单数据
-  const [formData, setFormData] = useState({
-    name: "",
-    address: "",
-    status: "active",
-    // 管理公司信息（甲方）
-    management_company_name: "",
-    management_company_credit_code: "",
-    management_company_legal_person: "",
-    management_company_address: "",
-    management_company_phone: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
   
   // 删除确认弹窗
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; base: Base | null }>({
@@ -177,92 +150,6 @@ export default function BaseListPage() {
     fetchData();
   }, []);
 
-  // 打开编辑视图
-  const handleEditBase = (base: Base) => {
-    setEditingBase(base);
-    setFormData({
-      name: base.name,
-      address: base.address || "",
-      status: base.status,
-      // 管理公司信息
-      management_company_name: base.management_company_name || "",
-      management_company_credit_code: base.management_company_credit_code || "",
-      management_company_legal_person: base.management_company_legal_person || "",
-      management_company_address: base.management_company_address || "",
-      management_company_phone: base.management_company_phone || "",
-    });
-    
-    setViewMode("edit");
-  };
-
-  // 创建基地
-  const handleCreateBase = async () => {
-    if (!formData.name.trim()) {
-      toast.error("请输入基地名称");
-      return;
-    }
-    
-    setSubmitting(true);
-    try {
-      const response = await fetch("/api/bases", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        toast.success("基地创建成功");
-        resetForm();
-        setViewMode("list");
-        fetchData();
-      } else {
-        toast.error(result.error || "创建失败");
-      }
-    } catch (error) {
-      console.error("创建基地失败:", error);
-      toast.error("创建失败，请重试");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // 更新基地
-  const handleUpdateBase = async () => {
-    if (!editingBase || !formData.name.trim()) {
-      toast.error("请输入基地名称");
-      return;
-    }
-    
-    setSubmitting(true);
-    try {
-      const response = await fetch(`/api/bases/${editingBase.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        toast.success("基地更新成功");
-        resetForm();
-        setViewMode("list");
-        fetchData();
-      } else {
-        toast.error(result.error || "更新失败");
-      }
-    } catch (error) {
-      console.error("更新基地失败:", error);
-      toast.error("更新失败，请重试");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   // 删除基地
   const handleDeleteBase = async () => {
     if (!deleteConfirm.base) return;
@@ -289,19 +176,32 @@ export default function BaseListPage() {
     }
   };
 
-  // 重置表单
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      address: "",
-      status: "active",
-      management_company_name: "",
-      management_company_credit_code: "",
-      management_company_legal_person: "",
-      management_company_address: "",
-      management_company_phone: "",
-    });
-    setEditingBase(null);
+  // 打开新建基地页面（新标签页）
+  const handleCreateBase = () => {
+    if (tabs) {
+      tabs.openTab({
+        id: "new-base",
+        label: "新建基地",
+        path: "/dashboard/base/sites/new",
+        icon: <Plus className="h-3.5 w-3.5" />,
+      });
+    } else {
+      router.push("/dashboard/base/sites/new");
+    }
+  };
+
+  // 打开编辑基地页面（新标签页）
+  const handleEditBase = (base: Base) => {
+    if (tabs) {
+      tabs.openTab({
+        id: `edit-base-${base.id}`,
+        label: `编辑-${base.name}`,
+        path: `/dashboard/base/sites/${base.id}/edit`,
+        icon: <Pencil className="h-3.5 w-3.5" />,
+      });
+    } else {
+      router.push(`/dashboard/base/sites/${base.id}/edit`);
+    }
   };
 
   const handleBaseClick = (baseId: string, baseName: string) => {
@@ -330,247 +230,6 @@ export default function BaseListPage() {
     );
   }
 
-  // 表单视图（新增或编辑）
-  if (viewMode === "add" || viewMode === "edit") {
-    return (
-      <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-        {/* 头部 */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setViewMode("list");
-              resetForm();
-            }}
-            className="text-slate-600"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            返回列表
-          </Button>
-        </div>
-
-        {/* 表单卡片 */}
-        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
-          {/* 头部 */}
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {viewMode === "add" ? "新增基地" : "编辑基地"}
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">填写基地基本信息</p>
-          </div>
-          
-          {/* 表单内容 */}
-          <div className="p-6 space-y-5">
-            {/* 基地名称 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                基地名称 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="请输入基地名称"
-                className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-              />
-            </div>
-            
-            {/* 基地地址 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                基地地址
-              </label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="请输入基地详细地址"
-                className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-              />
-            </div>
-            
-            {/* 地图选点 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                在地图上选择位置
-              </label>
-              <MapPicker
-                value={
-                  formData.address
-                    ? {
-                        lng: 0,
-                        lat: 0,
-                        address: formData.address,
-                      }
-                    : undefined
-                }
-                onChange={(location) => {
-                  setFormData({
-                    ...formData,
-                    address: location.address || formData.address,
-                  });
-                }}
-                placeholder="点击在地图上选择基地位置"
-              />
-            </div>
-            
-            {/* 状态 */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                状态
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    checked={formData.status === "active"}
-                    onChange={() => setFormData({ ...formData, status: "active" })}
-                    className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
-                  />
-                  <span className="text-sm text-slate-700">运营中</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    checked={formData.status === "inactive"}
-                    onChange={() => setFormData({ ...formData, status: "inactive" })}
-                    className="w-4 h-4 text-amber-500 border-slate-300 focus:ring-amber-500"
-                  />
-                  <span className="text-sm text-slate-700">已停用</span>
-                </label>
-              </div>
-            </div>
-            
-            {/* 分隔线 */}
-            <div className="border-t border-slate-200 pt-5 mt-5">
-              <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-amber-500" />
-                管理公司信息（合同甲方）
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                填写该基地的管理公司信息，用于生成入驻合同时作为甲方信息
-              </p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                {/* 管理公司名称 */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    管理公司名称
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.management_company_name}
-                    onChange={(e) => setFormData({ ...formData, management_company_name: e.target.value })}
-                    placeholder="例如：XX企业服务中心"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                  />
-                </div>
-                
-                {/* 统一社会信用代码 */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    统一社会信用代码
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.management_company_credit_code}
-                    onChange={(e) => setFormData({ ...formData, management_company_credit_code: e.target.value })}
-                    placeholder="18位信用代码"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 font-mono"
-                  />
-                </div>
-                
-                {/* 法定代表人 */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    法定代表人
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.management_company_legal_person}
-                    onChange={(e) => setFormData({ ...formData, management_company_legal_person: e.target.value })}
-                    placeholder="法人姓名"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                  />
-                </div>
-                
-                {/* 联系电话 */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    联系电话
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.management_company_phone}
-                    onChange={(e) => setFormData({ ...formData, management_company_phone: e.target.value })}
-                    placeholder="联系电话"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                  />
-                </div>
-                
-                {/* 公司地址 */}
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    公司地址
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.management_company_address}
-                    onChange={(e) => setFormData({ ...formData, management_company_address: e.target.value })}
-                    placeholder="详细地址"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* 底部按钮 */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-xl">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setViewMode("list");
-                resetForm();
-              }}
-              disabled={submitting}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={viewMode === "add" ? handleCreateBase : handleUpdateBase}
-              disabled={submitting}
-              className="bg-slate-900 hover:bg-slate-800 text-white"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {viewMode === "add" ? "创建中..." : "保存中..."}
-                </>
-              ) : (
-                <>
-                  {viewMode === "add" ? (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      创建基地
-                    </>
-                  ) : (
-                    <>
-                      保存修改
-                    </>
-                  )}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // 列表视图
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -578,7 +237,7 @@ export default function BaseListPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Button 
           className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0 sm:ml-auto"
-          onClick={() => setViewMode("add")}
+          onClick={handleCreateBase}
         >
           <Plus className="h-4 w-4 mr-2" />
           新增基地
