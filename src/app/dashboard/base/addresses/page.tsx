@@ -97,10 +97,10 @@ interface RegNumber {
 // 入驻申请企业类型
 interface FillingApplication {
   id: string;
-  enterprise_name: string;
-  application_no: string;
-  legal_person_name: string | null;
-  contact_person_phone: string | null;
+  enterpriseName: string;
+  applicationNo: string;
+  legalPersonName: string | null;
+  contactPersonPhone: string | null;
 }
 
 // 状态配置
@@ -694,12 +694,12 @@ export default function AddressManagementPage() {
                         </SelectItem>
                       ) : (
                         fillingApplications.map((app) => (
-                          <SelectItem key={app.id} value={app.enterprise_name}>
+                          <SelectItem key={app.id} value={app.enterpriseName}>
                             <div className="flex items-center gap-2">
-                              <span>{app.enterprise_name}</span>
-                              {app.legal_person_name && (
+                              <span>{app.enterpriseName}</span>
+                              {app.legalPersonName && (
                                 <span className="text-muted-foreground text-xs">
-                                  ({app.legal_person_name})
+                                  ({app.legalPersonName})
                                 </span>
                               )}
                             </div>
