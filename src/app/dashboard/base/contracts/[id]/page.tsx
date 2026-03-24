@@ -41,13 +41,43 @@ interface Contract {
   createdAt: string;
 }
 
-// 状态配置
-const statusConfig: Record<ContractStatus, { label: string; className: string }> = {
-  draft: { label: "草稿", className: "bg-slate-50 text-slate-600 border-slate-200" },
-  pending: { label: "待签", className: "bg-amber-50 text-amber-600 border-amber-200" },
-  signed: { label: "已签", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  expired: { label: "已到期", className: "bg-red-50 text-red-600 border-red-200" },
-  terminated: { label: "已终止", className: "bg-slate-50 text-slate-600 border-slate-200" },
+// 状态配置 - 彩色主题
+const statusConfig: Record<ContractStatus, { 
+  label: string; 
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}> = {
+  draft: { 
+    label: "草稿", 
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+  },
+  pending: { 
+    label: "待签", 
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-50",
+    borderColor: "border-cyan-200",
+  },
+  signed: { 
+    label: "已签", 
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200",
+  },
+  expired: { 
+    label: "已到期", 
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+    borderColor: "border-red-200",
+  },
+  terminated: { 
+    label: "已终止", 
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-200",
+  },
 };
 
 export default function ContractDetailPage() {
@@ -210,7 +240,7 @@ export default function ContractDetailPage() {
               <span className="text-muted-foreground font-mono text-sm">
                 {contract.contractNo || "未编号"}
               </span>
-              <Badge variant="outline" className={cn("font-normal", statusInfo.className)}>
+              <Badge className={cn("font-normal border", statusInfo.bgColor, statusInfo.color, statusInfo.borderColor)}>
                 {statusInfo.label}
               </Badge>
             </div>

@@ -13,6 +13,10 @@ import {
   Calendar,
   X,
   Trash2,
+  FileSignature,
+  CheckCircle2,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,13 +49,55 @@ interface Contract {
   createdAt: string;
 }
 
-// 状态配置
-const statusConfig: Record<ContractStatus, { label: string; className: string }> = {
-  draft: { label: "草稿", className: "bg-slate-50 text-slate-600 border-slate-200" },
-  pending: { label: "待签", className: "bg-amber-50 text-amber-600 border-amber-200" },
-  signed: { label: "已签", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  expired: { label: "已到期", className: "bg-red-50 text-red-600 border-red-200" },
-  terminated: { label: "已终止", className: "bg-slate-50 text-slate-600 border-slate-200" },
+// 状态配置 - 使用彩色主题
+const statusConfig: Record<ContractStatus, { 
+  label: string; 
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  dotColor: string;
+  icon: React.ElementType;
+}> = {
+  draft: { 
+    label: "草稿", 
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+    dotColor: "bg-blue-500",
+    icon: FileText,
+  },
+  pending: { 
+    label: "待签", 
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-50",
+    borderColor: "border-cyan-200",
+    dotColor: "bg-cyan-500",
+    icon: Clock,
+  },
+  signed: { 
+    label: "已签", 
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200",
+    dotColor: "bg-emerald-500",
+    icon: CheckCircle2,
+  },
+  expired: { 
+    label: "已到期", 
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+    borderColor: "border-red-200",
+    dotColor: "bg-red-500",
+    icon: AlertCircle,
+  },
+  terminated: { 
+    label: "已终止", 
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-200",
+    dotColor: "bg-slate-500",
+    icon: XCircle,
+  },
 };
 
 export default function ContractsPage() {
@@ -187,12 +233,13 @@ export default function ContractsPage() {
         </Button>
       </div>
 
-      {/* 统计卡片 */}
+      {/* 统计卡片 - 彩色主题 */}
       <div className="grid grid-cols-5 gap-4">
+        {/* 合同总数 - 紫色 */}
         <Card 
           className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow", 
-            statusFilter === "all" && "ring-2 ring-primary"
+            "cursor-pointer hover:shadow-md transition-shadow border-t-4 border-t-violet-400", 
+            statusFilter === "all" && "ring-2 ring-violet-400"
           )}
           onClick={() => setStatusFilter("all")}
         >
@@ -200,18 +247,20 @@ export default function ContractsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">合同总数</p>
-                <p className="text-2xl font-semibold">{stats.total}</p>
+                <p className="text-2xl font-semibold text-violet-600">{stats.total}</p>
               </div>
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                <FileText className="h-5 w-5 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                <FileSignature className="h-5 w-5 text-violet-500" />
               </div>
             </div>
           </CardContent>
         </Card>
+        
+        {/* 草稿 - 蓝色 */}
         <Card 
           className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "draft" && "ring-2 ring-primary"
+            "cursor-pointer hover:shadow-md transition-shadow border-t-4 border-t-blue-400",
+            statusFilter === "draft" && "ring-2 ring-blue-400"
           )}
           onClick={() => setStatusFilter("draft")}
         >
@@ -219,18 +268,20 @@ export default function ContractsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">草稿</p>
-                <p className="text-2xl font-semibold">{stats.draft}</p>
+                <p className="text-2xl font-semibold text-blue-600">{stats.draft}</p>
               </div>
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-slate-500" />
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-blue-500" />
               </div>
             </div>
           </CardContent>
         </Card>
+        
+        {/* 待签 - 青色 */}
         <Card 
           className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "pending" && "ring-2 ring-primary"
+            "cursor-pointer hover:shadow-md transition-shadow border-t-4 border-t-cyan-400",
+            statusFilter === "pending" && "ring-2 ring-cyan-400"
           )}
           onClick={() => setStatusFilter("pending")}
         >
@@ -238,18 +289,20 @@ export default function ContractsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">待签</p>
-                <p className="text-2xl font-semibold">{stats.pending}</p>
+                <p className="text-2xl font-semibold text-cyan-600">{stats.pending}</p>
               </div>
-              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-amber-500" />
+              <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-cyan-500" />
               </div>
             </div>
           </CardContent>
         </Card>
+        
+        {/* 已签 - 翡翠色 */}
         <Card 
           className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "signed" && "ring-2 ring-primary"
+            "cursor-pointer hover:shadow-md transition-shadow border-t-4 border-t-emerald-400",
+            statusFilter === "signed" && "ring-2 ring-emerald-400"
           )}
           onClick={() => setStatusFilter("signed")}
         >
@@ -257,18 +310,20 @@ export default function ContractsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">已签</p>
-                <p className="text-2xl font-semibold">{stats.signed}</p>
+                <p className="text-2xl font-semibold text-emerald-600">{stats.signed}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-emerald-500" />
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
               </div>
             </div>
           </CardContent>
         </Card>
+        
+        {/* 已到期 - 红色 */}
         <Card 
           className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "expired" && "ring-2 ring-primary"
+            "cursor-pointer hover:shadow-md transition-shadow border-t-4 border-t-red-400",
+            statusFilter === "expired" && "ring-2 ring-red-400"
           )}
           onClick={() => setStatusFilter("expired")}
         >
@@ -276,7 +331,7 @@ export default function ContractsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">已到期</p>
-                <p className="text-2xl font-semibold">{stats.expired}</p>
+                <p className="text-2xl font-semibold text-red-600">{stats.expired}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
                 <AlertCircle className="h-5 w-5 text-red-500" />
@@ -301,7 +356,7 @@ export default function ContractsPage() {
         {(statusFilter !== "all" || searchKeyword) && (
           <div className="flex items-center gap-2">
             {statusFilter !== "all" && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge className={cn("gap-1", statusConfig[statusFilter].bgColor, statusConfig[statusFilter].color, statusConfig[statusFilter].borderColor, "border")}>
                 状态: {statusConfig[statusFilter].label}
                 <X 
                   className="h-3 w-3 cursor-pointer" 
@@ -334,7 +389,7 @@ export default function ContractsPage() {
       {/* 合同列表 */}
       {filteredContracts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-          <FileText className="h-12 w-12 mb-4" />
+          <FileSignature className="h-12 w-12 mb-4" />
           <p>{statusFilter !== "all" ? `暂无${statusConfig[statusFilter].label}状态的合同` : "暂无合同"}</p>
           {statusFilter === "all" && (
             <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/base/contracts/new")}>
@@ -347,6 +402,7 @@ export default function ContractsPage() {
         <div className="border rounded-lg divide-y">
           {filteredContracts.map((contract) => {
             const statusInfo = statusConfig[contract.status];
+            const StatusIcon = statusInfo.icon;
             return (
               <div
                 key={contract.id}
@@ -354,13 +410,13 @@ export default function ContractsPage() {
                 onClick={() => router.push(`/dashboard/base/contracts/${contract.id}`)}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-primary" />
+                  <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center", statusInfo.bgColor)}>
+                    <StatusIcon className={cn("h-6 w-6", statusInfo.color)} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{contract.contractName || contract.enterpriseName || "未命名合同"}</span>
-                      <Badge variant="outline" className={cn("font-normal", statusInfo.className)}>
+                      <Badge className={cn("font-normal border", statusInfo.bgColor, statusInfo.color, statusInfo.borderColor)}>
                         {statusInfo.label}
                       </Badge>
                     </div>
@@ -387,7 +443,7 @@ export default function ContractsPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="text-red-500 hover:bg-red-50 hover:text-red-600"
                       onClick={(e) => openDeleteDialog(e, contract)}
                       disabled={deletingId === contract.id}
                     >
