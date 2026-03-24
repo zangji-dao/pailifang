@@ -79,20 +79,14 @@ export const mainSteps: MainStep[] = [
   {
     id: "registration",
     title: "工商注册",
-    description: "上传工商执照",
+    description: "上传执照并填写信息",
     icon: FileText,
     status: "pending",
     subSteps: [
       {
         id: "upload_license",
-        title: "上传执照",
-        description: "上传营业执照照片",
-        icon: Upload,
-      },
-      {
-        id: "fill_info",
-        title: "填写信息",
-        description: "填写工商注册信息",
+        title: "工商信息",
+        description: "上传营业执照自动识别",
         icon: FileText,
       },
     ],

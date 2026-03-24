@@ -295,9 +295,8 @@ export default function NewTenantPage() {
       case "address_confirm_info":
         return enterpriseName.trim() !== "";
       case "registration_upload_license":
-        return businessLicense !== null;
-      case "registration_fill_info":
-        return creditCode.trim() !== "" && legalPerson.trim() !== "";
+        // 工商注册步骤：需要上传营业执照并填写基本信息
+        return businessLicense !== null && creditCode.trim() !== "" && legalPerson.trim() !== "";
       case "contract_review_contract":
       case "contract_sign_contract":
         return contract?.signature !== null;
@@ -666,34 +665,30 @@ export default function NewTenantPage() {
 
     // 工商注册大步骤
     if (currentMainStepId === "registration") {
-      switch (currentSubStepId) {
-        case "upload_license":
-        case "fill_info":
-          return (
-            <BusinessRegistrationStep
-              enterpriseName={enterpriseName}
-              businessLicense={businessLicense}
-              creditCode={creditCode}
-              legalPerson={legalPerson}
-              phone={phone}
-              industry={industry}
-              registeredCapital={registeredCapital}
-              establishDate={establishDate}
-              registeredAddress={registeredAddress}
-              businessScope={businessScope}
-              onUpdateBusinessLicense={(license) => updateFormState({ businessLicense: license })}
-              onUpdateCreditCode={(code) => updateFormState({ creditCode: code })}
-              onUpdateLegalPerson={(person) => updateFormState({ legalPerson: person })}
-              onUpdatePhone={(p) => updateFormState({ phone: p })}
-              onUpdateIndustry={(ind) => updateFormState({ industry: ind })}
-              onUpdateEnterpriseName={(name) => updateFormState({ enterpriseName: name })}
-              onUpdateBusinessScope={(scope) => updateFormState({ businessScope: scope })}
-              onUpdateRegisteredCapital={(capital) => updateFormState({ registeredCapital: capital })}
-              onUpdateEstablishDate={(date) => updateFormState({ establishDate: date })}
-              onUpdateRegisteredAddress={(address) => updateFormState({ registeredAddress: address })}
-            />
-          );
-      }
+      return (
+        <BusinessRegistrationStep
+          enterpriseName={enterpriseName}
+          businessLicense={businessLicense}
+          creditCode={creditCode}
+          legalPerson={legalPerson}
+          phone={phone}
+          industry={industry}
+          registeredCapital={registeredCapital}
+          establishDate={establishDate}
+          registeredAddress={registeredAddress}
+          businessScope={businessScope}
+          onUpdateBusinessLicense={(license) => updateFormState({ businessLicense: license })}
+          onUpdateCreditCode={(code) => updateFormState({ creditCode: code })}
+          onUpdateLegalPerson={(person) => updateFormState({ legalPerson: person })}
+          onUpdatePhone={(p) => updateFormState({ phone: p })}
+          onUpdateIndustry={(ind) => updateFormState({ industry: ind })}
+          onUpdateEnterpriseName={(name) => updateFormState({ enterpriseName: name })}
+          onUpdateBusinessScope={(scope) => updateFormState({ businessScope: scope })}
+          onUpdateRegisteredCapital={(capital) => updateFormState({ registeredCapital: capital })}
+          onUpdateEstablishDate={(date) => updateFormState({ establishDate: date })}
+          onUpdateRegisteredAddress={(address) => updateFormState({ registeredAddress: address })}
+        />
+      );
     }
 
     // 签订合同大步骤
