@@ -92,6 +92,7 @@ interface FormState {
 
   // 步骤3：签订合同
   contract: {
+    contractId: string | null;
     contractNumber: string;
     startDate: string;
     endDate: string;
@@ -696,6 +697,7 @@ export default function NewTenantPage() {
       return (
         <ContractStep
           enterpriseName={enterpriseName}
+          enterpriseId={draftId}
           contract={contract}
           onUpdateContract={(c) => updateFormState({ contract: c })}
         />
