@@ -1,17 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const STORAGE_KEY = "enterprise_create_form_draft";
 
 /**
  * 表单状态持久化 hook
  * 使用 sessionStorage 保存表单状态，关闭浏览器标签页后自动清除
+ * 
+ * 功能：
+ * - 自动保存表单状态到 sessionStorage
+ * - 刷新页面时自动恢复数据
+ * - clearCache 可重置到初始状态
  */
 export function useFormPersistence<T extends Record<string, any>>(
   initialState: T
 ): [T, (updates: Partial<T>) => void, () => void] {
-  // 初始化状态：优先从 sessionStorage 恢复
+  // 保存初始状态的引用
+  const initialStateRef = useRef(initialState);
+
+  // 初始化状态：刷新页面时从 sessionStorage 恢复
   const [state, setState] = useState<T>(() => {
     if (typeof window === "undefined") return initialState;
 
@@ -46,10 +54,12 @@ export function useFormPersistence<T extends Record<string, any>>(
     });
   }, []);
 
-  // 清除缓存
+  // 清除缓存并重置到初始状态
   const clearCache = useCallback(() => {
     try {
       sessionStorage.removeItem(STORAGE_KEY);
+      // 重置状态到初始值
+      setState(initialStateRef.current);
     } catch (e) {
       console.error("清除缓存失败:", e);
     }

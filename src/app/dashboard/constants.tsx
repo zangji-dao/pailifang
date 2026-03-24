@@ -66,7 +66,7 @@ export const SETTLEMENT_CHILDREN: NavChildItem[] = [
  */
 export const ENTERPRISE_CHILDREN: NavChildItem[] = [
   { name: "企业列表", href: "/dashboard/base/tenants", icon: Building2 },
-  { name: "新建企业", href: "/dashboard/base/tenants/create", icon: UserPlus },
+  { name: "新建企业", href: "/dashboard/base/tenants/create?new=true", icon: UserPlus },
 ];
 
 /**

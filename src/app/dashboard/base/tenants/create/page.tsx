@@ -181,8 +181,17 @@ export default function NewTenantPage() {
         console.error("获取基地列表失败:", error);
       }
 
-      // 检查是否有继续注册的企业ID
+      // 检查 URL 参数
+      const isNewPage = searchParams.get('new') === 'true';
       const continueId = searchParams.get('continue');
+      
+      // 如果是新建页面（从侧边栏点击进入），清空之前的数据
+      if (isNewPage) {
+        clearFormCache();
+        return;
+      }
+
+      // 如果有继续注册的企业ID，从数据库加载
       if (continueId && !draftId) {
         try {
           const res = await fetch(`/api/enterprises/${continueId}`);
@@ -249,7 +258,7 @@ export default function NewTenantPage() {
       }
     };
     fetchData();
-  }, [searchParams, draftId, updateFormState, toast]);
+  }, [searchParams, draftId, updateFormState, clearFormCache, toast]);
 
   // 获取当前大步骤和子步骤信息
   const currentMainStep = mainSteps.find(s => s.id === currentMainStepId);
