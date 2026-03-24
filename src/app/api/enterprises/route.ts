@@ -120,13 +120,28 @@ export async function POST(request: NextRequest) {
     // 检查企业编号是否已存在
     const { data: existingEnterprise } = await supabase
       .from('enterprises')
-      .select('id')
+      .select('id, name')
       .eq('enterprise_code', body.enterprise_code)
       .single();
 
     if (existingEnterprise) {
       return NextResponse.json(
         { success: false, error: '企业编号已存在' },
+        { status: 400 }
+      );
+    }
+
+    // 检查企业名称是否已存在（排除已终止的企业）
+    const { data: existingName } = await supabase
+      .from('enterprises')
+      .select('id, name, process_status')
+      .eq('name', body.name)
+      .neq('process_status', 'terminated')
+      .single();
+
+    if (existingName) {
+      return NextResponse.json(
+        { success: false, error: `企业名称「${body.name}」已存在，请检查是否重复录入` },
         { status: 400 }
       );
     }

@@ -82,6 +82,24 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
+    // 如果要更新名称，检查是否与其他企业重复
+    if (body.name) {
+      const { data: existingName } = await supabase
+        .from('enterprises')
+        .select('id, name')
+        .eq('name', body.name)
+        .neq('id', id) // 排除自身
+        .neq('process_status', 'terminated') // 排除已终止的企业
+        .single();
+
+      if (existingName) {
+        return NextResponse.json(
+          { success: false, error: `企业名称「${body.name}」已存在，请使用其他名称` },
+          { status: 400 }
+        );
+      }
+    }
+
     // 构建更新数据
     const updateData: Record<string, any> = {
       updated_at: new Date().toISOString(),
