@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Hash, Home, MapPin, Check, Loader2, Filter } from "lucide-react";
+import { Hash, Home, MapPin, Check, Loader2, Filter, ExternalLink } from "lucide-react";
+import { useTabs } from "@/app/dashboard/tabs-context";
 
 interface AvailableRegNumber {
   id: string;
@@ -40,6 +41,7 @@ export function SelectStationStep({
   selectedRegNumber, 
   onSelectRegNumber 
 }: SelectStationStepProps) {
+  const tabs = useTabs();
   const [availableRegNumbers, setAvailableRegNumbers] = useState<AvailableRegNumber[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedMeter, setSelectedMeter] = useState<string | null>(null);
@@ -166,7 +168,19 @@ export function SelectStationStep({
               <Hash className="w-8 h-8 text-step-emerald" />
             </div>
             <p className="text-muted-foreground mb-4">该基地暂无可用工位号</p>
-            <Button variant="outline" onClick={() => window.location.href = "/dashboard/base/addresses"}>
+            <Button variant="outline" onClick={() => {
+              if (tabs) {
+                tabs.openTab({
+                  id: "base-addresses",
+                  label: "地址管理",
+                  path: "/dashboard/base/addresses",
+                  icon: <MapPin className="h-3.5 w-3.5" />,
+                });
+              } else {
+                window.open("/dashboard/base/addresses", "_blank");
+              }
+            }}>
+              <ExternalLink className="h-4 w-4 mr-2" />
               前往地址管理生成工位号
             </Button>
           </div>

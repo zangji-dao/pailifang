@@ -12,9 +12,11 @@ import {
   Building2,
   Calendar,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 收款记录类型
 interface FinanceRecord {
@@ -66,6 +68,7 @@ export function PaymentStep({
   paymentRecordIds,
   onUpdatePaymentRecords,
 }: PaymentStepProps) {
+  const tabs = useTabs();
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState<FinanceRecord[]>([]);
   const { toast } = useToast();
@@ -188,8 +191,20 @@ export function PaymentStep({
                 variant="outline" 
                 size="sm" 
                 className="mt-4"
-                onClick={() => window.open("/dashboard/base/finances", "_blank")}
+                onClick={() => {
+                  if (tabs) {
+                    tabs.openTab({
+                      id: "base-finances",
+                      label: "资金管理",
+                      path: "/dashboard/base/finances",
+                      icon: <Receipt className="h-3.5 w-3.5" />,
+                    });
+                  } else {
+                    window.open("/dashboard/base/finances", "_blank");
+                  }
+                }}
               >
+                <ExternalLink className="h-4 w-4 mr-2" />
                 前往资金管理
               </Button>
             </div>
