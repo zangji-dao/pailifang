@@ -217,15 +217,15 @@ export default function ContractDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {contract.status === "draft" && (
+            <Button variant="outline" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
           {contract.status === "pending" && contract.contractFileUrl && (
             <Button onClick={handleSign} className="bg-emerald-600 hover:bg-emerald-700">
               <CheckCircle2 className="h-4 w-4 mr-2" />
               确认签署
-            </Button>
-          )}
-          {contract.status === "draft" && (
-            <Button variant="destructive" size="icon" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -380,12 +380,15 @@ export default function ContractDetailPage() {
         <p className="text-sm text-muted-foreground">
           创建时间：{new Date(contract.createdAt).toLocaleString()}
         </p>
-        {contract.status === "draft" && (
+        <div className="flex items-center gap-2">
+          {contract.status === "draft" && !contract.contractFileUrl && (
+            <span className="text-sm text-amber-600">上传合同文件后可提交签署</span>
+          )}
           <Button onClick={() => router.push("/dashboard/base/contracts/new")}>
             <Plus className="h-4 w-4 mr-2" />
             新建合同
           </Button>
-        )}
+        </div>
       </div>
     </div>
   );
