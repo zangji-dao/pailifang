@@ -13,6 +13,7 @@ import {
   Search,
   FileSignature,
   Info,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,13 @@ interface Enterprise {
   baseName?: string;
 }
 
+// 合同类型
+interface ContractType {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 // 步骤配置 - 简化为2步
 const steps = [
   { id: 1, title: "选择企业", description: "选择签约企业主体", icon: Building2 },
@@ -49,6 +57,11 @@ export default function NewContractPage() {
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [selectedEnterprise, setSelectedEnterprise] = useState<Enterprise | null>(null);
+
+  // 合同类型列表
+  const [contractTypes, setContractTypes] = useState<ContractType[]>([]);
+  const [selectedContractType, setSelectedContractType] = useState<ContractType | null>(null);
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
 
   // 合同信息
   const [contractNo, setContractNo] = useState("");
@@ -73,26 +86,40 @@ export default function NewContractPage() {
   }>>([]);
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
 
-  // 加载企业列表
+  // 加载企业列表和合同类型
   useEffect(() => {
-    const fetchEnterprises = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await fetch("/api/enterprises");
-        if (response.ok) {
-          const result = await response.json();
+        // 并行加载企业列表和合同类型
+        const [enterprisesRes, contractTypesRes] = await Promise.all([
+          fetch("/api/enterprises"),
+          fetch("/api/contract-types"),
+        ]);
+
+        if (enterprisesRes.ok) {
+          const result = await enterprisesRes.json();
           // 过滤可签约的企业状态
           const validStatuses = ["pending_contract", "pending_payment", "active", "pending_registration", "pending_change"];
           const filtered = (result.data || []).filter((e: Enterprise) => validStatuses.includes(e.processStatus));
           setEnterprises(filtered);
         }
+
+        if (contractTypesRes.ok) {
+          const result = await contractTypesRes.json();
+          setContractTypes(result.data || []);
+          // 默认选择第一个合同类型
+          if (result.data?.length > 0) {
+            setSelectedContractType(result.data[0]);
+          }
+        }
       } catch (error) {
-        console.error("加载企业列表失败:", error);
+        console.error("加载数据失败:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchEnterprises();
+    fetchData();
   }, []);
 
   // 生成合同号
@@ -210,7 +237,8 @@ export default function NewContractPage() {
           enterpriseName: selectedEnterprise.name,
           contractNo,
           contractName: contractName || `${selectedEnterprise.name}合同`,
-          contractType: "free", // 默认免费入驻合同
+          contractTypeId: selectedContractType?.id || null,
+          contractTypeName: selectedContractType?.name || null,
           startDate: signDate,
           endDate,
           remarks,
@@ -462,6 +490,57 @@ export default function NewContractPage() {
                     onChange={(e) => setContractName(e.target.value)}
                     placeholder="输入合同名称"
                   />
+                </div>
+              </div>
+
+              {/* 合同类型选择 */}
+              <div>
+                <Label>合同类型</Label>
+                <div className="relative mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setTypeDropdownOpen(!typeDropdownOpen)}
+                    className="w-full flex items-center justify-between px-3 py-2 border rounded-lg bg-background hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-amber-600" />
+                      <span>{selectedContractType?.name || "选择合同类型"}</span>
+                    </div>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", typeDropdownOpen && "rotate-180")} />
+                  </button>
+                  {typeDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 border rounded-lg bg-background shadow-lg z-10 max-h-60 overflow-auto">
+                      {contractTypes.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">暂无合同类型</div>
+                      ) : (
+                        contractTypes.map((type) => (
+                          <button
+                            key={type.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedContractType(type);
+                              setTypeDropdownOpen(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors",
+                              selectedContractType?.id === type.id && "bg-amber-50 text-amber-700"
+                            )}
+                          >
+                            <FileText className="w-4 h-4 text-amber-600" />
+                            <div>
+                              <div className="text-sm font-medium">{type.name}</div>
+                              {type.description && (
+                                <div className="text-xs text-muted-foreground">{type.description}</div>
+                              )}
+                            </div>
+                            {selectedContractType?.id === type.id && (
+                              <Check className="w-4 h-4 text-amber-600 ml-auto" />
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

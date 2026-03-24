@@ -74,6 +74,7 @@ export const ENTERPRISE_CHILDREN: NavChildItem[] = [
  */
 export const SETTINGS_CHILDREN: NavChildItem[] = [
   { name: "行业管理", href: "/dashboard/base/settings/industries", icon: Tags },
+  { name: "合同类型", href: "/dashboard/base/settings/contract-types", icon: FileText },
 ];
 
 /**

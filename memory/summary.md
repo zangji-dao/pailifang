@@ -74,3 +74,10 @@
 
 ## TODO
 - 基于合同范本实现合同生成功能
+
+## 新增功能：合同类型管理
+- 数据库表: `contract_types` (id, name, description, sort_order, is_active, created_at, updated_at)
+- API: `/api/contract-types` (GET/POST), `/api/contract-types/[id]` (GET/PUT/DELETE)
+- 管理页面: `/dashboard/base/settings/contract-types`
+- 默认类型: 园区入驻服务合同、代理记账合同
+- 新建合同时可选择合同类型
