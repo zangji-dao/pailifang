@@ -157,8 +157,8 @@ export default function NewContractPage() {
         const result = await response.json();
         if (result.success) {
           setAttachments(prev => [...prev, {
-            key: result.data.key,
-            url: result.data.url,
+            key: result.key,
+            url: result.url,
             name: file.name,
           }]);
         } else {
