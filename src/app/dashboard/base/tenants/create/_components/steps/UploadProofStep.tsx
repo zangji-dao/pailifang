@@ -196,15 +196,11 @@ export function UploadProofStep({
                   className="max-w-full max-h-[70vh] object-contain"
                 />
               ) : (
-                <div className="flex flex-col items-center gap-4 py-12">
-                  <FileText className="w-16 h-16 text-muted-foreground" />
-                  <p className="text-muted-foreground">此文件类型暂不支持预览</p>
-                  <Button asChild>
-                    <a href={previewFile.url} target="_blank" rel="noopener noreferrer">
-                      在新窗口打开
-                    </a>
-                  </Button>
-                </div>
+                <Button asChild size="lg">
+                  <a href={previewFile.url} target="_blank" rel="noopener noreferrer">
+                    在新窗口打开文件
+                  </a>
+                </Button>
               )
             )}
           </div>
