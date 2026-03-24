@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw, Save, Cloud, CloudOff } from "lucide-react";
@@ -172,6 +172,9 @@ export default function NewTenantPage() {
   } = formState;
 
   // 加载基地列表和继续注册的企业数据
+  // 使用 ref 防止重复初始化
+  const initializedRef = useRef(false);
+  
   useEffect(() => {
     const fetchData = async () => {
       // 加载基地列表
@@ -184,6 +187,12 @@ export default function NewTenantPage() {
       } catch (error) {
         console.error("获取基地列表失败:", error);
       }
+
+      // 如果已经初始化过，不再重复处理
+      if (initializedRef.current) {
+        return;
+      }
+      initializedRef.current = true;
 
       // 检查 URL 参数
       const isNewPage = searchParams.get('new') === 'true';
@@ -262,7 +271,8 @@ export default function NewTenantPage() {
       }
     };
     fetchData();
-  }, [searchParams, draftId, updateFormState, clearFormCache, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // 获取当前大步骤和子步骤信息
   const currentMainStep = mainSteps.find(s => s.id === currentMainStepId);
