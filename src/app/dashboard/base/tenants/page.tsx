@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useTabs } from "../../tabs-context";
 
 // 企业类型 Tab
 type EnterpriseType = "tenant" | "non_tenant";
@@ -135,6 +136,7 @@ const nonTenantStatusConfig: Record<string, {
 export default function EnterpriseListPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const tabs = useTabs();
 
   const [activeTab, setActiveTab] = useState<EnterpriseType>("tenant");
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
@@ -242,7 +244,18 @@ export default function EnterpriseListPage() {
           </p>
         </div>
         <Button
-          onClick={() => window.open("/dashboard/base/tenants/create", "_blank")}
+          onClick={() => {
+            if (tabs) {
+              tabs.openTab({
+                id: "new-enterprise",
+                label: "新建企业",
+                path: "/dashboard/base/tenants/create?new=true",
+                icon: <Plus className="h-3.5 w-3.5" />,
+              });
+            } else {
+              router.push("/dashboard/base/tenants/create?new=true");
+            }
+          }}
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -444,7 +457,18 @@ export default function EnterpriseListPage() {
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => window.open(`/dashboard/base/tenants/create?continue=${enterprise.id}`, "_blank")}
+                            onClick={() => {
+                              if (tabs) {
+                                tabs.openTab({
+                                  id: `continue-${enterprise.id}`,
+                                  label: `继续注册-${enterprise.name}`,
+                                  path: `/dashboard/base/tenants/create?continue=${enterprise.id}`,
+                                  icon: <ArrowRight className="h-3.5 w-3.5" />,
+                                });
+                              } else {
+                                router.push(`/dashboard/base/tenants/create?continue=${enterprise.id}`);
+                              }
+                            }}
                             className="gap-1 bg-primary hover:bg-primary/90"
                           >
                             <ArrowRight className="h-3.5 w-3.5" />
@@ -454,7 +478,18 @@ export default function EnterpriseListPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => router.push(`/dashboard/base/tenants/${enterprise.id}`)}
+                          onClick={() => {
+                            if (tabs) {
+                              tabs.openTab({
+                                id: `enterprise-${enterprise.id}`,
+                                label: enterprise.name,
+                                path: `/dashboard/base/tenants/${enterprise.id}`,
+                                icon: <Building2 className="h-3.5 w-3.5" />,
+                              });
+                            } else {
+                              router.push(`/dashboard/base/tenants/${enterprise.id}`);
+                            }
+                          }}
                           className="gap-1"
                         >
                           <Eye className="h-3.5 w-3.5" />
