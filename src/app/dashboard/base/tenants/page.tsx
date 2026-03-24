@@ -49,7 +49,7 @@ interface Enterprise {
   createdAt: string;
 }
 
-// 入驻企业流程状态配置
+// 入驻企业流程状态配置（从待工商注册开始）
 const tenantStatusConfig: Record<string, { 
   label: string; 
   color: string; 
@@ -57,20 +57,6 @@ const tenantStatusConfig: Record<string, {
   borderColor: string;
   dotColor: string;
 }> = {
-  draft: { 
-    label: "草稿", 
-    color: "text-slate-600",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-300",
-    dotColor: "bg-slate-400",
-  },
-  pending_address: { 
-    label: "待分配地址", 
-    color: "text-orange-600",
-    bgColor: "bg-orange-50",
-    borderColor: "border-orange-300",
-    dotColor: "bg-orange-500",
-  },
   pending_registration: { 
     label: "待工商注册", 
     color: "text-purple-600",
@@ -186,8 +172,13 @@ export default function EnterpriseListPage() {
     fetchEnterprises();
   }, []);
 
-  // 根据当前 Tab 过滤企业
-  const tabEnterprises = enterprises.filter((e) => e.type === activeTab);
+  // 根据当前 Tab 过滤企业（入驻企业排除草稿状态）
+  const tabEnterprises = enterprises.filter((e) => {
+    if (e.type !== activeTab) return false;
+    // 入驻企业排除草稿状态
+    if (activeTab === "tenant" && (e.processStatus === "draft" || e.status === "draft")) return false;
+    return true;
+  });
 
   // 过滤企业列表
   const filteredEnterprises = tabEnterprises.filter((e) => {
@@ -205,11 +196,9 @@ export default function EnterpriseListPage() {
     return matchStatus && matchKeyword;
   });
 
-  // 入驻企业统计
+  // 入驻企业统计（排除草稿状态）
   const tenantStats = {
-    total: enterprises.filter((e) => e.type === "tenant").length,
-    draft: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "draft").length,
-    pending_address: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_address").length,
+    total: enterprises.filter((e) => e.type === "tenant" && e.processStatus !== "draft" && e.status !== "draft").length,
     pending_registration: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_registration").length,
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
     pending_payment: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_payment").length,
@@ -299,9 +288,9 @@ export default function EnterpriseListPage() {
       {/* 入驻企业 - 状态卡片 */}
       {activeTab === "tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             {Object.entries(tenantStatusConfig).map(([key, config]) => {
-              const count = tenantStats[key as keyof typeof tenantStats];
+              const count = tenantStats[key as keyof typeof tenantStats] || 0;
               return (
                 <button
                   key={key}
