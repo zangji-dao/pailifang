@@ -60,6 +60,7 @@ export default function ApplicationDetailPage() {
     handleShareholderCropCancel,
     goToNextStep,
     goToPrevStep,
+    goToStep,
     handleGoBack,
   } = useApplicationForm(applicationId);
 
@@ -171,7 +172,7 @@ export default function ApplicationDetailPage() {
                   // 查看模式下可以自由切换所有步骤
                   // 编辑模式下只能返回已完成的步骤
                   if (!canEdit || index <= currentStep) {
-                    setCurrentStep(index);
+                    goToStep(index);
                   }
                 }}
               >

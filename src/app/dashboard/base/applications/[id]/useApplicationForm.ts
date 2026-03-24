@@ -34,7 +34,32 @@ export function useApplicationForm(id: string) {
   const [pageError, setPageError] = useState<string>("");
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [currentStep, setCurrentStep] = useState(0);
+  // 从 URL 参数读取当前步骤
+  const getStepFromUrl = useCallback(() => {
+    const stepParam = searchParams.get("step");
+    if (stepParam) {
+      const step = parseInt(stepParam, 10);
+      if (!isNaN(step) && step >= 0 && step < formSteps.length) {
+        return step;
+      }
+    }
+    return 0;
+  }, [searchParams]);
+  
+  const [currentStep, setCurrentStep] = useState(() => {
+    // 初始化时从 URL 读取步骤
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = params.get("step");
+      if (stepParam) {
+        const step = parseInt(stepParam, 10);
+        if (!isNaN(step) && step >= 0 && step < 5) {
+          return step;
+        }
+      }
+    }
+    return 0;
+  });
   
   // 文件上传状态
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
@@ -562,6 +587,13 @@ export function useApplicationForm(id: string) {
   }, [formData]);
 
   // ========== 步骤切换 ==========
+  // 更新 URL 参数中的步骤
+  const updateStepInUrl = useCallback((step: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("step", step.toString());
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
   const goToNextStep = useCallback(async () => {
     if (currentStep < formSteps.length - 1) {
       let isValid = true;
@@ -620,18 +652,31 @@ export function useApplicationForm(id: string) {
         } catch (error) {
           console.error("自动保存失败:", error);
         }
-        setCurrentStep(currentStep + 1);
+        const nextStep = currentStep + 1;
+        setCurrentStep(nextStep);
+        updateStepInUrl(nextStep);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
-  }, [currentStep, validateBasicStep, validatePersonnelStep, validateShareholderStep, validateBusinessStep, formData, id]);
+  }, [currentStep, validateBasicStep, validatePersonnelStep, validateShareholderStep, validateBusinessStep, formData, id, updateStepInUrl]);
 
   const goToPrevStep = useCallback(() => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      const prevStep = currentStep - 1;
+      setCurrentStep(prevStep);
+      updateStepInUrl(prevStep);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [currentStep]);
+  }, [currentStep, updateStepInUrl]);
+
+  // 跳转到指定步骤
+  const goToStep = useCallback((step: number) => {
+    if (step >= 0 && step < formSteps.length) {
+      setCurrentStep(step);
+      updateStepInUrl(step);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [updateStepInUrl]);
 
   // ========== 保存提交 ==========
   const handleSave = useCallback(async () => {
@@ -801,6 +846,7 @@ export function useApplicationForm(id: string) {
     // 步骤操作
     goToNextStep,
     goToPrevStep,
+    goToStep,
     
     // 保存提交
     handleSubmit,
