@@ -610,7 +610,7 @@ export default function NewContractPage() {
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-step-emerald hover:bg-step-emerald/90 text-white"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               {submitting ? (
                 <>
@@ -627,7 +627,7 @@ export default function NewContractPage() {
           ) : (
             <Button
               onClick={handleNext}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               下一步
               <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
