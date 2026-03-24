@@ -12,7 +12,6 @@ export const spaceTypeOptions = [
     value: "open_station",
     label: "开放工位",
     price: 1200,
-    deposit: 1200,
     unit: "个/年",
     description: "固定工位，共享办公区域",
     icon: "🏢",
@@ -21,7 +20,6 @@ export const spaceTypeOptions = [
     value: "office_no_window",
     label: "独立办公室（无窗）",
     price: 3000,
-    deposit: 1200,
     unit: "间/年",
     description: "独立办公空间，无窗户",
     icon: "🚪",
@@ -30,7 +28,6 @@ export const spaceTypeOptions = [
     value: "office_with_window",
     label: "独立办公室（有窗）",
     price: 3600,
-    deposit: 1200,
     unit: "间/年",
     description: "独立办公空间，带窗户",
     icon: "🪟",
@@ -39,30 +36,29 @@ export const spaceTypeOptions = [
     value: "detached_office",
     label: "独栋办公室",
     price: 3600,
-    deposit: 5000,
     unit: "栋/年",
     description: "独立独栋办公空间",
     icon: "🏠",
   },
 ];
 
-interface SelectSpaceStepProps {
+interface ServiceFeeStepProps {
   spaceType: string;
   spaceQuantity: number;
   yearlyFee: number;
-  deposit: number;
   onSelectSpaceType: (spaceType: typeof spaceTypeOptions[0]) => void;
   onUpdateQuantity: (quantity: number) => void;
+  onUpdateYearlyFee: (fee: number) => void;
 }
 
-export function SelectSpaceStep({
+export function ServiceFeeStep({
   spaceType,
   spaceQuantity,
   yearlyFee,
-  deposit,
   onSelectSpaceType,
   onUpdateQuantity,
-}: SelectSpaceStepProps) {
+  onUpdateYearlyFee,
+}: ServiceFeeStepProps) {
   const selectedSpace = spaceTypeOptions.find(s => s.value === spaceType);
 
   return (
@@ -105,10 +101,6 @@ export function SelectSpaceStep({
                   <p className="text-2xl font-bold text-primary">¥{space.price.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">{space.unit}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">押金</p>
-                  <p className="font-semibold">¥{space.deposit.toLocaleString()}</p>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -121,7 +113,7 @@ export function SelectSpaceStep({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <DollarSign className="h-5 w-5 text-primary" />
-              费用计算
+              服务费计算
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -143,22 +135,24 @@ export function SelectSpaceStep({
                 />
               </div>
               <div>
-                <Label>应付总额</Label>
-                <div className="mt-1.5 p-2 border rounded-md bg-background font-semibold text-primary text-lg">
-                  ¥{((yearlyFee || selectedSpace.price * spaceQuantity) + (deposit || selectedSpace.deposit * spaceQuantity)).toLocaleString()}
-                </div>
+                <Label>首年服务费（元）</Label>
+                <Input
+                  type="number"
+                  className="mt-1.5"
+                  value={yearlyFee}
+                  onChange={(e) => onUpdateYearlyFee(Number(e.target.value) || 0)}
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground pt-2 border-t">
-              <div className="flex justify-between">
-                <span>首年服务费：</span>
-                <span className="font-medium text-foreground">¥{(yearlyFee || selectedSpace.price * spaceQuantity).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>押金：</span>
-                <span className="font-medium text-foreground">¥{(deposit || selectedSpace.deposit * spaceQuantity).toLocaleString()}</span>
-              </div>
+            <div className="flex items-center justify-between pt-2 border-t">
+              <span className="text-muted-foreground">计算公式：</span>
+              <span className="text-sm">
+                {selectedSpace.label} × {spaceQuantity} = ¥{selectedSpace.price * spaceQuantity}
+                {yearlyFee !== selectedSpace.price * spaceQuantity && (
+                  <span className="text-primary ml-2">（已调整为 ¥{yearlyFee.toLocaleString()}）</span>
+                )}
+              </span>
             </div>
           </CardContent>
         </Card>

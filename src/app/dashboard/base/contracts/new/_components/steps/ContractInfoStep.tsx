@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,14 +17,9 @@ import {
   Landmark,
   Loader2,
   MapPin,
-  User,
-  Phone,
   Clock,
-  DollarSign,
   FileText,
-  Calendar,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface Enterprise {
   id: string;
@@ -49,11 +43,6 @@ interface ManagementCompany {
 
 interface ContractInfoStepProps {
   enterprise: Enterprise | null;
-  spaceType: string;
-  spaceTypeLabel: string;
-  spaceQuantity: number;
-  yearlyFee: number;
-  deposit: number;
   formData: {
     contractNo: string;
     startDate: string;
@@ -63,20 +52,18 @@ interface ContractInfoStepProps {
   };
   onUpdateFormData: (data: Record<string, string | number>) => void;
   subStepId: string;
+  managementCompany: ManagementCompany | null;
+  onUpdateManagementCompany: (company: ManagementCompany | null) => void;
 }
 
 export function ContractInfoStep({
   enterprise,
-  spaceType,
-  spaceTypeLabel,
-  spaceQuantity,
-  yearlyFee,
-  deposit,
   formData,
   onUpdateFormData,
   subStepId,
+  managementCompany,
+  onUpdateManagementCompany,
 }: ContractInfoStepProps) {
-  const [managementCompany, setManagementCompany] = useState<ManagementCompany | null>(null);
   const [loadingManagement, setLoadingManagement] = useState(false);
 
   // 获取基地的管理公司信息
@@ -87,19 +74,22 @@ export function ContractInfoStep({
         .then(res => res.json())
         .then(result => {
           if (result.success && result.data) {
-            setManagementCompany({
+            const company: ManagementCompany = {
               name: result.data.management_company_name || "",
               creditCode: result.data.management_company_credit_code || "",
               legalPerson: result.data.management_company_legal_person || "",
               address: result.data.management_company_address || "",
               phone: result.data.management_company_phone || "",
-            });
+            };
+            onUpdateManagementCompany(company);
           }
         })
         .catch(console.error)
         .finally(() => setLoadingManagement(false));
+    } else {
+      onUpdateManagementCompany(null);
     }
-  }, [enterprise?.baseId]);
+  }, [enterprise?.baseId, onUpdateManagementCompany]);
 
   // 根据期限自动计算结束日期
   useEffect(() => {
@@ -109,7 +99,7 @@ export function ContractInfoStep({
       end.setFullYear(end.getFullYear() + formData.contractYears);
       onUpdateFormData({ endDate: end.toISOString().split("T")[0] });
     }
-  }, [formData.startDate, formData.contractYears]);
+  }, [formData.startDate, formData.contractYears, onUpdateFormData]);
 
   const isPartyInfoStep = subStepId === "party_info";
 
@@ -212,31 +202,19 @@ export function ContractInfoStep({
     );
   }
 
-  // 费用与期限步骤
+  // 服务期限步骤
   return (
     <div className="space-y-6">
-      {/* 场地服务 */}
+      {/* 合同编号 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-muted-foreground" />
-            场地服务
+            合同编号
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>场地类型</Label>
-              <div className="mt-1.5 p-2 border rounded-md bg-muted/50">
-                {spaceTypeLabel || "-"}
-              </div>
-            </div>
-            <div>
-              <Label>数量</Label>
-              <div className="mt-1.5 p-2 border rounded-md bg-muted/50">
-                {spaceQuantity}
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>合同编号（选填）</Label>
               <Input
@@ -246,48 +224,12 @@ export function ContractInfoStep({
                 onChange={(e) => onUpdateFormData({ contractNo: e.target.value })}
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 费用信息 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-muted-foreground" />
-            费用信息
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>首年服务费（元）</Label>
-              <Input
-                type="number"
-                className="mt-1.5"
-                value={yearlyFee}
-                onChange={(e) => onUpdateFormData({ yearlyFee: Number(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <Label>押金（元）</Label>
-              <Input
-                type="number"
-                className="mt-1.5"
-                value={deposit}
-                onChange={(e) => onUpdateFormData({ deposit: Number(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <Label>应付总额（元）</Label>
-              <div className="mt-1.5 p-2 border rounded-md bg-primary/5 font-semibold text-primary text-lg">
-                ¥{(yearlyFee + deposit).toLocaleString()}
-              </div>
+            <div className="flex items-end">
+              <p className="text-sm text-muted-foreground">
+                若不填写，系统将自动生成合同编号
+              </p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            * 押金于合同终止后30日内无息退还（扣除违约赔偿金）
-          </p>
         </CardContent>
       </Card>
 

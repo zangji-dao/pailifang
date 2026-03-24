@@ -1,4 +1,4 @@
-import { Building2, FileCheck, FileSignature, CheckCircle2, Search, Users, Landmark } from "lucide-react";
+import { Building2, DollarSign, Wallet, FileSignature, CheckCircle2, Search, Users, Plus } from "lucide-react";
 
 // 子步骤定义
 export interface SubStep {
@@ -43,24 +43,39 @@ export const mainSteps: MainStep[] = [
     ],
   },
   {
-    id: "space",
-    title: "场地类型",
-    description: "选择场地和服务",
-    icon: FileCheck,
+    id: "service_fee",
+    title: "服务费",
+    description: "场地类型和服务费",
+    icon: DollarSign,
     status: "pending",
     subSteps: [
       {
         id: "select_space",
-        title: "选择场地",
-        description: "选择场地类型和数量",
-        icon: FileCheck,
+        title: "场地与费用",
+        description: "选择场地类型、数量和服务费",
+        icon: DollarSign,
+      },
+    ],
+  },
+  {
+    id: "deposit",
+    title: "押金",
+    description: "押金和其他费用",
+    icon: Wallet,
+    status: "pending",
+    subSteps: [
+      {
+        id: "deposit_items",
+        title: "押金明细",
+        description: "添加押金项目",
+        icon: Plus,
       },
     ],
   },
   {
     id: "contract",
     title: "合同信息",
-    description: "填写合同详情",
+    description: "甲乙方和期限",
     icon: FileSignature,
     status: "pending",
     subSteps: [
@@ -68,12 +83,12 @@ export const mainSteps: MainStep[] = [
         id: "party_info",
         title: "甲乙方信息",
         description: "确认甲乙方基本信息",
-        icon: Landmark,
+        icon: Building2,
       },
       {
-        id: "fee_duration",
-        title: "费用与期限",
-        description: "填写费用和服务期限",
+        id: "duration",
+        title: "服务期限",
+        description: "填写服务期限",
         icon: FileSignature,
       },
     ],
@@ -169,17 +184,23 @@ export const stepColors: Record<string, { bg: string; text: string; light: strin
     light: "bg-step-sky-muted",
     ring: "ring-step-sky/30",
   },
-  space: {
+  service_fee: {
     bg: "bg-step-violet",
     text: "text-step-violet",
     light: "bg-step-violet-muted",
     ring: "ring-step-violet/30",
   },
-  contract: {
+  deposit: {
     bg: "bg-step-amber",
     text: "text-step-amber",
     light: "bg-step-amber-muted",
     ring: "ring-step-amber/30",
+  },
+  contract: {
+    bg: "bg-step-rose",
+    text: "text-step-rose",
+    light: "bg-step-rose-muted",
+    ring: "ring-step-rose/30",
   },
   complete: {
     bg: "bg-step-emerald",

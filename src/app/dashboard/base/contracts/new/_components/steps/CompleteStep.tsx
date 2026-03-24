@@ -1,9 +1,9 @@
 "use client";
 
-import { CheckCircle2, Building2, FileText, Calendar, DollarSign, Clock, ExternalLink } from "lucide-react";
+import { CheckCircle2, Building2, FileText, DollarSign, Clock, Wallet, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import type { DepositItem } from "./DepositStep";
 
 interface Enterprise {
   id: string;
@@ -31,7 +31,9 @@ interface CompleteStepProps {
   spaceTypeLabel: string;
   spaceQuantity: number;
   yearlyFee: number;
-  deposit: number;
+  baseDeposit: number;
+  depositItems: DepositItem[];
+  totalDeposit: number;
   formData: {
     contractNo: string;
     startDate: string;
@@ -50,11 +52,15 @@ export function CompleteStep({
   spaceTypeLabel,
   spaceQuantity,
   yearlyFee,
-  deposit,
+  baseDeposit,
+  depositItems,
+  totalDeposit,
   formData,
   onViewContract,
   onCreateAnother,
 }: CompleteStepProps) {
+  const totalAmount = yearlyFee + totalDeposit;
+
   return (
     <div className="space-y-6">
       {/* 成功提示 */}
@@ -92,12 +98,12 @@ export function CompleteStep({
           </CardContent>
         </Card>
 
-        {/* 费用信息 */}
+        {/* 服务费 */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <DollarSign className="h-5 w-5 text-muted-foreground" />
-              费用信息
+              服务费
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -105,13 +111,55 @@ export function CompleteStep({
               <span className="text-muted-foreground">首年服务费</span>
               <span className="font-medium">¥{yearlyFee.toLocaleString()}</span>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 押金 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+              押金
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">场地押金</span>
+              <span className="font-medium">¥{baseDeposit.toLocaleString()}</span>
+            </div>
+            {depositItems.map(item => (
+              <div key={item.id} className="flex justify-between">
+                <span className="text-muted-foreground">{item.typeLabel}</span>
+                <span className="font-medium">¥{item.amount.toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="flex justify-between pt-2 border-t">
+              <span className="font-medium">押金小计</span>
+              <span className="font-semibold text-primary">¥{totalDeposit.toLocaleString()}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 应付总额 */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <DollarSign className="h-5 w-5 text-primary" />
+              应付总额
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">服务费</span>
+              <span>¥{yearlyFee.toLocaleString()}</span>
+            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">押金</span>
-              <span className="font-medium">¥{deposit.toLocaleString()}</span>
+              <span>¥{totalDeposit.toLocaleString()}</span>
             </div>
             <div className="flex justify-between pt-2 border-t">
               <span className="font-medium">应付总额</span>
-              <span className="font-bold text-primary text-lg">¥{(yearlyFee + deposit).toLocaleString()}</span>
+              <span className="font-bold text-primary text-xl">¥{totalAmount.toLocaleString()}</span>
             </div>
           </CardContent>
         </Card>

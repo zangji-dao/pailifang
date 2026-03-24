@@ -3,20 +3,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Check, Loader2, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 // 步骤配置和组件
-import { mainSteps, getNextStep, getPrevStep, stepColors } from "./_constants/steps";
+import { mainSteps, getNextStep, getPrevStep } from "./_constants/steps";
 import { VerticalStepIndicator } from "./_components/VerticalStepIndicator";
 import { HorizontalSubStepIndicator } from "./_components/HorizontalSubStepIndicator";
 import {
   SelectEnterpriseStep,
-  SelectSpaceStep,
+  ServiceFeeStep,
+  DepositStep,
   ContractInfoStep,
   CompleteStep,
+  type DepositItem,
 } from "./_components/steps";
-import { spaceTypeOptions } from "./_components/steps/SelectSpaceStep";
+import { spaceTypeOptions } from "./_components/steps/ServiceFeeStep";
 
 // 类型定义
 interface Enterprise {
@@ -54,11 +56,14 @@ interface FormState {
   selectedEnterprise: Enterprise | null;
   searchKeyword: string;
 
-  // 场地信息
+  // 服务费
   spaceType: string;
   spaceQuantity: number;
   yearlyFee: number;
-  deposit: number;
+
+  // 押金
+  baseDeposit: number;
+  depositItems: DepositItem[];
 
   // 合同信息
   contractNo: string;
@@ -84,7 +89,9 @@ const initialFormState: FormState = {
   spaceType: "",
   spaceQuantity: 1,
   yearlyFee: 0,
-  deposit: 0,
+
+  baseDeposit: 0,
+  depositItems: [],
 
   contractNo: "",
   startDate: "",
@@ -93,6 +100,17 @@ const initialFormState: FormState = {
   remarks: "",
 
   managementCompany: null,
+};
+
+// 根据场地类型获取默认押金
+const getDefaultDeposit = (spaceType: string): number => {
+  const depositMap: Record<string, number> = {
+    open_station: 1200,
+    office_no_window: 1200,
+    office_with_window: 1200,
+    detached_office: 5000,
+  };
+  return depositMap[spaceType] || 1200;
 };
 
 export default function NewContractPage() {
@@ -114,7 +132,8 @@ export default function NewContractPage() {
     spaceType,
     spaceQuantity,
     yearlyFee,
-    deposit,
+    baseDeposit,
+    depositItems,
     contractNo,
     startDate,
     endDate,
@@ -132,74 +151,57 @@ export default function NewContractPage() {
   const currentMainStep = mainSteps.find(s => s.id === currentMainStepId);
   const currentSubStep = currentMainStep?.subSteps.find(s => s.id === currentSubStepId);
 
+  // 计算总押金
+  const totalDeposit = baseDeposit + depositItems.reduce((sum, item) => sum + item.amount, 0);
+
   // 步骤验证
   const validateCurrentStep = useCallback((): boolean => {
     switch (`${currentMainStepId}_${currentSubStepId}`) {
       case "enterprise_search":
-        return true; // 搜索步骤
+        return true;
       case "enterprise_confirm":
         return selectedEnterprise !== null;
-      case "space_select_space":
-        return spaceType !== "";
+      case "service_fee_select_space":
+        return spaceType !== "" && yearlyFee > 0;
+      case "deposit_deposit_items":
+        return baseDeposit > 0;
       case "contract_party_info":
-        return selectedEnterprise !== null && managementCompany !== null;
-      case "contract_fee_duration":
-        return startDate !== "" && yearlyFee > 0;
+        return selectedEnterprise !== null;
+      case "contract_duration":
+        return startDate !== "";
       case "complete_review":
         return true;
       default:
         return true;
     }
-  }, [currentMainStepId, currentSubStepId, selectedEnterprise, spaceType, startDate, yearlyFee, managementCompany]);
+  }, [currentMainStepId, currentSubStepId, selectedEnterprise, spaceType, yearlyFee, baseDeposit, startDate]);
 
-  // 选择企业后获取基地的管理公司信息
-  const handleSelectEnterprise = useCallback(async (enterprise: Enterprise) => {
+  // 选择企业
+  const handleSelectEnterprise = useCallback((enterprise: Enterprise) => {
     updateFormState({ selectedEnterprise: enterprise });
-    
-    // 如果企业有关联基地，获取基地的管理公司信息
-    if (enterprise.baseId) {
-      try {
-        const response = await fetch(`/api/bases/${enterprise.baseId}`);
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            const base = result.data;
-            updateFormState({
-              managementCompany: {
-                name: base.management_company_name || "",
-                creditCode: base.management_company_credit_code || "",
-                legalPerson: base.management_company_legal_person || "",
-                address: base.management_company_address || "",
-                phone: base.management_company_phone || "",
-              },
-            });
-          }
-        }
-      } catch (error) {
-        console.error("获取基地管理公司信息失败:", error);
-      }
-    } else {
-      updateFormState({ managementCompany: null });
-    }
   }, [updateFormState]);
 
   // 选择场地类型
   const handleSelectSpaceType = useCallback((space: typeof spaceTypeOptions[0]) => {
+    const newYearlyFee = space.price * spaceQuantity;
+    const newBaseDeposit = getDefaultDeposit(space.value) * spaceQuantity;
     updateFormState({
       spaceType: space.value,
-      yearlyFee: space.price * spaceQuantity,
-      deposit: space.deposit * spaceQuantity,
+      yearlyFee: newYearlyFee,
+      baseDeposit: newBaseDeposit,
     });
   }, [spaceQuantity, updateFormState]);
 
   // 更新数量时重新计算费用
   useEffect(() => {
-    const selectedSpace = spaceTypeOptions.find(s => s.value === spaceType);
-    if (selectedSpace) {
-      updateFormState({
-        yearlyFee: selectedSpace.price * spaceQuantity,
-        deposit: selectedSpace.deposit * spaceQuantity,
-      });
+    if (spaceType) {
+      const selectedSpace = spaceTypeOptions.find(s => s.value === spaceType);
+      if (selectedSpace) {
+        updateFormState({
+          yearlyFee: selectedSpace.price * spaceQuantity,
+          baseDeposit: getDefaultDeposit(spaceType) * spaceQuantity,
+        });
+      }
     }
   }, [spaceQuantity, spaceType, updateFormState]);
 
@@ -213,6 +215,27 @@ export default function NewContractPage() {
     }
   }, [startDate, contractYears, updateFormState]);
 
+  // 添加押金项
+  const handleAddDepositItem = useCallback((item: DepositItem) => {
+    updateFormState({ depositItems: [...depositItems, item] });
+  }, [depositItems, updateFormState]);
+
+  // 更新押金项
+  const handleUpdateDepositItem = useCallback((id: string, updates: Partial<DepositItem>) => {
+    updateFormState({
+      depositItems: depositItems.map(item =>
+        item.id === id ? { ...item, ...updates } : item
+      ),
+    });
+  }, [depositItems, updateFormState]);
+
+  // 删除押金项
+  const handleRemoveDepositItem = useCallback((id: string) => {
+    updateFormState({
+      depositItems: depositItems.filter(item => item.id !== id),
+    });
+  }, [depositItems, updateFormState]);
+
   // 下一步
   const handleNext = useCallback(() => {
     if (!validateCurrentStep()) {
@@ -220,16 +243,13 @@ export default function NewContractPage() {
       return;
     }
 
-    // 标记当前步骤完成
     const stepKey = `${currentMainStepId}_${currentSubStepId}`;
     const newCompletedSubSteps = completedSubSteps.includes(stepKey)
       ? completedSubSteps
       : [...completedSubSteps, stepKey];
 
-    // 获取下一步
     const nextStep = getNextStep(currentMainStepId, currentSubStepId);
     if (nextStep) {
-      // 检查是否需要标记大步骤完成
       const isCompletingMainStep = nextStep.mainStepId !== currentMainStepId;
       const newCompletedMainSteps = isCompletingMainStep
         ? completedMainSteps.includes(currentMainStepId)
@@ -311,10 +331,10 @@ export default function NewContractPage() {
           contractName: `${selectedEnterprise.name}入驻合同`,
           contractType: spaceType === "detached_office" ? "paid" : "free",
           rentAmount: yearlyFee,
-          depositAmount: deposit,
+          depositAmount: totalDeposit,
           startDate: startDate,
           endDate: endDate,
-          // 甲方信息（从基地管理公司获取）
+          // 甲方信息
           partyA: managementCompany ? {
             name: managementCompany.name,
             creditCode: managementCompany.creditCode,
@@ -335,6 +355,8 @@ export default function NewContractPage() {
             spaceTypeLabel: selectedSpace?.label,
             spaceQuantity: spaceQuantity,
             contractYears: contractYears,
+            baseDeposit: baseDeposit,
+            depositItems: depositItems,
             remarks: remarks,
           }),
           status: "draft",
@@ -349,7 +371,6 @@ export default function NewContractPage() {
       const result = await response.json();
       setCreatedContractId(result.data.id);
       
-      // 标记完成
       updateFormState({
         completedMainSteps: [...completedMainSteps, "contract", "complete"],
         currentMainStepId: "complete",
@@ -363,7 +384,7 @@ export default function NewContractPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [selectedEnterprise, spaceType, startDate, contractNo, yearlyFee, deposit, endDate, managementCompany, contractYears, remarks, spaceQuantity, completedMainSteps, updateFormState]);
+  }, [selectedEnterprise, spaceType, startDate, contractNo, yearlyFee, totalDeposit, endDate, managementCompany, contractYears, remarks, spaceQuantity, baseDeposit, depositItems, completedMainSteps, updateFormState]);
 
   // 获取选中的场地类型信息
   const getSelectedSpaceInfo = () => spaceTypeOptions.find(s => s.value === spaceType);
@@ -380,7 +401,9 @@ export default function NewContractPage() {
           spaceTypeLabel={getSelectedSpaceInfo()?.label || ""}
           spaceQuantity={spaceQuantity}
           yearlyFee={yearlyFee}
-          deposit={deposit}
+          baseDeposit={baseDeposit}
+          depositItems={depositItems}
+          totalDeposit={totalDeposit}
           formData={{ contractNo, startDate, endDate, contractYears, remarks }}
           onViewContract={() => router.push(`/dashboard/base/contracts/${createdContractId}`)}
           onCreateAnother={() => {
@@ -393,38 +416,42 @@ export default function NewContractPage() {
 
     // 选择企业大步骤
     if (currentMainStepId === "enterprise") {
-      if (currentSubStepId === "search") {
-        return (
-          <SelectEnterpriseStep
-            selectedEnterprise={selectedEnterprise}
-            onSelect={handleSelectEnterprise}
-            searchKeyword={searchKeyword}
-            onSearchChange={(keyword) => updateFormState({ searchKeyword: keyword })}
-          />
-        );
-      }
-      if (currentSubStepId === "confirm") {
-        return (
-          <SelectEnterpriseStep
-            selectedEnterprise={selectedEnterprise}
-            onSelect={handleSelectEnterprise}
-            searchKeyword={searchKeyword}
-            onSearchChange={(keyword) => updateFormState({ searchKeyword: keyword })}
-          />
-        );
-      }
+      return (
+        <SelectEnterpriseStep
+          selectedEnterprise={selectedEnterprise}
+          onSelect={handleSelectEnterprise}
+          searchKeyword={searchKeyword}
+          onSearchChange={(keyword) => updateFormState({ searchKeyword: keyword })}
+        />
+      );
     }
 
-    // 选择场地大步骤
-    if (currentMainStepId === "space") {
+    // 服务费大步骤
+    if (currentMainStepId === "service_fee") {
       return (
-        <SelectSpaceStep
+        <ServiceFeeStep
           spaceType={spaceType}
           spaceQuantity={spaceQuantity}
           yearlyFee={yearlyFee}
-          deposit={deposit}
           onSelectSpaceType={handleSelectSpaceType}
           onUpdateQuantity={(q) => updateFormState({ spaceQuantity: q })}
+          onUpdateYearlyFee={(fee) => updateFormState({ yearlyFee: fee })}
+        />
+      );
+    }
+
+    // 押金大步骤
+    if (currentMainStepId === "deposit") {
+      return (
+        <DepositStep
+          spaceType={spaceType}
+          spaceQuantity={spaceQuantity}
+          baseDeposit={baseDeposit}
+          depositItems={depositItems}
+          onUpdateBaseDeposit={(amount) => updateFormState({ baseDeposit: amount })}
+          onAddDepositItem={handleAddDepositItem}
+          onUpdateDepositItem={handleUpdateDepositItem}
+          onRemoveDepositItem={handleRemoveDepositItem}
         />
       );
     }
@@ -434,14 +461,11 @@ export default function NewContractPage() {
       return (
         <ContractInfoStep
           enterprise={selectedEnterprise}
-          spaceType={spaceType}
-          spaceTypeLabel={getSelectedSpaceInfo()?.label || ""}
-          spaceQuantity={spaceQuantity}
-          yearlyFee={yearlyFee}
-          deposit={deposit}
           formData={{ contractNo, startDate, endDate, contractYears, remarks }}
           onUpdateFormData={(data) => updateFormState(data as Partial<FormState>)}
           subStepId={currentSubStepId}
+          managementCompany={managementCompany}
+          onUpdateManagementCompany={(company) => updateFormState({ managementCompany: company })}
         />
       );
     }
@@ -450,7 +474,7 @@ export default function NewContractPage() {
   };
 
   // 判断是否是最后一步
-  const isLastStep = currentMainStepId === "contract" && currentSubStepId === "fee_duration";
+  const isLastStep = currentMainStepId === "contract" && currentSubStepId === "duration";
 
   return (
     <div className="flex h-[calc(100vh-7rem)]">
