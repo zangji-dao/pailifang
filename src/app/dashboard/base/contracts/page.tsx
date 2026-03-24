@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { toast } from "sonner";
 
 // 类型定义
 type ContractStatus = "pending" | "signed" | "expired" | "terminated";
+type FilterType = ContractStatus | "all" | "expiring_soon";
 
 interface Contract {
   id: string;
@@ -38,6 +40,24 @@ interface Contract {
   status: ContractStatus;
   createdAt: string;
 }
+
+// 检查合同是否即将到期（30天内）
+const isExpiringSoon = (contract: Contract): boolean => {
+  // 只有已签状态的合同才判断即将到期
+  if (contract.status !== "signed") return false;
+  if (!contract.endDate) return false;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(contract.endDate);
+  endDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = endDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // 0-30天内到期（包括今天）
+  return diffDays >= 0 && diffDays <= 30;
+};
 
 // 状态配置 - 使用统一的七彩配色风格
 const statusConfig: Record<ContractStatus, { 
@@ -90,7 +110,7 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ContractStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<FilterType>("all");
 
   // 获取合同列表
   useEffect(() => {
@@ -120,9 +140,15 @@ export default function ContractsPage() {
 
   // 过滤合同列表
   const filteredContracts = contracts.filter((c) => {
+    // 即将到期筛选
+    if (statusFilter === "expiring_soon") {
+      return isExpiringSoon(c);
+    }
+    // 状态筛选
     if (statusFilter !== "all" && c.status !== statusFilter) {
       return false;
     }
+    // 关键词搜索
     if (!searchKeyword) return true;
     return (
       (c.enterpriseName && c.enterpriseName.includes(searchKeyword)) ||
@@ -137,6 +163,7 @@ export default function ContractsPage() {
     pending: contracts.filter((c) => c.status === "pending").length,
     signed: contracts.filter((c) => c.status === "signed").length,
     expired: contracts.filter((c) => c.status === "expired").length,
+    expiringSoon: contracts.filter((c) => isExpiringSoon(c)).length,
   };
 
   // 清除过滤条件
@@ -182,7 +209,7 @@ export default function ContractsPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <Card 
           className={cn(
             "cursor-pointer hover:shadow-md transition-shadow", 
@@ -218,6 +245,27 @@ export default function ContractsPage() {
               </div>
               <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.signed.bgColor)}>
                 <CheckCircle2 className={cn("h-5 w-5", statusConfig.signed.color)} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* 即将到期卡片 */}
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "expiring_soon" && "ring-2 ring-orange-400"
+          )}
+          onClick={() => setStatusFilter("expiring_soon")}
+        >
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">即将到期</p>
+                <p className="text-2xl font-semibold text-orange-600">{stats.expiringSoon}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-50">
+                <Timer className="h-5 w-5 text-orange-600" />
               </div>
             </div>
           </CardContent>
@@ -278,8 +326,13 @@ export default function ContractsPage() {
         {(statusFilter !== "all" || searchKeyword) && (
           <div className="flex items-center gap-2">
             {statusFilter !== "all" && (
-              <Badge className={cn("gap-1 border", statusConfig[statusFilter].bgColor, statusConfig[statusFilter].color, statusConfig[statusFilter].borderColor)}>
-                状态: {statusConfig[statusFilter].label}
+              <Badge className={cn(
+                "gap-1 border",
+                statusFilter === "expiring_soon" 
+                  ? "bg-orange-50 text-orange-600 border-orange-200" 
+                  : cn(statusConfig[statusFilter as ContractStatus].bgColor, statusConfig[statusFilter as ContractStatus].color, statusConfig[statusFilter as ContractStatus].borderColor)
+              )}>
+                {statusFilter === "expiring_soon" ? "即将到期 (30天内)" : `状态: ${statusConfig[statusFilter as ContractStatus].label}`}
                 <X 
                   className="h-3 w-3 cursor-pointer" 
                   onClick={(e) => {
@@ -312,7 +365,13 @@ export default function ContractsPage() {
       {filteredContracts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <FileSignature className="h-12 w-12 mb-4" />
-          <p>{statusFilter !== "all" ? `暂无${statusConfig[statusFilter].label}状态的合同` : "暂无合同"}</p>
+          <p>
+            {statusFilter === "expiring_soon" 
+              ? "暂无30天内即将到期的合同" 
+              : statusFilter !== "all" 
+                ? `暂无${statusConfig[statusFilter as ContractStatus].label}状态的合同` 
+                : "暂无合同"}
+          </p>
           {statusFilter === "all" && (
             <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/base/contracts/new")}>
               <Plus className="h-4 w-4 mr-2" />
@@ -340,6 +399,12 @@ export default function ContractsPage() {
                       <Badge className={cn("font-normal border", statusInfo.bgColor, statusInfo.color, statusInfo.borderColor)}>
                         {statusInfo.label}
                       </Badge>
+                      {isExpiringSoon(contract) && (
+                        <Badge className="font-normal border bg-orange-50 text-orange-600 border-orange-200">
+                          <Timer className="h-3 w-3 mr-1" />
+                          即将到期
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                       <span className="font-mono">{contract.contractNo || "-"}</span>
