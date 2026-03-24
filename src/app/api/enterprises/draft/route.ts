@@ -79,18 +79,24 @@ export async function POST(request: NextRequest) {
         .select()
         .single();
 
-      if (error) {
+      // 如果记录不存在，清除 draft_id 让后面创建新记录
+      if (error?.code === 'PGRST116') {
+        console.log('草稿记录不存在，将创建新记录');
+        // 继续执行创建逻辑，不要返回错误
+      } else if (error) {
         console.error('更新草稿失败:', error);
         return NextResponse.json({ success: false, error: '更新草稿失败' }, { status: 500 });
+      } else {
+        // 更新成功
+        return NextResponse.json({
+          success: true,
+          data: { id: draft_id, ...data },
+          message: '进度已保存',
+          isCompleted: isCompletedAddress,
+        });
       }
-
-      return NextResponse.json({
-        success: true,
-        data: { id: draft_id, ...data },
-        message: '进度已保存',
-        isCompleted: isCompletedAddress,
-      });
     }
+
 
     // 创建新的草稿记录
     if (!enterprise_code) {
