@@ -41,13 +41,16 @@
 - 文件操作:
   - edit: `src/app/dashboard/base/contracts/page.tsx` - 合同列表页面，统一状态颜色
   - edit: `src/app/dashboard/base/contracts/[id]/page.tsx` - 合同详情页面，统一状态颜色
-  - edit: `src/app/dashboard/base/contracts/new/page.tsx` - 合同创建流程
+  - edit: `src/app/dashboard/base/contracts/new/page.tsx` - 合同创建流程简化为2步，统一七彩配色
   - edit: `src/app/dashboard/constants.tsx` - 导航结构
   - edit: `src/app/api/enterprises/route.ts` - 企业名称查重
   - edit: `src/app/api/enterprises/[id]/route.ts` - 企业更新查重
 - 关键修改:
   - 合同状态配置统一使用七彩配色系统
   - 草稿: slate（灰色）、待签: amber（琥珀色）、已签: emerald（翡翠绿）、已到期: rose（玫瑰粉）、已终止: slate（灰色）
+  - 新建合同流程简化为2步：选择企业 → 合同信息（含附件上传）
+  - 步骤指示器使用琥珀色主题，与"签订合同"步骤对应
+  - 添加温馨提示卡片说明合同创建后的状态
 
 ## 问题或错误及解决方案
 - 问题: 用户反馈合同创建流程过于复杂

@@ -6,12 +6,13 @@ import {
   ArrowLeft,
   Loader2,
   Building2,
-  Calendar,
   Upload,
   X,
   FileText,
   Check,
   Search,
+  FileSignature,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,11 +33,10 @@ interface Enterprise {
   baseName?: string;
 }
 
-// 步骤配置
+// 步骤配置 - 简化为2步
 const steps = [
-  { id: 1, title: "选择企业", description: "选择签约企业" },
-  { id: 2, title: "合同信息", description: "填写合同信息" },
-  { id: 3, title: "上传附件", description: "上传合同文件" },
+  { id: 1, title: "选择企业", description: "选择签约企业主体", icon: Building2 },
+  { id: 2, title: "合同信息", description: "填写合同详情并上传附件", icon: FileSignature },
 ];
 
 export default function NewContractPage() {
@@ -177,11 +177,7 @@ export default function NewContractPage() {
       toast.error("请选择企业");
       return;
     }
-    if (currentStep === 2 && !signDate) {
-      toast.error("请填写开始日期");
-      return;
-    }
-    if (currentStep < 3) {
+    if (currentStep < 2) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -252,38 +248,84 @@ export default function NewContractPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-semibold">新建合同</h1>
-          <p className="text-muted-foreground">
-            第 {currentStep} 步，共 {steps.length} 步 - {steps[currentStep - 1].description}
+          <p className="text-muted-foreground mt-1">
+            {steps[currentStep - 1].description}
           </p>
         </div>
       </div>
 
-      {/* 步骤指示器 */}
-      <div className="flex items-center gap-2">
-        {steps.map((step, index) => (
-          <div key={step.id} className="flex items-center">
-            <div
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
-                currentStep === step.id
-                  ? "bg-primary text-primary-foreground"
-                  : currentStep > step.id
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-muted text-muted-foreground"
-              )}
-            >
-              {currentStep > step.id ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">
-                  {step.id}
-                </span>
-              )}
-              {step.title}
-            </div>
-            {index < steps.length - 1 && <div className="w-8 h-px bg-border mx-1" />}
-          </div>
-        ))}
+      {/* 步骤指示器 - 使用七彩配色中的琥珀色（签订合同） */}
+      <div className="bg-card border rounded-lg p-4">
+        <div className="flex items-center justify-center">
+          {steps.map((step, index) => {
+            const isActive = step.id === currentStep;
+            const isCompleted = step.id < currentStep;
+            const Icon = step.icon;
+            const isLast = index === steps.length - 1;
+
+            return (
+              <div key={step.id} className="flex items-center">
+                <button
+                  onClick={() => {
+                    if (isCompleted || (step.id === 1 && currentStep === 2 && selectedEnterprise)) {
+                      setCurrentStep(step.id);
+                    }
+                  }}
+                  disabled={!isCompleted && step.id !== currentStep && !(step.id === 1)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
+                    isActive && "bg-amber-50 ring-2 ring-amber-300",
+                    isCompleted && "bg-step-emerald-muted ring-1 ring-step-emerald/30",
+                    !isActive && !isCompleted && "text-muted-foreground"
+                  )}
+                >
+                  {/* 步骤图标 */}
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                      isCompleted && "bg-step-emerald text-step-emerald-foreground",
+                      isActive && !isCompleted && "bg-amber-500 text-white",
+                      !isActive && !isCompleted && "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {isCompleted ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Icon className="w-4 h-4" />
+                    )}
+                  </div>
+
+                  {/* 步骤信息 */}
+                  <div className="text-left">
+                    <span
+                      className={cn(
+                        "text-sm font-medium block",
+                        isActive && "text-amber-700",
+                        isCompleted && "text-step-emerald",
+                        !isActive && !isCompleted && "text-muted-foreground"
+                      )}
+                    >
+                      {step.title}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      第 {step.id} 步
+                    </span>
+                  </div>
+                </button>
+
+                {/* 连接线 */}
+                {!isLast && (
+                  <div
+                    className={cn(
+                      "w-16 h-0.5 mx-2 rounded-full transition-colors",
+                      isCompleted ? "bg-step-emerald/50" : "bg-muted"
+                    )}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* 步骤1：选择企业 */}
@@ -291,7 +333,10 @@ export default function NewContractPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">选择签约企业</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-amber-600" />
+                选择签约企业
+              </CardTitle>
               <CardDescription>从已有企业中选择签约主体</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -324,13 +369,19 @@ export default function NewContractPage() {
                       key={enterprise.id}
                       className={cn(
                         "p-4 hover:bg-muted/50 cursor-pointer transition-colors flex items-center justify-between",
-                        selectedEnterprise?.id === enterprise.id && "bg-primary/5 border-l-2 border-l-primary"
+                        selectedEnterprise?.id === enterprise.id && "bg-amber-50 border-l-2 border-l-amber-500"
                       )}
                       onClick={() => setSelectedEnterprise(enterprise)}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="h-6 w-6 text-primary" />
+                        <div className={cn(
+                          "w-12 h-12 rounded-lg flex items-center justify-center",
+                          selectedEnterprise?.id === enterprise.id ? "bg-amber-100" : "bg-muted"
+                        )}>
+                          <Building2 className={cn(
+                            "h-6 w-6",
+                            selectedEnterprise?.id === enterprise.id ? "text-amber-600" : "text-muted-foreground"
+                          )} />
                         </div>
                         <div>
                           <span className="font-medium">{enterprise.name}</span>
@@ -346,7 +397,7 @@ export default function NewContractPage() {
                         </div>
                       </div>
                       {selectedEnterprise?.id === enterprise.id && (
-                        <Check className="w-5 h-5 text-primary" />
+                        <Check className="w-5 h-5 text-amber-600" />
                       )}
                     </div>
                   ))
@@ -357,15 +408,17 @@ export default function NewContractPage() {
         </div>
       )}
 
-      {/* 步骤2：合同信息 */}
+      {/* 步骤2：合同信息 + 上传附件 */}
       {currentStep === 2 && selectedEnterprise && (
         <div className="space-y-4">
           {/* 已选企业 */}
-          <Card className="border-primary/30 bg-primary/5">
+          <Card className="border-step-emerald/30 bg-step-emerald-muted/30">
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-primary" />
+                  <div className="w-8 h-8 rounded-full bg-step-emerald text-white flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
                   <div>
                     <p className="font-medium">{selectedEnterprise.name}</p>
                     <p className="text-sm text-muted-foreground">
@@ -383,7 +436,10 @@ export default function NewContractPage() {
           {/* 合同信息表单 */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">合同信息</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileSignature className="w-5 h-5 text-amber-600" />
+                合同信息
+              </CardTitle>
               <CardDescription>填写合同编号和有效期</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -451,51 +507,22 @@ export default function NewContractPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {/* 步骤3：上传附件 */}
-      {currentStep === 3 && (
-        <div className="space-y-4">
-          {/* 合同摘要 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">合同摘要</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">合同编号：</span>
-                  <span className="font-mono">{contractNo}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">企业名称：</span>
-                  <span className="font-medium">{selectedEnterprise?.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">开始日期：</span>
-                  <span>{signDate || "-"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">有效时长：</span>
-                  <span>{duration} 年（截止：{endDate || "-"}）</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* 上传附件 */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Upload className="w-5 h-5" />
+                <Upload className="w-5 h-5 text-amber-600" />
                 合同附件
+                <span className="text-xs font-normal text-muted-foreground ml-2 bg-muted px-2 py-0.5 rounded">
+                  可选
+                </span>
               </CardTitle>
-              <CardDescription>上传合同扫描件或电子版（可选）</CardDescription>
+              <CardDescription>上传合同扫描件或电子版</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 上传按钮 */}
-              <div className="border-2 border-dashed rounded-lg p-8 text-center">
+              <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-amber-300 hover:bg-amber-50/30 transition-colors">
                 <input
                   type="file"
                   id="file-upload"
@@ -509,9 +536,9 @@ export default function NewContractPage() {
                   className="cursor-pointer flex flex-col items-center gap-2"
                 >
                   {uploadingFiles.size > 0 ? (
-                    <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
+                    <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />
                   ) : (
-                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <Upload className="w-8 h-8 text-amber-600" />
                   )}
                   <span className="text-sm text-muted-foreground">
                     点击上传或拖拽文件到此处
@@ -531,7 +558,7 @@ export default function NewContractPage() {
                       className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-muted-foreground" />
+                        <FileText className="w-5 h-5 text-amber-600" />
                         <span className="text-sm truncate max-w-[300px]">{file.name}</span>
                       </div>
                       <Button
@@ -547,11 +574,28 @@ export default function NewContractPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* 温馨提示 */}
+          <Card className="border-amber-200 bg-amber-50/50">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium mb-1">温馨提示</p>
+                  <ul className="list-disc list-inside space-y-1 text-amber-700">
+                    <li>合同创建后为<b>草稿</b>状态，需在详情页确认签署</li>
+                    <li>合同附件可在创建后继续上传</li>
+                    <li>草稿状态的合同可随时删除</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* 底部操作栏 */}
-      <div className="border-t bg-card px-6 py-4 -mx-6">
+      <div className="border-t bg-card px-6 py-4 -mx-6 sticky bottom-0">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <Button
             variant="outline"
@@ -562,11 +606,11 @@ export default function NewContractPage() {
             上一步
           </Button>
 
-          {currentStep === 3 ? (
+          {currentStep === 2 ? (
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-step-emerald hover:bg-step-emerald/90 text-white"
             >
               {submitting ? (
                 <>
@@ -581,7 +625,10 @@ export default function NewContractPage() {
               )}
             </Button>
           ) : (
-            <Button onClick={handleNext}>
+            <Button
+              onClick={handleNext}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
               下一步
               <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
             </Button>
