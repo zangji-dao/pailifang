@@ -94,6 +94,15 @@ interface RegNumber {
   };
 }
 
+// 入驻申请企业类型
+interface FillingApplication {
+  id: string;
+  enterprise_name: string;
+  application_no: string;
+  legal_person_name: string | null;
+  contact_person_phone: string | null;
+}
+
 // 状态配置
 const statusConfig = {
   all: {
@@ -122,7 +131,9 @@ const statusConfig = {
 export default function AddressManagementPage() {
   const [cascadeData, setCascadeData] = useState<Base[]>([]);
   const [regNumbers, setRegNumbers] = useState<RegNumber[]>([]);
+  const [fillingApplications, setFillingApplications] = useState<FillingApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingApplications, setLoadingApplications] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
@@ -184,10 +195,30 @@ export default function AddressManagementPage() {
     }
   };
 
+  // 获取填报中的入驻申请企业
+  const fetchFillingApplications = async () => {
+    try {
+      setLoadingApplications(true);
+      const res = await fetch("/api/settlement/applications");
+      const result = await res.json();
+      if (result.success || result.data) {
+        // 过滤出填报中状态的企业
+        const fillingApps = (result.data || []).filter(
+          (app: any) => app.approvalStatus === "filling"
+        );
+        setFillingApplications(fillingApps);
+      }
+    } catch (error) {
+      console.error("获取入驻申请失败:", error);
+    } finally {
+      setLoadingApplications(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
+      await Promise.all([fetchCascadeData(), fetchRegNumbers(), fetchFillingApplications()]);
       setLoading(false);
     };
     init();
@@ -648,15 +679,39 @@ export default function AddressManagementPage() {
                     <Building2 className="h-3 w-3" />
                     预分配企业 <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    placeholder="输入企业名称（必填）"
+                  <Select
                     value={assignedEnterpriseName}
-                    onChange={(e) => setAssignedEnterpriseName(e.target.value)}
-                  />
+                    onValueChange={setAssignedEnterpriseName}
+                    disabled={loadingApplications}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingApplications ? "加载中..." : "选择企业（从入驻申请）"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fillingApplications.length === 0 ? (
+                        <SelectItem value="_empty" disabled>
+                          暂无填报中的企业
+                        </SelectItem>
+                      ) : (
+                        fillingApplications.map((app) => (
+                          <SelectItem key={app.id} value={app.enterprise_name}>
+                            <div className="flex items-center gap-2">
+                              <span>{app.enterprise_name}</span>
+                              {app.legal_person_name && (
+                                <span className="text-muted-foreground text-xs">
+                                  ({app.legal_person_name})
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button
                   onClick={generateRegNumber}
-                  disabled={generating || !selectedSpaceId || !assignedEnterpriseName.trim()}
+                  disabled={generating || !selectedSpaceId || !assignedEnterpriseName}
                   className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                 >
                   {generating ? (
