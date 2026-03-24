@@ -112,7 +112,7 @@ export default function ContractDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contractFileUrl: uploadResult.url,
-          status: contract?.status === "draft" ? "pending" : contract?.status,
+          // 上传附件后保持原状态，不自动改为待签
         }),
       });
 
@@ -228,7 +228,8 @@ export default function ContractDetailPage() {
               </Button>
             </>
           )}
-          {contract.status === "pending" && contract.contractFileUrl && (
+          {/* 草稿或待签状态，有合同文件就可以确认签署 */}
+          {(contract.status === "draft" || contract.status === "pending") && contract.contractFileUrl && (
             <Button onClick={handleSign} className="bg-emerald-600 hover:bg-emerald-700">
               <CheckCircle2 className="h-4 w-4 mr-2" />
               确认签署
@@ -387,8 +388,11 @@ export default function ContractDetailPage() {
           创建时间：{new Date(contract.createdAt).toLocaleString()}
         </p>
         <div className="flex items-center gap-2">
-          {contract.status === "draft" && !contract.contractFileUrl && (
-            <span className="text-sm text-amber-600">上传合同文件后可提交签署</span>
+          {contract.status !== "signed" && !contract.contractFileUrl && (
+            <span className="text-sm text-amber-600">请上传合同文件</span>
+          )}
+          {contract.status !== "signed" && contract.contractFileUrl && (
+            <span className="text-sm text-emerald-600">文件已上传，点击"确认签署"完成签署</span>
           )}
           <Button onClick={() => router.push("/dashboard/base/contracts/new")}>
             <Plus className="h-4 w-4 mr-2" />

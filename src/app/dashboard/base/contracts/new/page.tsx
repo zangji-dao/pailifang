@@ -237,8 +237,8 @@ export default function NewContractPage() {
             url: a.url,
             name: a.name,
           })),
-          // 如果有附件就是待签状态，否则是草稿
-          status: attachments.length > 0 ? "pending" : "draft",
+          // 创建合同统一为草稿状态，需要后续确认签署
+          status: "draft",
         }),
       });
 
