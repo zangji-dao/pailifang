@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 // 合同类型
-type ContractType = "free" | "paid" | "tax_commitment";
+type ContractType = "free" | "paid" | "tax_commitment" | string;
 
 // 合同数据接口
 interface Contract {
@@ -26,6 +26,7 @@ interface Contract {
   enterpriseId: string | null;
   enterpriseName: string | null;
   contractNo: string | null;
+  contractName?: string | null;
   contractType: ContractType;
   rentAmount: string | null;
   depositAmount: string | null;
@@ -36,10 +37,15 @@ interface Contract {
 }
 
 // 合同类型配置
-const contractTypeConfig: Record<ContractType, { label: string; className: string }> = {
+const contractTypeConfig: Record<string, { label: string; className: string }> = {
   free: { label: "免费入驻", className: "text-green-600" },
   paid: { label: "付费入驻", className: "text-blue-600" },
   tax_commitment: { label: "承诺税收", className: "text-amber-600" },
+};
+
+// 获取合同类型显示配置
+const getContractTypeConfig = (type: ContractType) => {
+  return contractTypeConfig[type] || { label: type || "未分类", className: "text-muted-foreground" };
 };
 
 // 状态配置
@@ -75,11 +81,16 @@ export function ContractStep({
     const fetchContracts = async () => {
       setLoading(true);
       try {
-        // 获取已签状态的合同（已签名的合同才能关联）
-        const response = await fetch("/api/settlement/contracts?status=signed,pending");
+        // 获取所有合同，在前端过滤
+        const response = await fetch("/api/settlement/contracts");
         if (response.ok) {
           const result = await response.json();
-          setContracts(result.data || []);
+          // 过滤出已签和待签状态的合同
+          const validStatuses = ["signed", "pending"];
+          const filteredContracts = (result.data || []).filter(
+            (c: Contract) => validStatuses.includes(c.status)
+          );
+          setContracts(filteredContracts);
         }
       } catch (error) {
         console.error("获取合同列表失败:", error);
@@ -142,14 +153,19 @@ export function ContractStep({
                 <div>
                   <p className="font-semibold text-lg">{selectedContract.contractNo}</p>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                    {selectedContract.enterpriseName && (
+                    {selectedContract.enterpriseName ? (
                       <span className="flex items-center gap-1">
                         <Building2 className="w-3.5 h-3.5" />
                         {selectedContract.enterpriseName}
                       </span>
+                    ) : selectedContract.contractName && (
+                      <span className="flex items-center gap-1">
+                        <Building2 className="w-3.5 h-3.5" />
+                        {selectedContract.contractName.replace(/合同$/, '')}
+                      </span>
                     )}
-                    <span className={contractTypeConfig[selectedContract.contractType].className}>
-                      {contractTypeConfig[selectedContract.contractType].label}
+                    <span className={getContractTypeConfig(selectedContract.contractType).className}>
+                      {getContractTypeConfig(selectedContract.contractType).label}
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
@@ -233,14 +249,19 @@ export function ContractStep({
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                        {c.enterpriseName && (
+                        {c.enterpriseName ? (
                           <span className="flex items-center gap-1">
                             <Building2 className="w-3.5 h-3.5" />
                             {c.enterpriseName}
                           </span>
+                        ) : c.contractName && (
+                          <span className="flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5" />
+                            {c.contractName.replace(/合同$/, '')}
+                          </span>
                         )}
-                        <span className={contractTypeConfig[c.contractType].className}>
-                          {contractTypeConfig[c.contractType].label}
+                        <span className={getContractTypeConfig(c.contractType).className}>
+                          {getContractTypeConfig(c.contractType).label}
                         </span>
                         {c.startDate && c.endDate && (
                           <span className="flex items-center gap-1">
