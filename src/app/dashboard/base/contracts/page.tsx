@@ -43,6 +43,7 @@ interface Contract {
   enterpriseName: string | null;
   contractNo: string | null;
   contractName: string | null;
+  contractType?: string | null;  // 合同类型名称
   startDate: string | null;
   endDate: string | null;
   status: ContractStatus;
@@ -406,11 +407,8 @@ export default function ContractsPage() {
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                       <span className="font-mono">{contract.contractNo || "-"}</span>
-                      {contract.enterpriseName && (
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3.5 w-3.5" />
-                          {contract.enterpriseName}
-                        </span>
+                      {contract.contractType && (
+                        <span className="text-amber-600">{contract.contractType}</span>
                       )}
                       {contract.startDate && (
                         <span className="flex items-center gap-1">

@@ -31,7 +31,7 @@ interface Contract {
   enterpriseName?: string | null;
   contractNo: string | null;
   contractName: string | null;
-  contractTypeName?: string | null;
+  contractType?: string | null;  // 后端返回的合同类型名称
   startDate: string | null;
   endDate: string | null;
   signedDate: string | null;
@@ -269,12 +269,12 @@ export default function ContractDetailPage() {
                   <p className="text-sm text-muted-foreground">关联企业</p>
                   <p className="font-medium flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    {contract.enterpriseName || "-"}
+                    {contract.enterpriseName || contract.contractName?.replace(/合同$/, '') || "-"}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">合同类型</p>
-                  <p className="font-medium">{contract.contractTypeName || "-"}</p>
+                  <p className="font-medium">{contract.contractType || "-"}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">开始日期</p>
