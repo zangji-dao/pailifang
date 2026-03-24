@@ -576,7 +576,7 @@ export default function NewContractPage() {
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  创建合同
+                  完成
                 </>
               )}
             </Button>
