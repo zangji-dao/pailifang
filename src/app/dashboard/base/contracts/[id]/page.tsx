@@ -273,7 +273,7 @@ export default function ContractDetailPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">签订日期</span>
+              <span className="text-muted-foreground">开始日期</span>
               <span>{contract.startDate || "-"}</span>
             </div>
             <div className="flex justify-between text-sm">

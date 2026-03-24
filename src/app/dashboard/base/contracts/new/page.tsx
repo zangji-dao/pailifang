@@ -53,7 +53,7 @@ export default function NewContractPage() {
   // 合同信息
   const [contractNo, setContractNo] = useState("");
   const [contractName, setContractName] = useState("");
-  const [signDate, setSignDate] = useState(""); // 签订日期
+  const [signDate, setSignDate] = useState(""); // 开始日期
   const [duration, setDuration] = useState(1); // 有效时长（年）
   const [remarks, setRemarks] = useState("");
 
@@ -178,7 +178,7 @@ export default function NewContractPage() {
       return;
     }
     if (currentStep === 2 && !signDate) {
-      toast.error("请填写签订日期");
+      toast.error("请填写开始日期");
       return;
     }
     if (currentStep < 3) {
@@ -200,7 +200,7 @@ export default function NewContractPage() {
       return;
     }
     if (!signDate) {
-      toast.error("请填写签订日期");
+      toast.error("请填写开始日期");
       return;
     }
 
@@ -411,7 +411,7 @@ export default function NewContractPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>签订日期 <span className="text-red-500">*</span></Label>
+                  <Label>开始日期 <span className="text-red-500">*</span></Label>
                   <Input
                     type="date"
                     className="mt-1.5"
@@ -473,7 +473,7 @@ export default function NewContractPage() {
                   <span className="font-medium">{selectedEnterprise?.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">签订日期：</span>
+                  <span className="text-muted-foreground">开始日期：</span>
                   <span>{signDate || "-"}</span>
                 </div>
                 <div className="flex items-center gap-2">
