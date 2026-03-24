@@ -693,18 +693,20 @@ export default function AddressManagementPage() {
                           暂无填报中的企业
                         </SelectItem>
                       ) : (
-                        fillingApplications.map((app) => (
-                          <SelectItem key={app.id} value={app.enterpriseName}>
-                            <div className="flex items-center gap-2">
-                              <span>{app.enterpriseName}</span>
-                              {app.legalPersonName && (
-                                <span className="text-muted-foreground text-xs">
-                                  ({app.legalPersonName})
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))
+                        fillingApplications
+                          .filter((app) => app.enterpriseName && app.enterpriseName.trim() !== "")
+                          .map((app) => (
+                            <SelectItem key={app.id} value={app.enterpriseName}>
+                              <div className="flex items-center gap-2">
+                                <span>{app.enterpriseName}</span>
+                                {app.legalPersonName && (
+                                  <span className="text-muted-foreground text-xs">
+                                    ({app.legalPersonName})
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>
