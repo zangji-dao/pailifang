@@ -15,7 +15,6 @@ import {
   DoorOpen,
   ArrowLeft,
   Briefcase,
-  MapPinned,
   Pencil,
   Trash2,
   MoreHorizontal,
@@ -23,17 +22,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
-import { provinces, Province, City } from "@/lib/cities";
-import { MapPicker, Location } from "@/components/map/MapPicker";
+import { MapPicker } from "@/components/map/MapPicker";
 
 interface Base {
   id: string;
   name: string;
   address: string | null;
-  city: string | null;
-  city_code: string | null;
-  longitude: number | null;
-  latitude: number | null;
   status: string;
   meterCount: number;
   createdAt: string;
@@ -96,9 +90,6 @@ export default function BaseListPage() {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
-    city_code: "",
-    longitude: 0,
-    latitude: 0,
     status: "active",
     // 管理公司信息（甲方）
     management_company_name: "",
@@ -107,8 +98,6 @@ export default function BaseListPage() {
     management_company_address: "",
     management_company_phone: "",
   });
-  const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
-  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
   // 删除确认弹窗
@@ -194,9 +183,6 @@ export default function BaseListPage() {
     setFormData({
       name: base.name,
       address: base.address || "",
-      city_code: base.city_code || "",
-      longitude: base.longitude || 0,
-      latitude: base.latitude || 0,
       status: base.status,
       // 管理公司信息
       management_company_name: base.management_company_name || "",
@@ -205,21 +191,6 @@ export default function BaseListPage() {
       management_company_address: base.management_company_address || "",
       management_company_phone: base.management_company_phone || "",
     });
-    
-    // 根据城市代码找到对应的省份和城市
-    if (base.city_code) {
-      for (const province of provinces) {
-        const city = province.cities.find(c => c.code === base.city_code);
-        if (city) {
-          setSelectedProvince(province);
-          setSelectedCity(city);
-          break;
-        }
-      }
-    } else {
-      setSelectedProvince(null);
-      setSelectedCity(null);
-    }
     
     setViewMode("edit");
   };
@@ -238,12 +209,7 @@ export default function BaseListPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          city: selectedCity?.name || null,
-          longitude: formData.longitude || null,
-          latitude: formData.latitude || null,
-        }),
+        body: JSON.stringify(formData),
       });
       
       const result = await response.json();
@@ -277,12 +243,7 @@ export default function BaseListPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          city: selectedCity?.name || null,
-          longitude: formData.longitude || null,
-          latitude: formData.latitude || null,
-        }),
+        body: JSON.stringify(formData),
       });
       
       const result = await response.json();
@@ -333,9 +294,6 @@ export default function BaseListPage() {
     setFormData({
       name: "",
       address: "",
-      city_code: "",
-      longitude: 0,
-      latitude: 0,
       status: "active",
       management_company_name: "",
       management_company_credit_code: "",
@@ -343,8 +301,6 @@ export default function BaseListPage() {
       management_company_address: "",
       management_company_phone: "",
     });
-    setSelectedProvince(null);
-    setSelectedCity(null);
     setEditingBase(null);
   };
 
@@ -420,29 +376,16 @@ export default function BaseListPage() {
               />
             </div>
             
-            {/* 所在城市（从地图选点自动带出） */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                所在城市
-              </label>
-              <div className="h-10 px-3 flex items-center border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-600">
-                {selectedProvince && selectedCity
-                  ? `${selectedProvince.name} ${selectedCity.name}`
-                  : "请通过下方地图选点自动填充"
-                }
-              </div>
-            </div>
-            
             {/* 基地地址 */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                详细地址
+                基地地址
               </label>
               <input
                 type="text"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="请输入详细地址"
+                placeholder="请输入基地详细地址"
                 className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
               />
             </div>
@@ -450,88 +393,22 @@ export default function BaseListPage() {
             {/* 地图选点 */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                在地图上选择位置 <span className="text-red-500">*</span>
+                在地图上选择位置
               </label>
               <MapPicker
                 value={
-                  formData.address || (formData.longitude && formData.latitude)
+                  formData.address
                     ? {
-                        lng: formData.longitude || 0,
-                        lat: formData.latitude || 0,
+                        lng: 0,
+                        lat: 0,
                         address: formData.address,
-                        province: selectedProvince?.name.replace(/省|市|自治区|特别行政区/g, ''),
-                        city: selectedCity?.name.replace(/市|县|区/g, ''),
                       }
                     : undefined
                 }
                 onChange={(location) => {
-                  console.log('地图选点返回:', location);
-                  
-                  // 根据地图返回的省市信息自动填充
-                  let newProvince = selectedProvince;
-                  let newCity = selectedCity;
-                  
-                  if (location.province) {
-                    const provinceName = location.province;
-                    // 查找匹配的省份（支持多种格式匹配）
-                    const matchedProvince = provinces.find(p => {
-                      const pName = p.name;
-                      const pShort = pName.replace(/省|市|自治区|特别行政区/g, '');
-                      
-                      // 完全匹配
-                      if (pName === provinceName) return true;
-                      // 简称匹配（"吉林" 匹配 "吉林省"）
-                      if (pShort === provinceName) return true;
-                      // 包含匹配
-                      if (pName.includes(provinceName) || provinceName.includes(pName)) return true;
-                      if (pShort.includes(provinceName) || provinceName.includes(pShort)) return true;
-                      
-                      return false;
-                    });
-                    
-                    console.log('省份匹配:', provinceName, '->', matchedProvince?.name);
-                    
-                    if (matchedProvince) {
-                      newProvince = matchedProvince;
-                      
-                      // 如果有城市信息，查找匹配的城市
-                      if (location.city) {
-                        const cityName = location.city;
-                        const matchedCity = matchedProvince.cities.find(c => {
-                          const cName = c.name;
-                          const cShort = cName.replace(/市|县|区/g, '');
-                          const cityShort = cityName.replace(/市|县|区/g, '');
-                          
-                          // 完全匹配
-                          if (cName === cityName) return true;
-                          // 简称匹配
-                          if (cShort === cityShort) return true;
-                          if (cShort === cityName) return true;
-                          // 包含匹配
-                          if (cName.includes(cityName) || cityName.includes(cName)) return true;
-                          if (cShort.includes(cityShort) || cityShort.includes(cShort)) return true;
-                          
-                          return false;
-                        });
-                        
-                        console.log('城市匹配:', cityName, '->', matchedCity?.name);
-                        
-                        if (matchedCity) {
-                          newCity = matchedCity;
-                        }
-                      }
-                    }
-                  }
-                  
-                  setSelectedProvince(newProvince);
-                  setSelectedCity(newCity);
-                  
                   setFormData({
                     ...formData,
-                    longitude: location.lng,
-                    latitude: location.lat,
                     address: location.address || formData.address,
-                    city_code: newCity?.code || formData.city_code,
                   });
                 }}
                 placeholder="点击在地图上选择基地位置"
@@ -815,12 +692,6 @@ export default function BaseListPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-medium text-slate-900 truncate">{base.name}</h3>
-                        {base.city && (
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600 shrink-0 flex items-center gap-1">
-                            <MapPinned className="h-3 w-3" />
-                            {base.city}
-                          </span>
-                        )}
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium shrink-0",
                           base.status === "active" 
