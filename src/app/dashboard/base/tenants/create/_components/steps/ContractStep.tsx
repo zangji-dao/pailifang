@@ -10,7 +10,6 @@ import {
   Search,
   Building2,
   Calendar,
-  DollarSign,
   Check,
   Link2
 } from "lucide-react";
@@ -124,12 +123,6 @@ export function ContractStep({
            (c.enterpriseName?.includes(searchKeyword));
   });
 
-  // 格式化金额
-  const formatAmount = (amount: string | number | null) => {
-    if (!amount) return "-";
-    return `¥${Number(amount).toLocaleString()}`;
-  };
-
   // 获取已选合同详情
   const selectedContract = contracts.find(c => c.id === contract?.contractId);
 
@@ -175,8 +168,8 @@ export function ContractStep({
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-lg">{formatAmount(selectedContract.rentAmount)}/月</p>
-                <p className="text-sm text-muted-foreground">押金 {formatAmount(selectedContract.depositAmount)}</p>
+                <p className="text-sm text-muted-foreground">合同有效期</p>
+                <p className="font-medium">1年</p>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t flex justify-end">
@@ -273,8 +266,12 @@ export function ContractStep({
                     </div>
                   </div>
                   <div className="text-right text-sm">
-                    <p className="font-medium">{formatAmount(c.rentAmount)}/月</p>
-                    <p className="text-muted-foreground">押金 {formatAmount(c.depositAmount)}</p>
+                    <span className={cn(
+                      "px-2 py-1 rounded border",
+                      statusConfig[c.status]?.className || "bg-muted text-muted-foreground"
+                    )}>
+                      {statusConfig[c.status]?.label || "未知"}
+                    </span>
                   </div>
                 </div>
               ))
