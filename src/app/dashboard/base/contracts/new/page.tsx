@@ -54,9 +54,17 @@ export default function NewContractPage() {
   // 合同信息
   const [contractNo, setContractNo] = useState("");
   const [contractName, setContractName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [signDate, setSignDate] = useState(""); // 签订日期
+  const [duration, setDuration] = useState(1); // 有效时长（年）
   const [remarks, setRemarks] = useState("");
+
+  // 计算截止日期
+  const endDate = signDate ? (() => {
+    const start = new Date(signDate);
+    const end = new Date(start);
+    end.setFullYear(end.getFullYear() + duration);
+    return end.toISOString().split('T')[0];
+  })() : "";
 
   // 附件
   const [attachments, setAttachments] = useState<Array<{
@@ -183,8 +191,8 @@ export default function NewContractPage() {
       toast.error("请选择企业");
       return;
     }
-    if (currentStep === 2 && !startDate) {
-      toast.error("请填写合同有效期");
+    if (currentStep === 2 && !signDate) {
+      toast.error("请填写签订日期");
       return;
     }
     if (currentStep < 3) {
@@ -205,8 +213,8 @@ export default function NewContractPage() {
       toast.error("请选择企业");
       return;
     }
-    if (!startDate) {
-      toast.error("请填写合同有效期");
+    if (!signDate) {
+      toast.error("请填写签订日期");
       return;
     }
 
@@ -221,8 +229,8 @@ export default function NewContractPage() {
           contractNo,
           contractName: contractName || `${selectedEnterprise.name}合同`,
           contractType: "free", // 默认免费入驻合同
-          startDate,
-          endDate: endDate || null,
+          startDate: signDate,
+          endDate,
           remarks,
           attachments: attachments.map(a => ({
             key: a.key,
@@ -419,22 +427,32 @@ export default function NewContractPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>起始日期 <span className="text-red-500">*</span></Label>
+                  <Label>签订日期 <span className="text-red-500">*</span></Label>
                   <Input
                     type="date"
                     className="mt-1.5"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    value={signDate}
+                    onChange={(e) => setSignDate(e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label>截止日期</Label>
-                  <Input
-                    type="date"
-                    className="mt-1.5"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
+                  <Label>有效时长</Label>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={99}
+                      className="w-24"
+                      value={duration}
+                      onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                    <span className="text-muted-foreground">年</span>
+                    {signDate && (
+                      <span className="text-sm text-muted-foreground ml-auto">
+                        截止：{endDate}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -471,12 +489,12 @@ export default function NewContractPage() {
                   <span className="font-medium">{selectedEnterprise?.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">起始日期：</span>
-                  <span>{startDate || "-"}</span>
+                  <span className="text-muted-foreground">签订日期：</span>
+                  <span>{signDate || "-"}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">截止日期：</span>
-                  <span>{endDate || "-"}</span>
+                  <span className="text-muted-foreground">有效时长：</span>
+                  <span>{duration} 年（截止：{endDate || "-"}）</span>
                 </div>
               </div>
             </CardContent>
