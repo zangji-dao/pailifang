@@ -77,6 +77,14 @@ export const SETTINGS_CHILDREN: NavChildItem[] = [
 ];
 
 /**
+ * 合同管理子菜单
+ */
+export const CONTRACT_CHILDREN: NavChildItem[] = [
+  { name: "合同列表", href: "/dashboard/base/contracts", icon: FileText },
+  { name: "新建合同", href: "/dashboard/base/contracts/new", icon: FileSignature },
+];
+
+/**
  * 基地管理子菜单
  */
 export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
@@ -85,7 +93,7 @@ export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
   { name: "企业管理", href: "", icon: Users, children: ENTERPRISE_CHILDREN },
   { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "资金管理", href: "/dashboard/base/finances", icon: Receipt },
-  { name: "合同管理", href: "/dashboard/base/contracts", icon: FileSignature },
+  { name: "合同管理", href: "", icon: FileSignature, children: CONTRACT_CHILDREN },
   { name: "设置", href: "", icon: Settings, children: SETTINGS_CHILDREN },
 ];
 
