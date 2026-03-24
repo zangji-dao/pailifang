@@ -12,7 +12,6 @@ import {
   Check,
   Search,
   FileSignature,
-  Info,
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -252,8 +251,9 @@ export default function NewContractPage() {
             url: a.url,
             name: a.name,
           })),
-          // 创建合同统一为草稿状态，需要后续确认签署
-          status: "draft",
+          // 创建合同直接为已签状态
+          status: "signed",
+          signedDate: signDate,
         }),
       });
 
@@ -656,23 +656,6 @@ export default function NewContractPage() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* 温馨提示 */}
-          <Card className="border-amber-200 bg-amber-50/50">
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-800">
-                  <p className="font-medium mb-1">温馨提示</p>
-                  <ul className="list-disc list-inside space-y-1 text-amber-700">
-                    <li>合同创建后为<b>草稿</b>状态，需在详情页确认签署</li>
-                    <li>合同附件可在创建后继续上传</li>
-                    <li>草稿状态的合同可随时删除</li>
-                  </ul>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

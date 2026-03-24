@@ -12,10 +12,9 @@ import {
   Trash2,
   Loader2,
   ExternalLink,
-  Clock,
   CheckCircle2,
-  XCircle,
-  Plus,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +31,7 @@ interface Contract {
   enterpriseName?: string | null;
   contractNo: string | null;
   contractName: string | null;
+  contractTypeName?: string | null;
   startDate: string | null;
   endDate: string | null;
   signedDate: string | null;
@@ -41,42 +41,48 @@ interface Contract {
   createdAt: string;
 }
 
-// 状态配置 - 使用统一的七彩配色风格（与 globals.css 对齐）
+// 状态配置 - 使用统一的七彩配色风格
 const statusConfig: Record<ContractStatus, { 
   label: string; 
   color: string;
   bgColor: string;
   borderColor: string;
+  icon: React.ComponentType<{ className?: string }>;
 }> = {
   draft: { 
     label: "草稿", 
     color: "text-slate-600",
     bgColor: "bg-slate-50",
     borderColor: "border-slate-200",
+    icon: FileText,
   },
   pending: { 
     label: "待签", 
-    color: "text-amber-600",      // 琥珀色 - 签订合同
+    color: "text-amber-600",
     bgColor: "bg-amber-50",
     borderColor: "border-amber-200",
+    icon: Clock,
   },
   signed: { 
     label: "已签", 
-    color: "text-emerald-600",    // 翡翠绿 - 完成
+    color: "text-emerald-600",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-200",
+    icon: CheckCircle2,
   },
   expired: { 
     label: "已到期", 
-    color: "text-rose-600",       // 玫瑰粉 - 异常状态
+    color: "text-rose-600",
     bgColor: "bg-rose-50",
     borderColor: "border-rose-200",
+    icon: AlertCircle,
   },
   terminated: { 
     label: "已终止", 
     color: "text-slate-600",
     bgColor: "bg-slate-50",
     borderColor: "border-slate-200",
+    icon: AlertCircle,
   },
 };
 
@@ -142,7 +148,6 @@ export default function ContractDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contractFileUrl: uploadResult.url,
-          // 上传附件后保持原状态，不自动改为待签
         }),
       });
 
@@ -156,30 +161,6 @@ export default function ContractDetailPage() {
     } finally {
       setUploading(false);
       e.target.value = "";
-    }
-  };
-
-  // 确认签署
-  const handleSign = async () => {
-    if (!contract?.contractFileUrl) {
-      toast.error("请先上传合同文件");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/settlement/contracts/${contractId}/sign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signedDate: new Date().toISOString().split("T")[0] }),
-      });
-
-      if (!response.ok) throw new Error("签署失败");
-
-      toast.success("合同已确认签署");
-      fetchContract();
-    } catch (error) {
-      console.error("签署失败:", error);
-      toast.error("签署失败");
     }
   };
 
@@ -223,173 +204,152 @@ export default function ContractDetailPage() {
   }
 
   const statusInfo = statusConfig[contract.status];
+  const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* 头部 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      {/* 头部区域 */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard/base/contracts")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold">
-              {contract.contractName || "合同详情"}
-            </h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-muted-foreground font-mono text-sm">
-                {contract.contractNo || "未编号"}
-              </span>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold">
+                {contract.contractName || "合同详情"}
+              </h1>
               <Badge className={cn("font-normal border", statusInfo.bgColor, statusInfo.color, statusInfo.borderColor)}>
+                <StatusIcon className="h-3.5 w-3.5 mr-1" />
                 {statusInfo.label}
               </Badge>
             </div>
+            <p className="text-muted-foreground mt-1 font-mono text-sm">
+              合同编号：{contract.contractNo || "未编号"}
+            </p>
           </div>
         </div>
+
+        {/* 操作按钮 */}
         <div className="flex items-center gap-2">
           {contract.status === "draft" && (
             <>
               <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />
-                删除合同
-              </Button>
-              <Button onClick={() => router.push(`/dashboard/base/contracts/${contractId}/edit`)}>
-                编辑合同
+                删除
               </Button>
             </>
           )}
-          {/* 草稿或待签状态，有合同文件就可以确认签署 */}
-          {(contract.status === "draft" || contract.status === "pending") && contract.contractFileUrl && (
-            <Button onClick={handleSign} className="bg-emerald-600 hover:bg-emerald-700">
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              确认签署
+          {contract.contractFileUrl && (
+            <Button variant="outline" asChild>
+              <a href={contract.contractFileUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                查看合同
+              </a>
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 合同信息 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              合同信息
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">合同编号</span>
-              <span className="font-mono">{contract.contractNo || "-"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">合同名称</span>
-              <span>{contract.contractName || "-"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">关联企业</span>
-              <span>{contract.enterpriseName || "-"}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 有效期 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              有效期
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">开始日期</span>
-              <span>{contract.startDate || "-"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">截止日期</span>
-              <span>{contract.endDate || "-"}</span>
-            </div>
-            {contract.signedDate && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">签署日期</span>
-                <span>{contract.signedDate}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 备注 */}
-        {contract.remarks && (
-          <Card className="md:col-span-2">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">备注</CardTitle>
+      {/* 主内容区 - 两列布局 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 左侧：合同基本信息 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* 合同信息卡片 */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-amber-600" />
+                合同信息
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{contract.remarks}</p>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">关联企业</p>
+                  <p className="font-medium flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    {contract.enterpriseName || "-"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">合同类型</p>
+                  <p className="font-medium">{contract.contractTypeName || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">开始日期</p>
+                  <p className="font-medium">{contract.startDate || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">截止日期</p>
+                  <p className="font-medium">{contract.endDate || "-"}</p>
+                </div>
+              </div>
+
+              {contract.remarks && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-1">备注</p>
+                  <p className="text-sm">{contract.remarks}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        {/* 合同文件 */}
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              合同文件
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {contract.contractFileUrl ? (
-              <div className="flex items-center gap-4">
-                <div className="flex-1 flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-                  <FileText className="h-8 w-8 text-blue-500" />
+          {/* 合同文件卡片 */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-amber-600" />
+                合同文件
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {contract.contractFileUrl ? (
+                <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                    <FileText className="h-6 w-6 text-amber-600" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">合同文件</p>
-                    <p className="text-xs text-muted-foreground">点击查看或下载</p>
+                    <p className="font-medium">合同扫描件</p>
+                    <p className="text-sm text-muted-foreground">
+                      上传于 {new Date(contract.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={contract.contractFileUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        查看
+                      </a>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={contract.contractFileUrl} download>
+                        <Download className="h-4 w-4 mr-1" />
+                        下载
+                      </a>
+                    </Button>
+                    {contract.status !== "signed" && (
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={handleUpload}
+                          disabled={uploading}
+                        />
+                        <Button variant="outline" size="sm" disabled={uploading}>
+                          {uploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </label>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={contract.contractFileUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      查看
-                    </a>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={contract.contractFileUrl} download>
-                      <Download className="h-4 w-4 mr-1" />
-                      下载
-                    </a>
-                  </Button>
-                </div>
-                {contract.status !== "signed" && (
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleUpload}
-                      disabled={uploading}
-                    />
-                    <Button variant="outline" size="sm" disabled={uploading}>
-                      {uploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </label>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <div className="flex-1 border-2 border-dashed rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">上传合同文件</p>
-                  <p className="text-xs text-muted-foreground">支持 PDF、JPG、PNG，最大 10MB</p>
-                </div>
-                <label className="cursor-pointer">
+              ) : (
+                <label className="cursor-pointer block">
                   <input
                     type="file"
                     className="hidden"
@@ -397,37 +357,93 @@ export default function ContractDetailPage() {
                     onChange={handleUpload}
                     disabled={uploading}
                   />
-                  <Button disabled={uploading}>
+                  <div className={cn(
+                    "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+                    "hover:border-amber-300 hover:bg-amber-50/30",
+                    uploading && "opacity-50 pointer-events-none"
+                  )}>
                     {uploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <Loader2 className="h-8 w-8 mx-auto text-amber-600 animate-spin mb-3" />
                     ) : (
-                      <Upload className="h-4 w-4 mr-2" />
+                      <Upload className="h-8 w-8 mx-auto text-amber-600 mb-3" />
                     )}
-                    选择文件
-                  </Button>
+                    <p className="font-medium">点击上传合同文件</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      支持 PDF、JPG、PNG 格式，最大 10MB
+                    </p>
+                  </div>
                 </label>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* 底部操作 */}
-      <div className="flex justify-between items-center pt-4 border-t">
-        <p className="text-sm text-muted-foreground">
-          创建时间：{new Date(contract.createdAt).toLocaleString()}
-        </p>
-        <div className="flex items-center gap-2">
-          {contract.status !== "signed" && !contract.contractFileUrl && (
-            <span className="text-sm text-amber-600">请上传合同文件</span>
+        {/* 右侧：状态和时间线 */}
+        <div className="space-y-6">
+          {/* 状态卡片 */}
+          <Card className={cn("border-l-4", contract.status === "signed" ? "border-l-emerald-500" : contract.status === "draft" ? "border-l-slate-400" : "border-l-amber-500")}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", statusInfo.bgColor)}>
+                  <StatusIcon className={cn("h-7 w-7", statusInfo.color)} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">当前状态</p>
+                  <p className={cn("text-xl font-semibold", statusInfo.color)}>{statusInfo.label}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 时间线 */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-amber-600" />
+                时间记录
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-2" />
+                  <div>
+                    <p className="text-sm font-medium">创建合同</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(contract.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                {contract.signedDate && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-2" />
+                    <div>
+                      <p className="text-sm font-medium">签署合同</p>
+                      <p className="text-xs text-muted-foreground">{contract.signedDate}</p>
+                    </div>
+                  </div>
+                )}
+                {contract.endDate && new Date(contract.endDate) < new Date() && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-rose-500 mt-2" />
+                    <div>
+                      <p className="text-sm font-medium">合同到期</p>
+                      <p className="text-xs text-muted-foreground">{contract.endDate}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 操作提示 */}
+          {contract.status === "draft" && !contract.contractFileUrl && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-800">
+                <strong>下一步：</strong>上传合同扫描件或电子版文件
+              </p>
+            </div>
           )}
-          {contract.status !== "signed" && contract.contractFileUrl && (
-            <span className="text-sm text-emerald-600">文件已上传，点击"确认签署"完成签署</span>
-          )}
-          <Button onClick={() => router.push("/dashboard/base/contracts/new")}>
-            <Plus className="h-4 w-4 mr-2" />
-            新建合同
-          </Button>
         </div>
       </div>
     </div>
