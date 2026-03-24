@@ -610,7 +610,7 @@ export default function NewContractPage() {
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-amber-600 hover:bg-amber-700 text-white px-8"
             >
               {submitting ? (
                 <>
@@ -618,10 +618,7 @@ export default function NewContractPage() {
                   创建中...
                 </>
               ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  完成
-                </>
+                "创建合同"
               )}
             </Button>
           ) : (
