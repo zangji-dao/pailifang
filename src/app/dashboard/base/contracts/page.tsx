@@ -18,6 +18,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -53,6 +63,10 @@ export default function ContractsPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContractStatus | "all">("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
+  // 删除确认弹窗状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
 
   // 获取合同列表
   useEffect(() => {
@@ -75,15 +89,20 @@ export default function ContractsPage() {
     }
   };
 
-  // 删除合同
-  const handleDelete = async (e: React.MouseEvent, contractId: string, contractName: string) => {
+  // 打开删除确认弹窗
+  const openDeleteDialog = (e: React.MouseEvent, contract: Contract) => {
     e.stopPropagation(); // 阻止事件冒泡，避免触发查看详情
+    setContractToDelete(contract);
+    setDeleteDialogOpen(true);
+  };
 
-    if (!confirm(`确定要删除合同「${contractName || "未命名合同"}」吗？`)) return;
+  // 确认删除
+  const confirmDelete = async () => {
+    if (!contractToDelete) return;
 
-    setDeletingId(contractId);
+    setDeletingId(contractToDelete.id);
     try {
-      const response = await fetch(`/api/settlement/contracts/${contractId}`, {
+      const response = await fetch(`/api/settlement/contracts/${contractToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -91,7 +110,9 @@ export default function ContractsPage() {
 
       toast.success("合同已删除");
       // 从列表中移除
-      setContracts((prev) => prev.filter((c) => c.id !== contractId));
+      setContracts((prev) => prev.filter((c) => c.id !== contractToDelete.id));
+      setDeleteDialogOpen(false);
+      setContractToDelete(null);
     } catch (error) {
       console.error("删除失败:", error);
       toast.error("删除失败");
@@ -367,7 +388,7 @@ export default function ContractsPage() {
                       variant="ghost" 
                       size="sm" 
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={(e) => handleDelete(e, contract.id, contract.contractName || "")}
+                      onClick={(e) => openDeleteDialog(e, contract)}
                       disabled={deletingId === contract.id}
                     >
                       {deletingId === contract.id ? (
@@ -387,6 +408,35 @@ export default function ContractsPage() {
           })}
         </div>
       )}
+
+      {/* 删除确认弹窗 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除合同「{contractToDelete?.contractName || contractToDelete?.contractNo || "未命名合同"}」吗？此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={!!deletingId}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingId ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  删除中...
+                </>
+              ) : (
+                "确认删除"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
