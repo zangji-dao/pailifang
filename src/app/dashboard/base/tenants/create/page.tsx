@@ -49,16 +49,6 @@ interface ProofFile {
   size: number;
 }
 
-interface Fee {
-  id: string;
-  name: string;
-  amount: number;
-  paymentMethod: string;
-  paymentDate: string;
-  proofUrl: string | null;
-  status: "pending" | "paid" | "verified";
-}
-
 // 表单状态接口
 interface FormState {
   // 草稿ID（保存到数据库后返回）
@@ -97,7 +87,9 @@ interface FormState {
   } | null;
 
   // 步骤4：费用缴纳
-  fees: Fee[];
+  paymentRecordIds: string[];
+  paymentRecordCount: number;
+  totalPaymentAmount: number;
 }
 
 // 初始状态
@@ -128,7 +120,9 @@ const initialFormState: FormState = {
   businessScope: "",
 
   contract: null,
-  fees: [],
+  paymentRecordIds: [],
+  paymentRecordCount: 0,
+  totalPaymentAmount: 0,
 };
 
 export default function NewTenantPage() {
@@ -172,7 +166,9 @@ export default function NewTenantPage() {
     registeredAddress,
     businessScope,
     contract,
-    fees,
+    paymentRecordIds,
+    paymentRecordCount,
+    totalPaymentAmount,
   } = formState;
 
   // 加载基地列表和继续注册的企业数据
@@ -297,14 +293,14 @@ export default function NewTenantPage() {
         // 签订合同步骤：需要选择一个合同
         return contract?.contractId !== null && contract?.contractId !== undefined;
       case "payment_pay_fees":
-        // 费用缴纳步骤：至少有一项费用已缴费或已核实
-        return fees.some(f => f.status === "paid" || f.status === "verified");
+        // 费用缴纳步骤：至少关联一条收款记录
+        return paymentRecordIds.length > 0;
       case "complete_review_all":
         return true;
       default:
         return true;
     }
-  }, [currentMainStepId, currentSubStepId, selectedBaseId, enterpriseType, selectedRegNumber, proofFiles, enterpriseName, businessLicense, creditCode, legalPerson, contract, fees, isNonTenant]);
+  }, [currentMainStepId, currentSubStepId, selectedBaseId, enterpriseType, selectedRegNumber, proofFiles, enterpriseName, businessLicense, creditCode, legalPerson, contract, paymentRecordIds, isNonTenant]);
 
   // 保存草稿到数据库
   const saveDraft = useCallback(async (step?: string) => {
@@ -498,16 +494,9 @@ export default function NewTenantPage() {
         requestData.contract_id = contract.contractId;
       }
 
-      // 费用信息
-      if (fees.length > 0) {
-        requestData.fees = fees.map(f => ({
-          name: f.name,
-          amount: f.amount,
-          payment_method: f.paymentMethod,
-          payment_date: f.paymentDate,
-          proof_url: f.proofUrl,
-          status: f.status,
-        }));
+      // 费用信息 - 关联收款记录ID
+      if (paymentRecordIds.length > 0) {
+        requestData.payment_record_ids = paymentRecordIds;
       }
 
       const res = await fetch("/api/enterprises", {
@@ -531,7 +520,7 @@ export default function NewTenantPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [enterpriseName, enterpriseCode, enterpriseType, selectedBaseId, remarks, selectedRegNumber, proofFiles, creditCode, legalPerson, phone, industry, contract, fees, bases, toast, clearFormCache]);
+  }, [enterpriseName, enterpriseCode, enterpriseType, selectedBaseId, remarks, selectedRegNumber, proofFiles, creditCode, legalPerson, phone, industry, contract, paymentRecordIds, bases, toast, clearFormCache]);
 
   // 获取基地名称
   const getBaseName = () => bases.find(b => b.id === selectedBaseId)?.name || "";
@@ -555,7 +544,8 @@ export default function NewTenantPage() {
           legalPerson={legalPerson}
           phone={phone}
           contract={contract}
-          fees={fees}
+          paymentRecordCount={paymentRecordCount}
+          totalPaymentAmount={totalPaymentAmount}
           onViewDetails={() => window.open(`/dashboard/base/tenants/${createdEnterpriseId}`, "_blank")}
           onReturnToList={() => window.close()}
         />
@@ -694,9 +684,16 @@ export default function NewTenantPage() {
     if (currentMainStepId === "payment") {
       return (
         <PaymentStep
+          enterpriseId={createdEnterpriseId}
           enterpriseName={enterpriseName}
-          fees={fees}
-          onUpdateFees={(f) => updateFormState({ fees: f })}
+          paymentRecordIds={formState.paymentRecordIds}
+          onUpdatePaymentRecords={(ids, count, totalAmount) => 
+            updateFormState({ 
+              paymentRecordIds: ids,
+              paymentRecordCount: count,
+              totalPaymentAmount: totalAmount
+            })
+          }
         />
       );
     }

@@ -32,11 +32,8 @@ interface OnboardingCompleteStepProps {
     contractId: string | null;
     contractNumber: string;
   } | null;
-  fees: {
-    name: string;
-    amount: number;
-    status: string;
-  }[];
+  paymentRecordCount: number;
+  totalPaymentAmount: number;
   onViewDetails: () => void;
   onReturnToList: () => void;
 }
@@ -51,13 +48,11 @@ export function OnboardingCompleteStep({
   legalPerson,
   phone,
   contract,
-  fees,
+  paymentRecordCount,
+  totalPaymentAmount,
   onViewDetails,
   onReturnToList,
 }: OnboardingCompleteStepProps) {
-  // 计算已缴费用
-  const paidFees = fees.filter(f => f.status === "paid" || f.status === "verified");
-  const totalPaid = paidFees.reduce((sum, f) => sum + f.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -210,31 +205,21 @@ export function OnboardingCompleteStep({
           )}
 
           {/* 费用信息 */}
-          {fees.length > 0 && (
+          {paymentRecordCount > 0 && (
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">费用信息</h4>
-              <div className="space-y-2">
-                {fees.map((fee, index) => (
-                  <div key={index} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-muted-foreground" />
-                      <span>{fee.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">¥{fee.amount.toLocaleString()}</span>
-                      <Badge 
-                        variant={fee.status === "verified" ? "default" : "secondary"}
-                        className="text-xs"
-                      >
-                        {fee.status === "verified" ? "已核实" : fee.status === "paid" ? "已缴费" : "待缴费"}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <span className="font-medium">已缴总额</span>
-                  <span className="font-bold text-step-emerald">¥{totalPaid.toLocaleString()}</span>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-muted-foreground" />
+                  <span>关联合同收款记录</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{paymentRecordCount} 条</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <span className="font-medium">收款总金额</span>
+                <span className="font-bold text-step-emerald">¥{totalPaymentAmount.toLocaleString()}</span>
               </div>
             </div>
           )}

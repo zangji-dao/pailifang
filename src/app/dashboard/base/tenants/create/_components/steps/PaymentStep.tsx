@@ -1,325 +1,251 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
   Receipt, 
-  DollarSign, 
-  Upload, 
-  Check, 
-  Loader2, 
-  CreditCard,
-  FileText,
-  Plus,
-  Trash2
+  Check,
+  Loader2,
+  ArrowUpCircle,
+  Building2,
+  Calendar,
+  AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
-interface Fee {
+// 收款记录类型
+interface FinanceRecord {
   id: string;
-  name: string;
+  enterprise_id: string;
+  enterprise_name: string | null;
+  type: "income" | "expense";
+  category: string;
   amount: number;
-  paymentMethod: string;
-  paymentDate: string;
-  proofUrl: string | null;
-  status: "pending" | "paid" | "verified";
+  summary: string;
+  remarks: string | null;
+  created_at: string;
 }
 
+// 类型映射
+const categoryLabels: Record<string, string> = {
+  service_fee: "服务费",
+  deposit: "押金",
+  utility: "水电费",
+  network: "网络费",
+  heating: "取暖费",
+  other_income: "其他收入",
+  refund_deposit: "退押金",
+  refund_utility: "退水电费",
+  refund_prepayment: "退预存款",
+  other_expense: "其他支出",
+};
+
+// 格式化金额
+const formatMoney = (amount: number) => {
+  return `¥${amount.toLocaleString()}`;
+};
+
+// 格式化日期
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString("zh-CN");
+};
+
 interface PaymentStepProps {
+  enterpriseId: string | null;
   enterpriseName: string;
-  fees: Fee[];
-  onUpdateFees: (fees: Fee[]) => void;
+  paymentRecordIds: string[];
+  onUpdatePaymentRecords: (ids: string[], count: number, totalAmount: number) => void;
 }
 
 export function PaymentStep({
+  enterpriseId,
   enterpriseName,
-  fees,
-  onUpdateFees,
+  paymentRecordIds,
+  onUpdatePaymentRecords,
 }: PaymentStepProps) {
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [records, setRecords] = useState<FinanceRecord[]>([]);
   const { toast } = useToast();
 
-  // 添加费用项
-  const addFee = () => {
-    const newFee: Fee = {
-      id: `fee-${Date.now()}`,
-      name: "",
-      amount: 0,
-      paymentMethod: "bank_transfer",
-      paymentDate: new Date().toISOString().split("T")[0],
-      proofUrl: null,
-      status: "pending",
-    };
-    onUpdateFees([...fees, newFee]);
-  };
-
-  // 删除费用项
-  const removeFee = (id: string) => {
-    onUpdateFees(fees.filter(f => f.id !== id));
-  };
-
-  // 更新费用项
-  const updateFee = (id: string, field: keyof Fee, value: any) => {
-    onUpdateFees(fees.map(f => f.id === id ? { ...f, [field]: value } : f));
-  };
-
-  // 上传缴费凭证
-  const handleUploadProof = async (feeId: string, file: File) => {
-    setUploading(feeId);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "payment-proofs");
-
-      const res = await fetch("/api/storage/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await res.json();
-      if (result.success || result.url) {
-        const url = result.data?.url || result.url;
-        updateFee(feeId, "proofUrl", url);
-        updateFee(feeId, "status", "paid");
-        toast({ title: "上传成功" });
-      } else {
-        throw new Error(result.error || result.message || "上传失败");
+  // 加载该企业的收款记录
+  useEffect(() => {
+    const fetchRecords = async () => {
+      if (!enterpriseId) {
+        setRecords([]);
+        return;
       }
-    } catch (error: any) {
-      console.error("上传失败:", error);
-      toast({ title: "上传失败", description: error.message, variant: "destructive" });
-    } finally {
-      setUploading(null);
+      
+      setLoading(true);
+      try {
+        // 获取该企业的所有收款记录
+        const response = await fetch(`/api/dashboard/base/finances/enterprises`);
+        if (response.ok) {
+          const result = await response.json();
+          // 过滤出当前企业的收入记录
+          const enterpriseRecords = (result.data || [])
+            .filter((r: FinanceRecord) => r.id === enterpriseId)
+            .flatMap((e: any) => e.records || []);
+          
+          // 只保留收入类型
+          const incomeRecords = enterpriseRecords.filter(
+            (r: FinanceRecord) => r.type === "income"
+          );
+          setRecords(incomeRecords);
+        }
+      } catch (error) {
+        console.error("获取收款记录失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecords();
+  }, [enterpriseId]);
+
+  // 选择/取消选择记录
+  const toggleRecord = (recordId: string) => {
+    let newIds: string[];
+    if (paymentRecordIds.includes(recordId)) {
+      newIds = paymentRecordIds.filter(id => id !== recordId);
+      toast({ title: "已取消关联" });
+    } else {
+      newIds = [...paymentRecordIds, recordId];
+      toast({ title: "已关联收款记录" });
     }
+    // 计算新的总额
+    const selectedRecords = records.filter(r => newIds.includes(r.id));
+    const totalAmount = selectedRecords.reduce((sum, r) => sum + Number(r.amount), 0);
+    onUpdatePaymentRecords(newIds, newIds.length, totalAmount);
   };
 
-  // 计算总金额
-  const totalAmount = fees.reduce((sum, f) => sum + f.amount, 0);
-
-  // 获取状态样式
-  const getStatusStyle = (status: Fee["status"]) => {
-    switch (status) {
-      case "verified":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "paid":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
-    }
-  };
-
-  // 获取状态文本
-  const getStatusText = (status: Fee["status"]) => {
-    switch (status) {
-      case "verified":
-        return "已核实";
-      case "paid":
-        return "已缴费";
-      default:
-        return "待缴费";
-    }
-  };
+  // 计算已选金额
+  const selectedRecords = records.filter(r => paymentRecordIds.includes(r.id));
+  const totalSelected = selectedRecords.reduce((sum, r) => sum + Number(r.amount), 0);
 
   return (
     <div className="space-y-6">
-      {/* 费用汇总 */}
+      {/* 已选择的收款记录汇总 */}
+      {paymentRecordIds.length > 0 && (
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg text-emerald-700">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                <Check className="w-4 h-4 text-white" />
+              </div>
+              已关联收款记录
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">已选择 {paymentRecordIds.length} 笔收款</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedRecords.map(r => categoryLabels[r.category] || r.category).join("、")}
+                </p>
+              </div>
+              <div className="text-right bg-white/60 px-4 py-2 rounded-lg">
+                <p className="text-xs text-muted-foreground">已收款金额</p>
+                <p className="text-xl font-bold text-emerald-700">{formatMoney(totalSelected)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 选择收款记录 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-step-violet" />
-            费用缴纳
+            <Receipt className="w-5 h-5 text-emerald-600" />
+            关联收款记录
           </CardTitle>
-          <CardDescription>请缴纳相关费用并上传缴费凭证</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 bg-step-violet-muted rounded-lg border border-step-violet/30">
-            <div>
-              <p className="text-sm text-step-violet">企业名称</p>
-              <p className="font-semibold text-step-violet-foreground">{enterpriseName || "未填写"}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-step-violet">应缴总额</p>
-              <p className="text-2xl font-bold text-step-violet">¥{totalAmount.toLocaleString()}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 费用明细 */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                费用明细
-              </CardTitle>
-              <CardDescription>添加并缴纳各项费用</CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={addFee}>
-              <Plus className="w-4 h-4 mr-2" />
-              添加费用
-            </Button>
-          </div>
+          <CardDescription>
+            选择该企业在资金管理中的收款记录，费用详情请在资金管理中完成
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {fees.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <div className="w-16 h-16 mx-auto rounded-full bg-step-violet-muted flex items-center justify-center mb-4">
-                <Receipt className="w-8 h-8 text-step-violet" />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">加载中...</span>
+            </div>
+          ) : !enterpriseId ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <AlertCircle className="w-12 h-12 mb-3" />
+              <p>请先完成企业信息填写</p>
+            </div>
+          ) : records.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
+                <ArrowUpCircle className="w-8 h-8 text-emerald-400" />
               </div>
-              <p>暂无费用项，点击"添加费用"按钮添加</p>
+              <p>暂无收款记录</p>
+              <p className="text-xs mt-1">请先在资金管理中创建该企业的收款记录</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4"
+                onClick={() => window.open("/dashboard/base/finances", "_blank")}
+              >
+                前往资金管理
+              </Button>
             </div>
           ) : (
-            fees.map((fee, index) => (
-              <div key={fee.id} className="border rounded-lg p-4 space-y-4">
-                {/* 费用项头部 */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">费用项 {index + 1}</span>
-                    <Badge variant="outline" className={getStatusStyle(fee.status)}>
-                      {getStatusText(fee.status)}
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFee(fee.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <Separator />
-
-                {/* 费用项内容 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>费用名称</Label>
-                    <Input
-                      value={fee.name}
-                      onChange={(e) => updateFee(fee.id, "name", e.target.value)}
-                      placeholder="如：租金、押金、物业费等"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>金额（元）</Label>
-                    <Input
-                      type="number"
-                      value={fee.amount}
-                      onChange={(e) => updateFee(fee.id, "amount", Number(e.target.value))}
-                      placeholder="请输入金额"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>支付方式</Label>
-                    <select
-                      value={fee.paymentMethod}
-                      onChange={(e) => updateFee(fee.id, "paymentMethod", e.target.value)}
-                      className="h-10 w-full px-3 text-sm border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-                    >
-                      <option value="bank_transfer">银行转账</option>
-                      <option value="alipay">支付宝</option>
-                      <option value="wechat">微信支付</option>
-                      <option value="cash">现金</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>缴费日期</Label>
-                    <Input
-                      type="date"
-                      value={fee.paymentDate}
-                      onChange={(e) => updateFee(fee.id, "paymentDate", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* 上传凭证 */}
-                <div className="space-y-2">
-                  <Label>缴费凭证</Label>
-                  {fee.proofUrl ? (
-                    <div className="flex items-center gap-3 p-3 bg-step-violet-muted rounded-lg">
-                      <FileText className="w-8 h-8 text-step-violet" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-step-violet-foreground">凭证已上传</p>
-                        <p className="text-xs text-step-violet">点击可查看</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(fee.proofUrl!, "_blank")}
-                      >
-                        查看
-                      </Button>
+            <div className="border rounded-lg divide-y">
+              {records.map((record) => (
+                <div
+                  key={record.id}
+                  className={cn(
+                    "flex items-center justify-between p-4 cursor-pointer hover:bg-emerald-50/50 transition-colors",
+                    paymentRecordIds.includes(record.id) && "bg-emerald-50 border-l-2 border-l-emerald-500"
+                  )}
+                  onClick={() => toggleRecord(record.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      paymentRecordIds.includes(record.id) ? "bg-emerald-100" : "bg-muted"
+                    )}>
+                      <ArrowUpCircle className={cn(
+                        "w-5 h-5",
+                        paymentRecordIds.includes(record.id) ? "text-emerald-600" : "text-muted-foreground"
+                      )} />
                     </div>
-                  ) : (
-                    <label className="block">
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUploadProof(fee.id, file);
-                        }}
-                        disabled={uploading === fee.id}
-                      />
-                      <div
-                        className={`border-2 border-dashed border-step-violet/30 rounded-lg p-4 text-center cursor-pointer transition-colors bg-step-violet-muted/50
-                          ${uploading === fee.id ? "opacity-50" : "hover:border-step-violet hover:bg-step-violet-muted"}`}
-                      >
-                        {uploading === fee.id ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-sm">上传中...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="w-6 h-6 mx-auto text-step-violet mb-2" />
-                            <p className="text-sm text-step-violet-foreground">点击上传缴费凭证</p>
-                          </>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{record.summary}</p>
+                        <Badge variant="outline" className="text-emerald-600 border-emerald-200">
+                          {categoryLabels[record.category] || record.category}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {formatDate(record.created_at)}
+                        </span>
+                        {record.remarks && (
+                          <span>{record.remarks}</span>
                         )}
                       </div>
-                    </label>
-                  )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="font-semibold text-emerald-600">{formatMoney(Number(record.amount))}</p>
+                    {paymentRecordIds.includes(record.id) && (
+                      <Check className="w-5 h-5 text-emerald-600" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* 支付信息 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            收款账户信息
-          </CardTitle>
-          <CardDescription>请按照以下账户信息进行转账</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">收款户名</p>
-              <p className="font-medium">XX物业管理有限公司</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">开户银行</p>
-              <p className="font-medium">XX银行XX支行</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-muted-foreground">银行账号</p>
-              <p className="font-medium font-mono">1234 5678 9012 3456</p>
-            </div>
-          </div>
+          {/* 提示 */}
           <p className="text-xs text-muted-foreground">
-            * 转账时请备注企业名称，缴费后请上传转账凭证
+            提示：收款记录请在「资金管理」中创建和管理
           </p>
         </CardContent>
       </Card>
