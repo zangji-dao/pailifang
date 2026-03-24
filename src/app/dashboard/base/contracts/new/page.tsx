@@ -2,25 +2,26 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Loader2,
+  Building2,
+  Calendar,
+  Upload,
+  X,
+  FileText,
+  Check,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// 步骤配置和组件
-import { mainSteps, getNextStep, getPrevStep } from "./_constants/steps";
-import { VerticalStepIndicator } from "./_components/VerticalStepIndicator";
-import { HorizontalSubStepIndicator } from "./_components/HorizontalSubStepIndicator";
-import {
-  SelectEnterpriseStep,
-  ServiceFeeStep,
-  DepositStep,
-  ContractInfoStep,
-  CompleteStep,
-  type DepositItem,
-} from "./_components/steps";
-import { spaceTypeOptions } from "./_components/steps/ServiceFeeStep";
-
-// 类型定义
+// 企业类型
 interface Enterprise {
   id: string;
   name: string;
@@ -28,558 +29,562 @@ interface Enterprise {
   creditCode?: string;
   legalPerson?: string;
   phone?: string;
-  registeredAddress?: string;
-  businessAddress?: string;
-  type: string;
   processStatus: string;
-  baseId?: string;
   baseName?: string;
 }
 
-interface ManagementCompany {
-  name: string;
-  creditCode: string;
-  legalPerson: string;
-  address: string;
-  phone: string;
-}
-
-// 表单状态接口
-interface FormState {
-  // 步骤状态
-  currentMainStepId: string;
-  currentSubStepId: string;
-  completedMainSteps: string[];
-  completedSubSteps: string[];
-
-  // 企业信息
-  selectedEnterprise: Enterprise | null;
-  searchKeyword: string;
-
-  // 服务费
-  spaceType: string;
-  spaceQuantity: number;
-  yearlyFee: number;
-
-  // 押金
-  baseDeposit: number;
-  depositItems: DepositItem[];
-
-  // 合同信息
-  contractNo: string;
-  startDate: string;
-  endDate: string;
-  contractYears: number;
-  remarks: string;
-
-  // 管理公司
-  managementCompany: ManagementCompany | null;
-}
-
-// 初始状态
-const initialFormState: FormState = {
-  currentMainStepId: "enterprise",
-  currentSubStepId: "search",
-  completedMainSteps: [],
-  completedSubSteps: [],
-
-  selectedEnterprise: null,
-  searchKeyword: "",
-
-  spaceType: "",
-  spaceQuantity: 1,
-  yearlyFee: 0,
-
-  baseDeposit: 0,
-  depositItems: [],
-
-  contractNo: "",
-  startDate: "",
-  endDate: "",
-  contractYears: 1,
-  remarks: "",
-
-  managementCompany: null,
-};
-
-// 根据场地类型获取默认押金
-const getDefaultDeposit = (spaceType: string): number => {
-  const depositMap: Record<string, number> = {
-    open_station: 1200,
-    office_no_window: 1200,
-    office_with_window: 1200,
-    detached_office: 5000,
-  };
-  return depositMap[spaceType] || 1200;
-};
+// 步骤配置
+const steps = [
+  { id: 1, title: "选择企业", description: "选择签约企业" },
+  { id: 2, title: "合同信息", description: "填写合同信息" },
+  { id: 3, title: "上传附件", description: "上传合同文件" },
+];
 
 export default function NewContractPage() {
   const router = useRouter();
-
-  // 表单状态
-  const [formState, setFormState] = useState<FormState>(initialFormState);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [createdContractId, setCreatedContractId] = useState<string | null>(null);
 
-  // 解构表单状态
-  const {
-    currentMainStepId,
-    currentSubStepId,
-    completedMainSteps,
-    completedSubSteps,
-    selectedEnterprise,
-    searchKeyword,
-    spaceType,
-    spaceQuantity,
-    yearlyFee,
-    baseDeposit,
-    depositItems,
-    contractNo,
-    startDate,
-    endDate,
-    contractYears,
-    remarks,
-    managementCompany,
-  } = formState;
+  // 企业列表
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [selectedEnterprise, setSelectedEnterprise] = useState<Enterprise | null>(null);
 
-  // 更新表单状态
-  const updateFormState = useCallback((updates: Partial<FormState>) => {
-    setFormState(prev => ({ ...prev, ...updates }));
+  // 合同信息
+  const [contractNo, setContractNo] = useState("");
+  const [contractName, setContractName] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [remarks, setRemarks] = useState("");
+
+  // 附件
+  const [attachments, setAttachments] = useState<Array<{
+    key: string;
+    url: string;
+    name: string;
+  }>>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
+
+  // 加载企业列表
+  useEffect(() => {
+    const fetchEnterprises = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/enterprises");
+        if (response.ok) {
+          const result = await response.json();
+          // 过滤可签约的企业状态
+          const validStatuses = ["pending_contract", "pending_payment", "active", "pending_registration", "pending_change"];
+          const filtered = (result.data || []).filter((e: Enterprise) => validStatuses.includes(e.processStatus));
+          setEnterprises(filtered);
+        }
+      } catch (error) {
+        console.error("加载企业列表失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEnterprises();
   }, []);
 
-  // 获取当前大步骤和子步骤信息
-  const currentMainStep = mainSteps.find(s => s.id === currentMainStepId);
-  const currentSubStep = currentMainStep?.subSteps.find(s => s.id === currentSubStepId);
+  // 生成合同号
+  const generateContractNo = useCallback(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    return `HT${year}${month}${day}${random}`;
+  }, []);
 
-  // 计算总押金
-  const totalDeposit = baseDeposit + depositItems.reduce((sum, item) => sum + item.amount, 0);
-
-  // 步骤验证
-  const validateCurrentStep = useCallback((): boolean => {
-    switch (`${currentMainStepId}_${currentSubStepId}`) {
-      case "enterprise_search":
-        return true;
-      case "enterprise_confirm":
-        return selectedEnterprise !== null;
-      case "service_fee_select_space":
-        return spaceType !== "" && yearlyFee > 0;
-      case "deposit_deposit_items":
-        return baseDeposit > 0;
-      case "contract_party_info":
-        return selectedEnterprise !== null;
-      case "contract_duration":
-        return startDate !== "";
-      case "complete_review":
-        return true;
-      default:
-        return true;
-    }
-  }, [currentMainStepId, currentSubStepId, selectedEnterprise, spaceType, yearlyFee, baseDeposit, startDate]);
-
-  // 选择企业
-  const handleSelectEnterprise = useCallback((enterprise: Enterprise) => {
-    updateFormState({ selectedEnterprise: enterprise });
-  }, [updateFormState]);
-
-  // 选择场地类型
-  const handleSelectSpaceType = useCallback((space: typeof spaceTypeOptions[0]) => {
-    const newYearlyFee = space.price * spaceQuantity;
-    const newBaseDeposit = getDefaultDeposit(space.value) * spaceQuantity;
-    updateFormState({
-      spaceType: space.value,
-      yearlyFee: newYearlyFee,
-      baseDeposit: newBaseDeposit,
-    });
-  }, [spaceQuantity, updateFormState]);
-
-  // 更新数量时重新计算费用
+  // 选择企业后自动生成合同号
   useEffect(() => {
-    if (spaceType) {
-      const selectedSpace = spaceTypeOptions.find(s => s.value === spaceType);
-      if (selectedSpace) {
-        updateFormState({
-          yearlyFee: selectedSpace.price * spaceQuantity,
-          baseDeposit: getDefaultDeposit(spaceType) * spaceQuantity,
+    if (selectedEnterprise && !contractNo) {
+      setContractNo(generateContractNo());
+      setContractName(`${selectedEnterprise.name}合同`);
+    }
+  }, [selectedEnterprise, contractNo, generateContractNo]);
+
+  // 过滤企业列表
+  const filteredEnterprises = enterprises.filter(e => {
+    if (!searchKeyword) return true;
+    return e.name.includes(searchKeyword) ||
+           e.enterpriseCode?.includes(searchKeyword) ||
+           e.legalPerson?.includes(searchKeyword);
+  });
+
+  // 获取企业状态显示
+  const getStatusBadge = (status: string) => {
+    const config: Record<string, { label: string; className: string }> = {
+      pending_registration: { label: "待工商注册", className: "bg-purple-50 text-purple-600" },
+      pending_change: { label: "待工商变更", className: "bg-violet-50 text-violet-600" },
+      pending_contract: { label: "待签合同", className: "bg-cyan-50 text-cyan-600" },
+      pending_payment: { label: "待缴费", className: "bg-amber-50 text-amber-600" },
+      active: { label: "入驻中", className: "bg-emerald-50 text-emerald-600" },
+    };
+    const info = config[status] || { label: status, className: "bg-gray-50 text-gray-600" };
+    return <Badge className={info.className}>{info.label}</Badge>;
+  };
+
+  // 上传文件
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      const fileId = `${Date.now()}-${Math.random()}`;
+      setUploadingFiles(prev => new Set(prev).add(fileId));
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", "contract");
+
+        const response = await fetch("/api/storage/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          setAttachments(prev => [...prev, {
+            key: result.data.key,
+            url: result.data.url,
+            name: file.name,
+          }]);
+        } else {
+          toast.error(result.error || "上传失败");
+        }
+      } catch (error) {
+        console.error("上传失败:", error);
+        toast.error("上传失败");
+      } finally {
+        setUploadingFiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(fileId);
+          return newSet;
         });
       }
     }
-  }, [spaceQuantity, spaceType, updateFormState]);
 
-  // 根据期限自动计算结束日期
-  useEffect(() => {
-    if (startDate && contractYears) {
-      const start = new Date(startDate);
-      const end = new Date(start);
-      end.setFullYear(end.getFullYear() + contractYears);
-      updateFormState({ endDate: end.toISOString().split('T')[0] });
-    }
-  }, [startDate, contractYears, updateFormState]);
+    // 重置 input
+    e.target.value = "";
+  };
 
-  // 添加押金项
-  const handleAddDepositItem = useCallback((item: DepositItem) => {
-    updateFormState({ depositItems: [...depositItems, item] });
-  }, [depositItems, updateFormState]);
-
-  // 更新押金项
-  const handleUpdateDepositItem = useCallback((id: string, updates: Partial<DepositItem>) => {
-    updateFormState({
-      depositItems: depositItems.map(item =>
-        item.id === id ? { ...item, ...updates } : item
-      ),
-    });
-  }, [depositItems, updateFormState]);
-
-  // 删除押金项
-  const handleRemoveDepositItem = useCallback((id: string) => {
-    updateFormState({
-      depositItems: depositItems.filter(item => item.id !== id),
-    });
-  }, [depositItems, updateFormState]);
+  // 删除附件
+  const handleRemoveAttachment = (key: string) => {
+    setAttachments(prev => prev.filter(a => a.key !== key));
+  };
 
   // 下一步
-  const handleNext = useCallback(() => {
-    if (!validateCurrentStep()) {
-      toast.error("请完善当前步骤的信息");
+  const handleNext = () => {
+    if (currentStep === 1 && !selectedEnterprise) {
+      toast.error("请选择企业");
       return;
     }
-
-    const stepKey = `${currentMainStepId}_${currentSubStepId}`;
-    const newCompletedSubSteps = completedSubSteps.includes(stepKey)
-      ? completedSubSteps
-      : [...completedSubSteps, stepKey];
-
-    const nextStep = getNextStep(currentMainStepId, currentSubStepId);
-    if (nextStep) {
-      const isCompletingMainStep = nextStep.mainStepId !== currentMainStepId;
-      const newCompletedMainSteps = isCompletingMainStep
-        ? completedMainSteps.includes(currentMainStepId)
-          ? completedMainSteps
-          : [...completedMainSteps, currentMainStepId]
-        : completedMainSteps;
-
-      updateFormState({
-        currentMainStepId: nextStep.mainStepId,
-        currentSubStepId: nextStep.subStepId,
-        completedMainSteps: newCompletedMainSteps,
-        completedSubSteps: newCompletedSubSteps,
-      });
+    if (currentStep === 2 && !startDate) {
+      toast.error("请填写合同有效期");
+      return;
     }
-  }, [currentMainStepId, currentSubStepId, validateCurrentStep, completedMainSteps, completedSubSteps, updateFormState]);
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
 
   // 上一步
-  const handlePrev = useCallback(() => {
-    const prevStep = getPrevStep(currentMainStepId, currentSubStepId);
-    if (prevStep) {
-      updateFormState({
-        currentMainStepId: prevStep.mainStepId,
-        currentSubStepId: prevStep.subStepId,
-      });
+  const handlePrev = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
     }
-  }, [currentMainStepId, currentSubStepId, updateFormState]);
-
-  // 跳转到大步骤
-  const handleMainStepClick = useCallback((stepId: string) => {
-    const stepIndex = mainSteps.findIndex(s => s.id === stepId);
-    const currentIndex = mainSteps.findIndex(s => s.id === currentMainStepId);
-    
-    if (stepIndex <= currentIndex || completedMainSteps.includes(stepId)) {
-      const targetStep = mainSteps[stepIndex];
-      updateFormState({
-        currentMainStepId: stepId,
-        currentSubStepId: targetStep.subSteps[0].id,
-      });
-    }
-  }, [currentMainStepId, completedMainSteps, updateFormState]);
-
-  // 跳转到子步骤
-  const handleSubStepClick = useCallback((subStepId: string) => {
-    if (!currentMainStep) return;
-    
-    const subStepIndex = currentMainStep.subSteps.findIndex(s => s.id === subStepId);
-    const currentIndex = currentMainStep.subSteps.findIndex(s => s.id === currentSubStepId);
-    
-    if (subStepIndex <= currentIndex || completedSubSteps.includes(`${currentMainStepId}_${subStepId}`)) {
-      updateFormState({ currentSubStepId: subStepId });
-    }
-  }, [currentMainStep, currentSubStepId, completedSubSteps, currentMainStepId, updateFormState]);
+  };
 
   // 提交合同
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     if (!selectedEnterprise) {
-      toast.error("请先选择企业");
-      return;
-    }
-    if (!spaceType) {
-      toast.error("请选择场地类型");
+      toast.error("请选择企业");
       return;
     }
     if (!startDate) {
-      toast.error("请选择服务起始日期");
+      toast.error("请填写合同有效期");
       return;
     }
 
     setSubmitting(true);
     try {
-      const selectedSpace = spaceTypeOptions.find(s => s.value === spaceType);
       const response = await fetch("/api/settlement/contracts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           enterpriseId: selectedEnterprise.id,
           enterpriseName: selectedEnterprise.name,
-          contractNo: contractNo || undefined,
-          contractName: `${selectedEnterprise.name}入驻合同`,
-          contractType: spaceType === "detached_office" ? "paid" : "free",
-          rentAmount: yearlyFee,
-          depositAmount: totalDeposit,
-          startDate: startDate,
-          endDate: endDate,
-          // 甲方信息
-          partyA: managementCompany ? {
-            name: managementCompany.name,
-            creditCode: managementCompany.creditCode,
-            legalPerson: managementCompany.legalPerson,
-            address: managementCompany.address,
-            contactPhone: managementCompany.phone,
-          } : undefined,
-          // 乙方信息
-          partyB: {
-            name: selectedEnterprise.name,
-            creditCode: selectedEnterprise.creditCode,
-            legalPerson: selectedEnterprise.legalPerson,
-            phone: selectedEnterprise.phone,
-            address: selectedEnterprise.registeredAddress || selectedEnterprise.businessAddress,
-          },
-          remarks: JSON.stringify({
-            spaceType: spaceType,
-            spaceTypeLabel: selectedSpace?.label,
-            spaceQuantity: spaceQuantity,
-            contractYears: contractYears,
-            baseDeposit: baseDeposit,
-            depositItems: depositItems,
-            remarks: remarks,
-          }),
+          contractNo,
+          contractName: contractName || `${selectedEnterprise.name}合同`,
+          contractType: "free", // 默认免费入驻合同
+          startDate,
+          endDate: endDate || null,
+          remarks,
+          attachments: attachments.map(a => ({
+            key: a.key,
+            url: a.url,
+            name: a.name,
+          })),
           status: "draft",
         }),
       });
 
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "创建失败");
-      }
-
       const result = await response.json();
-      setCreatedContractId(result.data.id);
-      
-      updateFormState({
-        completedMainSteps: [...completedMainSteps, "contract", "complete"],
-        currentMainStepId: "complete",
-        currentSubStepId: "review",
-      });
-      
-      toast.success("合同创建成功");
+      if (result.success) {
+        toast.success("合同创建成功");
+        router.push(`/dashboard/base/contracts/${result.data.id}`);
+      } else {
+        toast.error(result.error || "创建失败");
+      }
     } catch (error) {
       console.error("创建合同失败:", error);
-      toast.error(error instanceof Error ? error.message : "创建失败");
+      toast.error("创建失败");
     } finally {
       setSubmitting(false);
     }
-  }, [selectedEnterprise, spaceType, startDate, contractNo, yearlyFee, totalDeposit, endDate, managementCompany, contractYears, remarks, spaceQuantity, baseDeposit, depositItems, completedMainSteps, updateFormState]);
-
-  // 获取选中的场地类型信息
-  const getSelectedSpaceInfo = () => spaceTypeOptions.find(s => s.value === spaceType);
-
-  // 渲染步骤内容
-  const renderStepContent = () => {
-    // 完成页面
-    if (createdContractId && currentMainStepId === "complete") {
-      return (
-        <CompleteStep
-          enterprise={selectedEnterprise}
-          managementCompany={managementCompany}
-          spaceType={spaceType}
-          spaceTypeLabel={getSelectedSpaceInfo()?.label || ""}
-          spaceQuantity={spaceQuantity}
-          yearlyFee={yearlyFee}
-          baseDeposit={baseDeposit}
-          depositItems={depositItems}
-          totalDeposit={totalDeposit}
-          formData={{ contractNo, startDate, endDate, contractYears, remarks }}
-          onViewContract={() => router.push(`/dashboard/base/contracts/${createdContractId}`)}
-          onCreateAnother={() => {
-            setCreatedContractId(null);
-            setFormState(initialFormState);
-          }}
-        />
-      );
-    }
-
-    // 选择企业大步骤
-    if (currentMainStepId === "enterprise") {
-      return (
-        <SelectEnterpriseStep
-          selectedEnterprise={selectedEnterprise}
-          onSelect={handleSelectEnterprise}
-          searchKeyword={searchKeyword}
-          onSearchChange={(keyword) => updateFormState({ searchKeyword: keyword })}
-        />
-      );
-    }
-
-    // 服务费大步骤
-    if (currentMainStepId === "service_fee") {
-      return (
-        <ServiceFeeStep
-          spaceType={spaceType}
-          spaceQuantity={spaceQuantity}
-          yearlyFee={yearlyFee}
-          onSelectSpaceType={handleSelectSpaceType}
-          onUpdateQuantity={(q) => updateFormState({ spaceQuantity: q })}
-          onUpdateYearlyFee={(fee) => updateFormState({ yearlyFee: fee })}
-        />
-      );
-    }
-
-    // 押金大步骤
-    if (currentMainStepId === "deposit") {
-      return (
-        <DepositStep
-          spaceType={spaceType}
-          spaceQuantity={spaceQuantity}
-          baseDeposit={baseDeposit}
-          depositItems={depositItems}
-          onUpdateBaseDeposit={(amount) => updateFormState({ baseDeposit: amount })}
-          onAddDepositItem={handleAddDepositItem}
-          onUpdateDepositItem={handleUpdateDepositItem}
-          onRemoveDepositItem={handleRemoveDepositItem}
-        />
-      );
-    }
-
-    // 合同信息大步骤
-    if (currentMainStepId === "contract") {
-      return (
-        <ContractInfoStep
-          enterprise={selectedEnterprise}
-          formData={{ contractNo, startDate, endDate, contractYears, remarks }}
-          onUpdateFormData={(data) => updateFormState(data as Partial<FormState>)}
-          subStepId={currentSubStepId}
-          managementCompany={managementCompany}
-          onUpdateManagementCompany={(company) => updateFormState({ managementCompany: company })}
-        />
-      );
-    }
-
-    return null;
   };
 
-  // 判断是否是最后一步
-  const isLastStep = currentMainStepId === "contract" && currentSubStepId === "duration";
-
   return (
-    <div className="flex h-[calc(100vh-7rem)]">
-      {/* 左侧垂直步骤指示器 */}
-      <VerticalStepIndicator
-        steps={mainSteps.map(s => ({
-          ...s,
-          status: completedMainSteps.includes(s.id)
-            ? "completed"
-            : s.id === currentMainStepId
-              ? "in_progress"
-              : "pending"
-        }))}
-        currentMainStepId={currentMainStepId}
-        completedMainSteps={new Set(completedMainSteps)}
-        onStepClick={handleMainStepClick}
-      />
-
-      {/* 右侧内容区域 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 顶部子步骤指示器 */}
-        {currentMainStep && currentMainStep.subSteps.length > 1 && !createdContractId && (
-          <HorizontalSubStepIndicator
-            subSteps={currentMainStep.subSteps}
-            currentSubStepId={currentSubStepId}
-            completedSubSteps={new Set(completedSubSteps)}
-            mainStepId={currentMainStepId}
-            onSubStepClick={handleSubStepClick}
-          />
-        )}
-
-        {/* 页面标题 */}
-        {!createdContractId && (
-          <div className="px-6 py-4 border-b bg-card">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push("/dashboard/base/contracts")}
-                title="返回列表"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold">
-                  {currentMainStep?.title || "新建合同"}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {currentSubStep?.description || ""}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 步骤内容 */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto">
-            {renderStepContent()}
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* 头部 */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-semibold">新建合同</h1>
+          <p className="text-muted-foreground">
+            第 {currentStep} 步，共 {steps.length} 步 - {steps[currentStep - 1].description}
+          </p>
         </div>
+      </div>
 
-        {/* 底部操作栏 */}
-        {!createdContractId && (
-          <div className="border-t bg-card px-6 py-4">
-            <div className="flex justify-between items-center max-w-4xl mx-auto">
-              <Button
-                variant="outline"
-                onClick={handlePrev}
-                disabled={currentMainStepId === "enterprise" && currentSubStepId === "search"}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                上一步
-              </Button>
-
-              {isLastStep ? (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="bg-step-emerald hover:bg-step-emerald/90 text-step-emerald-foreground"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      创建中...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      创建合同
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  className="bg-step-sky hover:bg-step-sky/90 text-step-sky-foreground"
-                >
-                  下一步
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+      {/* 步骤指示器 */}
+      <div className="flex items-center gap-2">
+        {steps.map((step, index) => (
+          <div key={step.id} className="flex items-center">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                currentStep === step.id
+                  ? "bg-primary text-primary-foreground"
+                  : currentStep > step.id
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-muted text-muted-foreground"
               )}
+            >
+              {currentStep > step.id ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">
+                  {step.id}
+                </span>
+              )}
+              {step.title}
             </div>
+            {index < steps.length - 1 && <div className="w-8 h-px bg-border mx-1" />}
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* 步骤1：选择企业 */}
+      {currentStep === 1 && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">选择签约企业</CardTitle>
+              <CardDescription>从已有企业中选择签约主体</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 搜索框 */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索企业名称、编号或法人..."
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* 企业列表 */}
+              <div className="border rounded-lg divide-y max-h-[400px] overflow-auto">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredEnterprises.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <Building2 className="h-12 w-12 mb-3" />
+                    <p>暂无可选企业</p>
+                    <p className="text-xs mt-1">请先在企业入驻中创建企业</p>
+                  </div>
+                ) : (
+                  filteredEnterprises.map((enterprise) => (
+                    <div
+                      key={enterprise.id}
+                      className={cn(
+                        "p-4 hover:bg-muted/50 cursor-pointer transition-colors flex items-center justify-between",
+                        selectedEnterprise?.id === enterprise.id && "bg-primary/5 border-l-2 border-l-primary"
+                      )}
+                      onClick={() => setSelectedEnterprise(enterprise)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{enterprise.name}</span>
+                            {getStatusBadge(enterprise.processStatus)}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                            <span className="font-mono">{enterprise.enterpriseCode}</span>
+                            {enterprise.legalPerson && (
+                              <span>法人：{enterprise.legalPerson}</span>
+                            )}
+                            {enterprise.baseName && (
+                              <span>基地：{enterprise.baseName}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {selectedEnterprise?.id === enterprise.id && (
+                        <Check className="w-5 h-5 text-primary" />
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 步骤2：合同信息 */}
+      {currentStep === 2 && selectedEnterprise && (
+        <div className="space-y-4">
+          {/* 已选企业 */}
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium">{selectedEnterprise.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedEnterprise.creditCode || selectedEnterprise.enterpriseCode}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setCurrentStep(1)}>
+                  重新选择
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 合同信息表单 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">合同信息</CardTitle>
+              <CardDescription>填写合同编号和有效期</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>合同编号</Label>
+                  <Input
+                    className="mt-1.5"
+                    value={contractNo}
+                    onChange={(e) => setContractNo(e.target.value)}
+                    placeholder="留空自动生成"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">已自动生成，可手动修改</p>
+                </div>
+                <div>
+                  <Label>合同名称</Label>
+                  <Input
+                    className="mt-1.5"
+                    value={contractName}
+                    onChange={(e) => setContractName(e.target.value)}
+                    placeholder="输入合同名称"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>起始日期 <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="date"
+                    className="mt-1.5"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>截止日期</Label>
+                  <Input
+                    type="date"
+                    className="mt-1.5"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>备注</Label>
+                <Input
+                  className="mt-1.5"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="可选备注信息"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 步骤3：上传附件 */}
+      {currentStep === 3 && (
+        <div className="space-y-4">
+          {/* 合同摘要 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">合同摘要</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">合同编号：</span>
+                  <span className="font-mono">{contractNo}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">企业名称：</span>
+                  <span className="font-medium">{selectedEnterprise?.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">起始日期：</span>
+                  <span>{startDate || "-"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">截止日期：</span>
+                  <span>{endDate || "-"}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 上传附件 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                合同附件
+              </CardTitle>
+              <CardDescription>上传合同扫描件或电子版（可选）</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 上传按钮 */}
+              <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                <input
+                  type="file"
+                  id="file-upload"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  {uploadingFiles.size > 0 ? (
+                    <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
+                  ) : (
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    点击上传或拖拽文件到此处
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    支持 PDF、Word、图片格式
+                  </span>
+                </label>
+              </div>
+
+              {/* 已上传文件列表 */}
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  {attachments.map((file) => (
+                    <div
+                      key={file.key}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-sm truncate max-w-[300px]">{file.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveAttachment(file.key)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 底部操作栏 */}
+      <div className="border-t bg-card px-6 py-4 -mx-6">
+        <div className="flex justify-between items-center max-w-4xl mx-auto">
+          <Button
+            variant="outline"
+            onClick={handlePrev}
+            disabled={currentStep === 1}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            上一步
+          </Button>
+
+          {currentStep === 3 ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  创建合同
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button onClick={handleNext}>
+              下一步
+              <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
