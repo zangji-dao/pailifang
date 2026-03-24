@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       business_scope: body.businessScope || null,
       application_type: body.applicationType || 'new',
       remarks: body.remarks || null,
-      status: 'draft',
-      approval_status: 'draft',
+      status: 'filling',
+      approval_status: 'filling',
     };
 
     const { data, error } = await client

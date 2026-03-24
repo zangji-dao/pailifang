@@ -50,7 +50,7 @@ const canWebShare = (): boolean => {
 };
 
 // 类型定义
-type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
+type ApprovalStatus = "filling" | "pending" | "approved" | "rejected";
 type ApplicationType = "new" | "migration";
 
 interface Application {
@@ -74,7 +74,7 @@ interface Application {
 
 // 状态配置
 const statusConfig: Record<ApprovalStatus, { label: string; className: string }> = {
-  draft: { label: "草稿", className: "bg-slate-50 text-slate-600 border-slate-200" },
+  filling: { label: "填报中", className: "bg-cyan-50 text-cyan-600 border-cyan-200" },
   pending: { label: "待审批", className: "bg-blue-50 text-blue-600 border-blue-200" },
   approved: { label: "已通过", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   rejected: { label: "已驳回", className: "bg-red-50 text-red-600 border-red-200" },
@@ -184,7 +184,7 @@ export default function ApplicationsPage() {
   // 从 URL 参数恢复筛选状态（从编辑页返回时）
   useEffect(() => {
     const from = searchParams.get("from");
-    if (from && ["draft", "pending", "rejected", "approved"].includes(from)) {
+    if (from && ["filling", "pending", "rejected", "approved"].includes(from)) {
       setStatusFilter(from);
     }
   }, [searchParams]);
@@ -729,7 +729,7 @@ export default function ApplicationsPage() {
   // 统计数据
   const stats = {
     total: applications.length,
-    draft: applications.filter((a) => a.approvalStatus === "draft").length,
+    filling: applications.filter((a) => a.approvalStatus === "filling").length,
     pending: applications.filter((a) => a.approvalStatus === "pending").length,
     approved: applications.filter((a) => a.approvalStatus === "approved").length,
     rejected: applications.filter((a) => a.approvalStatus === "rejected").length,
@@ -775,19 +775,19 @@ export default function ApplicationsPage() {
             <div className="text-sm font-medium text-muted-foreground mb-3">申请状态</div>
             <div className="grid grid-cols-4 gap-3">
               <button
-                onClick={() => setStatusFilter(statusFilter === "draft" ? null : "draft")}
+                onClick={() => setStatusFilter(statusFilter === "filling" ? null : "filling")}
                 className={cn(
                   "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
-                  statusFilter === "draft" 
-                    ? "border-slate-400 bg-slate-50" 
-                    : "border-border hover:border-slate-300 hover:bg-slate-50/50"
+                  statusFilter === "filling" 
+                    ? "border-cyan-500 bg-cyan-50" 
+                    : "border-border hover:border-cyan-300 hover:bg-cyan-50/50"
                 )}
               >
                 <div className="text-left">
-                  <div className="text-xs text-muted-foreground">草稿</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "draft" ? "text-slate-600" : "text-foreground")}>{stats.draft}</div>
+                  <div className="text-xs text-muted-foreground">填报中</div>
+                  <div className={cn("text-xl font-semibold", statusFilter === "filling" ? "text-cyan-600" : "text-foreground")}>{stats.filling}</div>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                <div className="w-2 h-2 rounded-full bg-cyan-500" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
@@ -866,7 +866,7 @@ export default function ApplicationsPage() {
                 返回
               </Button>
               <span className="text-sm font-medium text-foreground">
-                {statusFilter === "draft" && "草稿申请"}
+                {statusFilter === "filling" && "填报中申请"}
                 {statusFilter === "pending" && "待审批申请"}
                 {statusFilter === "rejected" && "已驳回申请"}
                 {statusFilter === "approved" && "已通过申请"}
@@ -957,7 +957,7 @@ export default function ApplicationsPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2">
-                      {app.approvalStatus === "draft" && (
+                      {app.approvalStatus === "filling" && (
                         <>
                           <Button
                             size="sm"
