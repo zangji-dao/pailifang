@@ -242,7 +242,7 @@ export default function EnterpriseListPage() {
           </p>
         </div>
         <Button
-          onClick={() => router.push("/dashboard/base/tenants/create")}
+          onClick={() => window.open("/dashboard/base/tenants/create", "_blank")}
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -440,11 +440,11 @@ export default function EnterpriseListPage() {
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
                         {/* 继续注册按钮 - 对于未完成的企业显示 */}
-                        {['draft', 'pending_registration', 'pending_change', 'pending_contract', 'pending_payment'].includes(processStatus) && (
+                        {['pending_registration', 'pending_change', 'pending_contract', 'pending_payment'].includes(processStatus) && (
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => router.push(`/dashboard/base/tenants/create?continue=${enterprise.id}`)}
+                            onClick={() => window.open(`/dashboard/base/tenants/create?continue=${enterprise.id}`, "_blank")}
                             className="gap-1 bg-primary hover:bg-primary/90"
                           >
                             <ArrowRight className="h-3.5 w-3.5" />

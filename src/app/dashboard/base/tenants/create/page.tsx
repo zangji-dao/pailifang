@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw, Save, Cloud, CloudOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
 
 // 步骤配置和组件
 import { mainSteps, getNextStep, getPrevStep } from "./_constants/steps";
@@ -545,8 +544,8 @@ export default function NewTenantPage() {
           phone={phone}
           contract={contract}
           fees={fees}
-          onViewDetails={() => router.push(`/dashboard/base/tenants/${createdEnterpriseId}`)}
-          onReturnToList={() => router.push("/dashboard/base/tenants")}
+          onViewDetails={() => window.open(`/dashboard/base/tenants/${createdEnterpriseId}`, "_blank")}
+          onReturnToList={() => window.close()}
         />
       );
     }
@@ -728,11 +727,14 @@ export default function NewTenantPage() {
           <div className="px-6 py-4 border-b bg-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Link href="/dashboard/base/tenants">
-                  <Button variant="ghost" size="icon">
-                    <ArrowLeft className="w-5 h-5" />
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => window.close()}
+                  title="关闭页面"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
                 <div>
                   <h1 className="text-xl font-bold">
                     {currentMainStep?.title || "企业入驻"}
