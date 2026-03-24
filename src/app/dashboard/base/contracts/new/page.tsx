@@ -98,9 +98,14 @@ export default function NewContractPage() {
 
         if (enterprisesRes.ok) {
           const result = await enterprisesRes.json();
-          // 过滤可签约的企业状态
-          const validStatuses = ["pending_contract", "pending_payment", "active", "pending_registration", "pending_change"];
-          const filtered = (result.data || []).filter((e: Enterprise) => validStatuses.includes(e.processStatus));
+          // 排除不可签约的企业状态（草稿、已搬离、已终止）
+          const invalidStatuses = ["draft", "moved_out", "terminated"];
+          const filtered = (result.data || []).filter((e: Enterprise) => {
+            // 没有流程状态的企业也可以签约
+            if (!e.processStatus) return true;
+            // 排除无效状态
+            return !invalidStatuses.includes(e.processStatus);
+          });
           setEnterprises(filtered);
         }
 
