@@ -226,6 +226,10 @@ export default function NewContractPage() {
       toast.error("请填写开始日期");
       return;
     }
+    if (!selectedContractType) {
+      toast.error("请选择合同类型");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -237,8 +241,9 @@ export default function NewContractPage() {
           enterpriseName: selectedEnterprise.name,
           contractNo,
           contractName: contractName || `${selectedEnterprise.name}合同`,
-          contractTypeId: selectedContractType?.id || null,
-          contractTypeName: selectedContractType?.name || null,
+          contractType: selectedContractType.name, // 兼容后端
+          contractTypeId: selectedContractType.id,
+          contractTypeName: selectedContractType.name,
           startDate: signDate,
           endDate,
           remarks,
