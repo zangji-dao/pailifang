@@ -229,6 +229,10 @@ export default function NewContractPage() {
       toast.error("请选择合同类型");
       return;
     }
+    if (attachments.length === 0) {
+      toast.error("请上传合同附件");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -251,6 +255,8 @@ export default function NewContractPage() {
             url: a.url,
             name: a.name,
           })),
+          // 第一个附件作为合同文件
+          contractFileUrl: attachments[0]?.url || null,
           // 创建合同直接为已签状态
           status: "signed",
           signedDate: signDate,
@@ -598,11 +604,9 @@ export default function NewContractPage() {
               <CardTitle className="text-lg flex items-center gap-2">
                 <Upload className="w-5 h-5 text-amber-600" />
                 合同附件
-                <span className="text-xs font-normal text-muted-foreground ml-2 bg-muted px-2 py-0.5 rounded">
-                  可选
-                </span>
+                <span className="text-red-500">*</span>
               </CardTitle>
-              <CardDescription>上传合同扫描件或电子版</CardDescription>
+              <CardDescription>上传合同扫描件或电子版（必填）</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 上传按钮 */}
