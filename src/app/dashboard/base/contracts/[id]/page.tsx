@@ -41,7 +41,7 @@ interface Contract {
   createdAt: string;
 }
 
-// 状态配置 - 彩色主题
+// 状态配置 - 使用统一的七彩配色风格（与 globals.css 对齐）
 const statusConfig: Record<ContractStatus, { 
   label: string; 
   color: string;
@@ -50,27 +50,27 @@ const statusConfig: Record<ContractStatus, {
 }> = {
   draft: { 
     label: "草稿", 
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-200",
   },
   pending: { 
     label: "待签", 
-    color: "text-cyan-600",
-    bgColor: "bg-cyan-50",
-    borderColor: "border-cyan-200",
+    color: "text-amber-600",      // 琥珀色 - 签订合同
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
   },
   signed: { 
     label: "已签", 
-    color: "text-emerald-600",
+    color: "text-emerald-600",    // 翡翠绿 - 完成
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-200",
   },
   expired: { 
     label: "已到期", 
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    borderColor: "border-red-200",
+    color: "text-rose-600",       // 玫瑰粉 - 异常状态
+    bgColor: "bg-rose-50",
+    borderColor: "border-rose-200",
   },
   terminated: { 
     label: "已终止", 
