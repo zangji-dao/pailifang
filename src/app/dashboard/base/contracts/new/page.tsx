@@ -15,6 +15,8 @@ import {
   MapPin,
   Search,
   Check,
+  Clock,
+  FileCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,17 +29,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type ContractType = "free" | "paid" | "tax_commitment";
-
-const contractTypeOptions: { value: ContractType; label: string; description: string }[] = [
-  { value: "free", label: "免费入驻", description: "免租金入驻，适合初创企业" },
-  { value: "paid", label: "付费入驻", description: "按月缴纳租金和押金" },
-  { value: "tax_commitment", label: "承诺税收", description: "承诺年度税收额度" },
+// 场地类型配置（根据合同范本）
+const spaceTypeOptions = [
+  { 
+    value: "open_station", 
+    label: "开放工位", 
+    price: 1200, 
+    deposit: 1200, 
+    unit: "个/年",
+    description: "固定工位，共享办公区域"
+  },
+  { 
+    value: "office_no_window", 
+    label: "独立办公室（无窗）", 
+    price: 3000, 
+    deposit: 1200, 
+    unit: "间/年",
+    description: "独立办公空间，无窗户"
+  },
+  { 
+    value: "office_with_window", 
+    label: "独立办公室（有窗）", 
+    price: 3600, 
+    deposit: 1200, 
+    unit: "间/年",
+    description: "独立办公空间，带窗户"
+  },
+  { 
+    value: "detached_office", 
+    label: "独栋办公室", 
+    price: 3600, 
+    deposit: 5000, 
+    unit: "栋/年",
+    description: "独立独栋办公空间"
+  },
 ];
 
 interface Enterprise {
@@ -55,7 +86,7 @@ interface Enterprise {
 
 export default function NewContractPage() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -67,13 +98,17 @@ export default function NewContractPage() {
   // 合同信息
   const [formData, setFormData] = useState({
     contractNo: "",
-    contractName: "",
-    contractType: "" as ContractType | "",
-    rentAmount: "",
-    depositAmount: "",
-    taxCommitment: "",
+    // 场地服务
+    spaceType: "",
+    spaceQuantity: 1,
+    // 费用（根据场地类型自动计算，可手动调整）
+    yearlyFee: 0,
+    deposit: 0,
+    // 期限
     startDate: "",
     endDate: "",
+    contractYears: 1,
+    // 备注
     remarks: "",
   });
 
@@ -85,7 +120,6 @@ export default function NewContractPage() {
         const response = await fetch("/api/enterprises");
         if (response.ok) {
           const result = await response.json();
-          // 只显示入驻中或已完成入驻的企业
           const validStatuses = ["pending_contract", "pending_payment", "active", "pending_registration", "pending_change"];
           const filtered = (result.data || []).filter((e: Enterprise) => validStatuses.includes(e.processStatus));
           setEnterprises(filtered);
@@ -102,13 +136,44 @@ export default function NewContractPage() {
   // 选择企业
   const handleSelectEnterprise = (enterprise: Enterprise) => {
     setSelectedEnterprise(enterprise);
-    // 自动生成合同名称
-    setFormData(prev => ({
-      ...prev,
-      contractName: `${enterprise.name}入驻合同`,
-    }));
     setStep(2);
   };
+
+  // 选择场地类型
+  const handleSelectSpaceType = (spaceType: typeof spaceTypeOptions[0]) => {
+    setFormData(prev => ({
+      ...prev,
+      spaceType: spaceType.value,
+      yearlyFee: spaceType.price * prev.spaceQuantity,
+      deposit: spaceType.deposit * prev.spaceQuantity,
+    }));
+    setStep(3);
+  };
+
+  // 更新数量时重新计算费用
+  useEffect(() => {
+    const selectedSpace = spaceTypeOptions.find(s => s.value === formData.spaceType);
+    if (selectedSpace) {
+      setFormData(prev => ({
+        ...prev,
+        yearlyFee: selectedSpace.price * prev.spaceQuantity,
+        deposit: selectedSpace.deposit * prev.spaceQuantity,
+      }));
+    }
+  }, [formData.spaceQuantity, formData.spaceType]);
+
+  // 根据期限自动计算结束日期
+  useEffect(() => {
+    if (formData.startDate && formData.contractYears) {
+      const start = new Date(formData.startDate);
+      const end = new Date(start);
+      end.setFullYear(end.getFullYear() + formData.contractYears);
+      setFormData(prev => ({
+        ...prev,
+        endDate: end.toISOString().split('T')[0],
+      }));
+    }
+  }, [formData.startDate, formData.contractYears]);
 
   // 过滤企业列表
   const filteredEnterprises = enterprises.filter(e => {
@@ -131,19 +196,27 @@ export default function NewContractPage() {
     return <Badge className={info.className}>{info.label}</Badge>;
   };
 
+  // 获取选中的场地类型信息
+  const getSelectedSpaceInfo = () => spaceTypeOptions.find(s => s.value === formData.spaceType);
+
   // 提交合同
   const handleSubmit = async () => {
     if (!selectedEnterprise) {
       toast.error("请先选择企业");
       return;
     }
-    if (!formData.contractType) {
-      toast.error("请选择合同类型");
+    if (!formData.spaceType) {
+      toast.error("请选择场地类型");
+      return;
+    }
+    if (!formData.startDate) {
+      toast.error("请选择服务起始日期");
       return;
     }
 
     setSaving(true);
     try {
+      const selectedSpace = getSelectedSpaceInfo();
       const response = await fetch("/api/settlement/contracts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -151,14 +224,19 @@ export default function NewContractPage() {
           enterpriseId: selectedEnterprise.id,
           enterpriseName: selectedEnterprise.name,
           contractNo: formData.contractNo || undefined,
-          contractName: formData.contractName || undefined,
-          contractType: formData.contractType,
-          rentAmount: formData.rentAmount ? parseFloat(formData.rentAmount) : null,
-          depositAmount: formData.depositAmount ? parseFloat(formData.depositAmount) : null,
-          taxCommitment: formData.taxCommitment ? parseFloat(formData.taxCommitment) : null,
-          startDate: formData.startDate || null,
-          endDate: formData.endDate || null,
-          remarks: formData.remarks || null,
+          contractName: `${selectedEnterprise.name}入驻合同`,
+          contractType: formData.spaceType === "detached_office" ? "paid" : "free",
+          rentAmount: formData.yearlyFee,
+          depositAmount: formData.deposit,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          remarks: JSON.stringify({
+            spaceType: formData.spaceType,
+            spaceTypeLabel: selectedSpace?.label,
+            spaceQuantity: formData.spaceQuantity,
+            contractYears: formData.contractYears,
+            remarks: formData.remarks,
+          }),
           status: "draft",
         }),
       });
@@ -187,30 +265,34 @@ export default function NewContractPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold">新建合同</h1>
+          <h1 className="text-2xl font-semibold">新建入驻合同</h1>
           <p className="text-muted-foreground">
-            {step === 1 ? "选择要签约的企业" : "填写合同信息"}
+            {step === 1 && "第一步：选择入驻企业"}
+            {step === 2 && "第二步：选择场地类型"}
+            {step === 3 && "第三步：确认合同信息"}
           </p>
         </div>
       </div>
 
       {/* 步骤指示器 */}
       <div className="flex items-center gap-2">
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
-          step === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-        )}>
-          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">1</span>
-          选择企业
-        </div>
-        <div className="w-8 h-px bg-border" />
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
-          step === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-        )}>
-          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">2</span>
-          合同信息
-        </div>
+        {[1, 2, 3].map((s) => (
+          <div key={s} className="flex items-center">
+            <div className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
+              step === s ? "bg-primary text-primary-foreground" : 
+              step > s ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"
+            )}>
+              {step > s ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">{s}</span>
+              )}
+              {s === 1 ? "选择企业" : s === 2 ? "场地类型" : "合同信息"}
+            </div>
+            {s < 3 && <div className="w-8 h-px bg-border mx-1" />}
+          </div>
+        ))}
       </div>
 
       {/* 步骤1：选择企业 */}
@@ -282,45 +364,22 @@ export default function NewContractPage() {
         </div>
       )}
 
-      {/* 步骤2：填写合同信息 */}
+      {/* 步骤2：选择场地类型 */}
       {step === 2 && selectedEnterprise && (
         <div className="space-y-6">
-          {/* 已选企业信息 */}
+          {/* 已选企业 */}
           <Card className="border-primary/30 bg-primary/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Check className="w-5 h-5 text-primary" />
-                已选择企业
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">企业名称：</span>
-                  <span className="font-medium">{selectedEnterprise.name}</span>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium">{selectedEnterprise.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedEnterprise.creditCode || selectedEnterprise.enterpriseCode}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">统一代码：</span>
-                  <span className="font-mono">{selectedEnterprise.creditCode || "-"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">法定代表人：</span>
-                  <span>{selectedEnterprise.legalPerson || "-"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">联系电话：</span>
-                  <span>{selectedEnterprise.phone || "-"}</span>
-                </div>
-                <div className="col-span-2 flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span className="text-muted-foreground">注册地址：</span>
-                  <span>{selectedEnterprise.registeredAddress || selectedEnterprise.businessAddress || "-"}</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t flex justify-end">
                 <Button variant="outline" size="sm" onClick={() => setStep(1)}>
                   重新选择
                 </Button>
@@ -328,57 +387,121 @@ export default function NewContractPage() {
             </CardContent>
           </Card>
 
-          {/* 合同类型 */}
+          {/* 场地类型选择 */}
+          <div className="grid grid-cols-2 gap-4">
+            {spaceTypeOptions.map((space) => (
+              <Card
+                key={space.value}
+                className={cn(
+                  "cursor-pointer transition-all hover:shadow-md",
+                  formData.spaceType === space.value
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border hover:border-primary/50"
+                )}
+                onClick={() => handleSelectSpaceType(space)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{space.label}</CardTitle>
+                    <div className={cn(
+                      "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                      formData.spaceType === space.value ? "border-primary bg-primary" : "border-border"
+                    )}>
+                      {formData.spaceType === space.value && (
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      )}
+                    </div>
+                  </div>
+                  <CardDescription>{space.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-2xl font-bold text-primary">¥{space.price}</p>
+                      <p className="text-xs text-muted-foreground">{space.unit}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">押金</p>
+                      <p className="font-semibold">¥{space.deposit}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 步骤3：确认合同信息 */}
+      {step === 3 && selectedEnterprise && (
+        <div className="space-y-6">
+          {/* 乙方信息 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                合同类型 *
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                乙方信息（入驻方）
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                {contractTypeOptions.map((opt) => (
-                  <div
-                    key={opt.value}
-                    className={cn(
-                      "border-2 rounded-lg p-4 cursor-pointer transition-all",
-                      formData.contractType === opt.value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                    onClick={() => setFormData({ ...formData, contractType: opt.value })}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={cn(
-                        "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                        formData.contractType === opt.value ? "border-primary" : "border-border"
-                      )}>
-                        {formData.contractType === opt.value && (
-                          <div className="w-2 h-2 rounded-full bg-primary" />
-                        )}
-                      </div>
-                      <span className="font-medium">{opt.label}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{opt.description}</p>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">企业名称：</span>
+                  <span className="font-medium">{selectedEnterprise.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">统一社会信用代码：</span>
+                  <span className="font-mono">{selectedEnterprise.creditCode || "-"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">法定代表人：</span>
+                  <span>{selectedEnterprise.legalPerson || "-"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">联系电话：</span>
+                  <span>{selectedEnterprise.phone || "-"}</span>
+                </div>
+                <div className="col-span-2 flex items-start gap-2">
+                  <span className="text-muted-foreground">注册地址：</span>
+                  <span>{selectedEnterprise.registeredAddress || selectedEnterprise.businessAddress || "-"}</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => setStep(1)}>
+                  重新选择企业
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* 合同基本信息 */}
+          {/* 场地信息 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                基本信息
+                <FileCheck className="h-5 w-5 text-muted-foreground" />
+                场地服务
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label>合同编号</Label>
+                  <Label>场地类型</Label>
+                  <div className="mt-1.5 p-2 border rounded-md bg-muted/50">
+                    {getSelectedSpaceInfo()?.label}
+                  </div>
+                </div>
+                <div>
+                  <Label>数量</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="mt-1.5"
+                    value={formData.spaceQuantity}
+                    onChange={(e) => setFormData({ ...formData, spaceQuantity: Number(e.target.value) || 1 })}
+                  />
+                </div>
+                <div>
+                  <Label>合同编号（选填）</Label>
                   <Input
                     className="mt-1.5"
                     placeholder="留空自动生成"
@@ -386,16 +509,10 @@ export default function NewContractPage() {
                     onChange={(e) => setFormData({ ...formData, contractNo: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label>合同名称</Label>
-                  <Input
-                    className="mt-1.5"
-                    placeholder="例如：2024年度入驻合同"
-                    value={formData.contractName}
-                    onChange={(e) => setFormData({ ...formData, contractName: e.target.value })}
-                  />
-                </div>
               </div>
+              <Button variant="outline" size="sm" onClick={() => setStep(2)}>
+                重新选择场地类型
+              </Button>
             </CardContent>
           </Card>
 
@@ -410,14 +527,12 @@ export default function NewContractPage() {
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label>月租金（元）</Label>
+                  <Label>首年服务费（元）</Label>
                   <Input
                     type="number"
                     className="mt-1.5"
-                    placeholder="0.00"
-                    value={formData.rentAmount}
-                    onChange={(e) => setFormData({ ...formData, rentAmount: e.target.value })}
-                    disabled={formData.contractType === "free"}
+                    value={formData.yearlyFee}
+                    onChange={(e) => setFormData({ ...formData, yearlyFee: Number(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
@@ -425,44 +540,35 @@ export default function NewContractPage() {
                   <Input
                     type="number"
                     className="mt-1.5"
-                    placeholder="0.00"
-                    value={formData.depositAmount}
-                    onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value })}
-                    disabled={formData.contractType === "free"}
+                    value={formData.deposit}
+                    onChange={(e) => setFormData({ ...formData, deposit: Number(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
-                  <Label>税收承诺（元/年）</Label>
-                  <Input
-                    type="number"
-                    className="mt-1.5"
-                    placeholder="0.00"
-                    value={formData.taxCommitment}
-                    onChange={(e) => setFormData({ ...formData, taxCommitment: e.target.value })}
-                    disabled={formData.contractType !== "tax_commitment"}
-                  />
+                  <Label>应付总额（元）</Label>
+                  <div className="mt-1.5 p-2 border rounded-md bg-primary/5 font-semibold text-primary text-lg">
+                    ¥{(formData.yearlyFee + formData.deposit).toLocaleString()}
+                  </div>
                 </div>
               </div>
-              {formData.contractType === "free" && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  * 免费入驻合同无需填写租金和押金
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                * 押金于合同终止后30日内无息退还（扣除违约赔偿金）
+              </p>
             </CardContent>
           </Card>
 
-          {/* 合同期限 */}
+          {/* 服务期限 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                合同期限
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                服务期限
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label>开始日期</Label>
+                  <Label>起始日期</Label>
                   <Input
                     type="date"
                     className="mt-1.5"
@@ -471,13 +577,26 @@ export default function NewContractPage() {
                   />
                 </div>
                 <div>
-                  <Label>结束日期</Label>
-                  <Input
-                    type="date"
-                    className="mt-1.5"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  />
+                  <Label>合同期限（年）</Label>
+                  <Select
+                    value={String(formData.contractYears)}
+                    onValueChange={(v) => setFormData({ ...formData, contractYears: Number(v) })}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 5].map(y => (
+                        <SelectItem key={y} value={String(y)}>{y} 年</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>终止日期</Label>
+                  <div className="mt-1.5 p-2 border rounded-md bg-muted/50">
+                    {formData.endDate || "-"}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -498,9 +617,38 @@ export default function NewContractPage() {
             </CardContent>
           </Card>
 
+          {/* 合同附件提示 */}
+          <Card className="bg-muted/50">
+            <CardContent className="py-4">
+              <p className="text-sm text-muted-foreground mb-2">合同创建后将自动包含以下附件：</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span>附件一：Π立方服务标准清单</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span>附件二：空间使用与管理规范</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span>附件三：特色服务超市价目表</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span>附件四：独栋办公室补充条款</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span>附件五：安全责任承诺书</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 操作按钮 */}
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setStep(1)}>
+            <Button variant="outline" onClick={() => setStep(2)}>
               上一步
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
