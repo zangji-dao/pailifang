@@ -10,8 +10,7 @@ import {
   Search,
   Building2,
   Calendar,
-  Check,
-  Link2
+  Check
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -128,20 +127,22 @@ export function ContractStep({
 
   return (
     <div className="space-y-6">
-      {/* 已选择的合同 */}
+      {/* 已选择的合同 - 使用琥珀色主题 */}
       {contract && selectedContract && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-amber-200 bg-amber-50/50">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Check className="w-5 h-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-lg text-amber-700">
+              <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center">
+                <Check className="w-4 h-4 text-white" />
+              </div>
               已选择合同
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-amber-600" />
                 </div>
                 <div>
                   <p className="font-semibold text-lg">{selectedContract.contractNo}</p>
@@ -157,7 +158,7 @@ export function ContractStep({
                         {selectedContract.contractName.replace(/合同$/, '')}
                       </span>
                     )}
-                    <span className={getContractTypeConfig(selectedContract.contractType).className}>
+                    <span className="text-amber-600 font-medium">
                       {getContractTypeConfig(selectedContract.contractType).label}
                     </span>
                     <span className="flex items-center gap-1">
@@ -167,13 +168,18 @@ export function ContractStep({
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">合同有效期</p>
-                <p className="font-medium">1年</p>
+              <div className="text-right bg-white/60 px-4 py-2 rounded-lg">
+                <p className="text-xs text-muted-foreground">合同有效期</p>
+                <p className="font-semibold text-amber-700">1年</p>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t flex justify-end">
-              <Button variant="outline" size="sm" onClick={handleClearSelection}>
+            <div className="mt-4 pt-4 border-t border-amber-200/50 flex justify-end">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClearSelection}
+                className="border-amber-200 text-amber-700 hover:bg-amber-100"
+              >
                 重新选择
               </Button>
             </div>
@@ -181,11 +187,11 @@ export function ContractStep({
         </Card>
       )}
 
-      {/* 选择合同 */}
+      {/* 选择合同 - 使用琥珀色主题 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Link2 className="w-5 h-5" />
+            <FileText className="w-5 h-5 text-amber-600" />
             关联合同
           </CardTitle>
           <CardDescription>
@@ -222,14 +228,20 @@ export function ContractStep({
                 <div
                   key={c.id}
                   className={cn(
-                    "flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors",
-                    contract?.contractId === c.id && "bg-primary/5 border-l-2 border-l-primary"
+                    "flex items-center justify-between p-4 cursor-pointer hover:bg-amber-50/50 transition-colors",
+                    contract?.contractId === c.id && "bg-amber-50 border-l-2 border-l-amber-500"
                   )}
                   onClick={() => handleSelectContract(c)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-step-sky-muted flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-step-sky" />
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      contract?.contractId === c.id ? "bg-amber-100" : "bg-muted"
+                    )}>
+                      <FileText className={cn(
+                        "w-5 h-5",
+                        contract?.contractId === c.id ? "text-amber-600" : "text-muted-foreground"
+                      )} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -253,7 +265,7 @@ export function ContractStep({
                             {c.contractName.replace(/合同$/, '')}
                           </span>
                         )}
-                        <span className={getContractTypeConfig(c.contractType).className}>
+                        <span className="text-amber-600">
                           {getContractTypeConfig(c.contractType).label}
                         </span>
                         {c.startDate && c.endDate && (
@@ -265,14 +277,9 @@ export function ContractStep({
                       </div>
                     </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <span className={cn(
-                      "px-2 py-1 rounded border",
-                      statusConfig[c.status]?.className || "bg-muted text-muted-foreground"
-                    )}>
-                      {statusConfig[c.status]?.label || "未知"}
-                    </span>
-                  </div>
+                  {contract?.contractId === c.id && (
+                    <Check className="w-5 h-5 text-amber-600" />
+                  )}
                 </div>
               ))
             )}
