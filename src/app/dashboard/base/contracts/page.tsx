@@ -9,13 +9,11 @@ import {
   Eye,
   Loader2,
   AlertCircle,
-  Building2,
   Calendar,
   X,
   FileSignature,
   CheckCircle2,
   Clock,
-  XCircle,
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +25,7 @@ import { toast } from "sonner";
 
 // 类型定义
 type ContractStatus = "pending" | "signed" | "expired" | "terminated";
-type FilterType = ContractStatus | "all" | "expiring_soon";
+type FilterType = ContractStatus | "expiring_soon";
 
 interface Contract {
   id: string;
@@ -110,7 +108,7 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<FilterType>("all");
+  const [statusFilter, setStatusFilter] = useState<FilterType>("pending"); // 默认显示待签
 
   // 获取合同列表
   useEffect(() => {
@@ -145,7 +143,7 @@ export default function ContractsPage() {
       return isExpiringSoon(c);
     }
     // 状态筛选
-    if (statusFilter !== "all" && c.status !== statusFilter) {
+    if (c.status !== statusFilter) {
       return false;
     }
     // 关键词搜索
@@ -159,7 +157,6 @@ export default function ContractsPage() {
 
   // 统计数据
   const stats = {
-    total: contracts.length,
     pending: contracts.filter((c) => c.status === "pending").length,
     signed: contracts.filter((c) => c.status === "signed").length,
     expired: contracts.filter((c) => c.status === "expired").length,
@@ -169,7 +166,7 @@ export default function ContractsPage() {
   // 清除过滤条件
   const clearFilters = () => {
     setSearchKeyword("");
-    setStatusFilter("all");
+    setStatusFilter("pending");
   };
 
   // 加载状态
@@ -209,68 +206,8 @@ export default function ContractsPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-5 gap-4">
-        <Card 
-          className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow", 
-            statusFilter === "all" && "ring-2 ring-primary"
-          )}
-          onClick={() => setStatusFilter("all")}
-        >
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">合同总数</p>
-                <p className="text-2xl font-semibold">{stats.total}</p>
-              </div>
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", "bg-muted")}>
-                <FileSignature className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "signed" && "ring-2 ring-emerald-400"
-          )}
-          onClick={() => setStatusFilter("signed")}
-        >
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">已签</p>
-                <p className={cn("text-2xl font-semibold", statusConfig.signed.color)}>{stats.signed}</p>
-              </div>
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.signed.bgColor)}>
-                <CheckCircle2 className={cn("h-5 w-5", statusConfig.signed.color)} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* 即将到期卡片 */}
-        <Card 
-          className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "expiring_soon" && "ring-2 ring-orange-400"
-          )}
-          onClick={() => setStatusFilter("expiring_soon")}
-        >
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">即将到期</p>
-                <p className="text-2xl font-semibold text-orange-600">{stats.expiringSoon}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-50">
-                <Timer className="h-5 w-5 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
+      <div className="grid grid-cols-4 gap-4">
+        {/* 待签 */}
         <Card 
           className={cn(
             "cursor-pointer hover:shadow-md transition-shadow",
@@ -291,6 +228,49 @@ export default function ContractsPage() {
           </CardContent>
         </Card>
         
+        {/* 已签 */}
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "signed" && "ring-2 ring-emerald-400"
+          )}
+          onClick={() => setStatusFilter("signed")}
+        >
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">已签</p>
+                <p className={cn("text-2xl font-semibold", statusConfig.signed.color)}>{stats.signed}</p>
+              </div>
+              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.signed.bgColor)}>
+                <CheckCircle2 className={cn("h-5 w-5", statusConfig.signed.color)} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* 即将到期 */}
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "expiring_soon" && "ring-2 ring-orange-400"
+          )}
+          onClick={() => setStatusFilter("expiring_soon")}
+        >
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">即将到期</p>
+                <p className="text-2xl font-semibold text-orange-600">{stats.expiringSoon}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-50">
+                <Timer className="h-5 w-5 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* 已到期 */}
         <Card 
           className={cn(
             "cursor-pointer hover:shadow-md transition-shadow",
@@ -323,21 +303,21 @@ export default function ContractsPage() {
             className="pl-9"
           />
         </div>
-        {(statusFilter !== "all" || searchKeyword) && (
+        {(statusFilter !== "pending" || searchKeyword) && (
           <div className="flex items-center gap-2">
-            {statusFilter !== "all" && (
+            {statusFilter !== "pending" && (
               <Badge className={cn(
                 "gap-1 border",
                 statusFilter === "expiring_soon" 
                   ? "bg-orange-50 text-orange-600 border-orange-200" 
                   : cn(statusConfig[statusFilter as ContractStatus].bgColor, statusConfig[statusFilter as ContractStatus].color, statusConfig[statusFilter as ContractStatus].borderColor)
               )}>
-                {statusFilter === "expiring_soon" ? "即将到期 (30天内)" : `状态: ${statusConfig[statusFilter as ContractStatus].label}`}
+                {statusFilter === "expiring_soon" ? "即将到期 (30天内)" : `${statusConfig[statusFilter as ContractStatus].label}`}
                 <X 
                   className="h-3 w-3 cursor-pointer" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    setStatusFilter("all");
+                    setStatusFilter("pending");
                   }}
                 />
               </Badge>
@@ -368,11 +348,9 @@ export default function ContractsPage() {
           <p>
             {statusFilter === "expiring_soon" 
               ? "暂无30天内即将到期的合同" 
-              : statusFilter !== "all" 
-                ? `暂无${statusConfig[statusFilter as ContractStatus].label}状态的合同` 
-                : "暂无合同"}
+              : `暂无${statusConfig[statusFilter as ContractStatus].label}状态的合同`}
           </p>
-          {statusFilter === "all" && (
+          {statusFilter === "pending" && (
             <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/base/contracts/new")}>
               <Plus className="h-4 w-4 mr-2" />
               新建合同
