@@ -349,13 +349,66 @@ export default function ContractDetailPage() {
             </div>
           </div>
 
-          {/* 备注 */}
-          {contract.remarks && (
-            <div className="bg-card rounded-lg border p-6">
-              <h2 className="font-semibold mb-4">备注</h2>
-              <p className="text-muted-foreground whitespace-pre-wrap">{contract.remarks}</p>
-            </div>
-          )}
+          {/* 场地信息（从remarks解析） */}
+          {(() => {
+            try {
+              if (!contract.remarks) return null;
+              const data = JSON.parse(contract.remarks);
+              if (data.spaceType) {
+                return (
+                  <div className="bg-card rounded-lg border p-6">
+                    <h2 className="font-semibold mb-4 flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      场地信息
+                    </h2>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm text-muted-foreground">场地类型</label>
+                        <p className="font-medium">{data.spaceTypeLabel || data.spaceType}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground">数量</label>
+                        <p className="font-medium">{data.spaceQuantity || "-"}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground">合同年限</label>
+                        <p className="font-medium">{data.contractYears ? `${data.contractYears} 年` : "-"}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+            } catch {
+              // remarks不是JSON格式，忽略
+            }
+            return null;
+          })()}
+
+          {/* 备注（从remarks解析出真正的备注内容） */}
+          {(() => {
+            try {
+              if (!contract.remarks) return null;
+              const data = JSON.parse(contract.remarks);
+              // 如果有remarks字段且不为空，显示备注
+              if (data.remarks && data.remarks.trim()) {
+                return (
+                  <div className="bg-card rounded-lg border p-6">
+                    <h2 className="font-semibold mb-4">备注</h2>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{data.remarks}</p>
+                  </div>
+                );
+              }
+            } catch {
+              // remarks不是JSON格式，直接显示
+              return (
+                <div className="bg-card rounded-lg border p-6">
+                  <h2 className="font-semibold mb-4">备注</h2>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{contract.remarks}</p>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         {/* 右侧：合同文件 */}
