@@ -93,22 +93,16 @@ export const mainSteps: MainStep[] = [
   },
   {
     id: "contract",
-    title: "签订合同",
-    description: "电子合同签订",
+    title: "关联合同",
+    description: "选择已有合同关联",
     icon: PenTool,
     status: "pending",
     subSteps: [
       {
-        id: "review_contract",
-        title: "查看合同",
-        description: "查看合同条款",
+        id: "select_contract",
+        title: "选择合同",
+        description: "从合同管理中选择",
         icon: FileText,
-      },
-      {
-        id: "sign_contract",
-        title: "签署合同",
-        description: "电子签名确认",
-        icon: FileSignature,
       },
     ],
   },
@@ -120,22 +114,10 @@ export const mainSteps: MainStep[] = [
     status: "pending",
     subSteps: [
       {
-        id: "view_fees",
-        title: "查看费用",
-        description: "查看应缴费用明细",
+        id: "pay_fees",
+        title: "缴纳费用",
+        description: "添加费用并上传凭证",
         icon: Receipt,
-      },
-      {
-        id: "upload_payment",
-        title: "上传凭证",
-        description: "上传缴费凭证",
-        icon: Upload,
-      },
-      {
-        id: "confirm_payment",
-        title: "确认缴费",
-        description: "确认缴费完成",
-        icon: BadgeCheck,
       },
     ],
   },

@@ -29,12 +29,8 @@ interface OnboardingCompleteStepProps {
   legalPerson: string;
   phone: string;
   contract: {
+    contractId: string | null;
     contractNumber: string;
-    startDate: string;
-    endDate: string;
-    monthlyRent: number;
-    deposit: number;
-    signature: string | null;
   } | null;
   fees: {
     name: string;
@@ -203,31 +199,8 @@ export function OnboardingCompleteStep({
                   <div className="flex items-start gap-3">
                     <FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div>
-                      <p className="text-xs text-muted-foreground">合同编号</p>
+                      <p className="text-xs text-muted-foreground">关联合同</p>
                       <p className="font-medium">{contract.contractNumber}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">合同期限</p>
-                      <p className="font-medium text-sm">
-                        {contract.startDate} 至 {contract.endDate}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CreditCard className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">月租金</p>
-                      <p className="font-medium">¥{contract.monthlyRent.toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CreditCard className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">押金</p>
-                      <p className="font-medium">¥{contract.deposit.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>

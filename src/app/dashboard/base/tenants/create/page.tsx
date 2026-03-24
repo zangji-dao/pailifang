@@ -94,11 +94,6 @@ interface FormState {
   contract: {
     contractId: string | null;
     contractNumber: string;
-    startDate: string;
-    endDate: string;
-    monthlyRent: number;
-    deposit: number;
-    signature: string | null;
   } | null;
 
   // 步骤4：费用缴纳
@@ -298,13 +293,11 @@ export default function NewTenantPage() {
       case "registration_upload_license":
         // 工商注册步骤：需要上传营业执照并填写基本信息
         return businessLicense !== null && creditCode.trim() !== "" && legalPerson.trim() !== "";
-      case "contract_review_contract":
-      case "contract_sign_contract":
-        return contract?.signature !== null;
-      case "payment_view_fees":
-      case "payment_upload_payment":
-        return true;
-      case "payment_confirm_payment":
+      case "contract_select_contract":
+        // 签订合同步骤：需要选择一个合同
+        return contract?.contractId !== null && contract?.contractId !== undefined;
+      case "payment_pay_fees":
+        // 费用缴纳步骤：至少有一项费用已缴费或已核实
         return fees.some(f => f.status === "paid" || f.status === "verified");
       case "complete_review_all":
         return true;
@@ -500,16 +493,9 @@ export default function NewTenantPage() {
         }
       }
 
-      // 合同信息
-      if (contract) {
-        requestData.contract = {
-          contract_number: contract.contractNumber,
-          start_date: contract.startDate,
-          end_date: contract.endDate,
-          monthly_rent: contract.monthlyRent,
-          deposit: contract.deposit,
-          signature: contract.signature,
-        };
+      // 合同信息 - 关联已有合同
+      if (contract?.contractId) {
+        requestData.contract_id = contract.contractId;
       }
 
       // 费用信息

@@ -227,51 +227,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 如果有合同信息，创建合同记录
-    if (body.contract) {
-      const contractData = {
-        id: crypto.randomUUID(),
-        enterprise_id: enterprise.id,
-        contract_number: body.contract.contract_number,
-        contract_type: 'lease',
-        start_date: body.contract.start_date,
-        end_date: body.contract.end_date,
-        amount: body.contract.monthly_rent || 0,
-        deposit: body.contract.deposit || 0,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
+    // 如果有关联合同ID，更新合同的企业关联
+    if (body.contract_id) {
       const { error: contractError } = await supabase
-        .from('contracts')
-        .insert(contractData);
+        .from('pi_contracts')
+        .update({
+          enterprise_id: enterprise.id,
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', body.contract_id);
 
       if (contractError) {
-        console.error('创建合同失败:', contractError);
+        console.error('关联合同失败:', contractError);
       }
     }
 
     // 如果有费用信息，创建费用记录
     if (body.fees && body.fees.length > 0) {
-      const feeRecords = body.fees.map((fee: any) => ({
+      const paymentRecords = body.fees.map((fee: any) => ({
         id: crypto.randomUUID(),
         enterprise_id: enterprise.id,
-        fee_type: fee.name,
+        payment_type: 'settlement', // 结算类费用
+        payment_name: fee.name,
         amount: fee.amount,
-        payment_method: fee.payment_method,
+        paid_amount: fee.amount, // 已缴金额等于应付金额
+        payment_method: fee.payment_method || 'bank_transfer',
         payment_date: fee.payment_date,
-        status: 'paid',
+        payment_voucher: fee.proof_url,
+        status: fee.status || 'paid',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
 
-      const { error: feesError } = await supabase
-        .from('fees')
-        .insert(feeRecords);
+      const { error: paymentsError } = await supabase
+        .from('pi_settlement_payments')
+        .insert(paymentRecords);
 
-      if (feesError) {
-        console.error('创建费用记录失败:', feesError);
+      if (paymentsError) {
+        console.error('创建费用记录失败:', paymentsError);
       }
     }
 
