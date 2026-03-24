@@ -12,9 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard } from "lucide-react";
+import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustries } from "@/hooks/useIndustries";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface BusinessRegistrationStepProps {
   enterpriseName: string;
@@ -28,6 +29,8 @@ interface BusinessRegistrationStepProps {
   onUpdateLegalPerson: (person: string) => void;
   onUpdatePhone: (phone: string) => void;
   onUpdateIndustry: (industry: string) => void;
+  onUpdateEnterpriseName?: (name: string) => void;
+  onUpdateBusinessScope?: (scope: string) => void;
 }
 
 export function BusinessRegistrationStep({
@@ -42,10 +45,57 @@ export function BusinessRegistrationStep({
   onUpdateLegalPerson,
   onUpdatePhone,
   onUpdateIndustry,
+  onUpdateEnterpriseName,
+  onUpdateBusinessScope,
 }: BusinessRegistrationStepProps) {
   const [uploading, setUploading] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const { toast } = useToast();
   const { industries, loading: industriesLoading } = useIndustries();
+
+  // 识别营业执照
+  const recognizeLicense = async (imageUrl: string) => {
+    setRecognizing(true);
+    try {
+      const res = await fetch("/api/ocr/business-license", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl }),
+      });
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        const { creditCode: code, legalPerson: person, enterpriseName: name, businessScope: scope } = result.data;
+
+        // 自动填充识别结果
+        if (code) onUpdateCreditCode(code);
+        if (person) onUpdateLegalPerson(person);
+        if (name && onUpdateEnterpriseName) onUpdateEnterpriseName(name);
+        if (scope && onUpdateBusinessScope) onUpdateBusinessScope(scope);
+
+        toast({
+          title: "识别成功",
+          description: "已自动填充营业执照信息",
+        });
+      } else {
+        toast({
+          title: "识别失败",
+          description: result.error || "无法识别营业执照，请手动填写",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("识别失败:", error);
+      toast({
+        title: "识别失败",
+        description: "请手动填写信息",
+        variant: "destructive",
+      });
+    } finally {
+      setRecognizing(false);
+    }
+  };
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
@@ -63,6 +113,9 @@ export function BusinessRegistrationStep({
         const url = result.data?.url || result.url;
         onUpdateBusinessLicense({ name: file.name, url });
         toast({ title: "上传成功" });
+
+        // 上传成功后自动识别
+        recognizeLicense(url);
       } else {
         throw new Error(result.error || result.message || "上传失败");
       }
@@ -83,7 +136,7 @@ export function BusinessRegistrationStep({
             <FileText className="w-5 h-5" />
             上传营业执照
           </CardTitle>
-          <CardDescription>请上传清晰的营业执照照片或扫描件</CardDescription>
+          <CardDescription>上传后将自动识别并填充信息</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 已上传的执照 */}
@@ -98,14 +151,42 @@ export function BusinessRegistrationStep({
                   <p className="text-xs text-muted-foreground">已上传</p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onUpdateBusinessLicense(null)}
-                className="text-destructive"
-              >
-                删除
-              </Button>
+              <div className="flex items-center gap-1">
+                {/* 重新识别 */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => recognizeLicense(businessLicense.url)}
+                  disabled={recognizing}
+                  className="text-primary"
+                >
+                  {recognizing ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-1" />
+                  )}
+                  识别
+                </Button>
+                {/* 查看 */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPreviewOpen(true)}
+                  className="text-primary"
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  查看
+                </Button>
+                {/* 删除 */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onUpdateBusinessLicense(null)}
+                  className="text-destructive"
+                >
+                  删除
+                </Button>
+              </div>
             </div>
           )}
 
@@ -131,16 +212,16 @@ export function BusinessRegistrationStep({
                 </div>
                 <div>
                   <p className="text-sm font-medium">点击上传营业执照</p>
-                  <p className="text-xs text-muted-foreground mt-1">支持图片或PDF格式</p>
+                  <p className="text-xs text-muted-foreground mt-1">支持图片或PDF格式，将自动识别</p>
                 </div>
               </div>
             </label>
           )}
 
-          {uploading && (
+          {(uploading || recognizing) && (
             <div className="flex items-center justify-center gap-2 py-4">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">上传中...</span>
+              <span className="text-sm">{uploading ? "上传中..." : "正在识别营业执照..."}</span>
             </div>
           )}
         </CardContent>
@@ -224,6 +305,24 @@ export function BusinessRegistrationStep({
           </div>
         </CardContent>
       </Card>
+
+      {/* 营业执照预览弹窗 */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="truncate">{businessLicense?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto flex items-center justify-center bg-muted/50 rounded-lg">
+            {businessLicense && (
+              <img
+                src={businessLicense.url}
+                alt="营业执照"
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

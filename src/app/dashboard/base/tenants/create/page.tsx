@@ -668,6 +668,8 @@ export default function NewTenantPage() {
               onUpdateLegalPerson={(person) => updateFormState({ legalPerson: person })}
               onUpdatePhone={(p) => updateFormState({ phone: p })}
               onUpdateIndustry={(ind) => updateFormState({ industry: ind })}
+              onUpdateEnterpriseName={(name) => updateFormState({ enterpriseName: name })}
+              onUpdateBusinessScope={(scope) => updateFormState({ remarks: scope })}
             />
           );
       }
