@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
       legal_person,
       phone,
       industry,
+      registered_capital,
+      establish_date,
       current_step,
       registration_number_id,  // 工位号记录ID
       registration_number,     // 工位号
@@ -69,6 +71,8 @@ export async function POST(request: NextRequest) {
       if (legal_person !== undefined) updateData.legal_person = legal_person;
       if (phone !== undefined) updateData.phone = phone;
       if (industry !== undefined) updateData.industry = industry;
+      if (registered_capital !== undefined) updateData.registered_capital = registered_capital;
+      if (establish_date !== undefined) updateData.establish_date = establish_date;
       
       // 更新状态
       if (status !== 'draft') {
@@ -146,6 +150,8 @@ export async function POST(request: NextRequest) {
       legal_person: legal_person || null,
       phone: phone || null,
       industry: industry || null,
+      registered_capital: registered_capital || null,
+      establish_date: establish_date || null,
       registration_number: registration_number || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

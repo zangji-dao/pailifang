@@ -85,6 +85,10 @@ interface FormState {
   legalPerson: string;
   phone: string;
   industry: string;
+  registeredCapital: string;
+  establishDate: string;
+  registeredAddress: string;
+  businessScope: string;
 
   // 步骤3：签订合同
   contract: {
@@ -122,6 +126,10 @@ const initialFormState: FormState = {
   legalPerson: "",
   phone: "",
   industry: "",
+  registeredCapital: "",
+  establishDate: "",
+  registeredAddress: "",
+  businessScope: "",
 
   contract: null,
   fees: [],
@@ -163,6 +171,10 @@ export default function NewTenantPage() {
     legalPerson,
     phone,
     industry,
+    registeredCapital,
+    establishDate,
+    registeredAddress,
+    businessScope,
     contract,
     fees,
   } = formState;
@@ -313,13 +325,15 @@ export default function NewTenantPage() {
         name: enterpriseName || `草稿-${enterpriseCode}`,
         type: enterpriseType,
         space_id: selectedRegNumber?.spaceId || null,
-        registered_address: selectedRegNumber?.fullAddress || null,
+        registered_address: registeredAddress || selectedRegNumber?.fullAddress || null,
         business_address: selectedRegNumber?.fullAddress || null,
-        business_scope: remarks || null,
+        business_scope: businessScope || remarks || null,
         credit_code: creditCode || null,
         legal_person: legalPerson || null,
         phone: phone || null,
         industry: industry || null,
+        registered_capital: registeredCapital || null,
+        establish_date: establishDate || null,
         current_step: step || currentMainStepId,
         // 添加工位号信息，用于关联
         registration_number_id: selectedRegNumber?.id || null,
@@ -347,7 +361,7 @@ export default function NewTenantPage() {
     } finally {
       setSavingDraft(false);
     }
-  }, [draftId, enterpriseCode, enterpriseName, enterpriseType, selectedBaseId, selectedRegNumber, proofFiles, remarks, creditCode, legalPerson, phone, industry, currentMainStepId, submitting, updateFormState]);
+  }, [draftId, enterpriseCode, enterpriseName, enterpriseType, selectedBaseId, selectedRegNumber, proofFiles, remarks, creditCode, legalPerson, phone, industry, registeredCapital, establishDate, registeredAddress, businessScope, currentMainStepId, submitting, updateFormState]);
 
   // 下一步
   const handleNext = useCallback(() => {
@@ -663,13 +677,20 @@ export default function NewTenantPage() {
               legalPerson={legalPerson}
               phone={phone}
               industry={industry}
+              registeredCapital={registeredCapital}
+              establishDate={establishDate}
+              registeredAddress={registeredAddress}
+              businessScope={businessScope}
               onUpdateBusinessLicense={(license) => updateFormState({ businessLicense: license })}
               onUpdateCreditCode={(code) => updateFormState({ creditCode: code })}
               onUpdateLegalPerson={(person) => updateFormState({ legalPerson: person })}
               onUpdatePhone={(p) => updateFormState({ phone: p })}
               onUpdateIndustry={(ind) => updateFormState({ industry: ind })}
               onUpdateEnterpriseName={(name) => updateFormState({ enterpriseName: name })}
-              onUpdateBusinessScope={(scope) => updateFormState({ remarks: scope })}
+              onUpdateBusinessScope={(scope) => updateFormState({ businessScope: scope })}
+              onUpdateRegisteredCapital={(capital) => updateFormState({ registeredCapital: capital })}
+              onUpdateEstablishDate={(date) => updateFormState({ establishDate: date })}
+              onUpdateRegisteredAddress={(address) => updateFormState({ registeredAddress: address })}
             />
           );
       }

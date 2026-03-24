@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye } from "lucide-react";
+import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye, MapPin, DollarSign, Briefcase, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustries } from "@/hooks/useIndustries";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,6 +25,12 @@ interface BusinessRegistrationStepProps {
   legalPerson: string;
   phone: string;
   industry: string;
+  // 新增字段
+  registeredCapital?: string;
+  businessScope?: string;
+  establishDate?: string;
+  registeredAddress?: string;
+  // 回调
   onUpdateBusinessLicense: (license: { name: string; url: string } | null) => void;
   onUpdateCreditCode: (code: string) => void;
   onUpdateLegalPerson: (person: string) => void;
@@ -31,6 +38,9 @@ interface BusinessRegistrationStepProps {
   onUpdateIndustry: (industry: string) => void;
   onUpdateEnterpriseName?: (name: string) => void;
   onUpdateBusinessScope?: (scope: string) => void;
+  onUpdateRegisteredCapital?: (capital: string) => void;
+  onUpdateEstablishDate?: (date: string) => void;
+  onUpdateRegisteredAddress?: (address: string) => void;
 }
 
 export function BusinessRegistrationStep({
@@ -40,6 +50,10 @@ export function BusinessRegistrationStep({
   legalPerson,
   phone,
   industry,
+  registeredCapital = "",
+  businessScope = "",
+  establishDate = "",
+  registeredAddress = "",
   onUpdateBusinessLicense,
   onUpdateCreditCode,
   onUpdateLegalPerson,
@@ -47,6 +61,9 @@ export function BusinessRegistrationStep({
   onUpdateIndustry,
   onUpdateEnterpriseName,
   onUpdateBusinessScope,
+  onUpdateRegisteredCapital,
+  onUpdateEstablishDate,
+  onUpdateRegisteredAddress,
 }: BusinessRegistrationStepProps) {
   const [uploading, setUploading] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
@@ -66,17 +83,29 @@ export function BusinessRegistrationStep({
       const result = await res.json();
 
       if (result.success && result.data) {
-        const { creditCode: code, legalPerson: person, enterpriseName: name, businessScope: scope } = result.data;
+        const { 
+          creditCode: code, 
+          legalPerson: person, 
+          enterpriseName: name, 
+          businessScope: scope,
+          registeredCapital: capital,
+          establishDate: date,
+          address
+        } = result.data;
 
         // 自动填充识别结果
-        if (code) onUpdateCreditCode(code);
-        if (person) onUpdateLegalPerson(person);
-        if (name && onUpdateEnterpriseName) onUpdateEnterpriseName(name);
-        if (scope && onUpdateBusinessScope) onUpdateBusinessScope(scope);
+        let filledCount = 0;
+        if (code) { onUpdateCreditCode(code); filledCount++; }
+        if (person) { onUpdateLegalPerson(person); filledCount++; }
+        if (name && onUpdateEnterpriseName) { onUpdateEnterpriseName(name); filledCount++; }
+        if (scope && onUpdateBusinessScope) { onUpdateBusinessScope(scope); filledCount++; }
+        if (capital && onUpdateRegisteredCapital) { onUpdateRegisteredCapital(capital); filledCount++; }
+        if (date && onUpdateEstablishDate) { onUpdateEstablishDate(date); filledCount++; }
+        if (address && onUpdateRegisteredAddress) { onUpdateRegisteredAddress(address); filledCount++; }
 
         toast({
           title: "识别成功",
-          description: "已自动填充营业执照信息",
+          description: `已自动填充 ${filledCount} 项信息`,
         });
       } else {
         toast({
@@ -234,9 +263,26 @@ export function BusinessRegistrationStep({
             <Building2 className="w-5 h-5" />
             工商注册信息
           </CardTitle>
-          <CardDescription>请填写企业的工商注册信息</CardDescription>
+          <CardDescription>
+            {businessLicense ? "已识别的信息可手动修改" : "请填写企业的工商注册信息"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* 企业名称 */}
+          <div className="space-y-2">
+            <Label htmlFor="enterpriseName" className="flex items-center gap-1">
+              <Building2 className="w-4 h-4" />
+              企业名称 <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="enterpriseName"
+              value={enterpriseName}
+              onChange={(e) => onUpdateEnterpriseName?.(e.target.value)}
+              placeholder="请输入企业名称"
+            />
+          </div>
+
+          {/* 第一行：信用代码 + 法人 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="creditCode">统一社会信用代码</Label>
@@ -244,7 +290,7 @@ export function BusinessRegistrationStep({
                 id="creditCode"
                 value={creditCode}
                 onChange={(e) => onUpdateCreditCode(e.target.value)}
-                placeholder="请输入18位信用代码"
+                placeholder="18位信用代码"
                 maxLength={18}
               />
             </div>
@@ -256,11 +302,45 @@ export function BusinessRegistrationStep({
                   id="legalPerson"
                   value={legalPerson}
                   onChange={(e) => onUpdateLegalPerson(e.target.value)}
-                  placeholder="请输入法定代表人姓名"
+                  placeholder="法定代表人姓名"
                   className="pl-9"
                 />
               </div>
             </div>
+          </div>
+
+          {/* 第二行：注册资本 + 成立日期 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="registeredCapital">注册资本</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="registeredCapital"
+                  value={registeredCapital}
+                  onChange={(e) => onUpdateRegisteredCapital?.(e.target.value)}
+                  placeholder="如：100万元"
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="establishDate">成立日期</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="establishDate"
+                  type="date"
+                  value={establishDate}
+                  onChange={(e) => onUpdateEstablishDate?.(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 第三行：联系电话 + 所属行业 */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">联系电话</Label>
               <div className="relative">
@@ -269,7 +349,7 @@ export function BusinessRegistrationStep({
                   id="phone"
                   value={phone}
                   onChange={(e) => onUpdatePhone(e.target.value)}
-                  placeholder="请输入联系电话"
+                  placeholder="联系电话"
                   className="pl-9"
                 />
               </div>
@@ -298,10 +378,33 @@ export function BusinessRegistrationStep({
             </div>
           </div>
 
-          {/* 企业名称显示 */}
-          <div className="p-4 bg-step-amber-muted rounded-lg border border-step-amber/30">
-            <p className="text-sm text-step-amber">企业名称</p>
-            <p className="font-semibold text-lg text-step-amber-foreground">{enterpriseName || "未填写"}</p>
+          {/* 注册地址 */}
+          <div className="space-y-2">
+            <Label htmlFor="registeredAddress" className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              注册地址
+            </Label>
+            <Input
+              id="registeredAddress"
+              value={registeredAddress}
+              onChange={(e) => onUpdateRegisteredAddress?.(e.target.value)}
+              placeholder="营业执照上的注册地址"
+            />
+          </div>
+
+          {/* 经营范围 */}
+          <div className="space-y-2">
+            <Label htmlFor="businessScope" className="flex items-center gap-1">
+              <Briefcase className="w-4 h-4" />
+              经营范围
+            </Label>
+            <Textarea
+              id="businessScope"
+              value={businessScope}
+              onChange={(e) => onUpdateBusinessScope?.(e.target.value)}
+              placeholder="请输入经营范围"
+              rows={3}
+            />
           </div>
         </CardContent>
       </Card>
