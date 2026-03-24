@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTabs } from "@/app/dashboard/tabs-context";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useTabs } from "@/app/dashboard/tabs-context";
 import { useConfirm } from "@/components/confirm-dialog";
 import { toast } from "sonner";
 import { ShareDialog } from "./_components/ShareDialog";
@@ -191,7 +191,16 @@ export default function ApplicationsPage() {
 
   // 打开新建表单（新标签页）
   const handleCreate = () => {
-    router.push("/dashboard/base/applications/new");
+    if (tabsContext) {
+      tabsContext.openTab({
+        id: "new-application",
+        label: "新建入驻申请",
+        path: "/dashboard/base/applications/new",
+        icon: <Plus className="h-3.5 w-3.5" />,
+      });
+    } else {
+      router.push("/dashboard/base/applications/new");
+    }
   };
 
   // 打开编辑表单（带上当前筛选状态）

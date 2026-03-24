@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { useTabs } from "@/app/dashboard/tabs-context";
 import type { 
   ApplicationFormData, 
   Personnel, 
@@ -25,6 +26,7 @@ interface ShareholderCropperTarget {
 export function useApplicationForm(id: string) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tabs = useTabs();
   
   // 基础状态
   const [formData, setFormData] = useState<ApplicationFormData | null>(null);
@@ -734,7 +736,12 @@ export function useApplicationForm(id: string) {
         const returnUrl = from 
           ? `/dashboard/base/applications?from=${from}` 
           : "/dashboard/base/applications";
-        router.push(returnUrl);
+        // 关闭当前标签页并跳转
+        if (tabs) {
+          tabs.closeCurrentTabAndNavigate(returnUrl);
+        } else {
+          router.push(returnUrl);
+        }
       } else {
         setSuccess(true);
         toast.success("保存成功");
@@ -745,7 +752,7 @@ export function useApplicationForm(id: string) {
     } finally {
       setSubmitting(false);
     }
-  }, [id, formData, validateForm, router, searchParams]);
+  }, [id, formData, validateForm, router, searchParams, tabs]);
 
   // 计算属性：草稿和驳回状态可编辑
   const canEdit = formData?.approvalStatus === "draft" || formData?.approvalStatus === "rejected";
@@ -772,21 +779,25 @@ export function useApplicationForm(id: string) {
     const fromPage = searchParams.get("from");
     const fromStatus = searchParams.get("status");
     
-    // 如果是从审批页面跳转过来的，返回审批页面
+    // 构建返回URL
+    let returnUrl: string;
     if (fromPage === "approval") {
-      const returnUrl = fromStatus 
+      returnUrl = fromStatus 
         ? `/dashboard/base/processes?status=${fromStatus}` 
         : "/dashboard/base/processes";
-      router.push(returnUrl);
-      return;
+    } else {
+      returnUrl = fromStatus 
+        ? `/dashboard/base/applications?from=${fromStatus}` 
+        : "/dashboard/base/applications";
     }
     
-    // 否则返回入驻申请页面，带上来源状态参数
-    const returnUrl = fromStatus 
-      ? `/dashboard/base/applications?from=${fromStatus}` 
-      : "/dashboard/base/applications";
-    router.push(returnUrl);
-  }, [id, formData, canEdit, router, searchParams]);
+    // 关闭当前标签页并跳转
+    if (tabs) {
+      tabs.closeCurrentTabAndNavigate(returnUrl);
+    } else {
+      router.push(returnUrl);
+    }
+  }, [id, formData, canEdit, router, searchParams, tabs]);
 
   return {
     // 状态

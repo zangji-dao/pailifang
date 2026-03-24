@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTabs } from "@/app/dashboard/tabs-context";
 import type { 
   NewApplicationFormData, 
   Personnel, 
@@ -24,6 +25,7 @@ interface ShareholderCropperTarget {
 
 export function useNewApplicationForm() {
   const router = useRouter();
+  const tabs = useTabs();
   
   // 基础状态
   const [formData, setFormData] = useState<NewApplicationFormData>(initialNewFormData);
@@ -635,7 +637,12 @@ export function useNewApplicationForm() {
         
         if (result.success) {
           toast.success("提交成功");
-          router.push("/dashboard/base/applications");
+          // 关闭当前标签页并跳转到申请列表
+          if (tabs) {
+            tabs.closeCurrentTabAndNavigate("/dashboard/base/applications");
+          } else {
+            router.push("/dashboard/base/applications");
+          }
         } else {
           toast.error(result.error || "提交失败");
         }
@@ -654,7 +661,12 @@ export function useNewApplicationForm() {
         
         if (result.success) {
           toast.success("提交成功");
-          router.push("/dashboard/base/applications");
+          // 关闭当前标签页并跳转到申请列表
+          if (tabs) {
+            tabs.closeCurrentTabAndNavigate("/dashboard/base/applications");
+          } else {
+            router.push("/dashboard/base/applications");
+          }
         } else {
           toast.error(result.error || "提交失败");
         }
@@ -665,7 +677,7 @@ export function useNewApplicationForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, applicationId, validateForm, router]);
+  }, [formData, applicationId, validateForm, router, tabs]);
 
   // ========== 返回并保存 ==========
   const handleGoBack = useCallback(async () => {
@@ -693,8 +705,13 @@ export function useNewApplicationForm() {
         setSaving(false);
       }
     }
-    router.push("/dashboard/base/applications");
-  }, [formData, applicationId, router]);
+    // 关闭当前标签页并跳转到申请列表
+    if (tabs) {
+      tabs.closeCurrentTabAndNavigate("/dashboard/base/applications");
+    } else {
+      router.push("/dashboard/base/applications");
+    }
+  }, [formData, applicationId, router, tabs]);
 
   return {
     // 状态

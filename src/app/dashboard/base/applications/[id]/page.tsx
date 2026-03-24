@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Save, Send, AlertCircle, ChevronLeft, ChevronRight 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ImageCropper } from "@/components/image-cropper";
+import { useTabs } from "@/app/dashboard/tabs-context";
 import { useApplicationForm } from "./useApplicationForm";
 import { useConfirm } from "@/components/confirm-dialog";
 import { formSteps } from "./constants";
@@ -19,6 +20,7 @@ import type { ApplicationFormData, Personnel, Shareholder, ShareholderType } fro
 export default function ApplicationDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const tabs = useTabs();
   const applicationId = params.id as string;
 
   const {
@@ -98,7 +100,13 @@ export default function ApplicationDetailPage() {
         <AlertCircle className="h-12 w-12 text-destructive" />
         <p className="text-lg font-medium">加载失败</p>
         <p className="text-muted-foreground">{pageError}</p>
-        <Button onClick={() => router.push("/dashboard/base/applications")}>返回列表</Button>
+        <Button onClick={() => {
+          if (tabs) {
+            tabs.closeCurrentTabAndNavigate("/dashboard/base/applications");
+          } else {
+            router.push("/dashboard/base/applications");
+          }
+        }}>返回列表</Button>
       </div>
     );
   }

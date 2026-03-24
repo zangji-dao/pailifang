@@ -115,6 +115,31 @@ export function getTabConfig(path: string): Tab | null {
       }
     }
   }
+  
+  // 新建申请页面
+  if (path === "/dashboard/base/applications/new") {
+    return {
+      id: "new-application",
+      label: "新建申请",
+      path: path,
+      icon: <Plus className="h-3.5 w-3.5" />,
+      closable: true,
+      group: "settlement",
+    };
+  }
+  
+  // 申请详情页面
+  const applicationDetailMatch = path.match(/^\/dashboard\/base\/applications\/([a-f0-9-]{36})$/);
+  if (applicationDetailMatch) {
+    return {
+      id: `application-${applicationDetailMatch[1]}`,
+      label: "申请详情",
+      path: path,
+      icon: <Eye className="h-3.5 w-3.5" />,
+      closable: true,
+      group: "settlement",
+    };
+  }
 
   // 基地管理
   if (path.startsWith("/dashboard/base/")) {
