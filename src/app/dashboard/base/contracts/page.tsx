@@ -11,7 +11,7 @@ import {
   AlertCircle,
   Building2,
   Calendar,
-  ArrowRight,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ContractStatus | "all">("all");
 
   // 获取合同列表
   useEffect(() => {
@@ -72,6 +73,11 @@ export default function ContractsPage() {
 
   // 过滤合同列表
   const filteredContracts = contracts.filter((c) => {
+    // 状态过滤
+    if (statusFilter !== "all" && c.status !== statusFilter) {
+      return false;
+    }
+    // 关键词搜索
     if (!searchKeyword) return true;
     return (
       (c.enterpriseName && c.enterpriseName.includes(searchKeyword)) ||
@@ -87,6 +93,12 @@ export default function ContractsPage() {
     pending: contracts.filter((c) => c.status === "pending").length,
     signed: contracts.filter((c) => c.status === "signed").length,
     expired: contracts.filter((c) => c.status === "expired").length,
+  };
+
+  // 清除过滤条件
+  const clearFilters = () => {
+    setSearchKeyword("");
+    setStatusFilter("all");
   };
 
   // 加载状态
@@ -127,7 +139,13 @@ export default function ContractsPage() {
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-5 gap-4">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSearchKeyword("")}>
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow", 
+            statusFilter === "all" && "ring-2 ring-primary"
+          )}
+          onClick={() => setStatusFilter("all")}
+        >
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -140,7 +158,13 @@ export default function ContractsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSearchKeyword("draft")}>
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "draft" && "ring-2 ring-primary"
+          )}
+          onClick={() => setStatusFilter("draft")}
+        >
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -153,7 +177,13 @@ export default function ContractsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSearchKeyword("pending")}>
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "pending" && "ring-2 ring-primary"
+          )}
+          onClick={() => setStatusFilter("pending")}
+        >
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -166,7 +196,13 @@ export default function ContractsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSearchKeyword("signed")}>
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "signed" && "ring-2 ring-primary"
+          )}
+          onClick={() => setStatusFilter("signed")}
+        >
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -179,7 +215,13 @@ export default function ContractsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSearchKeyword("expired")}>
+        <Card 
+          className={cn(
+            "cursor-pointer hover:shadow-md transition-shadow",
+            statusFilter === "expired" && "ring-2 ring-primary"
+          )}
+          onClick={() => setStatusFilter("expired")}
+        >
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -194,26 +236,62 @@ export default function ContractsPage() {
         </Card>
       </div>
 
-      {/* 搜索栏 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="搜索合同编号、企业名称..."
-          value={searchKeyword}
-          onChange={(e) => setSearchKeyword(e.target.value)}
-          className="pl-9"
-        />
+      {/* 搜索栏和过滤状态 */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="搜索合同编号、企业名称..."
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {/* 显示当前过滤条件 */}
+        {(statusFilter !== "all" || searchKeyword) && (
+          <div className="flex items-center gap-2">
+            {statusFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1">
+                状态: {statusConfig[statusFilter].label}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStatusFilter("all");
+                  }}
+                />
+              </Badge>
+            )}
+            {searchKeyword && (
+              <Badge variant="secondary" className="gap-1">
+                搜索: {searchKeyword}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchKeyword("");
+                  }}
+                />
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              清除筛选
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* 合同列表 */}
       {filteredContracts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <FileText className="h-12 w-12 mb-4" />
-          <p>暂无合同</p>
-          <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/base/contracts/new")}>
-            <Plus className="h-4 w-4 mr-2" />
-            新建合同
-          </Button>
+          <p>{statusFilter !== "all" ? `暂无${statusConfig[statusFilter].label}状态的合同` : "暂无合同"}</p>
+          {statusFilter === "all" && (
+            <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/base/contracts/new")}>
+              <Plus className="h-4 w-4 mr-2" />
+              新建合同
+            </Button>
+          )}
         </div>
       ) : (
         <div className="border rounded-lg divide-y">
