@@ -12,12 +12,14 @@ import {
   Building2,
   Calendar,
   X,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // 类型定义
 type ContractStatus = "draft" | "pending" | "signed" | "expired" | "terminated";
@@ -50,26 +52,53 @@ export default function ContractsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContractStatus | "all">("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // 获取合同列表
   useEffect(() => {
-    const fetchContracts = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/settlement/contracts");
-        if (!response.ok) throw new Error("获取合同列表失败");
-        const result = await response.json();
-        setContracts(result.data || []);
-        setError(null);
-      } catch (err) {
-        console.error("获取合同列表失败:", err);
-        setError(err instanceof Error ? err.message : "获取合同列表失败");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchContracts();
   }, []);
+
+  const fetchContracts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/settlement/contracts");
+      if (!response.ok) throw new Error("获取合同列表失败");
+      const result = await response.json();
+      setContracts(result.data || []);
+      setError(null);
+    } catch (err) {
+      console.error("获取合同列表失败:", err);
+      setError(err instanceof Error ? err.message : "获取合同列表失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 删除合同
+  const handleDelete = async (e: React.MouseEvent, contractId: string, contractName: string) => {
+    e.stopPropagation(); // 阻止事件冒泡，避免触发查看详情
+
+    if (!confirm(`确定要删除合同「${contractName || "未命名合同"}」吗？`)) return;
+
+    setDeletingId(contractId);
+    try {
+      const response = await fetch(`/api/settlement/contracts/${contractId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("删除失败");
+
+      toast.success("合同已删除");
+      // 从列表中移除
+      setContracts((prev) => prev.filter((c) => c.id !== contractId));
+    } catch (error) {
+      console.error("删除失败:", error);
+      toast.error("删除失败");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // 过滤合同列表
   const filteredContracts = contracts.filter((c) => {
@@ -331,10 +360,28 @@ export default function ContractsPage() {
                     </div>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4 mr-1" />
-                  查看
-                </Button>
+                {/* 操作区 */}
+                <div className="flex items-center gap-2">
+                  {contract.status === "draft" && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => handleDelete(e, contract.id, contract.contractName || "")}
+                      disabled={deletingId === contract.id}
+                    >
+                      {deletingId === contract.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4 mr-1" />
+                    查看
+                  </Button>
+                </div>
               </div>
             );
           })}
