@@ -9,7 +9,6 @@ import {
   Building2,
   Upload,
   Download,
-  Trash2,
   Loader2,
   ExternalLink,
   CheckCircle2,
@@ -24,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // 类型定义
-type ContractStatus = "draft" | "pending" | "signed" | "expired" | "terminated";
+type ContractStatus = "pending" | "signed" | "expired" | "terminated";
 
 interface Contract {
   id: string;
@@ -32,7 +31,7 @@ interface Contract {
   enterpriseName?: string | null;
   contractNo: string | null;
   contractName: string | null;
-  contractType?: string | null;  // 后端返回的合同类型名称
+  contractType?: string | null;
   startDate: string | null;
   endDate: string | null;
   signedDate: string | null;
@@ -50,13 +49,6 @@ const statusConfig: Record<ContractStatus, {
   borderColor: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = {
-  draft: { 
-    label: "草稿", 
-    color: "text-slate-600",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-200",
-    icon: FileText,
-  },
   pending: { 
     label: "待签", 
     color: "text-amber-600",
@@ -87,6 +79,12 @@ const statusConfig: Record<ContractStatus, {
   },
 };
 
+// 兼容后端可能返回的 draft 状态
+const normalizeStatus = (status: string): ContractStatus => {
+  if (status === "draft") return "pending";
+  return status as ContractStatus;
+};
+
 export default function ContractDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -105,7 +103,11 @@ export default function ContractDetailPage() {
       const response = await fetch(`/api/settlement/contracts/${contractId}`);
       if (!response.ok) throw new Error("获取合同详情失败");
       const result = await response.json();
-      setContract(result.data);
+      // 标准化状态
+      setContract({
+        ...result.data,
+        status: normalizeStatus(result.data.status),
+      });
     } catch (error) {
       console.error("获取合同详情失败:", error);
       toast.error("获取合同详情失败");
@@ -162,25 +164,6 @@ export default function ContractDetailPage() {
     } finally {
       setUploading(false);
       e.target.value = "";
-    }
-  };
-
-  // 删除合同
-  const handleDelete = async () => {
-    if (!confirm("确定要删除这份合同吗？")) return;
-
-    try {
-      const response = await fetch(`/api/settlement/contracts/${contractId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("删除失败");
-
-      toast.success("合同已删除");
-      router.push("/dashboard/base/contracts");
-    } catch (error) {
-      console.error("删除失败:", error);
-      toast.error("删除失败");
     }
   };
 
@@ -302,14 +285,6 @@ export default function ContractDetailPage() {
 
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
-          {contract.status === "draft" && (
-            <>
-              <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                删除
-              </Button>
-            </>
-          )}
           {contract.contractFileUrl && (
             <Button variant="outline" asChild>
               <a href={contract.contractFileUrl} target="_blank" rel="noopener noreferrer">
@@ -451,7 +426,7 @@ export default function ContractDetailPage() {
         {/* 右侧：状态和时间线 */}
         <div className="space-y-6">
           {/* 状态卡片 */}
-          <Card className={cn("border-l-4", contract.status === "signed" ? "border-l-emerald-500" : contract.status === "draft" ? "border-l-slate-400" : "border-l-amber-500")}>
+          <Card className={cn("border-l-4", contract.status === "signed" ? "border-l-emerald-500" : contract.status === "expired" ? "border-l-rose-500" : contract.status === "terminated" ? "border-l-slate-500" : "border-l-amber-500")}>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", statusInfo.bgColor)}>
@@ -528,14 +503,6 @@ export default function ContractDetailPage() {
             </Card>
           )}
 
-          {/* 操作提示 */}
-          {contract.status === "draft" && !contract.contractFileUrl && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-sm text-amber-800">
-                <strong>下一步：</strong>上传合同扫描件或电子版文件
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>

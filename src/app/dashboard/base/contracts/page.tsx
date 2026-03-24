@@ -12,7 +12,6 @@ import {
   Building2,
   Calendar,
   X,
-  Trash2,
   FileSignature,
   CheckCircle2,
   Clock,
@@ -22,35 +21,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // 类型定义
-type ContractStatus = "draft" | "pending" | "signed" | "expired" | "terminated";
+type ContractStatus = "pending" | "signed" | "expired" | "terminated";
 
 interface Contract {
   id: string;
   enterpriseName: string | null;
   contractNo: string | null;
   contractName: string | null;
-  contractType?: string | null;  // 合同类型名称
+  contractType?: string | null;
   startDate: string | null;
   endDate: string | null;
   status: ContractStatus;
   createdAt: string;
 }
 
-// 状态配置 - 使用统一的七彩配色风格（与 globals.css 对齐）
+// 状态配置 - 使用统一的七彩配色风格
 const statusConfig: Record<ContractStatus, { 
   label: string; 
   color: string;
@@ -58,30 +47,23 @@ const statusConfig: Record<ContractStatus, {
   borderColor: string;
   dotColor: string;
 }> = {
-  draft: { 
-    label: "草稿", 
-    color: "text-slate-600",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-300",
-    dotColor: "bg-slate-500",
-  },
   pending: { 
     label: "待签", 
-    color: "text-amber-600",      // 琥珀色 - 签订合同
+    color: "text-amber-600",
     bgColor: "bg-amber-50",
     borderColor: "border-amber-300",
     dotColor: "bg-amber-500",
   },
   signed: { 
     label: "已签", 
-    color: "text-emerald-600",    // 翡翠绿 - 费用缴纳/完成
+    color: "text-emerald-600",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-300",
     dotColor: "bg-emerald-500",
   },
   expired: { 
     label: "已到期", 
-    color: "text-rose-600",       // 玫瑰粉 - 异常状态
+    color: "text-rose-600",
     bgColor: "bg-rose-50",
     borderColor: "border-rose-300",
     dotColor: "bg-rose-500",
@@ -95,6 +77,12 @@ const statusConfig: Record<ContractStatus, {
   },
 };
 
+// 兼容后端可能返回的 draft 状态
+const normalizeStatus = (status: string): ContractStatus => {
+  if (status === "draft") return "pending"; // 草稿视为待签
+  return status as ContractStatus;
+};
+
 export default function ContractsPage() {
   const router = useRouter();
 
@@ -103,11 +91,6 @@ export default function ContractsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContractStatus | "all">("all");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  
-  // 删除确认弹窗状态
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
 
   // 获取合同列表
   useEffect(() => {
@@ -120,44 +103,18 @@ export default function ContractsPage() {
       const response = await fetch("/api/settlement/contracts");
       if (!response.ok) throw new Error("获取合同列表失败");
       const result = await response.json();
-      setContracts(result.data || []);
+      // 标准化状态
+      const normalizedData = (result.data || []).map((c: Contract) => ({
+        ...c,
+        status: normalizeStatus(c.status),
+      }));
+      setContracts(normalizedData);
       setError(null);
     } catch (err) {
       console.error("获取合同列表失败:", err);
       setError(err instanceof Error ? err.message : "获取合同列表失败");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // 打开删除确认弹窗
-  const openDeleteDialog = (e: React.MouseEvent, contract: Contract) => {
-    e.stopPropagation();
-    setContractToDelete(contract);
-    setDeleteDialogOpen(true);
-  };
-
-  // 确认删除
-  const confirmDelete = async () => {
-    if (!contractToDelete) return;
-
-    setDeletingId(contractToDelete.id);
-    try {
-      const response = await fetch(`/api/settlement/contracts/${contractToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("删除失败");
-
-      toast.success("合同已删除");
-      setContracts((prev) => prev.filter((c) => c.id !== contractToDelete.id));
-      setDeleteDialogOpen(false);
-      setContractToDelete(null);
-    } catch (error) {
-      console.error("删除失败:", error);
-      toast.error("删除失败");
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -177,7 +134,6 @@ export default function ContractsPage() {
   // 统计数据
   const stats = {
     total: contracts.length,
-    draft: contracts.filter((c) => c.status === "draft").length,
     pending: contracts.filter((c) => c.status === "pending").length,
     signed: contracts.filter((c) => c.status === "signed").length,
     expired: contracts.filter((c) => c.status === "expired").length,
@@ -226,7 +182,7 @@ export default function ContractsPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <Card 
           className={cn(
             "cursor-pointer hover:shadow-md transition-shadow", 
@@ -250,18 +206,18 @@ export default function ContractsPage() {
         <Card 
           className={cn(
             "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "draft" && "ring-2 ring-slate-400"
+            statusFilter === "signed" && "ring-2 ring-emerald-400"
           )}
-          onClick={() => setStatusFilter("draft")}
+          onClick={() => setStatusFilter("signed")}
         >
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">草稿</p>
-                <p className={cn("text-2xl font-semibold", statusConfig.draft.color)}>{stats.draft}</p>
+                <p className="text-sm text-muted-foreground">已签</p>
+                <p className={cn("text-2xl font-semibold", statusConfig.signed.color)}>{stats.signed}</p>
               </div>
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.draft.bgColor)}>
-                <FileText className={cn("h-5 w-5", statusConfig.draft.color)} />
+              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.signed.bgColor)}>
+                <CheckCircle2 className={cn("h-5 w-5", statusConfig.signed.color)} />
               </div>
             </div>
           </CardContent>
@@ -282,26 +238,6 @@ export default function ContractsPage() {
               </div>
               <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.pending.bgColor)}>
                 <Clock className={cn("h-5 w-5", statusConfig.pending.color)} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className={cn(
-            "cursor-pointer hover:shadow-md transition-shadow",
-            statusFilter === "signed" && "ring-2 ring-emerald-400"
-          )}
-          onClick={() => setStatusFilter("signed")}
-        >
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">已签</p>
-                <p className={cn("text-2xl font-semibold", statusConfig.signed.color)}>{stats.signed}</p>
-              </div>
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", statusConfig.signed.bgColor)}>
-                <CheckCircle2 className={cn("h-5 w-5", statusConfig.signed.color)} />
               </div>
             </div>
           </CardContent>
@@ -420,21 +356,6 @@ export default function ContractsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {contract.status === "draft" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={(e) => openDeleteDialog(e, contract)}
-                      disabled={deletingId === contract.id}
-                    >
-                      {deletingId === contract.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
                   <Button variant="ghost" size="sm">
                     <Eye className="h-4 w-4 mr-1" />
                     查看
@@ -445,35 +366,6 @@ export default function ContractsPage() {
           })}
         </div>
       )}
-
-      {/* 删除确认弹窗 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除合同「{contractToDelete?.contractName || contractToDelete?.contractNo || "未命名合同"}」吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={!!deletingId}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={!!deletingId}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deletingId ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  删除中...
-                </>
-              ) : (
-                "确认删除"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
