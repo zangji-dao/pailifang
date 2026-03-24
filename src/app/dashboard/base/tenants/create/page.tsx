@@ -312,6 +312,9 @@ export default function NewTenantPage() {
         phone: phone || null,
         industry: industry || null,
         current_step: step || currentMainStepId,
+        // 添加工位号信息，用于关联
+        registration_number_id: selectedRegNumber?.id || null,
+        registration_number: selectedRegNumber?.manualCode || selectedRegNumber?.code || null,
       };
 
       const res = await fetch("/api/enterprises/draft", {

@@ -5,9 +5,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * POST /api/enterprises/draft
  * 创建或更新企业草稿
  * 
- * 用于在新建企业流程中，完成每个大步骤后保存进度
- * - 完成分配地址后：status='pending_registration' 或 'pending_change'
- * - 未完成分配地址：status='draft'（仅本地暂存）
+ * 业务逻辑：
+ * - 完成分配地址步骤后：创建/更新企业记录，状态设为 pending_registration
+ * - 空间关联到企业，状态改为 reserved
+ * - 工位号标记为已使用
  */
 export async function POST(request: NextRequest) {
   try {
@@ -28,28 +29,31 @@ export async function POST(request: NextRequest) {
       phone,
       industry,
       current_step,
+      registration_number_id,  // 工位号记录ID
+      registration_number,     // 工位号
     } = body;
 
-    // 判断是否完成分配地址步骤（有企业名称表示完成）
-    const isCompletedAddress = name && name !== `草稿-${enterprise_code}`;
+    // 判断是否完成分配地址步骤（有企业类型和编号表示至少完成了类型选择）
+    // 当用户点击"下一步"从分配地址进入工商注册时，应该创建企业记录
+    const hasBasicInfo = enterprise_code && type;
     
-    // 根据完成步骤确定状态
+    // 根据当前步骤确定状态
     let status = 'draft';
     let processStatus = 'draft';
     
-    if (isCompletedAddress) {
-      status = 'active'; // 正常状态
+    if (hasBasicInfo && current_step === 'address') {
+      // 完成分配地址步骤，进入工商注册
+      status = 'active';
       processStatus = type === 'tenant' ? 'pending_registration' : 'pending_change';
-    }
-    
-    // 如果完成了更多步骤，更新流程状态
-    if (current_step === 'registration') {
+    } else if (current_step === 'registration') {
+      status = 'active';
       processStatus = 'pending_contract';
     } else if (current_step === 'contract') {
+      status = 'active';
       processStatus = 'pending_payment';
     }
 
-    // 如果有草稿ID，更新现有记录
+    // 如果有草稿ID，尝试更新现有记录
     if (draft_id) {
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
@@ -67,9 +71,14 @@ export async function POST(request: NextRequest) {
       if (industry !== undefined) updateData.industry = industry;
       
       // 更新状态
-      if (isCompletedAddress) {
+      if (status !== 'draft') {
         updateData.status = status;
         updateData.process_status = processStatus;
+      }
+
+      // 如果有工位号，也更新
+      if (registration_number !== undefined) {
+        updateData.registration_number = registration_number;
       }
 
       const { data, error } = await supabase
@@ -82,23 +91,24 @@ export async function POST(request: NextRequest) {
       // 如果记录不存在，清除 draft_id 让后面创建新记录
       if (error?.code === 'PGRST116') {
         console.log('草稿记录不存在，将创建新记录');
-        // 继续执行创建逻辑，不要返回错误
+        // 继续执行创建逻辑
       } else if (error) {
         console.error('更新草稿失败:', error);
         return NextResponse.json({ success: false, error: '更新草稿失败' }, { status: 500 });
       } else {
-        // 更新成功
+        // 更新成功，同时更新空间和工位号关联
+        await updateRelatedResources(supabase, draft_id, space_id, registration_number_id, status !== 'draft');
+        
         return NextResponse.json({
           success: true,
           data: { id: draft_id, ...data },
           message: '进度已保存',
-          isCompleted: isCompletedAddress,
+          processStatus,
         });
       }
     }
 
-
-    // 创建新的草稿记录
+    // 创建新的企业记录
     if (!enterprise_code) {
       return NextResponse.json(
         { success: false, error: '企业编号为必填项' },
@@ -120,12 +130,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const newId = crypto.randomUUID();
     const enterpriseData: Record<string, any> = {
-      id: crypto.randomUUID(),
+      id: newId,
       name: name || `草稿-${enterprise_code}`,
       enterprise_code,
       type: type || 'tenant',
-      status: status, // 根据完成情况设置状态
+      status: status,
       process_status: processStatus,
       space_id: space_id || null,
       registered_address: registered_address || null,
@@ -135,6 +146,7 @@ export async function POST(request: NextRequest) {
       legal_person: legal_person || null,
       phone: phone || null,
       industry: industry || null,
+      registration_number: registration_number || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -146,31 +158,57 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('创建草稿失败:', error);
-      return NextResponse.json({ success: false, error: '创建草稿失败' }, { status: 500 });
+      console.error('创建企业记录失败:', error);
+      return NextResponse.json({ success: false, error: '创建企业记录失败' }, { status: 500 });
     }
 
-    // 如果有空间ID，标记为已预留（仅在完成分配地址后）
-    if (space_id && isCompletedAddress) {
-      await supabase
-        .from('spaces')
-        .update({
-          status: 'reserved',
-          enterprise_id: data.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', space_id);
-    }
+    // 更新关联资源（空间和工位号）
+    await updateRelatedResources(supabase, newId, space_id, registration_number_id, status !== 'draft');
 
     return NextResponse.json({
       success: true,
-      data: { id: data.id, ...data },
-      message: isCompletedAddress ? '进度已保存' : '草稿已保存',
-      isCompleted: isCompletedAddress,
+      data: { id: newId, ...data },
+      message: status !== 'draft' ? '进度已保存，可继续工商注册' : '草稿已保存',
+      processStatus,
     });
   } catch (error) {
-    console.error('保存草稿失败:', error);
-    return NextResponse.json({ success: false, error: '保存草稿失败' }, { status: 500 });
+    console.error('保存失败:', error);
+    return NextResponse.json({ success: false, error: '保存失败' }, { status: 500 });
+  }
+}
+
+/**
+ * 更新关联资源（空间和工位号）
+ */
+async function updateRelatedResources(
+  supabase: any,
+  enterpriseId: string,
+  spaceId: string | null,
+  registrationNumberId: string | null,
+  isActive: boolean
+) {
+  // 更新空间状态和关联
+  if (spaceId) {
+    await supabase
+      .from('spaces')
+      .update({
+        status: isActive ? 'reserved' : 'available',
+        enterprise_id: isActive ? enterpriseId : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', spaceId);
+  }
+
+  // 更新工位号状态
+  if (registrationNumberId) {
+    await supabase
+      .from('registration_numbers')
+      .update({
+        available: !isActive,
+        enterprise_id: isActive ? enterpriseId : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', registrationNumberId);
   }
 }
 
@@ -185,43 +223,42 @@ export async function GET(request: NextRequest) {
     const draftId = searchParams.get('id');
 
     if (draftId) {
-      // 获取单个草稿
+      // 获取单个企业（不限制状态，支持继续注册）
       const { data, error } = await supabase
         .from('enterprises')
         .select('*')
         .eq('id', draftId)
-        .eq('status', 'draft')
         .single();
 
       if (error) {
-        return NextResponse.json({ success: false, error: '草稿不存在' }, { status: 404 });
+        return NextResponse.json({ success: false, error: '企业不存在' }, { status: 404 });
       }
 
       return NextResponse.json({ success: true, data });
     }
 
-    // 获取所有草稿
+    // 获取待处理的企业列表（待注册、待签约、待缴费）
     const { data, error } = await supabase
       .from('enterprises')
       .select('*')
-      .eq('status', 'draft')
+      .in('process_status', ['draft', 'pending_registration', 'pending_change', 'pending_contract', 'pending_payment'])
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('获取草稿列表失败:', error);
-      return NextResponse.json({ success: false, error: '获取草稿列表失败' }, { status: 500 });
+      console.error('获取企业列表失败:', error);
+      return NextResponse.json({ success: false, error: '获取企业列表失败' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data: data || [] });
   } catch (error) {
-    console.error('获取草稿失败:', error);
-    return NextResponse.json({ success: false, error: '获取草稿失败' }, { status: 500 });
+    console.error('获取企业失败:', error);
+    return NextResponse.json({ success: false, error: '获取企业失败' }, { status: 500 });
   }
 }
 
 /**
  * DELETE /api/enterprises/draft
- * 删除草稿
+ * 删除草稿/取消注册
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -230,18 +267,18 @@ export async function DELETE(request: NextRequest) {
     const draftId = searchParams.get('id');
 
     if (!draftId) {
-      return NextResponse.json({ success: false, error: '请提供草稿ID' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '请提供企业ID' }, { status: 400 });
     }
 
-    // 获取草稿信息，释放关联资源
-    const { data: draft } = await supabase
+    // 获取企业信息，释放关联资源
+    const { data: enterprise } = await supabase
       .from('enterprises')
-      .select('space_id')
+      .select('space_id, registration_number')
       .eq('id', draftId)
       .single();
 
     // 释放空间
-    if (draft?.space_id) {
+    if (enterprise?.space_id) {
       await supabase
         .from('spaces')
         .update({
@@ -249,33 +286,35 @@ export async function DELETE(request: NextRequest) {
           enterprise_id: null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', draft.space_id);
+        .eq('id', enterprise.space_id);
     }
 
     // 释放关联的工位号
-    await supabase
-      .from('registration_numbers')
-      .update({
-        available: true,
-        enterprise_id: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('enterprise_id', draftId);
+    if (enterprise?.registration_number) {
+      await supabase
+        .from('registration_numbers')
+        .update({
+          available: true,
+          enterprise_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('enterprise_id', draftId);
+    }
 
-    // 删除草稿
+    // 删除企业记录
     const { error } = await supabase
       .from('enterprises')
       .delete()
       .eq('id', draftId);
 
     if (error) {
-      console.error('删除草稿失败:', error);
-      return NextResponse.json({ success: false, error: '删除草稿失败' }, { status: 500 });
+      console.error('删除企业失败:', error);
+      return NextResponse.json({ success: false, error: '删除企业失败' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: '草稿已删除' });
+    return NextResponse.json({ success: true, message: '企业已删除' });
   } catch (error) {
-    console.error('删除草稿失败:', error);
-    return NextResponse.json({ success: false, error: '删除草稿失败' }, { status: 500 });
+    console.error('删除企业失败:', error);
+    return NextResponse.json({ success: false, error: '删除企业失败' }, { status: 500 });
   }
 }
