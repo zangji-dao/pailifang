@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -121,19 +120,6 @@ export default function NewContractPage() {
            e.enterpriseCode?.includes(searchKeyword) ||
            e.legalPerson?.includes(searchKeyword);
   });
-
-  // 获取企业状态显示
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { label: string; className: string }> = {
-      pending_registration: { label: "待工商注册", className: "bg-purple-50 text-purple-600" },
-      pending_change: { label: "待工商变更", className: "bg-violet-50 text-violet-600" },
-      pending_contract: { label: "待签合同", className: "bg-cyan-50 text-cyan-600" },
-      pending_payment: { label: "待缴费", className: "bg-amber-50 text-amber-600" },
-      active: { label: "入驻中", className: "bg-emerald-50 text-emerald-600" },
-    };
-    const info = config[status] || { label: status, className: "bg-gray-50 text-gray-600" };
-    return <Badge className={info.className}>{info.label}</Badge>;
-  };
 
   // 上传文件
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -347,10 +333,7 @@ export default function NewContractPage() {
                           <Building2 className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{enterprise.name}</span>
-                            {getStatusBadge(enterprise.processStatus)}
-                          </div>
+                          <span className="font-medium">{enterprise.name}</span>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                             <span className="font-mono">{enterprise.enterpriseCode}</span>
                             {enterprise.legalPerson && (
