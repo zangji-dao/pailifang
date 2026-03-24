@@ -218,9 +218,15 @@ export default function ContractDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {contract.status === "draft" && (
-            <Button variant="outline" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <>
+              <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除合同
+              </Button>
+              <Button onClick={() => router.push(`/dashboard/base/contracts/${contractId}/edit`)}>
+                编辑合同
+              </Button>
+            </>
           )}
           {contract.status === "pending" && contract.contractFileUrl && (
             <Button onClick={handleSign} className="bg-emerald-600 hover:bg-emerald-700">
