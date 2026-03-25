@@ -100,7 +100,7 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
 
   // 计算已分配工位号数量
   const allocatedRegNumbers = meter.spaces?.reduce(
-    (sum, sp) => sum + (sp.regNumbers?.filter(r => !r.available)?.length || 0),
+    (sum, sp) => sum + (sp.regNumbers?.filter(r => r.status === "allocated")?.length || 0),
     0
   ) || 0;
 
@@ -188,7 +188,7 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
               {meter.spaces.map((space) => {
                 // 计算该空间的工位号分配情况
                 const spaceTotal = space.regNumbers?.length || 0;
-                const spaceAllocated = space.regNumbers?.filter(r => !r.available)?.length || 0;
+                const spaceAllocated = space.regNumbers?.filter(r => r.status === "allocated")?.length || 0;
                 
                 return (
                   <span

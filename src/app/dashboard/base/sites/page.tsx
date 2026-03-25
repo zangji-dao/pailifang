@@ -58,7 +58,7 @@ interface Space {
 }
 
 interface RegNumber {
-  available: boolean;
+  status: string;
 }
 
 interface BaseDetail {
@@ -109,7 +109,7 @@ export default function BaseListPage() {
                     sum + (m.spaces?.reduce((s: number, sp: Space) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
                   allocatedRegNumbers: meters.reduce((sum: number, m: Meter) => 
                     sum + (m.spaces?.reduce((s: number, sp: Space) => 
-                      s + (sp.regNumbers?.filter((r: RegNumber) => !r.available)?.length || 0), 0) || 0), 0),
+                      s + (sp.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0), 0) || 0), 0),
                 },
               };
             }

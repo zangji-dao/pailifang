@@ -53,7 +53,7 @@ export function useSiteDetail(baseId: string) {
       0
     ) || 0;
     const allocatedRegNumbers = baseDetail.meters?.reduce(
-      (sum, m) => sum + (m.spaces?.reduce((s, sp) => s + (sp.regNumbers?.filter(r => !r.available)?.length || 0), 0) || 0),
+      (sum, m) => sum + (m.spaces?.reduce((s, sp) => s + (sp.regNumbers?.filter(r => r.status === "allocated")?.length || 0), 0) || 0),
       0
     ) || 0;
 
