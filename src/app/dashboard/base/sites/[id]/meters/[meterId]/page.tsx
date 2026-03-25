@@ -404,9 +404,9 @@ export default function MeterDetailPage() {
     if (!meter) return false;
     // 不能有入驻企业
     if (meter.enterpriseId) return false;
-    // 不能有已分配的工位号
+    // 不能有已分配的工位号（available = false 表示已分配）
     const hasAllocatedRegNumbers = meter.spaces?.some(space => 
-      space.regNumbers?.some(reg => reg.status === "allocated")
+      space.regNumbers?.some(reg => reg.available === false)
     );
     if (hasAllocatedRegNumbers) return false;
     return true;
@@ -417,7 +417,7 @@ export default function MeterDetailPage() {
     if (!meter) return "物业不存在";
     if (meter.enterpriseId) return "该物业已入驻企业";
     const hasAllocatedRegNumbers = meter.spaces?.some(space => 
-      space.regNumbers?.some(reg => reg.status === "allocated")
+      space.regNumbers?.some(reg => reg.available === false)
     );
     if (hasAllocatedRegNumbers) return "该物业有已分配的工位号";
     return "";
@@ -899,8 +899,8 @@ export default function MeterDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
-                        {(space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0)}/{space.regNumbers?.length || 0} 已分配
+                      <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
+                        {(space.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0)}/{space.regNumbers?.length || 0} 已分配
                       </div>
                       <ChevronRight className={`h-4 w-4 transition-transform ${expandedSpace === space.id ? "rotate-90" : ""}`} style={{ color: "#A8A29E" }} />
                     </div>
@@ -1010,21 +1010,27 @@ export default function MeterDetailPage() {
                             <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
                           ) : (
                             <div className="grid grid-cols-3 gap-2">
-                              {space.regNumbers?.map((reg: RegNumber) => (
-                                <div
-                                  key={reg.id}
-                                  className={`px-3 py-2.5 rounded-lg border text-center ${
-                                    reg.status === "allocated"
-                                      ? "bg-emerald-50 border-emerald-200"
-                                      : "bg-white border-slate-200"
-                                  }`}
-                                >
-                                  <span className="font-mono text-sm font-medium" style={{ color: "#1C1917" }}>{reg.code}</span>
-                                  {reg.enterprise && (
-                                    <p className="text-xs mt-0.5 truncate" style={{ color: "#A8A29E" }}>{reg.enterprise.name}</p>
-                                  )}
-                                </div>
-                              ))}
+                              {space.regNumbers?.map((reg: RegNumber) => {
+                                // 优先显示人工编号
+                                const displayCode = reg.manualCode || reg.code;
+                                const displayName = reg.enterprise?.name || reg.assignedEnterpriseName;
+                                
+                                return (
+                                  <div
+                                    key={reg.id}
+                                    className={`px-3 py-2.5 rounded-lg border text-center ${
+                                      reg.available === false
+                                        ? "bg-emerald-50 border-emerald-200"
+                                        : "bg-white border-slate-200"
+                                    }`}
+                                  >
+                                    <span className="font-mono text-sm font-medium" style={{ color: "#1C1917" }}>{displayCode}</span>
+                                    {displayName && (
+                                      <p className="text-xs mt-0.5 truncate" style={{ color: "#A8A29E" }}>{displayName}</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </>

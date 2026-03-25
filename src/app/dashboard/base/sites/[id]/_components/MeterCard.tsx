@@ -98,9 +98,9 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
     router.push(`/dashboard/base/sites/${baseId}/meters/${meter.id}`);
   };
 
-  // 计算已分配工位号数量
+  // 计算已分配工位号数量（available = false 表示已分配）
   const allocatedRegNumbers = meter.spaces?.reduce(
-    (sum, sp) => sum + (sp.regNumbers?.filter(r => r.status === "allocated")?.length || 0),
+    (sum, sp) => sum + (sp.regNumbers?.filter(r => r.available === false)?.length || 0),
     0
   ) || 0;
 
@@ -186,9 +186,9 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
             </div>
             <div className="flex flex-wrap gap-1.5">
               {meter.spaces.map((space) => {
-                // 计算该空间的工位号分配情况
+                // 计算该空间的工位号分配情况（available = false 表示已分配）
                 const spaceTotal = space.regNumbers?.length || 0;
-                const spaceAllocated = space.regNumbers?.filter(r => r.status === "allocated")?.length || 0;
+                const spaceAllocated = space.regNumbers?.filter(r => r.available === false)?.length || 0;
                 
                 return (
                   <span
@@ -222,17 +222,23 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
             <div className="flex flex-wrap gap-1.5">
               {meter.spaces.flatMap((space) => 
                 (space.regNumbers || [])
-                  .filter((reg) => reg.status === "allocated" && reg.enterprise)
-                  .map((reg) => (
-                    <span
-                      key={reg.id}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs"
-                    >
-                      <span className="font-medium text-emerald-700">{reg.code}</span>
-                      <span className="text-emerald-500">→</span>
-                      <span className="text-emerald-600">{reg.enterprise?.name}</span>
-                    </span>
-                  ))
+                  .filter((reg) => reg.available === false)
+                  .map((reg) => {
+                    // 优先使用人工编号，没有则使用系统编号
+                    const displayCode = reg.manualCode || reg.code;
+                    const displayName = reg.enterprise?.name || reg.assignedEnterpriseName || '未分配';
+                    
+                    return (
+                      <span
+                        key={reg.id}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs"
+                      >
+                        <span className="font-medium text-emerald-700">{displayCode}</span>
+                        <span className="text-emerald-500">→</span>
+                        <span className="text-emerald-600">{displayName}</span>
+                      </span>
+                    );
+                  })
               )}
             </div>
           )}

@@ -67,7 +67,7 @@ export async function DELETE(
 
     // 检查空间下是否有关联的工位号
     const { data: regNumbers, error: checkError } = await supabase
-      .from('reg_numbers')
+      .from('registration_numbers')
       .select('id')
       .eq('space_id', id);
 

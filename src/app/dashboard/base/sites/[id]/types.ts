@@ -16,8 +16,14 @@ export interface Enterprise {
 // 工位号信息
 export interface RegNumber {
   id: string;
-  code: string;
-  status: string; // "allocated" = 已分配, 其他 = 待使用
+  code: string; // 系统编号（KJ 开头）
+  manualCode: string | null; // 人工编号
+  spaceId: string;
+  enterpriseId: string | null;
+  available: boolean; // 是否可用（false = 已分配）
+  propertyOwner: string | null; // 产权单位
+  managementCompany: string | null; // 管理单位
+  assignedEnterpriseName: string | null; // 预分配企业名称
   enterprise?: Enterprise | null;
 }
 

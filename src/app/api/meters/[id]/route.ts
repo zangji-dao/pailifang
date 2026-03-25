@@ -19,7 +19,7 @@ export async function GET(
         *,
         spaces (
           *,
-          reg_numbers (
+          registration_numbers (
             *,
             enterprise:enterprises (id, name)
           )
@@ -223,9 +223,9 @@ export async function DELETE(
         enterprise_id,
         spaces (
           id,
-          reg_numbers (
+          registration_numbers (
             id,
-            status
+            available
           )
         )
       `)
@@ -247,9 +247,9 @@ export async function DELETE(
       );
     }
 
-    // 检查是否有已分配的工位号
+    // 检查是否有已分配的工位号（available = false 表示已分配）
     const hasAllocatedRegNumbers = meter.spaces?.some((space: any) => 
-      space.reg_numbers?.some((reg: any) => reg.status === 'allocated')
+      space.registration_numbers?.some((reg: any) => reg.available === false)
     );
 
     if (hasAllocatedRegNumbers) {

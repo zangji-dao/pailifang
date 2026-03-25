@@ -99,20 +99,7 @@ export async function GET(
           meter_id,
           enterprise_id,
           created_at,
-          updated_at,
-          regNumbers:reg_numbers (
-            id,
-            code,
-            space_id,
-            enterprise_id,
-            status,
-            created_at,
-            updated_at,
-            enterprise:enterprises (
-              id,
-              name
-            )
-          )
+          updated_at
         )
       `)
       .eq('base_id', id)
@@ -122,9 +109,77 @@ export async function GET(
       console.error('获取物业失败:', metersError);
     }
 
+    // 获取所有空间的 ID
+    const spaceIds = meters?.flatMap(m => m.spaces?.map(s => s.id) || []) || [];
+    
+    // 单独查询工位号（registration_numbers）- 不包含 enterprise 关联
+    const { data: regNumbers, error: regError } = await supabase
+      .from('registration_numbers')
+      .select(`
+        id,
+        code,
+        manual_code,
+        space_id,
+        enterprise_id,
+        available,
+        property_owner,
+        management_company,
+        assigned_enterprise_name,
+        created_at,
+        updated_at
+      `)
+      .in('space_id', spaceIds);
+
+    if (regError) {
+      console.error('获取工位号失败:', regError);
+    }
+
+    // 获取所有工位号关联的企业ID
+    const enterpriseIds = regNumbers?.map(r => r.enterprise_id).filter(Boolean) || [];
+    
+    // 查询企业信息
+    const { data: enterprises, error: entError } = await supabase
+      .from('enterprises')
+      .select('id, name')
+      .in('id', enterpriseIds);
+    
+    if (entError) {
+      console.error('获取企业信息失败:', entError);
+    }
+    
+    // 创建企业ID到企业信息的映射
+    const enterpriseMap: Record<string, { id: string; name: string }> = {};
+    enterprises?.forEach(ent => {
+      enterpriseMap[ent.id] = ent;
+    });
+    
+    // 将企业信息添加到工位号
+    const regNumbersWithEnterprise = regNumbers?.map(reg => ({
+      ...reg,
+      enterprise: reg.enterprise_id ? enterpriseMap[reg.enterprise_id] || null : null
+    })) || [];
+
+    // 组装数据：将工位号按 space_id 分组
+    const regNumbersBySpaceId: Record<string, typeof regNumbersWithEnterprise> = {};
+    regNumbersWithEnterprise?.forEach(reg => {
+      if (!regNumbersBySpaceId[reg.space_id]) {
+        regNumbersBySpaceId[reg.space_id] = [];
+      }
+      regNumbersBySpaceId[reg.space_id].push(reg);
+    });
+
+    // 将工位号添加到对应的空间
+    const metersWithRegNumbers = meters?.map(meter => ({
+      ...meter,
+      spaces: meter.spaces?.map(space => ({
+        ...space,
+        regNumbers: regNumbersBySpaceId[space.id] || []
+      })) || []
+    })) || [];
+
     // 转换字段名为 camelCase
     const camelBase = toCamelCase(base);
-    const camelMeters = meters?.map(m => toCamelCase(m)) || [];
+    const camelMeters = metersWithRegNumbers.map(m => toCamelCase(m));
 
     return NextResponse.json({
       success: true,
