@@ -17,7 +17,7 @@ export interface Enterprise {
 export interface RegNumber {
   id: string;
   code: string;
-  status: "available" | "allocated" | "reserved";
+  available: boolean; // true = 待使用, false = 已分配
   enterprise?: Enterprise | null;
 }
 

@@ -406,7 +406,7 @@ export default function MeterDetailPage() {
     if (meter.enterpriseId) return false;
     // 不能有已分配的工位号
     const hasAllocatedRegNumbers = meter.spaces?.some(space => 
-      space.regNumbers?.some(reg => reg.status === "allocated")
+      space.regNumbers?.some(reg => !reg.available)
     );
     if (hasAllocatedRegNumbers) return false;
     return true;
@@ -417,7 +417,7 @@ export default function MeterDetailPage() {
     if (!meter) return "物业不存在";
     if (meter.enterpriseId) return "该物业已入驻企业";
     const hasAllocatedRegNumbers = meter.spaces?.some(space => 
-      space.regNumbers?.some(reg => reg.status === "allocated")
+      space.regNumbers?.some(reg => !reg.available)
     );
     if (hasAllocatedRegNumbers) return "该物业有已分配的工位号";
     return "";
@@ -899,8 +899,8 @@ export default function MeterDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
-                        {(space.regNumbers?.filter((r: RegNumber) => r.status === "allocated")?.length || 0)}/{space.regNumbers?.length || 0} 已分配
+                      <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter((r: RegNumber) => !r.available)?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter((r: RegNumber) => !r.available)?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
+                        {(space.regNumbers?.filter((r: RegNumber) => !r.available)?.length || 0)}/{space.regNumbers?.length || 0} 已分配
                       </div>
                       <ChevronRight className={`h-4 w-4 transition-transform ${expandedSpace === space.id ? "rotate-90" : ""}`} style={{ color: "#A8A29E" }} />
                     </div>
@@ -1014,7 +1014,7 @@ export default function MeterDetailPage() {
                                 <div
                                   key={reg.id}
                                   className={`px-3 py-2.5 rounded-lg border text-center ${
-                                    reg.status === "allocated"
+                                    !reg.available
                                       ? "bg-emerald-50 border-emerald-200"
                                       : "bg-white border-slate-200"
                                   }`}

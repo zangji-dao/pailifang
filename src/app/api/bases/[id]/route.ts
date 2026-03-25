@@ -77,10 +77,9 @@ export async function GET(
           enterprise_id,
           created_at,
           updated_at,
-          regNumbers:reg_numbers (
+          regNumbers:registration_numbers (
             id,
             code,
-            status,
             space_id,
             enterprise_id,
             available,
