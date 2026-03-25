@@ -77,7 +77,7 @@ export async function GET(
           enterprise_id,
           created_at,
           updated_at,
-          regNumbers:registration_numbers (
+          regNumbers:reg_numbers (
             id,
             code,
             status,
