@@ -114,7 +114,7 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
 
   return (
     <div onClick={handleClick} className="group cursor-pointer">
-      <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-0.5">
+      <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-0.5 h-full flex flex-col">
         {/* 物业编号和面积 */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -177,71 +177,23 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
           </div>
         </div>
 
-        {/* 空间列表 */}
-        {meter.spaces && meter.spaces.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 mb-2">
-              <DoorOpen className="h-4 w-4" style={{ color: "#A8A29E" }} />
-              <span className="text-xs font-medium" style={{ color: "#78716C" }}>空间 ({meter.spaces.length})</span>
+        {/* 底部统计 - 简化显示 */}
+        <div className="mt-auto pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* 空间数量 */}
+              <div className="flex items-center gap-1.5">
+                <DoorOpen className="h-4 w-4 text-slate-400" />
+                <span className="text-sm text-slate-600">{meter.spaces?.length || 0} 空间</span>
+              </div>
+              {/* 工位号统计 */}
+              <div className="flex items-center gap-1.5">
+                <Hash className="h-4 w-4 text-slate-400" />
+                <span className="text-sm text-slate-600">{allocatedRegNumbers}/{totalRegNumbers} 已分配</span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {meter.spaces.map((space) => {
-                // 计算该空间的工位号分配情况（available = false 表示已分配）
-                const spaceTotal = space.regNumbers?.length || 0;
-                const spaceAllocated = space.regNumbers?.filter(r => r.available === false)?.length || 0;
-                
-                return (
-                  <span
-                    key={space.id}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 text-xs"
-                    style={{ color: "#57534E" }}
-                  >
-                    {space.name}
-                    {spaceTotal > 0 && (
-                      <span className={spaceAllocated > 0 ? "text-emerald-600" : "text-slate-400"}>
-                        {spaceAllocated}/{spaceTotal}
-                      </span>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
+            <span className="text-xs text-slate-400 group-hover:text-amber-500 transition-colors">点击查看详情</span>
           </div>
-        )}
-
-        {/* 底部统计 */}
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
-            <span className="text-sm font-medium" style={{ color: "#57534E" }}>{allocatedRegNumbers}/{totalRegNumbers}</span>
-            <span className="text-sm" style={{ color: "#A8A29E" }}>工位号已分配</span>
-          </div>
-          
-          {/* 显示已分配工位号及对应企业 */}
-          {meter.spaces && meter.spaces.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {meter.spaces.flatMap((space) => 
-                (space.regNumbers || [])
-                  .filter((reg) => reg.available === false)
-                  .map((reg) => {
-                    // 优先使用人工编号，没有则使用系统编号
-                    const displayCode = reg.manualCode || reg.code;
-                    const displayName = reg.enterprise?.name || reg.assignedEnterpriseName || '未分配';
-                    
-                    return (
-                      <span
-                        key={reg.id}
-                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs"
-                      >
-                        <span className="font-medium text-emerald-700">{displayCode}</span>
-                        <span className="text-emerald-500">→</span>
-                        <span className="text-emerald-600">{displayName}</span>
-                      </span>
-                    );
-                  })
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
