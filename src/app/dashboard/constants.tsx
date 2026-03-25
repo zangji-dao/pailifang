@@ -29,6 +29,7 @@ import {
   Settings,
   Tags,
   Receipt,
+  PlusCircle,
 } from "lucide-react";
 import { NavItem, NavChildItem, RoleMap } from "./types";
 
@@ -58,6 +59,7 @@ export const BASE_NAVIGATION: NavItem[] = [
  */
 export const SETTLEMENT_CHILDREN: NavChildItem[] = [
   { name: "入驻申请", href: "/dashboard/base/applications", icon: FileText },
+  { name: "新建申请", href: "/dashboard/base/applications/new?new=true", icon: PlusCircle },
   { name: "入驻审批", href: "/dashboard/base/processes", icon: GitBranch },
 ];
 
