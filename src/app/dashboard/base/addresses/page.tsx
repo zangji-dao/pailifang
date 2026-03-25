@@ -103,6 +103,13 @@ interface FillingApplication {
   contactPersonPhone: string | null;
 }
 
+// 未分配工位号的企业类型
+interface UnassignedEnterprise {
+  id: string;
+  name: string;
+  legalPerson: string | null;
+}
+
 // 状态配置
 const statusConfig = {
   all: {
@@ -132,6 +139,7 @@ export default function AddressManagementPage() {
   const [cascadeData, setCascadeData] = useState<Base[]>([]);
   const [regNumbers, setRegNumbers] = useState<RegNumber[]>([]);
   const [fillingApplications, setFillingApplications] = useState<FillingApplication[]>([]);
+  const [unassignedEnterprises, setUnassignedEnterprises] = useState<UnassignedEnterprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingApplications, setLoadingApplications] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -199,17 +207,30 @@ export default function AddressManagementPage() {
   const fetchFillingApplications = async () => {
     try {
       setLoadingApplications(true);
-      const res = await fetch("/api/settlement/applications");
-      const result = await res.json();
-      if (result.success || result.data) {
-        // 过滤出填报中状态的企业
-        const fillingApps = (result.data || []).filter(
-          (app: any) => app.approvalStatus === "filling"
+      
+      // 并行获取填报中的申请和未分配工位号的企业
+      const [appsRes, unassignedRes] = await Promise.all([
+        fetch("/api/settlement/applications"),
+        fetch("/api/enterprises?unassigned=true")
+      ]);
+      
+      const appsResult = await appsRes.json();
+      const unassignedResult = await unassignedRes.json();
+      
+      // 过滤出填报中状态的企业申请
+      if (appsResult.success || appsResult.data) {
+        const fillingApps = (appsResult.data || []).filter(
+          (app: any) => app.approvalStatus === "filling" && app.enterpriseName?.trim()
         );
         setFillingApplications(fillingApps);
       }
+      
+      // 获取未分配工位号的企业
+      if (unassignedResult.success && unassignedResult.data) {
+        setUnassignedEnterprises(unassignedResult.data);
+      }
     } catch (error) {
-      console.error("获取入驻申请失败:", error);
+      console.error("获取企业数据失败:", error);
     } finally {
       setLoadingApplications(false);
     }
@@ -685,28 +706,58 @@ export default function AddressManagementPage() {
                     disabled={loadingApplications}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={loadingApplications ? "加载中..." : "选择企业（从入驻申请）"} />
+                      <SelectValue placeholder={loadingApplications ? "加载中..." : "选择企业"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {fillingApplications.length === 0 ? (
-                        <SelectItem value="_empty" disabled>
-                          暂无填报中的企业
-                        </SelectItem>
-                      ) : (
-                        fillingApplications
-                          .filter((app) => app.enterpriseName && app.enterpriseName.trim() !== "")
-                          .map((app) => (
-                            <SelectItem key={app.id} value={app.enterpriseName}>
+                      {/* 填报中的企业申请 */}
+                      {fillingApplications.length > 0 && (
+                        <>
+                          <SelectItem value="_filling_header" disabled className="font-medium text-muted-foreground">
+                            入驻申请中
+                          </SelectItem>
+                          {fillingApplications
+                            .filter((app) => app.enterpriseName && app.enterpriseName.trim() !== "")
+                            .map((app) => (
+                              <SelectItem key={app.id} value={app.enterpriseName}>
+                                <div className="flex items-center gap-2">
+                                  <span>{app.enterpriseName}</span>
+                                  {app.legalPersonName && (
+                                    <span className="text-muted-foreground text-xs">
+                                      ({app.legalPersonName})
+                                    </span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </>
+                      )}
+                      
+                      {/* 未分配工位号的企业 */}
+                      {unassignedEnterprises.length > 0 && (
+                        <>
+                          <SelectItem value="_unassigned_header" disabled className="font-medium text-muted-foreground">
+                            待分配工位号
+                          </SelectItem>
+                          {unassignedEnterprises.map((ent) => (
+                            <SelectItem key={ent.id} value={ent.name}>
                               <div className="flex items-center gap-2">
-                                <span>{app.enterpriseName}</span>
-                                {app.legalPersonName && (
+                                <span>{ent.name}</span>
+                                {ent.legalPerson && (
                                   <span className="text-muted-foreground text-xs">
-                                    ({app.legalPersonName})
+                                    ({ent.legalPerson})
                                   </span>
                                 )}
                               </div>
                             </SelectItem>
-                          ))
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* 无数据提示 */}
+                      {fillingApplications.length === 0 && unassignedEnterprises.length === 0 && (
+                        <SelectItem value="_empty" disabled>
+                          暂无可选企业
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>

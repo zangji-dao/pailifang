@@ -15,6 +15,47 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const processStatus = searchParams.get('process_status');
     const keyword = searchParams.get('keyword');
+    const unassigned = searchParams.get('unassigned');
+
+    // 如果请求未分配工位号的企业
+    if (unassigned === 'true') {
+      // 获取已分配工位号的企业ID
+      const { data: assignedRegNumbers } = await supabase
+        .from('registration_numbers')
+        .select('enterprise_id')
+        .not('enterprise_id', 'is', null);
+      
+      const assignedEnterpriseIds = new Set(
+        (assignedRegNumbers || []).map(r => r.enterprise_id)
+      );
+
+      // 获取所有入驻企业
+      const { data: allEnterprises, error: entError } = await supabase
+        .from('enterprises')
+        .select('id, name, legal_person')
+        .eq('type', 'tenant');
+
+      if (entError) {
+        return NextResponse.json(
+          { success: false, error: '获取企业失败' },
+          { status: 500 }
+        );
+      }
+
+      // 过滤出未分配的企业
+      const unassignedEnterprises = (allEnterprises || [])
+        .filter(e => !assignedEnterpriseIds.has(e.id))
+        .map(e => ({
+          id: e.id,
+          name: e.name,
+          legalPerson: e.legal_person
+        }));
+
+      return NextResponse.json({
+        success: true,
+        data: unassignedEnterprises,
+      });
+    }
 
     let query = supabase
       .from('enterprises')
