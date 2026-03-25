@@ -12,7 +12,7 @@ export async function GET() {
     // 获取所有企业
     const { data: enterprises, error } = await supabase
       .from('enterprises')
-      .select('type, status');
+      .select('id, type, status');
 
     if (error) {
       console.error('获取企业统计失败:', error);
@@ -22,10 +22,26 @@ export async function GET() {
       );
     }
 
+    // 获取已分配工位号的企业ID（入驻企业 = 已分配工位号的企业）
+    const { data: regNumbers, error: regError } = await supabase
+      .from('registration_numbers')
+      .select('enterprise_id')
+      .not('enterprise_id', 'is', null);
+
+    if (regError) {
+      console.error('获取工位号统计失败:', regError);
+    }
+
+    // 去重得到已入驻企业ID集合
+    const tenantEnterpriseIds = new Set(
+      regNumbers?.map(r => r.enterprise_id).filter(Boolean) || []
+    );
+
     // 计算统计数据
     const stats = {
       total: enterprises?.length || 0,
-      tenant: enterprises?.filter(e => e.type === 'tenant').length || 0,
+      // 入驻企业 = 已分配工位号的企业
+      tenant: tenantEnterpriseIds.size,
       service: enterprises?.filter(e => e.type === 'non_tenant').length || 0,
       active: enterprises?.filter(e => e.status === 'active').length || 0,
     };
