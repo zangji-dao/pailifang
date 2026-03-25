@@ -31,6 +31,7 @@ type ProcessStatus =
   | "pending_contract" 
   | "pending_payment" 
   | "active" 
+  | "completed"
   | "moved_out"
   | "terminated";
 
@@ -58,6 +59,13 @@ const tenantStatusConfig: Record<string, {
   borderColor: string;
   dotColor: string;
 }> = {
+  pending_address: { 
+    label: "待分配地址", 
+    color: "text-sky-600",
+    bgColor: "bg-sky-50",
+    borderColor: "border-sky-300",
+    dotColor: "bg-sky-500",
+  },
   pending_registration: { 
     label: "待工商注册", 
     color: "text-purple-600",
@@ -92,6 +100,13 @@ const tenantStatusConfig: Record<string, {
     bgColor: "bg-slate-50",
     borderColor: "border-slate-300",
     dotColor: "bg-slate-500",
+  },
+  completed: { 
+    label: "已完成", 
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-300",
+    dotColor: "bg-emerald-500",
   },
 };
 
