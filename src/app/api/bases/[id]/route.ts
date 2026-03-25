@@ -1,6 +1,24 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+// 将 snake_case 转换为 camelCase
+function toCamelCase(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[camelKey] = toCamelCase(value as Record<string, unknown>);
+    } else if (Array.isArray(value)) {
+      result[camelKey] = value.map(item => 
+        item && typeof item === 'object' ? toCamelCase(item as Record<string, unknown>) : item
+      );
+    } else {
+      result[camelKey] = value;
+    }
+  }
+  return result;
+}
+
 /**
  * GET /api/bases/[id]
  * 获取单个基地详情（包含管理公司信息）
@@ -55,12 +73,17 @@ export async function GET(
         electricity_number,
         electricity_type,
         electricity_balance,
+        electricity_balance_updated_at,
+        electricity_enterprise_id,
         water_number,
         water_type,
         water_balance,
+        water_balance_updated_at,
+        water_enterprise_id,
         heating_number,
         heating_type,
         heating_status,
+        heating_enterprise_id,
         network_number,
         network_type,
         network_status,
@@ -95,11 +118,15 @@ export async function GET(
       console.error('获取物业失败:', metersError);
     }
 
+    // 转换字段名为 camelCase
+    const camelBase = toCamelCase(base);
+    const camelMeters = meters?.map(m => toCamelCase(m)) || [];
+
     return NextResponse.json({
       success: true,
       data: {
-        ...base,
-        meters: meters || [],
+        ...camelBase,
+        meters: camelMeters,
       },
     });
   } catch (error) {
