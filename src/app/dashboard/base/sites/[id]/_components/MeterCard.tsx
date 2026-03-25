@@ -210,12 +210,32 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
         )}
 
         {/* 底部统计 */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-          <div className="flex items-center gap-1.5">
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-1.5 mb-2">
             <Hash className="h-4 w-4" style={{ color: "#A8A29E" }} />
             <span className="text-sm font-medium" style={{ color: "#57534E" }}>{allocatedRegNumbers}/{totalRegNumbers}</span>
             <span className="text-sm" style={{ color: "#A8A29E" }}>工位号已分配</span>
           </div>
+          
+          {/* 显示已分配工位号及对应企业 */}
+          {meter.spaces && meter.spaces.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {meter.spaces.flatMap((space) => 
+                (space.regNumbers || [])
+                  .filter((reg) => reg.status === "allocated" && reg.enterprise)
+                  .map((reg) => (
+                    <span
+                      key={reg.id}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs"
+                    >
+                      <span className="font-medium text-emerald-700">{reg.code}</span>
+                      <span className="text-emerald-500">→</span>
+                      <span className="text-emerald-600">{reg.enterprise?.name}</span>
+                    </span>
+                  ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

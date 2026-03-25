@@ -107,7 +107,11 @@ export async function GET(
             enterprise_id,
             status,
             created_at,
-            updated_at
+            updated_at,
+            enterprise:enterprises (
+              id,
+              name
+            )
           )
         )
       `)
