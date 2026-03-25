@@ -220,6 +220,7 @@ export default function EnterpriseListPage() {
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
     pending_payment: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_payment").length,
     active: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "active").length,
+    completed: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "completed").length,
     moved_out: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "moved_out").length,
   };
 
@@ -316,7 +317,7 @@ export default function EnterpriseListPage() {
       {/* 入驻企业 - 状态卡片 */}
       {activeTab === "tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {Object.entries(tenantStatusConfig).map(([key, config]) => {
               const count = tenantStats[key as keyof typeof tenantStats] || 0;
               return (
