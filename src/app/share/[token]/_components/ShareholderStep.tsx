@@ -206,7 +206,7 @@ export function ShareholderStep({
                   <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  value={shareholder.name}
+                  value={shareholder.name || ""}
                   onChange={(e) => updateShareholder(index, "name", e.target.value)}
                   placeholder={shareholder.type === "natural" ? "请输入姓名" : "请输入企业名称"}
                   className="h-11"
@@ -220,7 +220,7 @@ export function ShareholderStep({
                   联系电话 <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  value={shareholder.phone}
+                  value={shareholder.phone || ""}
                   onChange={(e) => updateShareholder(index, "phone", e.target.value)}
                   placeholder="请输入电话"
                   className="h-11"
@@ -236,7 +236,7 @@ export function ShareholderStep({
                 出资额 <span className="text-red-500">*</span>
               </Label>
               <Input
-                value={shareholder.investment}
+                value={shareholder.investment || ""}
                 onChange={(e) => updateShareholder(index, "investment", e.target.value)}
                 placeholder="请输入出资额"
                 className="h-11"

@@ -31,7 +31,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
               申请名称 <span className="text-red-500">*</span>
             </Label>
             <Input
-              value={formData.enterpriseName}
+              value={formData.enterpriseName || ""}
               onChange={(e) => updateField("enterpriseName", e.target.value)}
               placeholder="请输入企业名称"
               className="h-11"
@@ -48,7 +48,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
               {formData.enterpriseNameBackups.map((backup, index) => (
                 <Input
                   key={index}
-                  value={backup}
+                  value={backup || ""}
                   onChange={(e) => {
                     const newBackups = [...formData.enterpriseNameBackups];
                     newBackups[index] = e.target.value;
@@ -82,7 +82,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
             <div className="space-y-2">
               <Label className="text-gray-700">注册资本</Label>
               <Input
-                value={formData.registeredCapital}
+                value={formData.registeredCapital || ""}
                 onChange={(e) => updateField("registeredCapital", e.target.value)}
                 placeholder="请输入金额"
                 className="h-11"
@@ -91,7 +91,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
             <div className="space-y-2">
               <Label className="text-gray-700">币种</Label>
               <Select
-                value={formData.currencyType}
+                value={formData.currencyType || "CNY"}
                 onValueChange={(value) => updateField("currencyType", value)}
               >
                 <SelectTrigger className="h-11">
@@ -113,7 +113,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
               纳税人类型 <span className="text-red-500">*</span>
             </Label>
             <Select
-              value={formData.taxType}
+              value={formData.taxType || ""}
               onValueChange={(value) => updateField("taxType", value)}
             >
               <SelectTrigger className="h-11">
@@ -137,7 +137,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
               申请类型 <span className="text-red-500">*</span>
             </Label>
             <Select
-              value={formData.applicationType}
+              value={formData.applicationType || ""}
               onValueChange={(value) => updateField("applicationType", value)}
             >
               <SelectTrigger className="h-11">
@@ -160,7 +160,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
             <div className="space-y-2">
               <Label className="text-gray-700">预计年营收</Label>
               <Input
-                value={formData.expectedAnnualRevenue}
+                value={formData.expectedAnnualRevenue || ""}
                 onChange={(e) => updateField("expectedAnnualRevenue", e.target.value)}
                 placeholder="请输入"
                 className="h-11"
@@ -169,7 +169,7 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
             <div className="space-y-2">
               <Label className="text-gray-700">预计年纳税</Label>
               <Input
-                value={formData.expectedAnnualTax}
+                value={formData.expectedAnnualTax || ""}
                 onChange={(e) => updateField("expectedAnnualTax", e.target.value)}
                 placeholder="请输入"
                 className="h-11"

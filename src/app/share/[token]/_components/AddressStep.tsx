@@ -20,7 +20,7 @@ export function AddressStep({ formData, errors, updateField }: AddressStepProps)
         <p className="text-xs text-gray-500 mb-4">如果是迁移业务，请填写原注册地址</p>
         <div className="space-y-2">
           <Textarea
-            value={formData.originalRegisteredAddress}
+            value={formData.originalRegisteredAddress || ""}
             onChange={(e) => updateField("originalRegisteredAddress", e.target.value)}
             placeholder="请输入原注册地址（如有）"
             rows={3}
@@ -33,7 +33,7 @@ export function AddressStep({ formData, errors, updateField }: AddressStepProps)
         <h3 className="text-base font-medium mb-4 text-gray-900">邮寄地址</h3>
         <div className="space-y-2">
           <Textarea
-            value={formData.mailingAddress}
+            value={formData.mailingAddress || ""}
             onChange={(e) => updateField("mailingAddress", e.target.value)}
             placeholder="请输入邮寄地址"
             rows={3}
@@ -47,7 +47,7 @@ export function AddressStep({ formData, errors, updateField }: AddressStepProps)
         <p className="text-xs text-gray-500 mb-4">实际办公地址（如有）</p>
         <div className="space-y-2">
           <Textarea
-            value={formData.businessAddress}
+            value={formData.businessAddress || ""}
             onChange={(e) => updateField("businessAddress", e.target.value)}
             placeholder="请输入经营地址（如有）"
             rows={3}

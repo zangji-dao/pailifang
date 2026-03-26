@@ -110,7 +110,7 @@ export function PersonnelStep({
                   姓名 <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  value={person.name}
+                  value={person.name || ""}
                   onChange={(e) => updatePersonnel(index, "name", e.target.value)}
                   placeholder="请输入姓名"
                   className="h-11"
@@ -124,7 +124,7 @@ export function PersonnelStep({
                   电话 <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  value={person.phone}
+                  value={person.phone || ""}
                   onChange={(e) => updatePersonnel(index, "phone", e.target.value)}
                   placeholder="请输入电话"
                   className="h-11"
@@ -138,7 +138,7 @@ export function PersonnelStep({
             <div className="space-y-2">
               <Label className="text-gray-700">邮箱</Label>
               <Input
-                value={person.email}
+                value={person.email || ""}
                 onChange={(e) => updatePersonnel(index, "email", e.target.value)}
                 placeholder="请输入邮箱"
                 type="email"
@@ -151,7 +151,7 @@ export function PersonnelStep({
                 住址 <span className="text-red-500">*</span>
               </Label>
               <Input
-                value={person.address}
+                value={person.address || ""}
                 onChange={(e) => updatePersonnel(index, "address", e.target.value)}
                 placeholder="请输入住址"
                 className="h-11"

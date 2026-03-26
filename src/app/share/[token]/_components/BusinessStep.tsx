@@ -21,7 +21,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
           <div className="space-y-2">
             <Label className="text-gray-700">联系人姓名</Label>
             <Input
-              value={formData.ewtContactName}
+              value={formData.ewtContactName || ""}
               onChange={(e) => updateField("ewtContactName", e.target.value)}
               placeholder="请输入姓名"
               className="h-11"
@@ -30,7 +30,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
           <div className="space-y-2">
             <Label className="text-gray-700">联系人电话</Label>
             <Input
-              value={formData.ewtContactPhone}
+              value={formData.ewtContactPhone || ""}
               onChange={(e) => updateField("ewtContactPhone", e.target.value)}
               placeholder="请输入电话"
               className="h-11"
@@ -46,7 +46,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
           <div className="space-y-2">
             <Label className="text-gray-700">中介机构</Label>
             <Input
-              value={formData.intermediaryDepartment}
+              value={formData.intermediaryDepartment || ""}
               onChange={(e) => updateField("intermediaryDepartment", e.target.value)}
               placeholder="请输入中介机构名称"
               className="h-11"
@@ -56,7 +56,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
             <div className="space-y-2">
               <Label className="text-gray-700">经办人姓名</Label>
               <Input
-                value={formData.intermediaryName}
+                value={formData.intermediaryName || ""}
                 onChange={(e) => updateField("intermediaryName", e.target.value)}
                 placeholder="请输入姓名"
                 className="h-11"
@@ -65,7 +65,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
             <div className="space-y-2">
               <Label className="text-gray-700">经办人电话</Label>
               <Input
-                value={formData.intermediaryPhone}
+                value={formData.intermediaryPhone || ""}
                 onChange={(e) => updateField("intermediaryPhone", e.target.value)}
                 placeholder="请输入电话"
                 className="h-11"
@@ -80,7 +80,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
         <h3 className="text-base font-medium mb-4 text-gray-900">经营范围</h3>
         <div className="space-y-2">
           <Textarea
-            value={formData.businessScope}
+            value={formData.businessScope || ""}
             onChange={(e) => updateField("businessScope", e.target.value)}
             placeholder="请输入经营范围"
             rows={5}
@@ -94,7 +94,7 @@ export function BusinessStep({ formData, errors, updateField }: BusinessStepProp
         <h3 className="text-base font-medium mb-4 text-gray-900">备注（可选）</h3>
         <div className="space-y-2">
           <Textarea
-            value={formData.remarks}
+            value={formData.remarks || ""}
             onChange={(e) => updateField("remarks", e.target.value)}
             placeholder="如有其他需要说明的事项，请在此填写"
             rows={3}
