@@ -41,9 +41,6 @@ export function validateForm(formData: FormData): ValidationResult {
       if (!person.phone.trim()) {
         errors[`personnel_${index}_phone`] = "请输入电话";
       }
-      if (!person.email.trim()) {
-        errors[`personnel_${index}_email`] = "请输入邮箱";
-      }
       if (!person.address.trim()) {
         errors[`personnel_${index}_address`] = "请输入住址";
       }
@@ -129,9 +126,6 @@ export function validateStep(
           }
           if (!person.phone.trim()) {
             errors[`personnel_${index}_phone`] = "请输入电话";
-          }
-          if (!person.email.trim()) {
-            errors[`personnel_${index}_email`] = "请输入邮箱";
           }
           if (!person.address.trim()) {
             errors[`personnel_${index}_address`] = "请输入住址";

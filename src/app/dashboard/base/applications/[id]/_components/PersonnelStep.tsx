@@ -163,12 +163,12 @@ export function PersonnelStep({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>邮箱 <span className="text-destructive">*</span></Label>
-                <Input type="email" value={person.email} onChange={(e) => updatePersonnel(index, "email", e.target.value)} onFocus={handleFocus} placeholder="请输入邮箱" disabled={!canEdit} />
-              </div>
-              <div className="space-y-2">
                 <Label>住址 <span className="text-destructive">*</span></Label>
                 <Input value={person.address} onChange={(e) => updatePersonnel(index, "address", e.target.value)} onFocus={handleFocus} placeholder="请输入住址" disabled={!canEdit} />
+              </div>
+              <div className="space-y-2">
+                <Label>邮箱</Label>
+                <Input type="email" value={person.email} onChange={(e) => updatePersonnel(index, "email", e.target.value)} onFocus={handleFocus} placeholder="请输入邮箱" disabled={!canEdit} />
               </div>
             </div>
 

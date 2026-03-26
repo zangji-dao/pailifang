@@ -428,11 +428,6 @@ export function useApplicationForm(id: string) {
         setErrors(newErrors);
         return { isValid: false, errors: newErrors };
       }
-      if (!person.email?.trim()) {
-        newErrors.personnel = `第${i + 1}位人员邮箱不能为空`;
-        setErrors(newErrors);
-        return { isValid: false, errors: newErrors };
-      }
       if (!person.address?.trim()) {
         newErrors.personnel = `第${i + 1}位人员住址不能为空`;
         setErrors(newErrors);

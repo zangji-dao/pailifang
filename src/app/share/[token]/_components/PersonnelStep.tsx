@@ -136,9 +136,7 @@ export function PersonnelStep({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-700">
-                邮箱 <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-gray-700">邮箱</Label>
               <Input
                 value={person.email}
                 onChange={(e) => updatePersonnel(index, "email", e.target.value)}
@@ -146,9 +144,6 @@ export function PersonnelStep({
                 type="email"
                 className="h-11"
               />
-              {errors[`personnel_${index}_email`] && (
-                <p className="text-xs text-red-500">{errors[`personnel_${index}_email`]}</p>
-              )}
             </div>
 
             <div className="space-y-2">
