@@ -43,7 +43,7 @@ interface TabConfig {
  * 入驻管理标签页配置
  */
 const SETTLEMENT_TAB_CONFIGS: Record<string, TabConfig> = {
-  applications: { id: "settlement-applications", label: "入驻申请", icon: <FileText className="h-3.5 w-3.5" />, group: "settlement" },
+  applications: { id: "settlement-applications", label: "申请列表", icon: <FileText className="h-3.5 w-3.5" />, group: "settlement" },
   processes: { id: "settlement-processes", label: "入驻审批", icon: <GitBranch className="h-3.5 w-3.5" />, group: "settlement" },
 };
 
