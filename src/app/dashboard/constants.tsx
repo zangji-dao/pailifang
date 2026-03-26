@@ -93,8 +93,8 @@ export const CONTRACT_CHILDREN: NavChildItem[] = [
 export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
   { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
   { name: "入驻管理", href: "", icon: FileCheck, children: SETTLEMENT_CHILDREN },
+  { name: "分配地址", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "企业管理", href: "", icon: Users, children: ENTERPRISE_CHILDREN },
-  { name: "地址管理", href: "/dashboard/base/addresses", icon: MapPin },
   { name: "资金管理", href: "/dashboard/base/finances", icon: Receipt },
   { name: "合同管理", href: "", icon: FileSignature, children: CONTRACT_CHILDREN },
   { name: "设置", href: "", icon: Settings, children: SETTINGS_CHILDREN },
