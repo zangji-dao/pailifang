@@ -49,8 +49,6 @@ export interface FormData {
   taxType: TaxType | "";
   expectedAnnualRevenue: string;
   expectedAnnualTax: string;
-  introducerName: string;
-  introducerPhone: string;
   originalRegisteredAddress: string;
   mailingAddress: string;
   businessAddress: string;
@@ -121,8 +119,6 @@ export const initialFormData: FormData = {
   taxType: "",
   expectedAnnualRevenue: "",
   expectedAnnualTax: "",
-  introducerName: "",
-  introducerPhone: "",
   originalRegisteredAddress: "",
   mailingAddress: "",
   businessAddress: "",

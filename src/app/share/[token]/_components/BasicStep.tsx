@@ -179,30 +179,6 @@ export function BasicStep({ formData, errors, updateField }: BasicStepProps) {
         </div>
       </div>
 
-      {/* 介绍人信息 */}
-      <div className="bg-white rounded-lg border p-4">
-        <h3 className="text-base font-medium mb-4 text-gray-900">介绍人信息（可选）</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="text-gray-700">介绍人姓名</Label>
-            <Input
-              value={formData.introducerName}
-              onChange={(e) => updateField("introducerName", e.target.value)}
-              placeholder="请输入姓名"
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-gray-700">介绍人电话</Label>
-            <Input
-              value={formData.introducerPhone}
-              onChange={(e) => updateField("introducerPhone", e.target.value)}
-              placeholder="请输入电话"
-              className="h-11"
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
