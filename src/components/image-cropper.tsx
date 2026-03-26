@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, RotateCw, Check, Move } from "lucide-react";
@@ -40,56 +40,58 @@ export function ImageCropper({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialRect, setInitialRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   
-  // 获取旋转后的图片尺寸
-  const getRotatedSize = useCallback((width: number, height: number, angle: number) => {
-    const rad = (angle * Math.PI) / 180;
+  // 获取旋转后的图片尺寸（使用 useMemo 缓存）
+  const rotatedImageSize = useMemo(() => {
+    if (imageSize.width === 0 || imageSize.height === 0) {
+      return { width: 0, height: 0 };
+    }
+    const rad = (rotation * Math.PI) / 180;
     const cos = Math.abs(Math.cos(rad));
     const sin = Math.abs(Math.sin(rad));
     return {
-      width: width * cos + height * sin,
-      height: width * sin + height * cos,
+      width: imageSize.width * cos + imageSize.height * sin,
+      height: imageSize.width * sin + imageSize.height * cos,
     };
-  }, []);
+  }, [imageSize.width, imageSize.height, rotation]);
   
-  // 旋转后的图片尺寸
-  const rotatedImageSize = getRotatedSize(imageSize.width, imageSize.height, rotation);
+  // 计算裁剪区域（根据尺寸和比例）
+  const calculateCropRect = useCallback((width: number, height: number) => {
+    const maxHeight = height * 0.9;
+    const maxWidth = width * 0.9;
+    
+    let cropHeight, cropWidth;
+    
+    if (maxWidth / maxHeight > aspectRatio) {
+      cropHeight = maxHeight;
+      cropWidth = cropHeight * aspectRatio;
+    } else {
+      cropWidth = maxWidth;
+      cropHeight = cropWidth / aspectRatio;
+    }
+    
+    return {
+      x: (width - cropWidth) / 2,
+      y: (height - cropHeight) / 2,
+      width: cropWidth,
+      height: cropHeight,
+    };
+  }, [aspectRatio]);
   
-  // 加载图片并初始化裁剪区域
+  // 加载图片并初始化
   useEffect(() => {
     if (open && imageSrc) {
       const img = new window.Image();
       img.onload = () => {
-        setImageSize({ width: img.width, height: img.height });
-        setRotation(0); // 重置旋转
-        
-        // 初始化裁剪区域：居中，保持比例，尽可能大
-        const maxHeight = img.height * 0.9;
-        const maxWidth = img.width * 0.9;
-        
-        let cropHeight, cropWidth;
-        
-        if (maxWidth / maxHeight > aspectRatio) {
-          // 宽度有富余，以高度为准
-          cropHeight = maxHeight;
-          cropWidth = cropHeight * aspectRatio;
-        } else {
-          // 高度有富余，以宽度为准
-          cropWidth = maxWidth;
-          cropHeight = cropWidth / aspectRatio;
-        }
-        
-        setCropRect({
-          x: (img.width - cropWidth) / 2,
-          y: (img.height - cropHeight) / 2,
-          width: cropWidth,
-          height: cropHeight,
-        });
+        const size = { width: img.width, height: img.height };
+        setImageSize(size);
+        setRotation(0);
+        setCropRect(calculateCropRect(size.width, size.height));
       };
       img.src = imageSrc;
     }
-  }, [open, imageSrc, aspectRatio]);
+  }, [open, imageSrc, calculateCropRect]);
   
-  // 计算显示尺寸和偏移（基于旋转后的尺寸）
+  // 计算显示尺寸和偏移
   useEffect(() => {
     if (containerRef.current && rotatedImageSize.width > 0) {
       const containerWidth = containerRef.current.clientWidth;
@@ -103,32 +105,14 @@ export function ImageCropper({
         y: (containerHeight - displayHeight) / 2,
       });
     }
-  }, [rotatedImageSize]);
+  }, [rotatedImageSize.width, rotatedImageSize.height]);
   
-  // 当旋转改变时，重新初始化裁剪区域
+  // 当旋转改变时，重新计算裁剪区域
   useEffect(() => {
-    if (rotatedImageSize.width > 0) {
-      const maxHeight = rotatedImageSize.height * 0.9;
-      const maxWidth = rotatedImageSize.width * 0.9;
-      
-      let cropHeight, cropWidth;
-      
-      if (maxWidth / maxHeight > aspectRatio) {
-        cropHeight = maxHeight;
-        cropWidth = cropHeight * aspectRatio;
-      } else {
-        cropWidth = maxWidth;
-        cropHeight = cropWidth / aspectRatio;
-      }
-      
-      setCropRect({
-        x: (rotatedImageSize.width - cropWidth) / 2,
-        y: (rotatedImageSize.height - cropHeight) / 2,
-        width: cropWidth,
-        height: cropHeight,
-      });
+    if (rotatedImageSize.width > 0 && rotation !== 0) {
+      setCropRect(calculateCropRect(rotatedImageSize.width, rotatedImageSize.height));
     }
-  }, [rotation, rotatedImageSize, aspectRatio]);
+  }, [rotation, rotatedImageSize.width, rotatedImageSize.height, calculateCropRect]);
   
   // 坐标转换：显示坐标 -> 旋转后的原图坐标
   const displayToImage = useCallback((displayX: number, displayY: number) => {
@@ -259,25 +243,7 @@ export function ImageCropper({
   // 重置
   const handleReset = () => {
     setRotation(0);
-    const maxHeight = imageSize.height * 0.9;
-    const maxWidth = imageSize.width * 0.9;
-    
-    let cropHeight, cropWidth;
-    
-    if (maxWidth / maxHeight > aspectRatio) {
-      cropHeight = maxHeight;
-      cropWidth = cropHeight * aspectRatio;
-    } else {
-      cropWidth = maxWidth;
-      cropHeight = cropWidth / aspectRatio;
-    }
-    
-    setCropRect({
-      x: (imageSize.width - cropWidth) / 2,
-      y: (imageSize.height - cropHeight) / 2,
-      width: cropWidth,
-      height: cropHeight,
-    });
+    setCropRect(calculateCropRect(imageSize.width, imageSize.height));
   };
   
   // 执行裁剪（带旋转）
