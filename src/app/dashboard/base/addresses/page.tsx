@@ -280,14 +280,18 @@ export default function AddressManagementPage() {
     }
 
     setGenerating(true);
+    
+    const requestBody = { 
+      space_id: selectedSpaceId,
+      assigned_enterprise_name: assignedEnterpriseName
+    };
+    console.log('[前端] 生成工位号请求:', requestBody);
+    
     try {
       const res = await fetch("/api/registration-numbers/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          space_id: selectedSpaceId,
-          assigned_enterprise_name: assignedEnterpriseName || null
-        }),
+        body: JSON.stringify(requestBody),
       });
       const result = await res.json();
       if (result.success) {

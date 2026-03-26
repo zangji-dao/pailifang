@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
 
     const { space_id, enterprise_id, assigned_enterprise_name } = body;
 
+    // 调试日志
+    console.log('[生成工位号] 请求参数:', { space_id, enterprise_id, assigned_enterprise_name });
+
     if (!space_id) {
       return NextResponse.json(
         { success: false, error: '请选择物理空间' },
@@ -85,20 +88,24 @@ export async function POST(request: NextRequest) {
     const newCode = `KJ${String(sequence).padStart(6, '0')}`;
 
     // 3. 插入新工位号（带默认产权单位和管理单位）
+    const insertData = {
+      id: crypto.randomUUID(),
+      code: newCode,
+      space_id: space_id,
+      enterprise_id: enterprise_id || null,
+      assigned_enterprise_name: assigned_enterprise_name || null,
+      property_owner: '吉林省恒松物业管理有限公司',
+      management_company: '吉林省天之企业管理咨询有限公司',
+      available: !enterprise_id, // 如果指定了企业，则标记为已分配
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
+    console.log('[生成工位号] 插入数据:', insertData);
+    
     const { data: newReg, error: insertError } = await supabase
       .from('registration_numbers')
-      .insert({
-        id: crypto.randomUUID(),
-        code: newCode,
-        space_id: space_id,
-        enterprise_id: enterprise_id || null,
-        assigned_enterprise_name: assigned_enterprise_name || null,
-        property_owner: '吉林省恒松物业管理有限公司',
-        management_company: '吉林省天之企业管理咨询有限公司',
-        available: !enterprise_id, // 如果指定了企业，则标记为已分配
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -109,6 +116,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log('[生成工位号] 插入结果:', newReg);
 
     return NextResponse.json({
       success: true,
