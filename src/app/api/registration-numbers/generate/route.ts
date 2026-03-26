@@ -2,13 +2,43 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
+ * 将数字转换为36进制字符串（0-9 + A-Z）
+ * @param num 数字（0-1295）
+ * @returns 2位36进制字符串
+ */
+function toBase36(num: number): string {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const high = Math.floor(num / 36);
+  const low = num % 36;
+  return chars[high] + chars[low];
+}
+
+/**
+ * 生成随机36进制字符串
+ * @returns 2位36进制随机字符串
+ */
+function randomBase36(): string {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const random1 = Math.floor(Math.random() * 36);
+  const random2 = Math.floor(Math.random() * 36);
+  return chars[random1] + chars[random2];
+}
+
+/**
  * POST /api/registration-numbers/generate
- * 为指定的物理空间生成工位号（每个空间可生成多个）
+ * 为指定的物理空间生成工位号
  * 
- * 请求体：
- * - space_id: 物理空间ID（必填）
- * - enterprise_id: 企业ID（可选，分配时提供）
- * - assigned_enterprise_name: 预分配企业名称（必填）
+ * 编码规则：[年份2位][物业2位][空间2位][随机2位]
+ * - 年份：当前年份后2位（数字）
+ * - 物业：基地内物业序号转36进制
+ * - 空间：物业内空间序号转36进制
+ * - 随机：36进制随机码，确保不重复
+ * 
+ * 示例：260A1B3P
+ *       │  │  │  └── 随机编号
+ *       │  │  └──── 空间编号（第27个空间，36进制1B）
+ *       │  └─────── 物业编号（第10个物业，36进制0A）
+ *       └────────── 年份（2026年）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +47,6 @@ export async function POST(request: NextRequest) {
 
     const { space_id, enterprise_id, assigned_enterprise_name } = body;
 
-    // 调试日志
     console.log('[生成工位号] 请求参数:', { space_id, enterprise_id, assigned_enterprise_name });
 
     if (!space_id) {
@@ -42,11 +71,13 @@ export async function POST(request: NextRequest) {
         code,
         name,
         meter_id,
+        created_at,
         meters (
           id,
           code,
           name,
           base_id,
+          created_at,
           bases (
             id,
             name
@@ -64,30 +95,117 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 生成新的工位号
-    // 规则：KJ + 6位数字（如 KJ000001）
-    // 获取当前最大编号
-    const { data: maxReg, error: maxError } = await supabase
-      .from('registration_numbers')
-      .select('code')
-      .like('code', 'KJ%')
-      .order('code', { ascending: false })
-      .limit(1);
+    const meter = space.meters as any;
+    const baseId = meter?.base_id;
+    const meterId = meter?.id;
 
-    let sequence = 1;
-    if (maxReg && maxReg.length > 0) {
-      const lastCode = maxReg[0].code;
-      // 提取数字部分
-      const lastSequence = parseInt(lastCode.replace('KJ', ''), 10);
-      if (!isNaN(lastSequence)) {
-        sequence = lastSequence + 1;
-      }
+    if (!baseId || !meterId) {
+      return NextResponse.json(
+        { success: false, error: '空间缺少基地或物业信息' },
+        { status: 400 }
+      );
     }
 
-    // 生成8位编号：KJ + 6位数字
-    const newCode = `KJ${String(sequence).padStart(6, '0')}`;
+    // 2. 获取基地下所有物业，按创建时间排序，确定当前物业的序号
+    const { data: baseMeters, error: metersError } = await supabase
+      .from('meters')
+      .select('id, created_at')
+      .eq('base_id', baseId)
+      .order('created_at', { ascending: true });
 
-    // 3. 插入新工位号（带默认产权单位和管理单位）
+    if (metersError || !baseMeters) {
+      console.error('获取物业列表失败:', metersError);
+      return NextResponse.json(
+        { success: false, error: '获取物业列表失败' },
+        { status: 500 }
+      );
+    }
+
+    const meterIndex = baseMeters.findIndex(m => m.id === meterId);
+    if (meterIndex === -1) {
+      return NextResponse.json(
+        { success: false, error: '无法确定物业序号' },
+        { status: 500 }
+      );
+    }
+
+    // 3. 获取物业下所有空间，按创建时间排序，确定当前空间的序号
+    const { data: meterSpaces, error: spacesError } = await supabase
+      .from('spaces')
+      .select('id, created_at')
+      .eq('meter_id', meterId)
+      .order('created_at', { ascending: true });
+
+    if (spacesError || !meterSpaces) {
+      console.error('获取空间列表失败:', spacesError);
+      return NextResponse.json(
+        { success: false, error: '获取空间列表失败' },
+        { status: 500 }
+      );
+    }
+
+    const spaceIndex = meterSpaces.findIndex(s => s.id === space_id);
+    if (spaceIndex === -1) {
+      return NextResponse.json(
+        { success: false, error: '无法确定空间序号' },
+        { status: 500 }
+      );
+    }
+
+    // 4. 获取该空间下已有的工位号后缀（随机部分），用于去重
+    const { data: existingRegs, error: regsError } = await supabase
+      .from('registration_numbers')
+      .select('code')
+      .eq('space_id', space_id);
+
+    if (regsError) {
+      console.error('获取已有工位号失败:', regsError);
+      return NextResponse.json(
+        { success: false, error: '获取已有工位号失败' },
+        { status: 500 }
+      );
+    }
+
+    // 提取已有的随机后缀（最后2位）
+    const existingSuffixes = new Set(
+      (existingRegs || [])
+        .filter(r => r.code && r.code.length >= 2)
+        .map(r => r.code.slice(-2).toUpperCase())
+    );
+
+    // 5. 生成新的工位号编码
+    const year = new Date().getFullYear().toString().slice(-2); // 年份后2位
+    const meterCode = toBase36(meterIndex); // 物业序号转36进制
+    const spaceCode = toBase36(spaceIndex); // 空间序号转36进制
+
+    // 生成随机后缀，确保不重复（最多尝试100次）
+    let randomCode = randomBase36();
+    let attempts = 0;
+    while (existingSuffixes.has(randomCode) && attempts < 100) {
+      randomCode = randomBase36();
+      attempts++;
+    }
+
+    if (existingSuffixes.has(randomCode)) {
+      return NextResponse.json(
+        { success: false, error: '该空间的工位号已用尽' },
+        { status: 400 }
+      );
+    }
+
+    const newCode = `${year}${meterCode}${spaceCode}${randomCode}`;
+
+    console.log('[生成工位号] 编码组成:', {
+      year,
+      meterIndex,
+      meterCode,
+      spaceIndex,
+      spaceCode,
+      randomCode,
+      newCode
+    });
+
+    // 6. 插入新工位号
     const insertData = {
       id: crypto.randomUUID(),
       code: newCode,
@@ -96,12 +214,10 @@ export async function POST(request: NextRequest) {
       assigned_enterprise_name: assigned_enterprise_name || null,
       property_owner: '吉林省恒松物业管理有限公司',
       management_company: '吉林省天之企业管理咨询有限公司',
-      available: !enterprise_id, // 如果指定了企业，则标记为已分配
+      available: !enterprise_id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    
-    console.log('[生成工位号] 插入数据:', insertData);
     
     const { data: newReg, error: insertError } = await supabase
       .from('registration_numbers')
@@ -117,7 +233,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[生成工位号] 插入结果:', newReg);
+    console.log('[生成工位号] 创建成功:', newReg);
 
     return NextResponse.json({
       success: true,
@@ -128,8 +244,8 @@ export async function POST(request: NextRequest) {
         enterprise_id: newReg.enterprise_id,
         available: newReg.available,
         spaceInfo: {
-          baseName: (space.meters as any)?.bases?.name,
-          meterName: (space.meters as any)?.name,
+          baseName: meter?.bases?.name,
+          meterName: meter?.name,
           spaceName: space.name,
         },
       },
