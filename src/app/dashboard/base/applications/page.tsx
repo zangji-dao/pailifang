@@ -1066,6 +1066,48 @@ export default function ApplicationsPage() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => handleExport(app)}
+                            disabled={exportingId === app.id}
+                            className="gap-1"
+                          >
+                            {exportingId === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            导出
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDownloadAttachments(app)}
+                            disabled={downloadingApp === app.id}
+                            className="gap-1"
+                          >
+                            {downloadingApp === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            下载附件
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handlePrint(app)}
+                            disabled={printingId === app.id}
+                            className="gap-1"
+                          >
+                            {printingId === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Printer className="h-3.5 w-3.5" />
+                            )}
+                            打印
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => handleDelete(app.id)}
                             className="gap-1 text-destructive hover:text-destructive"
                           >
