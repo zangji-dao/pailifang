@@ -205,30 +205,32 @@ export default function AddressManagementPage() {
     }
   };
 
-  // 获取填报中的入驻申请企业
+  // 获取待分配地址的企业（审批通过但未分配地址的申请）
   const fetchFillingApplications = async () => {
     try {
       setLoadingApplications(true);
       
-      // 并行获取填报中的申请和未分配工位号的企业
-      const [appsRes, unassignedRes] = await Promise.all([
-        fetch("/api/settlement/applications"),
-        fetch("/api/enterprises?unassigned=true")
-      ]);
-      
+      // 获取所有申请
+      const appsRes = await fetch("/api/settlement/applications");
       const appsResult = await appsRes.json();
-      const unassignedResult = await unassignedRes.json();
       
-      // 过滤出填报中状态的企业申请
+      // 过滤出审批通过且未分配地址的申请
       if (appsResult.success || appsResult.data) {
-        const fillingApps = (appsResult.data || []).filter(
-          (app: any) => app.approvalStatus === "filling" && app.enterpriseName?.trim()
+        const approvedApps = (appsResult.data || []).filter(
+          (app: any) => 
+            app.approvalStatus === "approved" && 
+            !app.assignedAddressId && 
+            app.enterpriseName?.trim()
         );
-        setFillingApplications(fillingApps);
+        setFillingApplications(approvedApps);
       }
       
-      // 获取未分配工位号的企业
+      // 获取已有企业但未分配工位号的
+      const unassignedRes = await fetch("/api/enterprises");
+      const unassignedResult = await unassignedRes.json();
+      
       if (unassignedResult.success && unassignedResult.data) {
+        // 过滤出未分配工位号的企业（没有关联 registration_numbers）
         setUnassignedEnterprises(unassignedResult.data);
       }
     } catch (error) {
@@ -717,11 +719,11 @@ export default function AddressManagementPage() {
                       <SelectValue placeholder={loadingApplications ? "加载中..." : "选择企业"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* 填报中的企业申请 */}
+                      {/* 审批通过待分配地址的申请 */}
                       {fillingApplications.length > 0 && (
                         <>
                           <SelectItem value="_filling_header" disabled className="font-medium text-muted-foreground">
-                            入驻申请中
+                            审批通过待分配地址
                           </SelectItem>
                           {fillingApplications
                             .filter((app) => app.enterpriseName && app.enterpriseName.trim() !== "")
