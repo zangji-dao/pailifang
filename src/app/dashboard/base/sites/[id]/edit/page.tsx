@@ -8,6 +8,7 @@ import {
   Loader2,
   ArrowLeft,
   AlertCircle,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTabs } from "@/app/dashboard/tabs-context";
@@ -216,48 +217,6 @@ export default function EditBasePage() {
             />
           </div>
           
-          {/* 地址模板 */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              地址模板
-              <span className="text-xs text-slate-400 font-normal ml-1">用于生成工位号地址</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={addressParts.prefix}
-                  onChange={(e) => {
-                    const newTemplate = `${e.target.value}（工位号）${addressParts.suffix}`;
-                    setFormData({ ...formData, address_template: newTemplate });
-                  }}
-                  placeholder="如：松原市宁江区建华路义乌城小区"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-              <div className="flex items-center justify-center px-2 h-10 text-slate-400 text-sm whitespace-nowrap">
-                + 工位号 +
-              </div>
-              <div className="w-24">
-                <input
-                  type="text"
-                  value={addressParts.suffix}
-                  onChange={(e) => {
-                    const newTemplate = `${addressParts.prefix}（工位号）${e.target.value}`;
-                    setFormData({ ...formData, address_template: newTemplate });
-                  }}
-                  placeholder="号"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-            </div>
-            {formData.address_template && (
-              <p className="text-xs text-slate-500 mt-1.5">
-                示例：{addressParts.prefix}108{addressParts.suffix}
-              </p>
-            )}
-          </div>
-          
           {/* 地图选点 */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -312,9 +271,60 @@ export default function EditBasePage() {
             </div>
           </div>
           
-          {/* 分隔线 */}
+          {/* 地址模板区块 */}
           <div className="border-t border-slate-200 pt-5 mt-5">
-            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-amber-500" />
+              地址模板设置
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              设置工位号地址模板，用于自动生成工位号地址
+            </p>
+            
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                地址模板
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={addressParts.prefix}
+                    onChange={(e) => {
+                      const newTemplate = `${e.target.value}（工位号）${addressParts.suffix}`;
+                      setFormData({ ...formData, address_template: newTemplate });
+                    }}
+                    placeholder="如：松原市宁江区建华路义乌城小区"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+                <div className="flex items-center justify-center px-2 h-10 text-slate-400 text-sm whitespace-nowrap">
+                  + 工位号 +
+                </div>
+                <div className="w-24">
+                  <input
+                    type="text"
+                    value={addressParts.suffix}
+                    onChange={(e) => {
+                      const newTemplate = `${addressParts.prefix}（工位号）${e.target.value}`;
+                      setFormData({ ...formData, address_template: newTemplate });
+                    }}
+                    placeholder="号"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+              </div>
+              {formData.address_template && (
+                <p className="text-xs text-slate-500">
+                  示例：{addressParts.prefix}108{addressParts.suffix}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          {/* 管理公司信息区块 */}
+          <div className="border-t border-slate-200 pt-5 mt-5">
+            <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
               <Building2 className="h-4 w-4 text-amber-500" />
               管理公司信息（合同甲方）
             </h3>
