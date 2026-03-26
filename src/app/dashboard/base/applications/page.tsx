@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   Download,
   Printer,
-  DoorOpen,
   CheckCircle,
   XCircle,
 } from "lucide-react";
@@ -687,12 +686,6 @@ export default function ApplicationsPage() {
     }
   };
 
-  // 新建企业（跳转到企业管理的创建页面）
-  const handleAssignRoom = (application: Application) => {
-    // 跳转到企业管理的创建页面，传递申请ID作为参数
-    router.push(`/dashboard/base/tenants/create?applicationId=${application.id}`);
-  };
-
   // 转发分享
   const handleShare = async (application: Application) => {
     setCreatingShare(true);
@@ -1160,15 +1153,6 @@ export default function ApplicationsPage() {
                               <Printer className="h-3.5 w-3.5" />
                             )}
                             打印
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAssignRoom(app)}
-                            className="gap-1"
-                          >
-                            <DoorOpen className="h-3.5 w-3.5" />
-                            新建企业
                           </Button>
                         </>
                       )}
