@@ -30,6 +30,19 @@ export default function NewBasePage() {
     management_company_address: "",
     management_company_phone: "",
   });
+  
+  // 解析地址模板为前缀和后缀
+  const parseAddressTemplate = (template: string) => {
+    if (!template) return { prefix: "", suffix: "" };
+    const match = template.match(/^(.+?)（工位号）(.*)$/);
+    if (match) {
+      return { prefix: match[1] || "", suffix: match[2] || "" };
+    }
+    return { prefix: template, suffix: "" };
+  };
+  
+  // 获取地址模板前缀和后缀
+  const addressParts = parseAddressTemplate(formData.address_template);
   const [submitting, setSubmitting] = useState(false);
 
   // 创建基地
@@ -137,16 +150,38 @@ export default function NewBasePage() {
               地址模板
               <span className="text-xs text-slate-400 font-normal ml-1">用于生成工位号地址</span>
             </label>
-            <input
-              type="text"
-              value={formData.address_template}
-              onChange={(e) => setFormData({ ...formData, address_template: e.target.value })}
-              placeholder="如：松原市宁江区建华路义乌城小区（工位号）号"
-              className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={addressParts.prefix}
+                  onChange={(e) => {
+                    const newTemplate = `${e.target.value}（工位号）${addressParts.suffix}`;
+                    setFormData({ ...formData, address_template: newTemplate });
+                  }}
+                  placeholder="如：松原市宁江区建华路义乌城小区"
+                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                />
+              </div>
+              <div className="flex items-center justify-center px-2 h-10 text-slate-400 text-sm whitespace-nowrap">
+                + 工位号 +
+              </div>
+              <div className="w-24">
+                <input
+                  type="text"
+                  value={addressParts.suffix}
+                  onChange={(e) => {
+                    const newTemplate = `${addressParts.prefix}（工位号）${e.target.value}`;
+                    setFormData({ ...formData, address_template: newTemplate });
+                  }}
+                  placeholder="号"
+                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                />
+              </div>
+            </div>
             {formData.address_template && (
               <p className="text-xs text-slate-500 mt-1.5">
-                示例：{formData.address_template.replace('（工位号）', '108')}
+                示例：{addressParts.prefix}108{addressParts.suffix}
               </p>
             )}
           </div>
