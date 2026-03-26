@@ -553,10 +553,11 @@ export const applicationController = {
 
       const existing = existingResult[0];
 
-      if (existing.approvalStatus !== 'draft') {
+      // 只允许删除填报中、待审批、已驳回状态的申请
+      if (!['filling', 'pending', 'rejected'].includes(existing.approvalStatus)) {
         return res.status(400).json({
           success: false,
-          error: '只能删除草稿状态的申请',
+          error: '只能删除填报中、待审批或已驳回状态的申请',
         });
       }
 
