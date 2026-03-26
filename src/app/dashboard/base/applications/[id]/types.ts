@@ -1,5 +1,5 @@
 // 申请审批状态
-export type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
+export type ApprovalStatus = "filling" | "draft" | "pending" | "approved" | "rejected";
 
 // 申请类型
 export type ApplicationType = "new" | "migration";

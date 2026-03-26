@@ -8,6 +8,7 @@ import type {
 
 // 状态配置
 export const statusConfig: Record<ApprovalStatus, StatusConfigItem> = {
+  filling: { label: "填报中", className: "bg-cyan-50 text-cyan-600 border-cyan-200" },
   draft: { label: "草稿", className: "bg-gray-50 text-gray-600 border-gray-200" },
   pending: { label: "待审批", className: "bg-blue-50 text-blue-600 border-blue-200" },
   approved: { label: "已通过", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
