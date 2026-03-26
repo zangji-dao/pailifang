@@ -16,6 +16,7 @@ import {
   Plus,
   X,
   Download,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +115,8 @@ export default function ApprovalPage() {
 
   // 下载状态
   const [downloadingApp, setDownloadingApp] = useState<string | null>(null);
+  const [exportingApp, setExportingApp] = useState<string | null>(null);
+  const [printingApp, setPrintingApp] = useState<string | null>(null);
 
   // 下载附件
   const handleDownloadAttachments = async (app: Application) => {
@@ -154,6 +157,223 @@ export default function ApprovalPage() {
       toast.error("下载失败");
     } finally {
       setDownloadingApp(null);
+    }
+  };
+
+  // 导出申请（生成并下载 PDF）
+  const handleExport = async (app: Application) => {
+    setExportingApp(app.id);
+    try {
+      const response = await fetch(`/api/applications/${app.id}`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        toast.error(result.error || "获取申请详情失败");
+        return;
+      }
+
+      // 动态导入 PDF 导出函数
+      const { exportApplicationToPdf } = await import("@/lib/pdf-export");
+      await exportApplicationToPdf(result.data);
+      toast.success("PDF 文件已下载");
+    } catch (err) {
+      console.error("导出 PDF 失败:", err);
+      toast.error("导出 PDF 失败");
+    } finally {
+      setExportingApp(null);
+    }
+  };
+
+  // 打印申请
+  const handlePrint = async (app: Application) => {
+    setPrintingApp(app.id);
+    try {
+      const response = await fetch(`/api/applications/${app.id}`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        toast.error(result.error || "获取申请详情失败");
+        return;
+      }
+      
+      const data = result.data;
+      const personnel = Array.isArray(data.personnel) ? data.personnel : [];
+      const shareholders = Array.isArray(data.shareholders) ? data.shareholders : [];
+      const enterpriseNameBackups = data.enterpriseNameBackups || [];
+
+      // 职务映射
+      const roleMap: Record<string, string> = {
+        legal_person: "法人代表",
+        supervisor: "监事",
+        finance_manager: "财务负责人",
+        ewt_contact: "e窗通登录联系人",
+      };
+
+      // 股东类型映射
+      const shareholderTypeMap: Record<string, string> = {
+        natural: "自然人",
+        enterprise: "企业",
+      };
+
+      // 申请类型映射
+      const applicationTypeMap: Record<string, string> = {
+        new: "新建企业",
+        migration: "迁移企业",
+      };
+
+      // 纳税人类型映射
+      const taxTypeMap: Record<string, string> = {
+        general: "一般纳税人",
+        small_scale: "小规模纳税人",
+      };
+
+      // 生成打印内容
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>入驻申请表 - ${data.enterpriseName}</title>
+          <style>
+            @page { size: A4; margin: 15mm; }
+            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: SimSun, 宋体, serif; font-size: 14px; line-height: 1.8; color: rgb(0,0,0); background: rgb(255,255,255); padding: 20px; }
+            .container { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            .header .subtitle { font-size: 14px; color: rgb(102,102,102); }
+            .section { margin-bottom: 25px; }
+            .section-title { font-size: 16px; font-weight: bold; border-bottom: 2px solid rgb(0,0,0); padding-bottom: 5px; margin-bottom: 15px; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; }
+            .info-row { display: flex; margin-bottom: 5px; }
+            .info-label { width: 140px; flex-shrink: 0; font-weight: bold; }
+            .info-value { flex: 1; border-bottom: 1px solid rgb(0,0,0); min-height: 20px; padding-left: 5px; padding-bottom: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            table th, table td { border: 1px solid rgb(0,0,0); padding: 8px 10px; text-align: left; }
+            table th { background: rgb(245,245,245); font-weight: bold; }
+            .signature-area { margin-top: 50px; display: flex; justify-content: space-between; }
+            .signature-box { width: 220px; text-align: center; }
+            .signature-line { border-bottom: 1px solid rgb(0,0,0); height: 80px; margin-bottom: 10px; }
+            .signature-label { font-weight: bold; margin-bottom: 15px; }
+            .footer { margin-top: 40px; text-align: right; font-size: 12px; color: rgb(102,102,102); }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>企业入驻申请表</h1>
+              <div class="subtitle">Π立方企业服务中心</div>
+            </div>
+            <div class="section">
+              <div class="section-title">一、基本信息</div>
+              <div class="info-grid">
+                <div class="info-row"><span class="info-label">申请编号：</span><span class="info-value">${data.applicationNo}</span></div>
+                <div class="info-row"><span class="info-label">申请日期：</span><span class="info-value">${data.applicationDate ? new Date(data.applicationDate).toLocaleDateString("zh-CN") : "-"}</span></div>
+                <div class="info-row"><span class="info-label">企业名称：</span><span class="info-value">${data.enterpriseName}</span></div>
+                <div class="info-row"><span class="info-label">申请类型：</span><span class="info-value">${applicationTypeMap[data.applicationType] || "-"}</span></div>
+                <div class="info-row"><span class="info-label">注册资本：</span><span class="info-value">${data.registeredCapital ? `${data.registeredCapital} 万元` : "-"}</span></div>
+                <div class="info-row"><span class="info-label">纳税人类型：</span><span class="info-value">${taxTypeMap[data.taxType] || "-"}</span></div>
+              </div>
+              ${enterpriseNameBackups.length > 0 ? `<div class="info-row" style="margin-top: 10px;"><span class="info-label">备选名称：</span><span class="info-value">${enterpriseNameBackups.join("、")}</span></div>` : ""}
+            </div>
+            <div class="section">
+              <div class="section-title">二、地址信息</div>
+              <div class="info-row"><span class="info-label">原注册地址：</span><span class="info-value">${data.originalRegisteredAddress || "-"}</span></div>
+              <div class="info-row"><span class="info-label">通讯地址：</span><span class="info-value">${data.mailingAddress || "-"}</span></div>
+              <div class="info-row"><span class="info-label">经营地址：</span><span class="info-value">${data.businessAddress || "-"}</span></div>
+            </div>
+            <div class="section">
+              <div class="section-title">三、人员信息</div>
+              ${personnel.length > 0 ? `
+              <table>
+                <thead><tr><th style="width: 100px;">姓名</th><th style="width: 120px;">职务</th><th style="width: 130px;">手机号</th><th>邮箱</th></tr></thead>
+                <tbody>
+                  ${personnel.map((p: any) => `<tr><td>${p.name || "-"}</td><td>${(p.roles || []).map((r: string) => roleMap[r] || r).join("、") || "-"}</td><td>${p.phone || "-"}</td><td>${p.email || "-"}</td></tr>`).join("")}
+                </tbody>
+              </table>
+              ` : '<p style="color: rgb(153,153,153);">暂无人员信息</p>'}
+            </div>
+            <div class="section">
+              <div class="section-title">四、股东信息</div>
+              ${shareholders.length > 0 ? `
+              <table>
+                <thead><tr><th style="width: 80px;">类型</th><th style="width: 120px;">姓名/名称</th><th style="width: 100px;">投资额(万元)</th><th style="width: 130px;">手机号</th><th>备注</th></tr></thead>
+                <tbody>
+                  ${shareholders.map((s: any) => `<tr><td>${shareholderTypeMap[s.type] || "-"}</td><td>${s.name || "-"}</td><td>${s.investment || "-"}</td><td>${s.phone || "-"}</td><td>${s.type === "enterprise" ? "企业股东" : ""}</td></tr>`).join("")}
+                </tbody>
+              </table>
+              ` : '<p style="color: rgb(153,153,153);">暂无股东信息</p>'}
+            </div>
+            <div class="section">
+              <div class="section-title">五、经营信息</div>
+              <div class="info-grid">
+                <div class="info-row"><span class="info-label">预计年营收：</span><span class="info-value">${data.expectedAnnualRevenue ? `${data.expectedAnnualRevenue} 万元` : "-"}</span></div>
+                <div class="info-row"><span class="info-label">预计年纳税：</span><span class="info-value">${data.expectedAnnualTax ? `${data.expectedAnnualTax} 万元` : "-"}</span></div>
+              </div>
+              ${data.businessScope ? `<div class="info-row" style="margin-top: 10px;"><span class="info-label">经营范围：</span><span class="info-value">${data.businessScope}</span></div>` : ""}
+            </div>
+            <div class="section">
+              <div class="section-title">六、其他信息</div>
+              <div class="info-grid">
+                <div class="info-row"><span class="info-label">园区联系人：</span><span class="info-value">${data.ewtContactName || "-"}</span></div>
+                <div class="info-row"><span class="info-label">园区联系电话：</span><span class="info-value">${data.ewtContactPhone || "-"}</span></div>
+                <div class="info-row"><span class="info-label">中介机构：</span><span class="info-value">${data.intermediaryDepartment || "-"}</span></div>
+                <div class="info-row"><span class="info-label">中介联系人：</span><span class="info-value">${[data.intermediaryName, data.intermediaryPhone].filter(Boolean).join(" / ") || "-"}</span></div>
+              </div>
+              ${data.remarks ? `<div class="info-row" style="margin-top: 10px;"><span class="info-label">备注：</span><span class="info-value">${data.remarks}</span></div>` : ""}
+            </div>
+            <div class="signature-area">
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">申请人签字（盖章）</div>
+                <div style="font-size: 12px; color: rgb(102,102,102);">日期：____年____月____日</div>
+              </div>
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">审核人签字</div>
+                <div style="font-size: 12px; color: rgb(102,102,102);">日期：____年____月____日</div>
+              </div>
+            </div>
+            <div class="footer">
+              <div>申请编号：${data.applicationNo}</div>
+              <div>打印时间：${new Date().toLocaleString("zh-CN")}</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // 创建隐藏的 iframe 用于打印
+      const printIframe = document.createElement("iframe");
+      printIframe.style.position = "fixed";
+      printIframe.style.left = "-9999px";
+      printIframe.style.top = "0";
+      printIframe.style.width = "0";
+      printIframe.style.height = "0";
+      printIframe.style.border = "none";
+      document.body.appendChild(printIframe);
+
+      const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(printContent);
+        iframeDoc.close();
+
+        setTimeout(() => {
+          printIframe.contentWindow?.print();
+          setTimeout(() => {
+            if (printIframe.parentNode) {
+              document.body.removeChild(printIframe);
+            }
+          }, 1000);
+        }, 500);
+      }
+    } catch (error) {
+      console.error("打印失败:", error);
+      toast.error("打印失败");
+    } finally {
+      setPrintingApp(null);
     }
   };
 
@@ -622,11 +842,16 @@ export default function ApprovalPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleOpenUpload(app)}
+                            onClick={() => handleExport(app)}
+                            disabled={exportingApp === app.id}
                             className="gap-1"
                           >
-                            <Upload className="h-3.5 w-3.5" />
-                            附件
+                            {exportingApp === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            导出
                           </Button>
                           <Button
                             size="sm"
@@ -640,7 +865,30 @@ export default function ApprovalPage() {
                             ) : (
                               <Download className="h-3.5 w-3.5" />
                             )}
-                            下载
+                            下载附件
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handlePrint(app)}
+                            disabled={printingApp === app.id}
+                            className="gap-1"
+                          >
+                            {printingApp === app.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Printer className="h-3.5 w-3.5" />
+                            )}
+                            打印
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenUpload(app)}
+                            className="gap-1"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            附件
                           </Button>
                           {statusFilter === "pending" && (
                             <>
