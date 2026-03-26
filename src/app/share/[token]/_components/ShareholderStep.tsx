@@ -1,9 +1,11 @@
 "use client";
 
-import { Plus, X, Upload, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Plus, X, Upload, Loader2, Link, Unlink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -11,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { FormData, Shareholder, ShareholderType } from "../types";
+import type { FormData, Shareholder, ShareholderType, Personnel } from "../types";
 
 interface ShareholderStepProps {
   formData: FormData;
@@ -41,6 +43,51 @@ export function ShareholderStep({
   removeFile,
   uploadingFiles,
 }: ShareholderStepProps) {
+  // 关联人员状态：记录每个股东关联的人员索引（-1 表示未关联）
+  const [linkedPersonnel, setLinkedPersonnel] = useState<Record<number, number>>({});
+
+  // 获取可关联的人员列表（排除已被关联的）
+  const getAvailablePersonnel = (currentIndex: number): Personnel[] => {
+    const linkedIndices = Object.entries(linkedPersonnel)
+      .filter(([idx]) => parseInt(idx) !== currentIndex)
+      .map(([, pIdx]) => pIdx);
+    return formData.personnel.filter((_, idx) => !linkedIndices.includes(idx));
+  };
+
+  // 关联人员
+  const handleLinkPersonnel = (shareholderIndex: number, personnelIndex: string) => {
+    if (personnelIndex === "none") {
+      // 取消关联
+      const newLinked = { ...linkedPersonnel };
+      delete newLinked[shareholderIndex];
+      setLinkedPersonnel(newLinked);
+      return;
+    }
+    
+    const pIdx = parseInt(personnelIndex);
+    const person = formData.personnel[pIdx];
+    if (!person) return;
+    
+    // 自动填充股东信息
+    updateShareholder(shareholderIndex, "name", person.name);
+    updateShareholder(shareholderIndex, "phone", person.phone);
+    // 身份证信息
+    if (person.idCardFrontKey) {
+      updateShareholder(shareholderIndex, "idCardFrontKey", person.idCardFrontKey);
+    }
+    if (person.idCardFrontUrl) {
+      updateShareholder(shareholderIndex, "idCardFrontUrl", person.idCardFrontUrl);
+    }
+    if (person.idCardBackKey) {
+      updateShareholder(shareholderIndex, "idCardBackKey", person.idCardBackKey);
+    }
+    if (person.idCardBackUrl) {
+      updateShareholder(shareholderIndex, "idCardBackUrl", person.idCardBackUrl);
+    }
+    
+    setLinkedPersonnel({ ...linkedPersonnel, [shareholderIndex]: pIdx });
+  };
+
   return (
     <div className="space-y-4">
       {/* 股东列表 */}
@@ -52,6 +99,11 @@ export function ShareholderStep({
               <span className="ml-2 text-xs text-gray-500 font-normal">
                 ({shareholder.type === "natural" ? "自然人" : "企业"})
               </span>
+              {linkedPersonnel[index] !== undefined && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  已关联：{formData.personnel[linkedPersonnel[index]]?.name}
+                </Badge>
+              )}
             </h3>
             {formData.shareholders.length > 1 && (
               <Button
@@ -94,6 +146,56 @@ export function ShareholderStep({
               </button>
             </div>
           </div>
+
+          {/* 自然人股东 - 关联人员选择 */}
+          {shareholder.type === "natural" && (
+            <div className="mb-4 space-y-2">
+              <Label className="text-gray-700 flex items-center gap-1">
+                <Link className="w-3.5 h-3.5" />
+                关联人员信息
+              </Label>
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={linkedPersonnel[index]?.toString() || "none"} 
+                  onValueChange={(value) => handleLinkPersonnel(index, value)}
+                >
+                  <SelectTrigger className="flex-1 h-11">
+                    <SelectValue placeholder="选择已填写的人员，自动填充身份证信息" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-gray-400">不关联，手动填写</span>
+                    </SelectItem>
+                    {getAvailablePersonnel(index).map((person) => {
+                      const actualIdx = formData.personnel.findIndex(p => p === person);
+                      return (
+                        <SelectItem key={actualIdx} value={actualIdx.toString()}>
+                          {person.name} {person.phone && `(${person.phone})`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {linkedPersonnel[index] !== undefined && (
+                  <Button 
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleLinkPersonnel(index, "none")}
+                    className="shrink-0"
+                  >
+                    <Unlink className="w-4 h-4 mr-1" />
+                    取消关联
+                  </Button>
+                )}
+              </div>
+              {linkedPersonnel[index] === undefined && formData.personnel.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  💡 选择人员后，姓名、电话和身份证信息将自动填充
+                </p>
+              )}
+            </div>
+          )}
 
           {/* 基本信息 */}
           <div className="space-y-4">
@@ -147,8 +249,14 @@ export function ShareholderStep({
             {/* 自然人股东 - 身份证上传 */}
             {shareholder.type === "natural" && (
               <div className="space-y-2">
-                <Label className="text-gray-700">
+                <Label className="text-gray-700 flex items-center gap-2">
                   身份证 <span className="text-red-500">*</span>
+                  {linkedPersonnel[index] !== undefined && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      <Link className="w-3 h-3 mr-1" />
+                      来自人员信息
+                    </Badge>
+                  )}
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
                   {/* 正面 */}
@@ -160,22 +268,36 @@ export function ShareholderStep({
                           alt="身份证正面"
                           className="w-full h-full object-cover"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index, "idCardFront")}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        {/* 只有未关联人员时才允许删除 */}
+                        {linkedPersonnel[index] === undefined && (
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index, "idCardFront")}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center aspect-[1.58] rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:border-primary transition-colors">
+                      <label className={`flex flex-col items-center justify-center aspect-[1.58] rounded-lg border-2 border-dashed transition-colors ${
+                        linkedPersonnel[index] !== undefined 
+                          ? "border-gray-200 cursor-not-allowed" 
+                          : "border-gray-300 cursor-pointer hover:border-primary"
+                      }`}>
                         {uploadingFiles[`idCardFront_${index}`] ? (
                           <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                        ) : linkedPersonnel[index] !== undefined ? (
+                          <>
+                            <Link className="w-6 h-6 text-gray-400" />
+                            <span className="text-xs text-gray-400 mt-1">请先上传人员身份证</span>
+                          </>
                         ) : (
-                          <Upload className="w-6 h-6 text-gray-400" />
+                          <>
+                            <Upload className="w-6 h-6 text-gray-400" />
+                            <span className="text-xs text-gray-500 mt-1">正面</span>
+                          </>
                         )}
-                        <span className="text-xs text-gray-500 mt-1">正面</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -184,6 +306,7 @@ export function ShareholderStep({
                             const file = e.target.files?.[0];
                             if (file) handleFileChange(index, "idCardFront", file);
                           }}
+                          disabled={linkedPersonnel[index] !== undefined}
                         />
                       </label>
                     )}
@@ -198,22 +321,36 @@ export function ShareholderStep({
                           alt="身份证背面"
                           className="w-full h-full object-cover"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index, "idCardBack")}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        {/* 只有未关联人员时才允许删除 */}
+                        {linkedPersonnel[index] === undefined && (
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index, "idCardBack")}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center aspect-[1.58] rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:border-primary transition-colors">
+                      <label className={`flex flex-col items-center justify-center aspect-[1.58] rounded-lg border-2 border-dashed transition-colors ${
+                        linkedPersonnel[index] !== undefined 
+                          ? "border-gray-200 cursor-not-allowed" 
+                          : "border-gray-300 cursor-pointer hover:border-primary"
+                      }`}>
                         {uploadingFiles[`idCardBack_${index}`] ? (
                           <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                        ) : linkedPersonnel[index] !== undefined ? (
+                          <>
+                            <Link className="w-6 h-6 text-gray-400" />
+                            <span className="text-xs text-gray-400 mt-1">请先上传人员身份证</span>
+                          </>
                         ) : (
-                          <Upload className="w-6 h-6 text-gray-400" />
+                          <>
+                            <Upload className="w-6 h-6 text-gray-400" />
+                            <span className="text-xs text-gray-500 mt-1">背面</span>
+                          </>
                         )}
-                        <span className="text-xs text-gray-500 mt-1">背面</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -222,6 +359,7 @@ export function ShareholderStep({
                             const file = e.target.files?.[0];
                             if (file) handleFileChange(index, "idCardBack", file);
                           }}
+                          disabled={linkedPersonnel[index] !== undefined}
                         />
                       </label>
                     )}
