@@ -216,9 +216,9 @@ export function useApplicationForm(id: string) {
           if (!prev) return null;
           const newPersonnel = [...prev.personnel];
           if (type === 'front') {
-            newPersonnel[personnelIndex] = { ...newPersonnel[personnelIndex], idCardFrontKey: result.data.key, idCardFrontUrl: result.data.url };
+            newPersonnel[personnelIndex] = { ...newPersonnel[personnelIndex], idCardFrontKey: result.key, idCardFrontUrl: result.url };
           } else {
-            newPersonnel[personnelIndex] = { ...newPersonnel[personnelIndex], idCardBackKey: result.data.key, idCardBackUrl: result.data.url };
+            newPersonnel[personnelIndex] = { ...newPersonnel[personnelIndex], idCardBackKey: result.key, idCardBackUrl: result.url };
           }
           return { ...prev, personnel: newPersonnel };
         });
@@ -262,8 +262,8 @@ export function useApplicationForm(id: string) {
           const fields = fieldMap[fileType];
           newShareholders[shareholderIndex] = {
             ...newShareholders[shareholderIndex],
-            [fields.key]: result.data.key,
-            [fields.url]: result.data.url,
+            [fields.key]: result.key,
+            [fields.url]: result.url,
           };
           return { ...prev, shareholders: newShareholders };
         });

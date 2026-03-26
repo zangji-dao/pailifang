@@ -50,7 +50,7 @@ export function useFileUploader() {
 
         const result = await response.json();
         if (result.success) {
-          return { key: result.data.key, url: result.data.url };
+          return { key: result.key, url: result.url };
         }
         return null;
       } catch (error) {
