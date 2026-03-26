@@ -1042,18 +1042,36 @@ export default function ApplicationsPage() {
                             <Send className="h-3.5 w-3.5" />
                             重新提交
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(app.id)}
+                            className="gap-1 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </>
                       )}
                       {app.approvalStatus === "pending" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEdit(app)}
-                          className="gap-1"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          查看
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(app)}
+                            className="gap-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            查看
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(app.id)}
+                            className="gap-1 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
                       {app.approvalStatus === "approved" && (
                         <>
