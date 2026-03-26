@@ -13,11 +13,24 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
+import { toast } from "sonner";
 
 // 企业状态
 type EnterpriseStatus = 
@@ -86,15 +99,16 @@ const typeConfig: Record<string, { label: string; description: string; className
 interface ApiEnterprise {
   id: string;
   name: string;
-  creditCode: string | null;
-  legalPerson: string | null;
+  credit_code: string | null;
+  legal_person: string | null;
   phone: string | null;
-  registeredAddress: string | null;
-  businessAddress: string | null;
+  registered_address: string | null;
+  business_address: string | null;
   industry: string | null;
-  settledDate: string | null;
+  settled_date: string | null;
   status: string;
   type: string;
+  process_status: string | null;
   remarks: string | null;
 }
 
@@ -103,15 +117,16 @@ function transformEnterprise(api: ApiEnterprise): Enterprise {
   return {
     id: api.id,
     name: api.name,
-    creditCode: api.creditCode || "",
-    legalPerson: api.legalPerson || "",
+    creditCode: api.credit_code || "",
+    legalPerson: api.legal_person || "",
     phone: api.phone || "",
-    registeredAddress: api.registeredAddress || "",
-    businessAddress: api.businessAddress || "",
+    registeredAddress: api.registered_address || "",
+    businessAddress: api.business_address || "",
     industry: api.industry || "",
-    入驻Date: api.settledDate || "",
+    入驻Date: api.settled_date || "",
     status: api.status as EnterpriseStatus,
     type: api.type as EnterpriseType,
+    processStatus: api.process_status || undefined,
     remarks: api.remarks || "",
   };
 }
@@ -124,6 +139,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
   const [enterprise, setEnterprise] = useState<Enterprise | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exiting, setExiting] = useState(false);
 
   // 获取企业详情
   useEffect(() => {
@@ -179,6 +195,40 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
     }
   };
 
+  // 企业迁出
+  const handleExit = async () => {
+    if (!enterprise) return;
+
+    try {
+      setExiting(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "moved_out" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("企业已迁出，工位号已回收");
+      // 刷新数据
+      setEnterprise({ ...enterprise, processStatus: "moved_out", status: "inactive" });
+    } catch (err) {
+      console.error("企业迁出失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setExiting(false);
+    }
+  };
+
+  // 判断企业是否已退出
+  const isExited = enterprise && (
+    ["inactive", "moved_out", "terminated"].includes(enterprise.status) ||
+    ["moved_out", "terminated"].includes(enterprise.processStatus || "")
+  );
+
   // 加载状态
   if (loading) {
     return (
@@ -228,6 +278,44 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
               <Edit className="h-4 w-4 mr-1.5" />
               编辑信息
             </Button>
+            {/* 迁出企业按钮 - 仅在未退出时显示 */}
+            {!isExited && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <UserX className="h-4 w-4 mr-1.5" />
+                    迁出企业
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>确认迁出企业</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      确定要将「{enterprise?.name}」标记为已迁出吗？
+                      <br />
+                      此操作将自动回收该企业关联的工位号，且不可撤销。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleExit}
+                      disabled={exiting}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {exiting ? (
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      ) : null}
+                      确认迁出
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </div>

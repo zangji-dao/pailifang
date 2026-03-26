@@ -100,6 +100,25 @@ export async function PUT(
       }
     }
 
+    // 获取企业当前状态，判断是否需要回收工位号
+    const { data: currentEnterprise } = await supabase
+      .from('enterprises')
+      .select('id, process_status, status')
+      .eq('id', id)
+      .single();
+
+    // 企业退出状态：已迁出、已终止
+    const exitStatuses = ['inactive', 'moved_out', 'terminated'];
+    const currentIsExited = currentEnterprise && 
+      (exitStatuses.includes(currentEnterprise.process_status || '') || 
+       exitStatuses.includes(currentEnterprise.status || ''));
+    const willExit = 
+      exitStatuses.includes(body.process_status || '') || 
+      exitStatuses.includes(body.status || '');
+    
+    // 只有从非退出状态变为退出状态时才回收工位号
+    const shouldRecycleRegNumber = willExit && !currentIsExited;
+
     // 构建更新数据
     const updateData: Record<string, any> = {
       updated_at: new Date().toISOString(),
@@ -134,6 +153,28 @@ export async function PUT(
         { success: false, error: '更新企业失败' },
         { status: 500 }
       );
+    }
+
+    // 如果企业退出（迁出/终止），回收关联的工位号
+    if (shouldRecycleRegNumber) {
+      console.log(`[企业退出] 回收企业 ${id} 的工位号`);
+      
+      const { data: recycledRegs, error: recycleError } = await supabase
+        .from('registration_numbers')
+        .update({
+          enterprise_id: null,
+          assigned_enterprise_name: null,
+          available: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('enterprise_id', id)
+        .select('id, code');
+
+      if (recycleError) {
+        console.error('回收工位号失败:', recycleError);
+      } else if (recycledRegs && recycledRegs.length > 0) {
+        console.log(`[企业退出] 已回收 ${recycledRegs.length} 个工位号:`, recycledRegs.map(r => r.code).join(', '));
+      }
     }
 
     return NextResponse.json({
