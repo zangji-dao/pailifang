@@ -56,7 +56,7 @@ export async function GET() {
     // 7. 查询基地信息
     const { data: bases, error: baseError } = await supabase
       .from('bases')
-      .select('id, name, address')
+      .select('id, name, address, address_template')
       .in('id', baseIds);
 
     if (baseError) {
@@ -92,6 +92,7 @@ export async function GET() {
               id: base?.id || '',
               name: base?.name || '',
               address: base?.address || null,
+              address_template: base?.address_template || null,
             },
           },
         },

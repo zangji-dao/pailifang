@@ -21,6 +21,7 @@ export default function NewBasePage() {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
+    address_template: "",
     status: "active",
     // 管理公司信息（甲方）
     management_company_name: "",
@@ -128,6 +129,26 @@ export default function NewBasePage() {
               placeholder="请输入基地详细地址"
               className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             />
+          </div>
+          
+          {/* 地址模板 */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              地址模板
+              <span className="text-xs text-slate-400 font-normal ml-1">用于生成工位号地址</span>
+            </label>
+            <input
+              type="text"
+              value={formData.address_template}
+              onChange={(e) => setFormData({ ...formData, address_template: e.target.value })}
+              placeholder="如：松原市宁江区建华路义乌城小区（工位号）号"
+              className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+            />
+            {formData.address_template && (
+              <p className="text-xs text-slate-500 mt-1.5">
+                示例：{formData.address_template.replace('（工位号）', '108')}
+              </p>
+            )}
           </div>
           
           {/* 地图选点 */}

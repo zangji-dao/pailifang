@@ -62,6 +62,7 @@ interface Base {
   id: string;
   name: string;
   address: string | null;
+  address_template?: string | null;
   status: string;
   meters: Meter[];
 }
@@ -89,6 +90,7 @@ interface RegNumber {
         id: string;
         name: string;
         address: string | null;
+        address_template?: string | null;
       };
     };
   };
@@ -418,20 +420,26 @@ export default function AddressManagementPage() {
   const getDisplayCode = (reg: RegNumber) => reg.manual_code || reg.code;
 
   // 获取地址显示名称
-  // 格式：松原市宁江区建华路义乌城小区1号楼XXX号（XXX是工位号）
+  // 优先使用基地的地址模板，如果没有则使用默认格式
   const getAddressName = (reg: RegNumber) => {
     const space = reg.space;
     const meter = space?.meter;
     const base = meter?.base;
     
+    // 显示编号（优先人工编号）
+    const displayCode = reg.manual_code || reg.code;
+    
+    // 如果有地址模板，使用模板生成地址
+    if (base?.address_template) {
+      return base.address_template.replace('（工位号）', displayCode);
+    }
+    
+    // 否则使用默认格式
     // 从基地地址提取完整信息
-    const baseAddress = base?.address || ''; // 如：吉林省松原市宁江区建华路义乌城
+    const baseAddress = base?.address || '';
     
     // 去掉省份前缀
     const addressWithoutProvince = baseAddress.replace(/^.+省/, '');
-    
-    // 显示编号（优先人工编号）
-    const displayCode = reg.manual_code || reg.code;
     
     // 物业名如"1号楼106室"，提取"1号楼"
     const meterName = meter?.name || meter?.code || '';

@@ -38,6 +38,7 @@ export async function GET(
         id,
         name,
         address,
+        address_template,
         status,
         created_at,
         updated_at,
@@ -214,6 +215,7 @@ export async function PUT(
     // 基本信息字段
     if (body.name !== undefined) updateData.name = body.name;
     if (body.address !== undefined) updateData.address = body.address;
+    if (body.address_template !== undefined) updateData.address_template = body.address_template;
     if (body.status !== undefined) updateData.status = body.status;
 
     // 管理公司字段

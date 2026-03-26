@@ -12,7 +12,7 @@ export async function GET() {
     // 1. 获取所有基地
     const { data: bases, error: basesError } = await supabase
       .from('bases')
-      .select('id, name, address, status')
+      .select('id, name, address, address_template, status')
       .eq('status', 'active')
       .order('name');
 
@@ -98,6 +98,7 @@ export async function GET() {
         id: base.id,
         name: base.name,
         address: base.address,
+        address_template: base.address_template,
         status: base.status,
         meters: baseMeters,
       };
