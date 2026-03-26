@@ -23,7 +23,7 @@ export interface PaginatedResponse<T> {
 
 /**
  * 获取 API 基础 URL
- * 区分服务端渲染和客户端
+ * 在沙箱环境中，通过 Next.js API Routes 代理请求到后端
  */
 const getApiBaseUrl = (): string => {
   // 服务端渲染时：使用后端服务地址
@@ -34,9 +34,9 @@ const getApiBaseUrl = (): string => {
   // 客户端：使用相对路径（通过 Next.js API Routes 代理）
   const { protocol, hostname, port } = window.location;
 
-  // 沙箱环境：调用同沙箱的后端
+  // 沙箱环境：使用相对路径，由 Next.js API Routes 代理到后端
   if (hostname.includes('dev.coze.site')) {
-    return `${protocol}//${hostname}:4001`;
+    return ''; // 空字符串表示使用相对路径
   }
 
   // 生产环境：通过域名访问（无端口）→ 使用 Nginx 代理

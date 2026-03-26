@@ -19,7 +19,11 @@ export const corsMiddleware = (req: Request, res: Response, next: NextFunction) 
     // 允许来自同一服务器的请求（IP 访问）
     origin.includes('://152.136.12.122') ||
     origin.includes('://localhost') ||
-    origin.includes('://127.0.0.1')
+    origin.includes('://127.0.0.1') ||
+    // 允许 Coze 沙箱域名
+    origin.includes('dev.coze.site') ||
+    // 允许生产域名
+    origin.includes('pi.chemicaloop.com')
   );
   
   if (isAllowed) {
