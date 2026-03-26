@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
     const supabase = createClient();
     const body = await request.json();
 
-    const { space_id, enterprise_id, assigned_enterprise_name } = body;
+    const { space_id, enterprise_id, assigned_enterprise_name, application_id } = body;
 
-    console.log('[生成工位号] 请求参数:', { space_id, enterprise_id, assigned_enterprise_name });
+    console.log('[生成工位号] 请求参数:', { space_id, enterprise_id, assigned_enterprise_name, application_id });
 
     if (!space_id) {
       return NextResponse.json(
@@ -212,6 +212,25 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[生成工位号] 创建成功:', newReg);
+
+    // 6. 如果有申请ID，回填 assigned_address_id 到申请表
+    if (application_id) {
+      const { error: updateAppError } = await supabase
+        .from('pi_settlement_applications')
+        .update({
+          assigned_address_id: newReg.id,
+          assigned_address: `${meter?.bases?.name || ''} ${meter?.name || ''} ${space.name || ''} - ${newReg.code}`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', application_id);
+
+      if (updateAppError) {
+        console.error('[生成工位号] 回填申请表失败:', updateAppError);
+        // 不回滚工位号创建，只记录错误
+      } else {
+        console.log('[生成工位号] 回填申请表成功, application_id:', application_id);
+      }
+    }
 
     return NextResponse.json({
       success: true,

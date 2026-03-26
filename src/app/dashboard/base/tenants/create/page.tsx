@@ -199,11 +199,74 @@ export default function NewTenantPage() {
       // 检查 URL 参数
       const isNewPage = searchParams.get('new') === 'true';
       const continueId = searchParams.get('continue');
+      const applicationId = searchParams.get('application_id'); // 新增：申请ID参数
       
       // 如果是新建页面（从侧边栏点击进入），清空之前的数据
       if (isNewPage) {
         clearFormCache();
         return;
+      }
+
+      // 如果有申请ID，从申请加载信息
+      if (applicationId && !draftId) {
+        try {
+          const res = await fetch(`/api/applications/${applicationId}`);
+          const result = await res.json();
+          if (result.success && result.data) {
+            const app = result.data;
+            
+            // 获取关联的工位号信息
+            let regNumberInfo = null;
+            if (app.assigned_address_id) {
+              const regRes = await fetch(`/api/registration-numbers/${app.assigned_address_id}`);
+              const regResult = await regRes.json();
+              if (regResult.success && regResult.data) {
+                const reg = regResult.data;
+                regNumberInfo = {
+                  id: reg.id,
+                  code: reg.code,
+                  manualCode: reg.manual_code,
+                  spaceId: reg.space_id,
+                  spaceName: reg.space?.name || "",
+                  meterName: reg.space?.meter?.name || "",
+                  fullAddress: app.assigned_address || "",
+                  assignedEnterpriseName: app.enterprise_name,
+                };
+              }
+            }
+
+            // 填充表单数据
+            updateFormState({
+              enterpriseCode: `ENT-${Date.now().toString(36).toUpperCase()}`,
+              enterpriseName: app.enterprise_name || "",
+              enterpriseType: "tenant", // 默认入驻企业
+              legalPerson: app.legal_person_name || "",
+              phone: app.legal_person_phone || app.contact_person_phone || "",
+              registeredCapital: app.registered_capital?.toString() || "",
+              businessScope: app.business_scope || "",
+              remarks: app.business_scope || "",
+              selectedRegNumber: regNumberInfo,
+              selectedBaseId: regNumberInfo?.spaceId ? bases.find(b => 
+                b.id === regNumberInfo.spaceId
+              )?.id || "" : "",
+              currentMainStepId: "address",
+              currentSubStepId: "select_type", // 跳过选择基地步骤
+            });
+
+            toast({
+              title: "已加载申请信息",
+              description: `从申请「${app.enterprise_name}」自动填充信息`,
+            });
+            return;
+          }
+        } catch (error) {
+          console.error("加载申请数据失败:", error);
+          toast({
+            title: "加载失败",
+            description: "无法加载申请数据",
+            variant: "destructive",
+          });
+        }
       }
 
       // 如果有继续注册的企业ID，从数据库加载

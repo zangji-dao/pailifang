@@ -16,6 +16,7 @@ import {
   Download,
   Printer,
   X,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useTabs } from "@/app/dashboard/tabs-context";
 
 // 类型定义
 interface Space {
@@ -77,6 +79,7 @@ interface RegNumber {
   assigned_enterprise_name: string | null;
   available: boolean;
   enterprise_id: string | null;
+  application_id: string | null; // 关联的申请ID
   created_at: string;
   space: {
     id: string;
@@ -138,6 +141,7 @@ const statusConfig = {
 };
 
 export default function AddressManagementPage() {
+  const tabs = useTabs();
   const [cascadeData, setCascadeData] = useState<Base[]>([]);
   const [regNumbers, setRegNumbers] = useState<RegNumber[]>([]);
   const [fillingApplications, setFillingApplications] = useState<FillingApplication[]>([]);
@@ -156,6 +160,7 @@ export default function AddressManagementPage() {
   const [selectedMeterId, setSelectedMeterId] = useState<string>("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
   const [assignedEnterpriseName, setAssignedEnterpriseName] = useState<string>("");
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>(""); // 记录选中的申请ID
 
   // 行内编辑人工编号状态
   const [editingManualCodeId, setEditingManualCodeId] = useState<string | null>(null);
@@ -283,7 +288,8 @@ export default function AddressManagementPage() {
     
     const requestBody = { 
       space_id: selectedSpaceId,
-      assigned_enterprise_name: assignedEnterpriseName
+      assigned_enterprise_name: assignedEnterpriseName,
+      application_id: selectedApplicationId || undefined, // 传递申请ID
     };
     console.log('[前端] 生成工位号请求:', requestBody);
     
@@ -298,7 +304,8 @@ export default function AddressManagementPage() {
         toast.success("工位号生成成功");
         setSelectedSpaceId("");
         setAssignedEnterpriseName("");
-        await Promise.all([fetchCascadeData(), fetchRegNumbers()]);
+        setSelectedApplicationId(""); // 清空申请ID
+        await Promise.all([fetchCascadeData(), fetchRegNumbers(), fetchFillingApplications()]);
       } else {
         toast.error(result.error || "生成失败");
       }
@@ -716,7 +723,12 @@ export default function AddressManagementPage() {
                   </Label>
                   <Select
                     value={assignedEnterpriseName}
-                    onValueChange={setAssignedEnterpriseName}
+                    onValueChange={(value) => {
+                      // 查找对应的申请ID
+                      const app = fillingApplications.find(a => a.enterpriseName === value);
+                      setSelectedApplicationId(app?.id || "");
+                      setAssignedEnterpriseName(value);
+                    }}
                     disabled={loadingApplications}
                   >
                     <SelectTrigger>
@@ -901,6 +913,32 @@ export default function AddressManagementPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        {/* 创建企业按钮：有预分配企业且未关联企业ID时显示 */}
+                        {reg.assigned_enterprise_name && !reg.enterprise_id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => {
+                              const url = reg.application_id 
+                                ? `/dashboard/base/tenants/create?application_id=${reg.application_id}`
+                                : `/dashboard/base/tenants/create?new=true`;
+                              if (tabs) {
+                                tabs.openTab({
+                                  id: `new-enterprise-${reg.id}`,
+                                  label: `创建企业-${(reg.assigned_enterprise_name || "").slice(0, 4)}`,
+                                  path: url,
+                                  icon: <UserPlus className="h-3.5 w-3.5" />,
+                                });
+                              } else {
+                                window.open(url, "_blank");
+                              }
+                            }}
+                            title="创建企业"
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

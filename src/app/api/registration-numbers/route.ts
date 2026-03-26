@@ -63,11 +63,23 @@ export async function GET() {
       console.error('获取基地信息失败:', baseError);
     }
 
-    // 8. 组装数据
+    // 8. 查询关联的申请（通过 assigned_address_id 反查）
+    const regIds = regNumbers.map(r => r.id);
+    const { data: applications, error: appError } = await supabase
+      .from('pi_settlement_applications')
+      .select('id, assigned_address_id, enterprise_name')
+      .in('assigned_address_id', regIds);
+
+    if (appError) {
+      console.error('获取申请信息失败:', appError);
+    }
+
+    // 9. 组装数据
     const formattedData = regNumbers.map((reg) => {
       const space = (spaces || []).find(s => s.id === reg.space_id);
       const meter = space ? (meters || []).find(m => m.id === space.meter_id) : null;
       const base = meter ? (bases || []).find(b => b.id === meter.base_id) : null;
+      const application = (applications || []).find(a => a.assigned_address_id === reg.id);
 
       return {
         id: reg.id,
@@ -79,6 +91,7 @@ export async function GET() {
         available: reg.available,
         enterprise_id: reg.enterprise_id,
         created_at: reg.created_at,
+        application_id: application?.id || null, // 关联的申请ID
         space: {
           id: space?.id || '',
           code: space?.code || '',
