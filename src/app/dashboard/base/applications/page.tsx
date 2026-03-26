@@ -449,9 +449,11 @@ export default function ApplicationsPage() {
           }
           .footer {
             margin-top: 40px;
-            text-align: right;
+            text-align: left;
             font-size: 12px;
             color: rgb(102,102,102);
+            display: flex;
+            justify-content: space-between;
           }
         </style>
       </head>

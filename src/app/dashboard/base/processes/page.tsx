@@ -256,7 +256,7 @@ export default function ApprovalPage() {
             .signature-box { width: 220px; text-align: center; }
             .signature-line { border-bottom: 1px solid rgb(0,0,0); height: 80px; margin-bottom: 10px; }
             .signature-label { font-weight: bold; margin-bottom: 15px; }
-            .footer { margin-top: 40px; text-align: right; font-size: 12px; color: rgb(102,102,102); }
+            .footer { margin-top: 40px; font-size: 12px; color: rgb(102,102,102); display: flex; justify-content: space-between; }
           </style>
         </head>
         <body>

@@ -246,7 +246,7 @@ function createApplicationHtml(application: ApplicationData): string {
       </div>
 
       <!-- 页脚 -->
-      <div style="margin-top: 40px; text-align: right; font-size: 12px; color: rgb(102,102,102);">
+      <div style="margin-top: 40px; font-size: 12px; color: rgb(102,102,102); display: flex; justify-content: space-between;">
         <div>申请编号：${application.applicationNo}</div>
         <div>打印时间：${new Date().toLocaleString("zh-CN")}</div>
       </div>
