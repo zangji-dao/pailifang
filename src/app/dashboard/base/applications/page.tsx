@@ -975,7 +975,7 @@ export default function ApplicationsPage() {
                             className="gap-1"
                           >
                             <Edit className="h-3.5 w-3.5" />
-                            编辑
+                            继续申请
                           </Button>
                           <Button
                             size="sm"
