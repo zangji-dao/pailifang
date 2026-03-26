@@ -2,43 +2,26 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * 将数字转换为36进制字符串（0-9 + A-Z）
- * @param num 数字（0-1295）
- * @returns 2位36进制字符串
+ * 生成4位随机数字字符串
+ * @returns 4位随机数字（0000-9999）
  */
-function toBase36(num: number): string {
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const high = Math.floor(num / 36);
-  const low = num % 36;
-  return chars[high] + chars[low];
-}
-
-/**
- * 生成随机36进制字符串
- * @returns 2位36进制随机字符串
- */
-function randomBase36(): string {
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const random1 = Math.floor(Math.random() * 36);
-  const random2 = Math.floor(Math.random() * 36);
-  return chars[random1] + chars[random2];
+function randomDigits4(): string {
+  return String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 }
 
 /**
  * POST /api/registration-numbers/generate
  * 为指定的物理空间生成工位号
  * 
- * 编码规则：[年份2位][物业2位][空间2位][随机2位]
- * - 年份：当前年份后2位（数字）
- * - 物业：基地内物业序号转36进制
- * - 空间：物业内空间序号转36进制
- * - 随机：36进制随机码，确保不重复
+ * 编码规则：[PI][基地码2位][随机4位]
+ * - PI：固定前缀
+ * - 基地码：基地按创建顺序编号（01-99）
+ * - 随机：4位随机数字，确保不重复
  * 
- * 示例：260A1B3P
- *       │  │  │  └── 随机编号
- *       │  │  └──── 空间编号（第27个空间，36进制1B）
- *       │  └─────── 物业编号（第10个物业，36进制0A）
- *       └────────── 年份（2026年）
+ * 示例：PI013847
+ *       │  │  └── 随机数字（3847）
+ *       │  └──── 基地码（01号基地）
+ *       └─────── 固定前缀 PI
  */
 export async function POST(request: NextRequest) {
   try {
@@ -71,13 +54,11 @@ export async function POST(request: NextRequest) {
         code,
         name,
         meter_id,
-        created_at,
         meters (
           id,
           code,
           name,
           base_id,
-          created_at,
           bases (
             id,
             name
@@ -97,23 +78,47 @@ export async function POST(request: NextRequest) {
 
     const meter = space.meters as any;
     const baseId = meter?.base_id;
-    const meterId = meter?.id;
 
-    if (!baseId || !meterId) {
+    if (!baseId) {
       return NextResponse.json(
-        { success: false, error: '空间缺少基地或物业信息' },
+        { success: false, error: '空间缺少基地信息' },
         { status: 400 }
       );
     }
 
-    // 2. 获取基地下所有物业，按创建时间排序，确定当前物业的序号
-    const { data: baseMeters, error: metersError } = await supabase
-      .from('meters')
-      .select('id, created_at')
-      .eq('base_id', baseId)
+    // 2. 获取所有基地，按创建时间排序，确定当前基地的序号
+    const { data: bases, error: basesError } = await supabase
+      .from('bases')
+      .select('id')
       .order('created_at', { ascending: true });
 
-    if (metersError || !baseMeters) {
+    if (basesError || !bases) {
+      console.error('获取基地列表失败:', basesError);
+      return NextResponse.json(
+        { success: false, error: '获取基地列表失败' },
+        { status: 500 }
+      );
+    }
+
+    const baseIndex = bases.findIndex(b => b.id === baseId);
+    if (baseIndex === -1) {
+      return NextResponse.json(
+        { success: false, error: '无法确定基地序号' },
+        { status: 500 }
+      );
+    }
+
+    // 基地码：序号+1，补齐2位
+    const baseCode = String(baseIndex + 1).padStart(2, '0');
+
+    // 3. 获取该基地下已有的工位号，提取随机部分用于去重
+    // 先获取该基地下所有空间的ID
+    const { data: baseMeters, error: metersError } = await supabase
+      .from('meters')
+      .select('id')
+      .eq('base_id', baseId);
+
+    if (metersError) {
       console.error('获取物业列表失败:', metersError);
       return NextResponse.json(
         { success: false, error: '获取物业列表失败' },
@@ -121,22 +126,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const meterIndex = baseMeters.findIndex(m => m.id === meterId);
-    if (meterIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: '无法确定物业序号' },
-        { status: 500 }
-      );
-    }
+    const meterIds = (baseMeters || []).map(m => m.id);
 
-    // 3. 获取物业下所有空间，按创建时间排序，确定当前空间的序号
-    const { data: meterSpaces, error: spacesError } = await supabase
+    // 获取这些物业下所有空间
+    const { data: baseSpaces, error: spacesError } = await supabase
       .from('spaces')
-      .select('id, created_at')
-      .eq('meter_id', meterId)
-      .order('created_at', { ascending: true });
+      .select('id')
+      .in('meter_id', meterIds);
 
-    if (spacesError || !meterSpaces) {
+    if (spacesError) {
       console.error('获取空间列表失败:', spacesError);
       return NextResponse.json(
         { success: false, error: '获取空间列表失败' },
@@ -144,68 +142,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const spaceIndex = meterSpaces.findIndex(s => s.id === space_id);
-    if (spaceIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: '无法确定空间序号' },
-        { status: 500 }
-      );
-    }
+    const spaceIds = (baseSpaces || []).map(s => s.id);
 
-    // 4. 获取该空间下已有的工位号后缀（随机部分），用于去重
+    // 获取该基地下所有工位号
     const { data: existingRegs, error: regsError } = await supabase
       .from('registration_numbers')
       .select('code')
-      .eq('space_id', space_id);
+      .in('space_id', spaceIds);
 
-    if (regsError) {
-      console.error('获取已有工位号失败:', regsError);
-      return NextResponse.json(
-        { success: false, error: '获取已有工位号失败' },
-        { status: 500 }
-      );
-    }
-
-    // 提取已有的随机后缀（最后2位）
+    // 提取已有的随机后缀（PI+基地码后的4位）
+    const prefix = `PI${baseCode}`;
     const existingSuffixes = new Set(
       (existingRegs || [])
-        .filter(r => r.code && r.code.length >= 2)
-        .map(r => r.code.slice(-2).toUpperCase())
+        .filter(r => r.code && r.code.startsWith(prefix))
+        .map(r => r.code.slice(-4))
     );
 
-    // 5. 生成新的工位号编码
-    const year = new Date().getFullYear().toString().slice(-2); // 年份后2位
-    const meterCode = toBase36(meterIndex); // 物业序号转36进制
-    const spaceCode = toBase36(spaceIndex); // 空间序号转36进制
-
-    // 生成随机后缀，确保不重复（最多尝试100次）
-    let randomCode = randomBase36();
+    // 4. 生成随机后缀，确保不重复（最多尝试100次）
+    let randomCode = randomDigits4();
     let attempts = 0;
     while (existingSuffixes.has(randomCode) && attempts < 100) {
-      randomCode = randomBase36();
+      randomCode = randomDigits4();
       attempts++;
     }
 
     if (existingSuffixes.has(randomCode)) {
       return NextResponse.json(
-        { success: false, error: '该空间的工位号已用尽' },
+        { success: false, error: '该基地的工位号随机池已用尽' },
         { status: 400 }
       );
     }
 
-    const newCode = `${year}${meterCode}${spaceCode}${randomCode}`;
+    const newCode = `${prefix}${randomCode}`;
 
     console.log('[生成工位号] 编码组成:', {
-      year,
-      meterIndex,
-      meterCode,
-      spaceIndex,
-      spaceCode,
+      prefix: 'PI',
+      baseIndex: baseIndex + 1,
+      baseCode,
       randomCode,
       newCode
     });
 
-    // 6. 插入新工位号
+    // 5. 插入新工位号
     const insertData = {
       id: crypto.randomUUID(),
       code: newCode,

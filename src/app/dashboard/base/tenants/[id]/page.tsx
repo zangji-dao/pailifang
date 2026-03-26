@@ -212,7 +212,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
         throw new Error(result.error || "操作失败");
       }
 
-      toast.success("企业已迁出，工位号已回收");
+      toast.success("企业已迁出");
       // 刷新数据
       setEnterprise({ ...enterprise, processStatus: "moved_out", status: "inactive" });
     } catch (err) {
@@ -297,7 +297,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                     <AlertDialogDescription>
                       确定要将「{enterprise?.name}」标记为已迁出吗？
                       <br />
-                      此操作将自动回收该企业关联的工位号，且不可撤销。
+                      此操作不可撤销。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
