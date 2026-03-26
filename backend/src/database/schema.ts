@@ -294,7 +294,14 @@ export const bases = pgTable("bases", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	address: text(),
+	addressTemplate: text("address_template"),
 	status: varchar({ length: 20 }).default('active').notNull(),
+	// 管理公司信息（甲方）
+	managementCompanyName: varchar("management_company_name", { length: 255 }),
+	managementCompanyCreditCode: varchar("management_company_credit_code", { length: 50 }),
+	managementCompanyLegalPerson: varchar("management_company_legal_person", { length: 100 }),
+	managementCompanyAddress: varchar("management_company_address", { length: 500 }),
+	managementCompanyPhone: varchar("management_company_phone", { length: 50 }),
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at"),
 }, (table) => [

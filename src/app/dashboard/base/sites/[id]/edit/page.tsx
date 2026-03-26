@@ -17,13 +17,13 @@ interface BaseData {
   id: string;
   name: string;
   address: string | null;
-  address_template?: string | null;
+  addressTemplate?: string | null;
   status: string;
-  management_company_name?: string | null;
-  management_company_credit_code?: string | null;
-  management_company_legal_person?: string | null;
-  management_company_address?: string | null;
-  management_company_phone?: string | null;
+  managementCompanyName?: string | null;
+  managementCompanyCreditCode?: string | null;
+  managementCompanyLegalPerson?: string | null;
+  managementCompanyAddress?: string | null;
+  managementCompanyPhone?: string | null;
 }
 
 export default function EditBasePage() {
@@ -75,13 +75,13 @@ export default function EditBasePage() {
           setFormData({
             name: base.name,
             address: base.address || "",
-            address_template: base.address_template || "",
+            address_template: base.addressTemplate || "",
             status: base.status,
-            management_company_name: base.management_company_name || "",
-            management_company_credit_code: base.management_company_credit_code || "",
-            management_company_legal_person: base.management_company_legal_person || "",
-            management_company_address: base.management_company_address || "",
-            management_company_phone: base.management_company_phone || "",
+            management_company_name: base.managementCompanyName || "",
+            management_company_credit_code: base.managementCompanyCreditCode || "",
+            management_company_legal_person: base.managementCompanyLegalPerson || "",
+            management_company_address: base.managementCompanyAddress || "",
+            management_company_phone: base.managementCompanyPhone || "",
           });
         } else {
           setError(result.error || "获取基地信息失败");
