@@ -3,21 +3,24 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/registration-numbers/available
- * 获取可用的工位号列表
+ * 获取可用的工位号列表（未正式分配给企业的工位号）
  * 支持参数：
  * - base_id: 按基地ID过滤
+ * - search: 按企业名称搜索
  */
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
     const { searchParams } = new URL(request.url);
     const baseId = searchParams.get('base_id');
+    const search = searchParams.get('search');
 
-    // 1. 查询所有可用的工位号
+    // 1. 查询所有未正式分配的工位号（enterprise_id 为空）
+    // 无论是 available=true 还是 false，只要没有 enterprise_id 就可以选择
     let query = supabase
       .from('registration_numbers')
       .select('id, code, manual_code, available, space_id, assigned_enterprise_name, property_owner, management_company, created_at')
-      .eq('available', true)
+      .is('enterprise_id', null)  // 未正式分配给企业
       .order('code', { ascending: true });
 
     const { data: regNumbers, error: regError } = await query;
@@ -66,7 +69,7 @@ export async function GET(request: NextRequest) {
     // 7. 查询基地信息
     const { data: bases, error: baseError } = await supabase
       .from('bases')
-      .select('id, name, address')
+      .select('id, name, address, address_template')
       .in('id', baseIds);
 
     if (baseError) {
@@ -108,6 +111,14 @@ export async function GET(request: NextRequest) {
     // 如果指定了基地ID，过滤结果
     if (baseId) {
       formattedData = formattedData.filter(item => item.baseId === baseId);
+    }
+
+    // 如果指定了搜索关键词，按企业名称过滤
+    if (search && search.trim()) {
+      const searchLower = search.trim().toLowerCase();
+      formattedData = formattedData.filter(item => 
+        item.assignedEnterpriseName?.toLowerCase().includes(searchLower)
+      );
     }
 
     return NextResponse.json({
