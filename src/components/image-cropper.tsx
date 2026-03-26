@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Check, Move } from "lucide-react";
+import { RotateCcw, RotateCw, Check, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageCropperProps {
@@ -29,6 +29,9 @@ export function ImageCropper({
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   
+  // 旋转角度（0, 90, 180, 270）
+  const [rotation, setRotation] = useState(0);
+  
   // 矩形裁剪（原图坐标）
   const [cropRect, setCropRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   
@@ -37,12 +40,27 @@ export function ImageCropper({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialRect, setInitialRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   
+  // 获取旋转后的图片尺寸
+  const getRotatedSize = useCallback((width: number, height: number, angle: number) => {
+    const rad = (angle * Math.PI) / 180;
+    const cos = Math.abs(Math.cos(rad));
+    const sin = Math.abs(Math.sin(rad));
+    return {
+      width: width * cos + height * sin,
+      height: width * sin + height * cos,
+    };
+  }, []);
+  
+  // 旋转后的图片尺寸
+  const rotatedImageSize = getRotatedSize(imageSize.width, imageSize.height, rotation);
+  
   // 加载图片并初始化裁剪区域
   useEffect(() => {
     if (open && imageSrc) {
       const img = new window.Image();
       img.onload = () => {
         setImageSize({ width: img.width, height: img.height });
+        setRotation(0); // 重置旋转
         
         // 初始化裁剪区域：居中，保持比例，尽可能大
         const maxHeight = img.height * 0.9;
@@ -71,46 +89,71 @@ export function ImageCropper({
     }
   }, [open, imageSrc, aspectRatio]);
   
-  // 计算显示尺寸和偏移
+  // 计算显示尺寸和偏移（基于旋转后的尺寸）
   useEffect(() => {
-    if (containerRef.current && imageSize.width > 0) {
+    if (containerRef.current && rotatedImageSize.width > 0) {
       const containerWidth = containerRef.current.clientWidth;
       const containerHeight = 450;
-      const scale = Math.min(containerWidth / imageSize.width, containerHeight / imageSize.height);
-      const displayWidth = imageSize.width * scale;
-      const displayHeight = imageSize.height * scale;
+      const scale = Math.min(containerWidth / rotatedImageSize.width, containerHeight / rotatedImageSize.height);
+      const displayWidth = rotatedImageSize.width * scale;
+      const displayHeight = rotatedImageSize.height * scale;
       setDisplaySize({ width: displayWidth, height: displayHeight });
       setOffset({
         x: (containerWidth - displayWidth) / 2,
         y: (containerHeight - displayHeight) / 2,
       });
     }
-  }, [imageSize]);
+  }, [rotatedImageSize]);
   
-  // 坐标转换：显示坐标 -> 原图坐标
+  // 当旋转改变时，重新初始化裁剪区域
+  useEffect(() => {
+    if (rotatedImageSize.width > 0) {
+      const maxHeight = rotatedImageSize.height * 0.9;
+      const maxWidth = rotatedImageSize.width * 0.9;
+      
+      let cropHeight, cropWidth;
+      
+      if (maxWidth / maxHeight > aspectRatio) {
+        cropHeight = maxHeight;
+        cropWidth = cropHeight * aspectRatio;
+      } else {
+        cropWidth = maxWidth;
+        cropHeight = cropWidth / aspectRatio;
+      }
+      
+      setCropRect({
+        x: (rotatedImageSize.width - cropWidth) / 2,
+        y: (rotatedImageSize.height - cropHeight) / 2,
+        width: cropWidth,
+        height: cropHeight,
+      });
+    }
+  }, [rotation, rotatedImageSize, aspectRatio]);
+  
+  // 坐标转换：显示坐标 -> 旋转后的原图坐标
   const displayToImage = useCallback((displayX: number, displayY: number) => {
-    const scale = imageSize.width / displaySize.width;
+    const scale = rotatedImageSize.width / displaySize.width;
     return {
       x: (displayX - offset.x) * scale,
       y: (displayY - offset.y) * scale,
     };
-  }, [imageSize, displaySize, offset]);
+  }, [rotatedImageSize, displaySize, offset]);
   
-  // 坐标转换：原图坐标 -> 显示坐标
+  // 坐标转换：旋转后的原图坐标 -> 显示坐标
   const imageToDisplay = useCallback((imageX: number, imageY: number) => {
-    const scale = displaySize.width / imageSize.width;
+    const scale = displaySize.width / rotatedImageSize.width;
     return {
       x: imageX * scale + offset.x,
       y: imageY * scale + offset.y,
     };
-  }, [imageSize, displaySize, offset]);
+  }, [rotatedImageSize, displaySize, offset]);
   
   // 获取裁剪框的显示坐标
   const displayCrop = {
     x: imageToDisplay(cropRect.x, cropRect.y).x,
     y: imageToDisplay(cropRect.x, cropRect.y).y,
-    width: cropRect.width * (displaySize.width / imageSize.width),
-    height: cropRect.height * (displaySize.width / imageSize.width),
+    width: cropRect.width * (displaySize.width / rotatedImageSize.width),
+    height: cropRect.height * (displaySize.width / rotatedImageSize.width),
   };
   
   // 限制裁剪框在图片范围内
@@ -119,15 +162,15 @@ export function ImageCropper({
     let { x, y, width, height } = rect;
     
     // 先限制尺寸
-    width = Math.max(minSize, Math.min(width, imageSize.width));
-    height = Math.max(minSize, Math.min(height, imageSize.height));
+    width = Math.max(minSize, Math.min(width, rotatedImageSize.width));
+    height = Math.max(minSize, Math.min(height, rotatedImageSize.height));
     
     // 再限制位置
-    x = Math.max(0, Math.min(x, imageSize.width - width));
-    y = Math.max(0, Math.min(y, imageSize.height - height));
+    x = Math.max(0, Math.min(x, rotatedImageSize.width - width));
+    y = Math.max(0, Math.min(y, rotatedImageSize.height - height));
     
     return { x, y, width, height };
-  }, [imageSize]);
+  }, [rotatedImageSize]);
   
   // 拖拽开始
   const handleMouseDown = (mode: DragMode, e: React.MouseEvent) => {
@@ -142,8 +185,8 @@ export function ImageCropper({
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!dragMode) return;
     
-    const deltaX = (e.clientX - dragStart.x) * (imageSize.width / displaySize.width);
-    const deltaY = (e.clientY - dragStart.y) * (imageSize.height / displaySize.height);
+    const deltaX = (e.clientX - dragStart.x) * (rotatedImageSize.width / displaySize.width);
+    const deltaY = (e.clientY - dragStart.y) * (rotatedImageSize.height / displaySize.height);
     
     if (dragMode === "move") {
       // 移动裁剪框
@@ -187,7 +230,7 @@ export function ImageCropper({
         setCropRect(clampRect({ x: newX, y: newY, width: newWidth, height: newHeight }));
       }
     }
-  }, [dragMode, dragStart, initialRect, imageSize, displaySize, aspectRatio, clampRect]);
+  }, [dragMode, dragStart, initialRect, rotatedImageSize, displaySize, aspectRatio, clampRect]);
   
   const handleMouseUp = useCallback(() => {
     setDragMode(null);
@@ -204,8 +247,18 @@ export function ImageCropper({
     }
   }, [dragMode, handleMouseMove, handleMouseUp]);
   
+  // 旋转操作
+  const handleRotateLeft = () => {
+    setRotation((prev) => (prev - 90 + 360) % 360);
+  };
+  
+  const handleRotateRight = () => {
+    setRotation((prev) => (prev + 90) % 360);
+  };
+  
   // 重置
   const handleReset = () => {
+    setRotation(0);
     const maxHeight = imageSize.height * 0.9;
     const maxWidth = imageSize.width * 0.9;
     
@@ -227,27 +280,76 @@ export function ImageCropper({
     });
   };
   
-  // 执行裁剪
+  // 执行裁剪（带旋转）
   const handleCrop = async () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx || !imageRef.current) return;
     
     const img = imageRef.current;
+    
+    // 设置画布尺寸为裁剪区域大小
     canvas.width = cropRect.width;
     canvas.height = cropRect.height;
     
+    // 计算旋转后的裁剪坐标（转换回原始图片坐标）
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    
+    // 原始图片中心点
+    const centerX = imageSize.width / 2;
+    const centerY = imageSize.height / 2;
+    
+    // 旋转后的图片尺寸
+    const rotatedWidth = rotatedImageSize.width;
+    const rotatedHeight = rotatedImageSize.height;
+    
+    // 裁剪区域在旋转后图片中的位置，转换回原始图片坐标
+    // 旋转后图片的中心偏移
+    const rotatedCenterX = rotatedWidth / 2;
+    const rotatedCenterY = rotatedHeight / 2;
+    
+    // 裁剪区域中心在旋转后坐标系中的位置
+    const cropCenterX = cropRect.x + cropRect.width / 2;
+    const cropCenterY = cropRect.y + cropRect.height / 2;
+    
+    // 相对于旋转后图片中心的偏移
+    const offsetX = cropCenterX - rotatedCenterX;
+    const offsetY = cropCenterY - rotatedCenterY;
+    
+    // 逆向旋转，得到原始图片中的偏移
+    const originalOffsetX = offsetX * cos + offsetY * sin;
+    const originalOffsetY = -offsetX * sin + offsetY * cos;
+    
+    // 原始图片中的裁剪中心
+    const originalCropCenterX = centerX + originalOffsetX;
+    const originalCropCenterY = centerY + originalOffsetY;
+    
+    // 保存当前状态
+    ctx.save();
+    
+    // 移动到画布中心
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    
+    // 旋转
+    ctx.rotate(-rad);
+    
+    // 计算绘制位置
+    const drawX = -originalCropCenterX;
+    const drawY = -originalCropCenterY;
+    
+    // 绘制图片
     ctx.drawImage(
       img,
-      cropRect.x,
-      cropRect.y,
-      cropRect.width,
-      cropRect.height,
-      0,
-      0,
-      cropRect.width,
-      cropRect.height
+      drawX,
+      drawY,
+      imageSize.width,
+      imageSize.height
     );
+    
+    // 恢复状态
+    ctx.restore();
     
     canvas.toBlob((blob) => {
       if (blob) {
@@ -281,7 +383,7 @@ export function ImageCropper({
             crossOrigin="anonymous"
           />
           
-          {/* 显示图片 */}
+          {/* 显示图片（带旋转） */}
           <img
             src={imageSrc}
             alt="预览"
@@ -291,6 +393,8 @@ export function ImageCropper({
               top: offset.y,
               width: displaySize.width,
               height: displaySize.height,
+              transform: `rotate(${rotation}deg)`,
+              transformOrigin: 'center center',
             }}
             crossOrigin="anonymous"
             draggable={false}
@@ -380,10 +484,18 @@ export function ImageCropper({
         </div>
         
         <DialogFooter className="flex items-center justify-between sm:justify-between">
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            重置
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleRotateLeft} title="向左旋转90°">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRotateRight} title="向右旋转90°">
+              <RotateCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              <Move className="h-4 w-4 mr-2" />
+              重置
+            </Button>
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>
               取消
