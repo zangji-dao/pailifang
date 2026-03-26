@@ -377,6 +377,31 @@ export default function ApprovalPage() {
     }
   };
 
+  // 删除审批弹窗中的附件
+  const handleDeleteApproveAttachment = async (attachmentName: string) => {
+    if (!approvingApp) return;
+
+    try {
+      setActionLoading(true);
+      const response = await fetch(`/api/applications/${approvingApp.id}/attachments?name=${encodeURIComponent(attachmentName)}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("删除成功");
+        setApproveAttachments((prev) => prev.filter((a) => a.name !== attachmentName));
+      } else {
+        toast.error(result.error || "删除失败");
+      }
+    } catch (err) {
+      console.error("删除失败:", err);
+      toast.error("删除失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // 获取申请列表
   const fetchApplications = async () => {
     try {
@@ -865,7 +890,7 @@ export default function ApprovalPage() {
                             ) : (
                               <Download className="h-3.5 w-3.5" />
                             )}
-                            下载附件
+                            下载材料
                           </Button>
                           <Button
                             size="sm"
@@ -880,15 +905,6 @@ export default function ApprovalPage() {
                               <Printer className="h-3.5 w-3.5" />
                             )}
                             打印
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenUpload(app)}
-                            className="gap-1"
-                          >
-                            <Upload className="h-3.5 w-3.5" />
-                            附件
                           </Button>
                           {statusFilter === "pending" && (
                             <>
@@ -970,11 +986,11 @@ export default function ApprovalPage() {
 
       {/* 审批确认弹窗 */}
       <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>确认审批通过</DialogTitle>
+            <DialogTitle>审批通过</DialogTitle>
             <DialogDescription>
-              请确认已上传签字表扫描件，审批通过后将无法修改。
+              请上传盖章后的签字表扫描件，然后确认通过。
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -996,38 +1012,77 @@ export default function ApprovalPage() {
               </div>
             )}
 
-            {/* 附件检查 */}
+            {/* 上传附件 */}
             <div>
-              <h4 className="text-sm font-medium mb-2">附件确认</h4>
+              <h4 className="text-sm font-medium mb-2">上传签字表扫描件</h4>
               {checkingAttachments ? (
                 <div className="flex items-center justify-center py-4 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  检查附件中...
-                </div>
-              ) : approveAttachments.length > 0 ? (
-                <div className="border rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-sm text-emerald-600 mb-2">
-                    <CheckCircle className="h-4 w-4" />
-                    已上传 {approveAttachments.length} 个附件
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    {approveAttachments.map((att, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <ImageIcon className="h-3 w-3" />
-                        {att.name}
-                      </div>
-                    ))}
-                  </div>
+                  加载中...
                 </div>
               ) : (
-                <div className="border border-destructive/50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    暂未上传附件
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    建议上传签字表扫描件后再审批通过
-                  </p>
+                <div className="space-y-3">
+                  {/* 已上传的附件 */}
+                  {approveAttachments.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {approveAttachments.map((att, idx) => (
+                        <div key={idx} className="relative group">
+                          <div className="aspect-[1.4/1] rounded-lg border overflow-hidden bg-muted">
+                            <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteApproveAttachment(att.name)}
+                            disabled={actionLoading}
+                            className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-destructive text-white hover:bg-destructive/90 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* 上传按钮 */}
+                  <label className="flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 cursor-pointer transition-colors">
+                    <Upload className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {approveAttachments.length > 0 ? "继续上传" : "点击上传"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length === 0 || !approvingApp) return;
+                        
+                        setActionLoading(true);
+                        try {
+                          const formData = new FormData();
+                          files.forEach((file) => formData.append("files", file));
+                          
+                          const response = await fetch(`/api/applications/${approvingApp.id}/attachments`, {
+                            method: "POST",
+                            body: formData,
+                          });
+                          const result = await response.json();
+                          
+                          if (result.success) {
+                            setApproveAttachments((prev) => [...prev, ...result.data]);
+                            toast.success("上传成功");
+                          } else {
+                            toast.error(result.error || "上传失败");
+                          }
+                        } catch (err) {
+                          toast.error("上传失败");
+                        } finally {
+                          setActionLoading(false);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               )}
             </div>
