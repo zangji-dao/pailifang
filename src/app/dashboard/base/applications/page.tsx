@@ -483,7 +483,7 @@ export default function ApplicationsPage() {
               </div>
               <div class="info-row">
                 <span class="info-label">注册资本：</span>
-                <span class="info-value">${data.registeredCapital || "-"} ${data.currencyType || "万元"}</span>
+                <span class="info-value">${data.registeredCapital ? `${data.registeredCapital} 万元` : "-"}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">纳税人类型：</span>

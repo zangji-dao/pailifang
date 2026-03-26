@@ -96,7 +96,7 @@ function createApplicationHtml(application: ApplicationData): string {
               <table style="width: 100%;">
                 ${createInfoRow("申请编号：", application.applicationNo)}
                 ${createInfoRow("企业名称：", application.enterpriseName)}
-                ${createInfoRow("注册资本：", `${application.registeredCapital || "-"} ${application.currencyType || "万元"}`)}
+                ${createInfoRow("注册资本：", application.registeredCapital ? `${application.registeredCapital} 万元` : "-")}
               </table>
             </td>
             <td style="width: 50%; padding: 0;">
