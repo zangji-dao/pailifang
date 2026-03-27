@@ -14,6 +14,8 @@ import {
   Loader2,
   AlertCircle,
   UserX,
+  PlayCircle,
+  StopCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +46,8 @@ type EnterpriseStatus =
   | "pending_contract" 
   | "pending_payment" 
   | "moved_out"
-  | "terminated";
+  | "terminated"
+  | "established";
 
 // 企业类型
 type EnterpriseType = "tenant" | "non_tenant";
@@ -75,6 +78,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   pending_address: { label: "待分配地址", className: "bg-orange-50 text-orange-600 border-orange-200" },
   pending_registration: { label: "待工商注册", className: "bg-purple-50 text-purple-600 border-purple-200" },
   pending_change: { label: "待工商变更", className: "bg-blue-50 text-blue-600 border-blue-200" },
+  established: { label: "已建交", className: "bg-teal-50 text-teal-600 border-teal-200" },
   pending_contract: { label: "待签合同", className: "bg-cyan-50 text-cyan-600 border-cyan-200" },
   pending_payment: { label: "待缴费", className: "bg-amber-50 text-amber-600 border-amber-200" },
   moved_out: { label: "已迁出", className: "bg-gray-50 text-gray-600 border-gray-200" },
@@ -140,6 +144,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exiting, setExiting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // 获取企业详情
   useEffect(() => {
@@ -223,6 +228,60 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
     }
   };
 
+  // 服务企业：开始服务（已建交 → 服务中）
+  const handleStartService = async () => {
+    if (!enterprise) return;
+
+    try {
+      setUpdatingStatus(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "active" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("已开始服务");
+      setEnterprise({ ...enterprise, processStatus: "active" });
+    } catch (err) {
+      console.error("开始服务失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // 服务企业：终止服务（服务中 → 已建交）
+  const handleEndService = async () => {
+    if (!enterprise) return;
+
+    try {
+      setUpdatingStatus(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "established" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("服务已终止");
+      setEnterprise({ ...enterprise, processStatus: "established" });
+    } catch (err) {
+      console.error("终止服务失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   // 判断企业是否已退出
   const isExited = enterprise && (
     ["inactive", "moved_out", "terminated"].includes(enterprise.status) ||
@@ -278,6 +337,87 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
               <Edit className="h-4 w-4 mr-1.5" />
               编辑信息
             </Button>
+            {/* 服务企业状态切换按钮 */}
+            {enterprise.type === "non_tenant" && !isExited && (
+              <>
+                {enterprise.processStatus === "established" && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                        disabled={updatingStatus}
+                      >
+                        <PlayCircle className="h-4 w-4 mr-1.5" />
+                        开始服务
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>确认开始服务</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          确定要开始为「{enterprise?.name}」提供服务吗？
+                          <br />
+                          服务开始后，企业状态将变更为"服务中"。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleStartService}
+                          disabled={updatingStatus}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          {updatingStatus ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          ) : null}
+                          确认开始
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                {enterprise.processStatus === "active" && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                        disabled={updatingStatus}
+                      >
+                        <StopCircle className="h-4 w-4 mr-1.5" />
+                        终止服务
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>确认终止服务</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          确定要终止为「{enterprise?.name}」提供服务吗？
+                          <br />
+                          服务终止后，企业状态将变更为"已建交"，可以重新开始服务。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleEndService}
+                          disabled={updatingStatus}
+                          className="bg-amber-600 hover:bg-amber-700"
+                        >
+                          {updatingStatus ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          ) : null}
+                          确认终止
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
+            )}
             {/* 迁出企业按钮 - 仅在未退出时显示 */}
             {!isExited && (
               <AlertDialog>

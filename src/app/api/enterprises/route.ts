@@ -219,8 +219,8 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // 非入驻企业
-      processStatus = 'pending_change'; // 待工商变更
+      // 非入驻企业：创建完成后设为"已建交"状态
+      processStatus = 'established'; // 已建交
     }
 
     // 构建基础企业数据（仅使用数据库已有的字段）

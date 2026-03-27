@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (hasBasicInfo && current_step === 'address') {
       // 完成分配地址步骤，进入工商注册
       status = 'active';
-      processStatus = type === 'tenant' ? 'pending_registration' : 'pending_change';
+      processStatus = type === 'tenant' ? 'pending_registration' : 'established';
     } else if (current_step === 'registration') {
       status = 'active';
       processStatus = 'pending_contract';

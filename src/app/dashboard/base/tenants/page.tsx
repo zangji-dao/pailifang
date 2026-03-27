@@ -12,6 +12,8 @@ import {
   Edit,
   Store,
   ArrowRight,
+  PlayCircle,
+  StopCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +35,8 @@ type ProcessStatus =
   | "active" 
   | "completed"
   | "moved_out"
-  | "terminated";
+  | "terminated"
+  | "established";
 
 interface Enterprise {
   id: string;
@@ -124,6 +127,13 @@ const nonTenantStatusConfig: Record<string, {
     bgColor: "bg-blue-50",
     borderColor: "border-blue-300",
     dotColor: "bg-blue-500",
+  },
+  established: { 
+    label: "已建交", 
+    color: "text-teal-600",
+    bgColor: "bg-teal-50",
+    borderColor: "border-teal-300",
+    dotColor: "bg-teal-500",
   },
   pending_change: { 
     label: "待工商变更", 
@@ -228,6 +238,7 @@ export default function EnterpriseListPage() {
   const nonTenantStats = {
     total: enterprises.filter((e) => e.type === "non_tenant").length,
     new: enterprises.filter((e) => e.type === "non_tenant" && (e.processStatus === "new" || e.processStatus === undefined)).length,
+    established: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "established").length,
     pending_change: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "pending_change").length,
     active: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "active").length,
     terminated: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "terminated").length,
@@ -469,7 +480,7 @@ export default function EnterpriseListPage() {
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
                         {/* 继续注册按钮 - 对于未完成的企业显示 */}
-                        {['pending_registration', 'pending_change', 'pending_contract', 'pending_payment'].includes(processStatus) && (
+                        {['pending_registration', 'pending_change', 'established', 'pending_contract', 'pending_payment'].includes(processStatus) && (
                           <Button
                             size="sm"
                             variant="default"
@@ -490,6 +501,67 @@ export default function EnterpriseListPage() {
                             <ArrowRight className="h-3.5 w-3.5" />
                             继续注册
                           </Button>
+                        )}
+                        {/* 服务企业状态切换按钮 */}
+                        {activeTab === "non_tenant" && (
+                          <>
+                            {processStatus === "established" && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ process_status: "active" }),
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      toast({ title: "已开始服务" });
+                                      fetchEnterprises();
+                                    } else {
+                                      toast({ title: "操作失败", variant: "destructive" });
+                                    }
+                                  } catch (err) {
+                                    toast({ title: "操作失败", variant: "destructive" });
+                                  }
+                                }}
+                                className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                              >
+                                <PlayCircle className="h-3.5 w-3.5" />
+                                开始服务
+                              </Button>
+                            )}
+                            {processStatus === "active" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ process_status: "established" }),
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      toast({ title: "服务已终止" });
+                                      fetchEnterprises();
+                                    } else {
+                                      toast({ title: "操作失败", variant: "destructive" });
+                                    }
+                                  } catch (err) {
+                                    toast({ title: "操作失败", variant: "destructive" });
+                                  }
+                                }}
+                                className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
+                              >
+                                <StopCircle className="h-3.5 w-3.5" />
+                                终止服务
+                              </Button>
+                            )}
+                          </>
                         )}
                         <Button
                           size="sm"

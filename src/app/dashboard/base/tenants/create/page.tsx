@@ -284,7 +284,7 @@ export default function NewTenantPage() {
             if (enterprise.process_status === 'draft') {
               mainStepId = "address";
               subStepId = "select_base";
-            } else if (enterprise.process_status === 'pending_registration' || enterprise.process_status === 'pending_change') {
+            } else if (enterprise.process_status === 'pending_registration' || enterprise.process_status === 'pending_change' || enterprise.process_status === 'established') {
               mainStepId = "registration";
               subStepId = "upload_license";
             } else if (enterprise.process_status === 'pending_contract') {
