@@ -31,6 +31,7 @@ export interface MainStep {
   icon: React.ComponentType<{ className?: string }>;
   subSteps: SubStep[];
   status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+  isOptional?: boolean; // 非入驻企业可跳过整个大步骤
 }
 
 // 入驻流程的大步骤配置
@@ -98,6 +99,7 @@ export const mainSteps: MainStep[] = [
     description: "选择已有合同关联",
     icon: PenTool,
     status: "pending",
+    isOptional: true, // 非入驻企业可跳过
     subSteps: [
       {
         id: "select_contract",
@@ -113,6 +115,7 @@ export const mainSteps: MainStep[] = [
     description: "缴纳相关费用",
     icon: CreditCard,
     status: "pending",
+    isOptional: true, // 非入驻企业可跳过
     subSteps: [
       {
         id: "pay_fees",
@@ -178,6 +181,10 @@ export function getNextStep(
   // 移动到下一个大步骤的第一个子步骤
   if (mainIndex < mainSteps.length - 1) {
     const nextMainStep = mainSteps[mainIndex + 1];
+    // 如果需要跳过可选大步骤，继续找下一个
+    if (skipOptional && nextMainStep.isOptional) {
+      return getNextStep(nextMainStep.id, nextMainStep.subSteps[nextMainStep.subSteps.length - 1].id, skipOptional);
+    }
     const firstSubStep = nextMainStep.subSteps[0];
     if (skipOptional && firstSubStep.isOptional) {
       return getNextStep(nextMainStep.id, firstSubStep.id, skipOptional);
@@ -211,7 +218,16 @@ export function getPrevStep(
 
   // 移动到上一个大步骤的最后一个子步骤
   if (mainIndex > 0) {
-    const prevMainStep = mainSteps[mainIndex - 1];
+    let prevMainStep = mainSteps[mainIndex - 1];
+    // 如果需要跳过可选大步骤，继续找上一个
+    while (skipOptional && prevMainStep.isOptional && mainIndex > 0) {
+      const prevIndex = mainSteps.findIndex(s => s.id === prevMainStep.id);
+      if (prevIndex > 0) {
+        prevMainStep = mainSteps[prevIndex - 1];
+      } else {
+        break;
+      }
+    }
     const lastSubStep = prevMainStep.subSteps[prevMainStep.subSteps.length - 1];
     if (skipOptional && lastSubStep.isOptional) {
       return getPrevStep(prevMainStep.id, lastSubStep.id, skipOptional);

@@ -366,9 +366,13 @@ export default function NewTenantPage() {
         // 工商注册步骤：填写基本信息（营业执照非必填）
         return creditCode.trim() !== "" && legalPerson.trim() !== "";
       case "contract_select_contract":
+        // 服务企业跳过合同步骤
+        if (isNonTenant) return true;
         // 签订合同步骤：需要选择一个合同
         return contract?.contractId !== null && contract?.contractId !== undefined;
       case "payment_pay_fees":
+        // 服务企业跳过缴费步骤
+        if (isNonTenant) return true;
         // 费用缴纳步骤：至少关联一条收款记录
         return paymentRecordIds.length > 0;
       case "complete_review_all":
@@ -763,6 +767,10 @@ export default function NewTenantPage() {
 
     // 签订合同大步骤
     if (currentMainStepId === "contract") {
+      // 服务企业跳过合同步骤
+      if (isNonTenant) {
+        return null;
+      }
       return (
         <ContractStep
           enterpriseName={enterpriseName}
@@ -775,6 +783,10 @@ export default function NewTenantPage() {
 
     // 费用缴纳大步骤
     if (currentMainStepId === "payment") {
+      // 服务企业跳过缴费步骤
+      if (isNonTenant) {
+        return null;
+      }
       return (
         <PaymentStep
           enterpriseId={createdEnterpriseId}
@@ -815,6 +827,7 @@ export default function NewTenantPage() {
         currentMainStepId={currentMainStepId}
         completedMainSteps={new Set(completedMainSteps)}
         onStepClick={handleMainStepClick}
+        isNonTenant={isNonTenant}
       />
 
       {/* 右侧内容区域 */}

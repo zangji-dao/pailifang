@@ -44,6 +44,7 @@ interface VerticalStepIndicatorProps {
   completedMainSteps: Set<string>;
   onStepClick?: (stepId: string) => void;
   className?: string;
+  isNonTenant?: boolean; // 服务企业过滤可选大步骤
 }
 
 export function VerticalStepIndicator({
@@ -52,16 +53,22 @@ export function VerticalStepIndicator({
   completedMainSteps,
   onStepClick,
   className,
+  isNonTenant = false,
 }: VerticalStepIndicatorProps) {
+  // 服务企业过滤掉可选的大步骤（合同、缴费）
+  const displaySteps = isNonTenant 
+    ? steps.filter(step => !step.isOptional)
+    : steps;
+  
   return (
     <div className={cn("w-64 shrink-0 bg-card border-r", className)}>
       <div className="p-4 border-b">
-        <h2 className="font-semibold text-lg">入驻流程</h2>
-        <p className="text-sm text-muted-foreground">完成以下步骤入驻</p>
+        <h2 className="font-semibold text-lg">{isNonTenant ? "服务企业流程" : "入驻流程"}</h2>
+        <p className="text-sm text-muted-foreground">{isNonTenant ? "完成以下步骤创建" : "完成以下步骤入驻"}</p>
       </div>
       
       <nav className="p-4 space-y-2">
-        {steps.map((step, index) => {
+        {displaySteps.map((step, index) => {
           const isActive = step.id === currentMainStepId;
           const isCompleted = completedMainSteps.has(step.id);
           const Icon = step.icon;
