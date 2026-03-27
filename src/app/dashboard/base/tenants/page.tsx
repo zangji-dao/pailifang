@@ -138,10 +138,10 @@ export default function EnterpriseListPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // 获取企业列表
-  const fetchEnterprises = async () => {
+  const fetchEnterprises = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const response = await fetch("/api/enterprises");
+      const response = await fetch("/api/enterprises", { signal });
       const result = await response.json();
       if (result.success) {
         setEnterprises(result.data || []);
@@ -153,6 +153,10 @@ export default function EnterpriseListPage() {
         });
       }
     } catch (err) {
+      // 忽略请求被取消的错误
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       console.error("获取企业列表失败:", err);
       toast({
         title: "获取企业列表失败",
@@ -164,7 +168,11 @@ export default function EnterpriseListPage() {
   };
 
   useEffect(() => {
-    fetchEnterprises();
+    const controller = new AbortController();
+    fetchEnterprises(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   // 根据当前 Tab 过滤企业（入驻企业排除草稿状态）

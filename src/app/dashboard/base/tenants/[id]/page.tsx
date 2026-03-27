@@ -153,10 +153,14 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
 
   // 获取企业详情
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchEnterprise = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/enterprises/${resolvedParams.id}`);
+        const response = await fetch(`/api/enterprises/${resolvedParams.id}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error("获取企业数据失败");
         }
@@ -168,6 +172,10 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
         }
         setError(null);
       } catch (err) {
+        // 忽略请求被取消的错误
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
         console.error("获取企业数据失败:", err);
         setError(err instanceof Error ? err.message : "获取企业数据失败");
       } finally {
@@ -176,6 +184,10 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
     };
 
     fetchEnterprise();
+    
+    return () => {
+      controller.abort();
+    };
   }, [resolvedParams.id]);
 
   // 返回列表
