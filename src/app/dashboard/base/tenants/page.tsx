@@ -459,8 +459,8 @@ export default function EnterpriseListPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
-                        {/* 继续注册按钮 - 对于未完成的企业显示 */}
-                        {['pending_registration', 'pending_change', 'established', 'pending_contract', 'pending_payment'].includes(processStatus) && (
+                        {/* 入驻企业 - 继续注册按钮 */}
+                        {activeTab === "tenant" && ['pending_registration', 'pending_contract', 'pending_payment'].includes(processStatus) && (
                           <Button
                             size="sm"
                             variant="default"
