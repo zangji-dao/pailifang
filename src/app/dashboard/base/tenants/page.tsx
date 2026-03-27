@@ -30,8 +30,6 @@ type ProcessStatus =
   | "pending_contract" 
   | "pending_payment" 
   | "active" 
-  | "completed"
-  | "moved_out"
   | "established";
 
 interface Enterprise {
@@ -88,20 +86,6 @@ const tenantStatusConfig: Record<string, {
   },
   active: { 
     label: "入驻中", 
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-    borderColor: "border-emerald-300",
-    dotColor: "bg-emerald-500",
-  },
-  moved_out: { 
-    label: "已迁出", 
-    color: "text-slate-600",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-300",
-    dotColor: "bg-slate-500",
-  },
-  completed: { 
-    label: "已完成", 
     color: "text-emerald-600",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-300",
@@ -212,8 +196,6 @@ export default function EnterpriseListPage() {
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
     pending_payment: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_payment").length,
     active: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "active").length,
-    completed: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "completed").length,
-    moved_out: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "moved_out").length,
   };
 
   // 服务企业统计

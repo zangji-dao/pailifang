@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +41,6 @@ type EnterpriseStatus =
   | "pending_registration" 
   | "pending_contract" 
   | "pending_payment" 
-  | "moved_out"
   | "established";
 
 // 企业类型
@@ -76,7 +74,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   established: { label: "已建交", className: "bg-teal-50 text-teal-600 border-teal-200" },
   pending_contract: { label: "待签合同", className: "bg-cyan-50 text-cyan-600 border-cyan-200" },
   pending_payment: { label: "待缴费", className: "bg-amber-50 text-amber-600 border-amber-200" },
-  moved_out: { label: "已迁出", className: "bg-gray-50 text-gray-600 border-gray-200" },
 };
 
 // 企业类型配置
@@ -193,8 +190,8 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
     }
   };
 
-  // 企业迁出
-  const handleExit = async () => {
+  // 入驻企业：转为服务企业
+  const handleConvertToService = async () => {
     if (!enterprise) return;
 
     try {
@@ -202,7 +199,10 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
       const response = await fetch(`/api/enterprises/${enterprise.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ process_status: "moved_out" }),
+        body: JSON.stringify({ 
+          type: "non_tenant",
+          process_status: "established" 
+        }),
       });
 
       const result = await response.json();
@@ -210,22 +210,16 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
         throw new Error(result.error || "操作失败");
       }
 
-      toast.success("企业已迁出");
-      // 刷新数据
-      setEnterprise({ ...enterprise, processStatus: "moved_out", status: "inactive" });
+      toast.success("已转为服务企业");
+      // 返回列表页
+      handleBack();
     } catch (err) {
-      console.error("企业迁出失败:", err);
+      console.error("转换失败:", err);
       toast.error(err instanceof Error ? err.message : "操作失败");
     } finally {
       setExiting(false);
     }
   };
-
-  // 判断企业是否已退出
-  const isExited = enterprise && (
-    ["inactive", "moved_out"].includes(enterprise.status) ||
-    ["moved_out"].includes(enterprise.processStatus || "")
-  );
 
   // 加载状态
   if (loading) {
@@ -276,39 +270,39 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
               <Edit className="h-4 w-4 mr-1.5" />
               编辑信息
             </Button>
-            {/* 迁出企业按钮 - 仅在未退出时显示 */}
-            {!isExited && (
+            {/* 入驻企业 - 转为服务企业按钮 */}
+            {enterprise.type === "tenant" && enterprise.processStatus === "active" && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                    className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                   >
-                    <UserX className="h-4 w-4 mr-1.5" />
-                    迁出企业
+                    <Building2 className="h-4 w-4 mr-1.5" />
+                    转为服务企业
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>确认迁出企业</AlertDialogTitle>
+                    <AlertDialogTitle>转为服务企业</AlertDialogTitle>
                     <AlertDialogDescription>
-                      确定要将「{enterprise?.name}」标记为已迁出吗？
+                      确定要将「{enterprise?.name}」转为服务企业吗？
                       <br />
-                      此操作不可撤销。
+                      转换后企业状态将变更为"已建交"，可在服务企业列表中查看。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={handleExit}
+                      onClick={handleConvertToService}
                       disabled={exiting}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-teal-600 hover:bg-teal-700"
                     >
                       {exiting ? (
                         <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                       ) : null}
-                      确认迁出
+                      确认转换
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
