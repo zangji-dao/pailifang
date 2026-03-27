@@ -171,7 +171,16 @@ function ExpandableNavItem({
               );
             }
 
-            const childIsActive = pathname === child.href || pathname.startsWith(child.href + "/");
+            // 检查是否有其他子菜单项更精确地匹配当前路径
+            const moreSpecificMatch = item.children?.some(
+              (sibling) =>
+                sibling.href &&
+                sibling.href !== child.href &&
+                (pathname === sibling.href || pathname.startsWith(sibling.href + "/"))
+            );
+
+            const childIsActive = pathname === child.href || 
+              (pathname.startsWith(child.href + "/") && !moreSpecificMatch);
             const childBadge = child.badge;
 
             return (
