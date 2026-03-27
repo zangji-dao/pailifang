@@ -158,17 +158,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查企业编号是否已存在
-    const { data: existingEnterprise } = await supabase
-      .from('enterprises')
-      .select('id, name')
-      .eq('enterprise_code', body.enterprise_code)
-      .single();
+    // 检查企业编号是否已存在，如果存在则生成新的
+    let finalEnterpriseCode = body.enterprise_code;
+    let attempts = 0;
+    const maxAttempts = 10;
 
-    if (existingEnterprise) {
+    while (attempts < maxAttempts) {
+      const { data: existingEnterprise } = await supabase
+        .from('enterprises')
+        .select('id, name')
+        .eq('enterprise_code', finalEnterpriseCode)
+        .single();
+
+      if (!existingEnterprise) {
+        break; // 编号可用
+      }
+
+      // 生成新编号
+      const prefix = (body.type || 'tenant') === 'non_tenant' ? 'NQ' : 'RQ';
+      const timestamp = Date.now().toString().slice(-8);
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      finalEnterpriseCode = `${prefix}-${timestamp}${random}`;
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
       return NextResponse.json(
-        { success: false, error: '企业编号已存在' },
-        { status: 400 }
+        { success: false, error: '无法生成唯一的企业编号，请稍后重试' },
+        { status: 500 }
       );
     }
 
@@ -210,7 +227,7 @@ export async function POST(request: NextRequest) {
     const enterpriseData: Record<string, any> = {
       id: crypto.randomUUID(),
       name: body.name,
-      enterprise_code: body.enterprise_code,
+      enterprise_code: finalEnterpriseCode,
       credit_code: body.credit_code || null,
       legal_person: body.legal_person || null,
       phone: body.phone || null,
