@@ -9,11 +9,15 @@ import {
   FileText, 
   Loader2,
   Search,
-  Building2,
   Calendar,
   Check,
   Plus,
-  X
+  ChevronRight,
+  ChevronLeft,
+  Upload,
+  X,
+  ArrowRight,
+  Building2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -45,10 +49,10 @@ interface Contract {
 }
 
 // 合同类型配置
-const contractTypeOptions: { value: ContractType; label: string; description: string }[] = [
-  { value: "free", label: "免费合同", description: "免费入驻，不收取费用" },
-  { value: "paid", label: "收费合同", description: "收费入驻，按合同约定收费" },
-  { value: "agreement", label: "协议合同", description: "协议入驻，按协议约定执行" },
+const contractTypeOptions: { value: ContractType; label: string; description: string; icon: string }[] = [
+  { value: "free", label: "免费合同", description: "免费入驻，不收取任何费用", icon: "🆓" },
+  { value: "paid", label: "收费合同", description: "收费入驻，按合同约定收取费用", icon: "💰" },
+  { value: "agreement", label: "协议合同", description: "协议入驻，按双方协议执行", icon: "📝" },
 ];
 
 // 获取合同类型显示配置
@@ -91,16 +95,21 @@ export function ContractStep({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
   
+  // 新建合同步骤 (1: 选择类型, 2: 填写信息, 3: 上传附件)
+  const [createStep, setCreateStep] = useState(1);
+  
   // 新建合同表单
   const [newContract, setNewContract] = useState({
-    contractType: "free" as ContractType,
+    contractType: "" as ContractType,
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     amount: "",
     deposit: "",
     remarks: "",
+    attachmentUrl: "",
   });
   
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
   // 加载可选择的合同列表
@@ -143,8 +152,44 @@ export function ContractStep({
     toast({ title: "已取消选择" });
   };
 
+  // 上传附件
+  const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "contracts");
+
+      const res = await fetch("/api/storage/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setNewContract({ ...newContract, attachmentUrl: result.url });
+        toast({ title: "上传成功" });
+      } else {
+        throw new Error(result.error || "上传失败");
+      }
+    } catch (error: any) {
+      console.error("上传失败:", error);
+      toast({ title: "上传失败", description: error.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // 新建合同
   const handleCreateContract = async () => {
+    if (!newContract.contractType) {
+      toast({ title: "请选择合同类型", variant: "destructive" });
+      return;
+    }
+
     if (!enterpriseName) {
       toast({ title: "请先填写企业名称", variant: "destructive" });
       return;
@@ -152,7 +197,6 @@ export function ContractStep({
 
     setCreating(true);
     try {
-      // 生成合同编号
       const contractNo = `HT-${Date.now()}`;
       
       const response = await fetch("/api/contracts", {
@@ -167,6 +211,7 @@ export function ContractStep({
           deposit: newContract.deposit ? parseFloat(newContract.deposit) : 0,
           status: "signed",
           remarks: newContract.remarks,
+          attachment_url: newContract.attachmentUrl,
         }),
       });
 
@@ -179,6 +224,7 @@ export function ContractStep({
           contractType: newContract.contractType,
         });
         setShowCreateForm(false);
+        setCreateStep(1);
         toast({ title: "合同创建成功", description: `合同编号：${contractNo}` });
       } else {
         throw new Error(result.error || "创建合同失败");
@@ -189,6 +235,20 @@ export function ContractStep({
     } finally {
       setCreating(false);
     }
+  };
+
+  // 重置新建表单
+  const resetCreateForm = () => {
+    setCreateStep(1);
+    setNewContract({
+      contractType: "" as ContractType,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      amount: "",
+      deposit: "",
+      remarks: "",
+      attachmentUrl: "",
+    });
   };
 
   // 过滤合同列表
@@ -215,6 +275,9 @@ export function ContractStep({
       </span>
     );
   };
+
+  // 获取当前选择的合同类型选项
+  const selectedTypeOption = contractTypeOptions.find(o => o.value === newContract.contractType);
 
   return (
     <div className="space-y-6">
@@ -271,123 +334,302 @@ export function ContractStep({
 
       {/* 新建合同表单 */}
       {showCreateForm && (
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-blue-200">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg text-blue-700">
-              <Plus className="w-5 h-5" />
-              新建合同
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Plus className="w-5 h-5 text-blue-600" />
+                新建合同
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowCreateForm(false);
+                  resetCreateForm();
+                }}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
             <CardDescription>
               为企业「{enterpriseName}」创建新合同
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* 合同类型选择 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">合同类型 <span className="text-red-500">*</span></Label>
-              <Select
-                value={newContract.contractType}
-                onValueChange={(value) => setNewContract({ ...newContract, contractType: value as ContractType })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择合同类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contractTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex flex-col">
-                        <span>{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 合同期限 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">开始日期</Label>
-                <Input
-                  type="date"
-                  value={newContract.startDate}
-                  onChange={(e) => setNewContract({ ...newContract, startDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">结束日期</Label>
-                <Input
-                  type="date"
-                  value={newContract.endDate}
-                  onChange={(e) => setNewContract({ ...newContract, endDate: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* 收费合同显示金额字段 */}
-            {newContract.contractType === "paid" && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">合同金额（元）</Label>
-                  <Input
-                    type="number"
-                    placeholder="请输入合同金额"
-                    value={newContract.amount}
-                    onChange={(e) => setNewContract({ ...newContract, amount: e.target.value })}
-                  />
+          <CardContent>
+            {/* 步骤指示器 */}
+            <div className="flex items-center justify-center mb-6">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center">
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                    createStep === step 
+                      ? "bg-blue-600 text-white" 
+                      : createStep > step 
+                        ? "bg-green-500 text-white" 
+                        : "bg-muted text-muted-foreground"
+                  )}>
+                    {createStep > step ? <Check className="w-4 h-4" /> : step}
+                  </div>
+                  {step < 3 && (
+                    <div className={cn(
+                      "w-16 h-0.5",
+                      createStep > step ? "bg-green-500" : "bg-muted"
+                    )} />
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">押金（元）</Label>
-                  <Input
-                    type="number"
-                    placeholder="请输入押金金额"
-                    value={newContract.deposit}
-                    onChange={(e) => setNewContract({ ...newContract, deposit: e.target.value })}
-                  />
+              ))}
+            </div>
+            
+            {/* 步骤标题 */}
+            <div className="text-center mb-6">
+              <p className="font-medium">
+                {createStep === 1 && "选择合同类型"}
+                {createStep === 2 && "填写合同信息"}
+                {createStep === 3 && "上传合同附件"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {createStep === 1 && "请选择本次入驻的合同类型"}
+                {createStep === 2 && "请填写合同基本信息"}
+                {createStep === 3 && "上传签字后的合同文件（可选）"}
+              </p>
+            </div>
+
+            {/* Step 1: 选择合同类型 */}
+            {createStep === 1 && (
+              <div className="space-y-4">
+                <div className="grid gap-3">
+                  {contractTypeOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      className={cn(
+                        "p-4 rounded-lg border-2 cursor-pointer transition-all",
+                        newContract.contractType === option.value 
+                          ? "border-blue-500 bg-blue-50" 
+                          : "border-border hover:border-blue-300 hover:bg-muted/50"
+                      )}
+                      onClick={() => setNewContract({ ...newContract, contractType: option.value })}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{option.icon}</span>
+                        <div className="flex-1">
+                          <p className="font-medium">{option.label}</p>
+                          <p className="text-sm text-muted-foreground">{option.description}</p>
+                        </div>
+                        {newContract.contractType === option.value && (
+                          <Check className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => setCreateStep(2)}
+                    disabled={!newContract.contractType}
+                    className="gap-1"
+                  >
+                    下一步
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* 备注 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">备注</Label>
-              <Input
-                placeholder="合同备注信息"
-                value={newContract.remarks}
-                onChange={(e) => setNewContract({ ...newContract, remarks: e.target.value })}
-              />
-            </div>
+            {/* Step 2: 填写合同信息 */}
+            {createStep === 2 && (
+              <div className="space-y-4">
+                {/* 显示已选类型 */}
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                  <span className="text-lg">{selectedTypeOption?.icon}</span>
+                  <span className="font-medium">{selectedTypeOption?.label}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto text-xs"
+                    onClick={() => setCreateStep(1)}
+                  >
+                    修改
+                  </Button>
+                </div>
 
-            {/* 操作按钮 */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCreateForm(false)}
-                disabled={creating}
-              >
-                取消
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleCreateContract}
-                disabled={creating}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {creating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                    创建中...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4 mr-1.5" />
-                    创建合同
-                  </>
+                {/* 合同期限 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">开始日期</Label>
+                    <Input
+                      type="date"
+                      value={newContract.startDate}
+                      onChange={(e) => setNewContract({ ...newContract, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">结束日期</Label>
+                    <Input
+                      type="date"
+                      value={newContract.endDate}
+                      onChange={(e) => setNewContract({ ...newContract, endDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* 收费合同显示金额字段 */}
+                {newContract.contractType === "paid" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">合同金额（元）</Label>
+                      <Input
+                        type="number"
+                        placeholder="请输入合同金额"
+                        value={newContract.amount}
+                        onChange={(e) => setNewContract({ ...newContract, amount: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">押金（元）</Label>
+                      <Input
+                        type="number"
+                        placeholder="请输入押金金额"
+                        value={newContract.deposit}
+                        onChange={(e) => setNewContract({ ...newContract, deposit: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 )}
-              </Button>
-            </div>
+
+                {/* 备注 */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">备注</Label>
+                  <Input
+                    placeholder="合同备注信息"
+                    value={newContract.remarks}
+                    onChange={(e) => setNewContract({ ...newContract, remarks: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCreateStep(1)}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    上一步
+                  </Button>
+                  <Button
+                    onClick={() => setCreateStep(3)}
+                    className="gap-1"
+                  >
+                    下一步
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: 上传合同附件 */}
+            {createStep === 3 && (
+              <div className="space-y-4">
+                {/* 合同信息摘要 */}
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{selectedTypeOption?.icon}</span>
+                    <span className="font-medium">{selectedTypeOption?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {newContract.startDate} ~ {newContract.endDate}
+                    </span>
+                  </div>
+                  {newContract.contractType === "paid" && (newContract.amount || newContract.deposit) && (
+                    <div className="flex items-center gap-4 text-sm">
+                      {newContract.amount && <span>金额: ¥{newContract.amount}</span>}
+                      {newContract.deposit && <span>押金: ¥{newContract.deposit}</span>}
+                    </div>
+                  )}
+                </div>
+
+                {/* 上传附件 */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    合同附件
+                    <span className="text-muted-foreground font-normal ml-1">(可选)</span>
+                  </Label>
+                  
+                  {newContract.attachmentUrl ? (
+                    <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <FileText className="w-5 h-5 text-green-600" />
+                      <span className="text-sm flex-1">已上传合同附件</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setNewContract({ ...newContract, attachmentUrl: "" })}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      <input
+                        type="file"
+                        id="contract-attachment"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleUploadAttachment}
+                        disabled={uploading}
+                      />
+                      <label
+                        htmlFor="contract-attachment"
+                        className="cursor-pointer"
+                      >
+                        {uploading ? (
+                          <div className="flex flex-col items-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">上传中...</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">点击上传合同附件</span>
+                            <span className="text-xs text-muted-foreground mt-1">支持 PDF、Word、图片格式</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCreateStep(2)}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    上一步
+                  </Button>
+                  <Button
+                    onClick={handleCreateContract}
+                    disabled={creating}
+                    className="gap-1 bg-green-600 hover:bg-green-700"
+                  >
+                    {creating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        创建中...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        确认创建
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -411,7 +653,10 @@ export function ContractStep({
                 <Button
                   variant="default"
                   className="flex-1 gap-1"
-                  onClick={() => setShowCreateForm(true)}
+                  onClick={() => {
+                    resetCreateForm();
+                    setShowCreateForm(true);
+                  }}
                 >
                   <Plus className="w-4 h-4" />
                   新建合同

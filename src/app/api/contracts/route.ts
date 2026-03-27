@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       amount: body.amount || 0,
       deposit: body.deposit || 0,
       status: body.status || 'draft',
+      attachment_url: body.attachment_url || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -100,6 +101,7 @@ export async function GET(request: NextRequest) {
       amount: item.amount,
       deposit: item.deposit,
       status: item.status,
+      attachmentUrl: item.attachment_url,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
     }));
