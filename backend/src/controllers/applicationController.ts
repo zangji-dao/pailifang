@@ -75,6 +75,7 @@ export const applicationController = {
           approvalStatus: settlementApplications.approvalStatus,
           approvedAt: settlementApplications.approvedAt,
           rejectionReason: settlementApplications.rejectionReason,
+          assignedAddressId: settlementApplications.assignedAddressId,
           assignedAddress: settlementApplications.assignedAddress,
           legalPersonName: settlementApplications.legalPersonName,
           legalPersonPhone: settlementApplications.legalPersonPhone,
