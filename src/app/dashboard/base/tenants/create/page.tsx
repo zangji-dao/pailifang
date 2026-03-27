@@ -98,7 +98,7 @@ const initialFormState: FormState = {
   draftId: null,
 
   currentMainStepId: "address",
-  currentSubStepId: "select_base",
+  currentSubStepId: "select_type", // 先选择类型，再根据类型决定后续步骤
   completedMainSteps: [],
   completedSubSteps: [],
 
@@ -650,9 +650,6 @@ export default function NewTenantPage() {
     if (currentMainStepId === "address") {
       switch (currentSubStepId) {
         case "select_base":
-          if (isNonTenant) {
-            return null;
-          }
           return (
             <SelectBaseStep
               selectedBaseId={selectedBaseId}

@@ -44,17 +44,17 @@ export const mainSteps: MainStep[] = [
     status: "pending",
     subSteps: [
       {
+        id: "select_type",
+        title: "选择类型",
+        description: "选择企业入驻类型",
+        icon: Store,
+      },
+      {
         id: "select_base",
         title: "选择基地",
         description: "选择入驻的合作基地",
         icon: Building2,
         isOptional: true, // 非入驻企业可跳过
-      },
-      {
-        id: "select_type",
-        title: "选择类型",
-        description: "选择企业入驻类型",
-        icon: Store,
       },
       {
         id: "select_station",
