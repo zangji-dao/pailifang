@@ -16,6 +16,10 @@ import {
   UserX,
   PlayCircle,
   StopCircle,
+  CheckCircle,
+  FileEdit,
+  MoreHorizontal,
+  Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +34,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
 import { toast } from "sonner";
@@ -272,8 +283,116 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
         throw new Error(result.error || "操作失败");
       }
 
-      toast.success("服务已终止");
+      toast.success("服务已暂停");
       setEnterprise({ ...enterprise, processStatus: "established" });
+    } catch (err) {
+      console.error("终止服务失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // 服务企业：确认建交（洽谈中 → 已建交）
+  const handleConfirmEstablished = async () => {
+    if (!enterprise) return;
+
+    try {
+      setUpdatingStatus(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "established" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("已确认建交");
+      setEnterprise({ ...enterprise, processStatus: "established" });
+    } catch (err) {
+      console.error("确认建交失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // 服务企业：发起工商变更（已建交 → 待工商变更）
+  const handleStartChange = async () => {
+    if (!enterprise) return;
+
+    try {
+      setUpdatingStatus(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "pending_change" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("已发起工商变更");
+      setEnterprise({ ...enterprise, processStatus: "pending_change" });
+    } catch (err) {
+      console.error("发起工商变更失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // 服务企业：完成工商变更（待工商变更 → 已建交）
+  const handleCompleteChange = async () => {
+    if (!enterprise) return;
+
+    try {
+      setUpdatingStatus(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "established" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("工商变更已完成");
+      setEnterprise({ ...enterprise, processStatus: "established" });
+    } catch (err) {
+      console.error("完成工商变更失败:", err);
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // 服务企业：彻底终止服务（任何状态 → 服务终止）
+  const handleTerminate = async () => {
+    if (!enterprise) return;
+
+    try {
+      setUpdatingStatus(true);
+      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ process_status: "terminated" }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "操作失败");
+      }
+
+      toast.success("服务已终止");
+      setEnterprise({ ...enterprise, processStatus: "terminated" });
     } catch (err) {
       console.error("终止服务失败:", err);
       toast.error(err instanceof Error ? err.message : "操作失败");
@@ -340,81 +459,190 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
             {/* 服务企业状态切换按钮 */}
             {enterprise.type === "non_tenant" && !isExited && (
               <>
-                {enterprise.processStatus === "established" && (
+                {/* 洽谈中 → 已建交 */}
+                {(enterprise.processStatus === "new" || enterprise.processStatus === undefined) && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="default"
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700"
+                        className="bg-teal-600 hover:bg-teal-700"
                         disabled={updatingStatus}
                       >
-                        <PlayCircle className="h-4 w-4 mr-1.5" />
-                        开始服务
+                        <CheckCircle className="h-4 w-4 mr-1.5" />
+                        确认建交
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>确认开始服务</AlertDialogTitle>
+                        <AlertDialogTitle>确认建交</AlertDialogTitle>
                         <AlertDialogDescription>
-                          确定要开始为「{enterprise?.name}」提供服务吗？
-                          <br />
-                          服务开始后，企业状态将变更为"服务中"。
+                          确定要与「{enterprise?.name}」建立正式合作关系吗？
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleStartService}
+                          onClick={handleConfirmEstablished}
                           disabled={updatingStatus}
-                          className="bg-emerald-600 hover:bg-emerald-700"
+                          className="bg-teal-600 hover:bg-teal-700"
                         >
                           {updatingStatus ? (
                             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                           ) : null}
-                          确认开始
+                          确认
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
-                {enterprise.processStatus === "active" && (
+                {/* 已建交 → 服务中 或 待工商变更 */}
+                {enterprise.processStatus === "established" && (
+                  <>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          disabled={updatingStatus}
+                        >
+                          <PlayCircle className="h-4 w-4 mr-1.5" />
+                          开始服务
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>确认开始服务</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            确定要开始为「{enterprise?.name}」提供服务吗？
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleStartService}
+                            disabled={updatingStatus}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            {updatingStatus ? (
+                              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            ) : null}
+                            确认开始
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={updatingStatus}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleStartChange}>
+                          <FileEdit className="h-4 w-4 mr-2" />
+                          发起工商变更
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onClick={handleTerminate}>
+                          <Ban className="h-4 w-4 mr-2" />
+                          终止服务
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+                {/* 待工商变更 → 已建交 */}
+                {enterprise.processStatus === "pending_change" && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
-                        className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                        className="bg-violet-600 hover:bg-violet-700"
                         disabled={updatingStatus}
                       >
-                        <StopCircle className="h-4 w-4 mr-1.5" />
-                        终止服务
+                        <CheckCircle className="h-4 w-4 mr-1.5" />
+                        完成变更
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>确认终止服务</AlertDialogTitle>
+                        <AlertDialogTitle>完成工商变更</AlertDialogTitle>
                         <AlertDialogDescription>
-                          确定要终止为「{enterprise?.name}」提供服务吗？
-                          <br />
-                          服务终止后，企业状态将变更为"已建交"，可以重新开始服务。
+                          确认「{enterprise?.name}」的工商变更已完成吗？
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleEndService}
+                          onClick={handleCompleteChange}
                           disabled={updatingStatus}
-                          className="bg-amber-600 hover:bg-amber-700"
+                          className="bg-violet-600 hover:bg-violet-700"
                         >
                           {updatingStatus ? (
                             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                           ) : null}
-                          确认终止
+                          确认完成
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                )}
+                {/* 服务中 → 已建交 */}
+                {enterprise.processStatus === "active" && (
+                  <>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                          disabled={updatingStatus}
+                        >
+                          <StopCircle className="h-4 w-4 mr-1.5" />
+                          暂停服务
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>暂停服务</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            确定要暂停为「{enterprise?.name}」提供服务吗？
+                            <br />
+                            暂停后可随时重新开始服务。
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleEndService}
+                            disabled={updatingStatus}
+                            className="bg-amber-600 hover:bg-amber-700"
+                          >
+                            {updatingStatus ? (
+                              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            ) : null}
+                            确认暂停
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={updatingStatus}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="text-red-600" onClick={handleTerminate}>
+                          <Ban className="h-4 w-4 mr-2" />
+                          彻底终止
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
                 )}
               </>
             )}

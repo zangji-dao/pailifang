@@ -14,9 +14,20 @@ import {
   ArrowRight,
   PlayCircle,
   StopCircle,
+  CheckCircle,
+  FileEdit,
+  MoreHorizontal,
+  Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
 
@@ -505,38 +516,11 @@ export default function EnterpriseListPage() {
                         {/* 服务企业状态切换按钮 */}
                         {activeTab === "non_tenant" && (
                           <>
-                            {processStatus === "established" && (
+                            {/* 洽谈中 → 已建交 */}
+                            {(processStatus === "new" || processStatus === undefined) && (
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ process_status: "active" }),
-                                    });
-                                    const result = await response.json();
-                                    if (result.success) {
-                                      toast({ title: "已开始服务" });
-                                      fetchEnterprises();
-                                    } else {
-                                      toast({ title: "操作失败", variant: "destructive" });
-                                    }
-                                  } catch (err) {
-                                    toast({ title: "操作失败", variant: "destructive" });
-                                  }
-                                }}
-                                className="gap-1 bg-emerald-600 hover:bg-emerald-700"
-                              >
-                                <PlayCircle className="h-3.5 w-3.5" />
-                                开始服务
-                              </Button>
-                            )}
-                            {processStatus === "active" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
                                 onClick={async () => {
                                   try {
                                     const response = await fetch(`/api/enterprises/${enterprise.id}`, {
@@ -546,7 +530,7 @@ export default function EnterpriseListPage() {
                                     });
                                     const result = await response.json();
                                     if (result.success) {
-                                      toast({ title: "服务已终止" });
+                                      toast({ title: "已确认建交" });
                                       fetchEnterprises();
                                     } else {
                                       toast({ title: "操作失败", variant: "destructive" });
@@ -555,11 +539,195 @@ export default function EnterpriseListPage() {
                                     toast({ title: "操作失败", variant: "destructive" });
                                   }
                                 }}
-                                className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
+                                className="gap-1 bg-teal-600 hover:bg-teal-700"
                               >
-                                <StopCircle className="h-3.5 w-3.5" />
-                                终止服务
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                确认建交
                               </Button>
+                            )}
+                            {/* 已建交 → 服务中 或 待工商变更 */}
+                            {processStatus === "established" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ process_status: "active" }),
+                                      });
+                                      const result = await response.json();
+                                      if (result.success) {
+                                        toast({ title: "已开始服务" });
+                                        fetchEnterprises();
+                                      } else {
+                                        toast({ title: "操作失败", variant: "destructive" });
+                                      }
+                                    } catch (err) {
+                                      toast({ title: "操作失败", variant: "destructive" });
+                                    }
+                                  }}
+                                  className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                  <PlayCircle className="h-3.5 w-3.5" />
+                                  开始服务
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline" className="gap-1">
+                                      <MoreHorizontal className="h-3.5 w-3.5" />
+                                      更多
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        try {
+                                          const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ process_status: "pending_change" }),
+                                          });
+                                          const result = await response.json();
+                                          if (result.success) {
+                                            toast({ title: "已发起工商变更" });
+                                            fetchEnterprises();
+                                          } else {
+                                            toast({ title: "操作失败", variant: "destructive" });
+                                          }
+                                        } catch (err) {
+                                          toast({ title: "操作失败", variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      <FileEdit className="h-4 w-4 mr-2" />
+                                      发起工商变更
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={async () => {
+                                        if (!confirm(`确定要终止「${enterprise.name}」的服务吗？此操作不可撤销。`)) return;
+                                        try {
+                                          const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ process_status: "terminated" }),
+                                          });
+                                          const result = await response.json();
+                                          if (result.success) {
+                                            toast({ title: "服务已终止" });
+                                            fetchEnterprises();
+                                          } else {
+                                            toast({ title: "操作失败", variant: "destructive" });
+                                          }
+                                        } catch (err) {
+                                          toast({ title: "操作失败", variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      终止服务
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </>
+                            )}
+                            {/* 待工商变更 → 已建交 */}
+                            {processStatus === "pending_change" && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ process_status: "established" }),
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      toast({ title: "工商变更已完成" });
+                                      fetchEnterprises();
+                                    } else {
+                                      toast({ title: "操作失败", variant: "destructive" });
+                                    }
+                                  } catch (err) {
+                                    toast({ title: "操作失败", variant: "destructive" });
+                                  }
+                                }}
+                                className="gap-1 bg-violet-600 hover:bg-violet-700"
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                完成变更
+                              </Button>
+                            )}
+                            {/* 服务中 → 已建交 */}
+                            {processStatus === "active" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ process_status: "established" }),
+                                      });
+                                      const result = await response.json();
+                                      if (result.success) {
+                                        toast({ title: "服务已暂停" });
+                                        fetchEnterprises();
+                                      } else {
+                                        toast({ title: "操作失败", variant: "destructive" });
+                                      }
+                                    } catch (err) {
+                                      toast({ title: "操作失败", variant: "destructive" });
+                                    }
+                                  }}
+                                  className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
+                                >
+                                  <StopCircle className="h-3.5 w-3.5" />
+                                  暂停服务
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline" className="gap-1">
+                                      <MoreHorizontal className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={async () => {
+                                        if (!confirm(`确定要终止「${enterprise.name}」的服务吗？此操作不可撤销。`)) return;
+                                        try {
+                                          const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ process_status: "terminated" }),
+                                          });
+                                          const result = await response.json();
+                                          if (result.success) {
+                                            toast({ title: "服务已终止" });
+                                            fetchEnterprises();
+                                          } else {
+                                            toast({ title: "操作失败", variant: "destructive" });
+                                          }
+                                        } catch (err) {
+                                          toast({ title: "操作失败", variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      彻底终止
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </>
                             )}
                           </>
                         )}
