@@ -12,6 +12,7 @@ import {
   Trash2,
   Store,
   ArrowRight,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -462,6 +463,34 @@ export default function EnterpriseListPage() {
                           >
                             <ArrowRight className="h-3.5 w-3.5" />
                             继续注册
+                          </Button>
+                        )}
+                        {/* 入驻企业 - 入驻中状态显示迁出按钮 */}
+                        {activeTab === "tenant" && processStatus === "active" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                            onClick={async () => {
+                              if (!confirm(`确定要将「${enterprise.name}」迁出吗？迁出后将转为服务企业。`)) return;
+                              try {
+                                const response = await fetch(`/api/enterprises/${enterprise.id}/convert-to-service`, {
+                                  method: "POST",
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                  toast({ title: "迁出成功", description: result.message });
+                                  fetchEnterprises();
+                                } else {
+                                  toast({ title: "迁出失败", description: result.error, variant: "destructive" });
+                                }
+                              } catch (err) {
+                                toast({ title: "迁出失败", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <LogOut className="h-3.5 w-3.5" />
+                            迁出
                           </Button>
                         )}
                         {/* 服务企业状态切换按钮 */}
