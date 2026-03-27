@@ -51,6 +51,17 @@ interface FinanceRecord {
   created_at: string;
 }
 
+// 企业选项类型
+interface EnterpriseOption {
+  id: string;
+  name: string;
+  type?: string;
+  status?: string;
+  address_code?: string | null;
+  source?: string; // 'enterprise' | 'application'
+  application_id?: string;
+}
+
 // 格式化金额
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat("zh-CN", {
@@ -375,7 +386,7 @@ function RecordDialog({
   onSuccess: () => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [enterprises, setEnterprises] = useState<{ id: string; name: string; address_code?: string | null }[]>([]);
+  const [enterprises, setEnterprises] = useState<EnterpriseOption[]>([]);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -462,6 +473,12 @@ function RecordDialog({
   const filteredEnterprises = enterprises.filter(e => 
     !enterpriseSearch || e.name.toLowerCase().includes(enterpriseSearch.toLowerCase())
   );
+  
+  // 按来源分组
+  const enterpriseGrouped = {
+    enterprises: filteredEnterprises.filter(e => e.source === 'enterprise'),
+    applications: filteredEnterprises.filter(e => e.source === 'application'),
+  };
 
   return (
     open && (
@@ -504,6 +521,11 @@ function RecordDialog({
                     {selectedEnterprise ? (
                       <>
                         {selectedEnterprise.name}
+                        {selectedEnterprise.source === 'application' && (
+                          <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded ml-1">
+                            申请中
+                          </span>
+                        )}
                         {selectedEnterprise.address_code && (
                           <span className="text-muted-foreground ml-1">({selectedEnterprise.address_code})</span>
                         )}
@@ -527,30 +549,71 @@ function RecordDialog({
                         autoFocus
                       />
                     </div>
-                    <div className="max-h-48 overflow-auto">
+                    <div className="max-h-64 overflow-auto">
                       {filteredEnterprises.length === 0 ? (
                         <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                           {enterpriseSearch ? "未找到匹配企业" : "暂无企业"}
                         </div>
                       ) : (
-                        filteredEnterprises.map((e) => (
-                          <button
-                            key={e.id}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, enterprise_id: e.id });
-                              setEnterpriseOpen(false);
-                              setEnterpriseSearch("");
-                            }}
-                            className={cn(
-                              "w-full px-3 py-2 text-sm text-left hover:bg-muted/50",
-                              formData.enterprise_id === e.id && "bg-cyan-50 text-cyan-600"
-                            )}
-                          >
-                            {e.name}
-                            {e.address_code && <span className="text-muted-foreground ml-1">({e.address_code})</span>}
-                          </button>
-                        ))
+                        <>
+                          {/* 已创建的企业 */}
+                          {enterpriseGrouped.enterprises.length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/30">
+                                企业档案
+                              </div>
+                              {enterpriseGrouped.enterprises.map((e) => (
+                                <button
+                                  key={e.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, enterprise_id: e.id });
+                                    setEnterpriseOpen(false);
+                                    setEnterpriseSearch("");
+                                  }}
+                                  className={cn(
+                                    "w-full px-3 py-2 text-sm text-left hover:bg-muted/50",
+                                    formData.enterprise_id === e.id && "bg-cyan-50 text-cyan-600"
+                                  )}
+                                >
+                                  {e.name}
+                                  {e.address_code && <span className="text-muted-foreground ml-1">({e.address_code})</span>}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                          
+                          {/* 申请中的企业 */}
+                          {enterpriseGrouped.applications.length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/30 border-t mt-1">
+                                入驻申请中
+                              </div>
+                              {enterpriseGrouped.applications.map((e) => (
+                                <button
+                                  key={e.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, enterprise_id: e.id });
+                                    setEnterpriseOpen(false);
+                                    setEnterpriseSearch("");
+                                  }}
+                                  className={cn(
+                                    "w-full px-3 py-2 text-sm text-left hover:bg-muted/50",
+                                    formData.enterprise_id === e.id && "bg-cyan-50 text-cyan-600"
+                                  )}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    {e.name}
+                                    <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                      申请中
+                                    </span>
+                                  </span>
+                                </button>
+                              ))}
+                            </>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

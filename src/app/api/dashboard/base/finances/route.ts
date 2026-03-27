@@ -36,25 +36,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "获取资金记录失败" }, { status: 500 });
     }
 
-    // 获取关联企业信息
-    const enterpriseIds = [...new Set((data || []).map((item: Record<string, unknown>) => item.enterprise_id).filter(Boolean))];
-    
-    let enterpriseMap = new Map();
-    if (enterpriseIds.length > 0) {
-      const { data: enterprises } = await supabase
-        .from('enterprises')
-        .select('id, name')
-        .in('id', enterpriseIds);
-      
-      (enterprises || []).forEach((e: Record<string, unknown>) => {
-        enterpriseMap.set(e.id, e.name);
-      });
-    }
-
-    // 格式化数据
+    // 数据已经包含 enterprise_name 字段，直接使用
     const formattedData = (data || []).map((item: Record<string, unknown>) => ({
       ...item,
-      enterprise_name: enterpriseMap.get(item.enterprise_id) || null,
+      enterprise_name: item.enterprise_name || null,
     }));
 
     // 计算余额统计
@@ -110,13 +95,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "请选择关联企业" }, { status: 400 });
     }
 
+    // 处理企业ID和名称
+    let realEnterpriseId = null;
+    let applicationId = null;
+    let enterpriseName = null;
+
+    if (enterprise_id.startsWith('app_')) {
+      // 申请中的企业，ID格式为 app_{application_id}
+      applicationId = enterprise_id.replace('app_', '');
+      
+      // 获取申请中的企业名
+      const { data: app } = await supabase
+        .from('pi_settlement_applications')
+        .select('enterprise_name')
+        .eq('id', applicationId)
+        .single();
+      
+      if (app) {
+        enterpriseName = app.enterprise_name;
+      }
+    } else {
+      // 已创建的企业档案
+      realEnterpriseId = enterprise_id;
+      
+      // 获取企业名
+      const { data: enterprise } = await supabase
+        .from('enterprises')
+        .select('name')
+        .eq('id', realEnterpriseId)
+        .single();
+      
+      if (enterprise) {
+        enterpriseName = enterprise.name;
+      }
+    }
+
     const { data, error } = await supabase
       .from('finances')
       .insert({
         type,
         category,
         amount,
-        enterprise_id,
+        enterprise_id: realEnterpriseId,
+        application_id: applicationId,
+        enterprise_name: enterpriseName,
         summary,
         remarks: remarks || null,
       })
