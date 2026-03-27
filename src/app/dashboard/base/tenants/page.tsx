@@ -12,22 +12,9 @@ import {
   Edit,
   Store,
   ArrowRight,
-  PlayCircle,
-  StopCircle,
-  CheckCircle,
-  FileEdit,
-  MoreHorizontal,
-  Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
 
@@ -40,13 +27,11 @@ type ProcessStatus =
   | "new" 
   | "pending_address" 
   | "pending_registration" 
-  | "pending_change"
   | "pending_contract" 
   | "pending_payment" 
   | "active" 
   | "completed"
   | "moved_out"
-  | "terminated"
   | "established";
 
 interface Enterprise {
@@ -146,26 +131,12 @@ const nonTenantStatusConfig: Record<string, {
     borderColor: "border-teal-300",
     dotColor: "bg-teal-500",
   },
-  pending_change: { 
-    label: "待工商变更", 
-    color: "text-violet-600",
-    bgColor: "bg-violet-50",
-    borderColor: "border-violet-300",
-    dotColor: "bg-violet-500",
-  },
   active: { 
     label: "服务中", 
     color: "text-emerald-600",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-300",
     dotColor: "bg-emerald-500",
-  },
-  terminated: { 
-    label: "服务终止", 
-    color: "text-slate-600",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-300",
-    dotColor: "bg-slate-500",
   },
 };
 
@@ -250,9 +221,7 @@ export default function EnterpriseListPage() {
     total: enterprises.filter((e) => e.type === "non_tenant").length,
     new: enterprises.filter((e) => e.type === "non_tenant" && (e.processStatus === "new" || e.processStatus === undefined)).length,
     established: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "established").length,
-    pending_change: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "pending_change").length,
     active: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "active").length,
-    terminated: enterprises.filter((e) => e.type === "non_tenant" && e.processStatus === "terminated").length,
   };
 
   // 切换 Tab 时重置过滤条件
@@ -516,218 +485,40 @@ export default function EnterpriseListPage() {
                         {/* 服务企业状态切换按钮 */}
                         {activeTab === "non_tenant" && (
                           <>
-                            {/* 洽谈中 → 已建交 */}
+                            {/* 洽谈中 → 继续注册 */}
                             {(processStatus === "new" || processStatus === undefined) && (
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ process_status: "established" }),
+                                onClick={() => {
+                                  if (tabs) {
+                                    tabs.openTab({
+                                      id: `continue-${enterprise.id}`,
+                                      label: `继续注册-${enterprise.name}`,
+                                      path: `/dashboard/base/tenants/create?continue=${enterprise.id}`,
+                                      icon: <ArrowRight className="h-3.5 w-3.5" />,
                                     });
-                                    const result = await response.json();
-                                    if (result.success) {
-                                      toast({ title: "已确认建交" });
-                                      fetchEnterprises();
-                                    } else {
-                                      toast({ title: "操作失败", variant: "destructive" });
-                                    }
-                                  } catch (err) {
-                                    toast({ title: "操作失败", variant: "destructive" });
+                                  } else {
+                                    router.push(`/dashboard/base/tenants/create?continue=${enterprise.id}`);
                                   }
                                 }}
-                                className="gap-1 bg-teal-600 hover:bg-teal-700"
+                                className="gap-1 bg-primary hover:bg-primary/90"
                               >
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                确认建交
+                                <ArrowRight className="h-3.5 w-3.5" />
+                                继续注册
                               </Button>
                             )}
-                            {/* 已建交 → 服务中 或 待工商变更 */}
+                            {/* 已建交 - 提示去合同管理 */}
                             {processStatus === "established" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={async () => {
-                                    try {
-                                      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                        method: "PUT",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ process_status: "active" }),
-                                      });
-                                      const result = await response.json();
-                                      if (result.success) {
-                                        toast({ title: "已开始服务" });
-                                        fetchEnterprises();
-                                      } else {
-                                        toast({ title: "操作失败", variant: "destructive" });
-                                      }
-                                    } catch (err) {
-                                      toast({ title: "操作失败", variant: "destructive" });
-                                    }
-                                  }}
-                                  className="gap-1 bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                  <PlayCircle className="h-3.5 w-3.5" />
-                                  开始服务
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button size="sm" variant="outline" className="gap-1">
-                                      <MoreHorizontal className="h-3.5 w-3.5" />
-                                      更多
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={async () => {
-                                        try {
-                                          const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                            method: "PUT",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ process_status: "pending_change" }),
-                                          });
-                                          const result = await response.json();
-                                          if (result.success) {
-                                            toast({ title: "已发起工商变更" });
-                                            fetchEnterprises();
-                                          } else {
-                                            toast({ title: "操作失败", variant: "destructive" });
-                                          }
-                                        } catch (err) {
-                                          toast({ title: "操作失败", variant: "destructive" });
-                                        }
-                                      }}
-                                    >
-                                      <FileEdit className="h-4 w-4 mr-2" />
-                                      发起工商变更
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-red-600"
-                                      onClick={async () => {
-                                        if (!confirm(`确定要终止「${enterprise.name}」的服务吗？此操作不可撤销。`)) return;
-                                        try {
-                                          const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                            method: "PUT",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ process_status: "terminated" }),
-                                          });
-                                          const result = await response.json();
-                                          if (result.success) {
-                                            toast({ title: "服务已终止" });
-                                            fetchEnterprises();
-                                          } else {
-                                            toast({ title: "操作失败", variant: "destructive" });
-                                          }
-                                        } catch (err) {
-                                          toast({ title: "操作失败", variant: "destructive" });
-                                        }
-                                      }}
-                                    >
-                                      <Ban className="h-4 w-4 mr-2" />
-                                      终止服务
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </>
+                              <span className="text-xs text-muted-foreground px-2">
+                                请到合同管理创建合同
+                              </span>
                             )}
-                            {/* 待工商变更 → 已建交 */}
-                            {processStatus === "pending_change" && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ process_status: "established" }),
-                                    });
-                                    const result = await response.json();
-                                    if (result.success) {
-                                      toast({ title: "工商变更已完成" });
-                                      fetchEnterprises();
-                                    } else {
-                                      toast({ title: "操作失败", variant: "destructive" });
-                                    }
-                                  } catch (err) {
-                                    toast({ title: "操作失败", variant: "destructive" });
-                                  }
-                                }}
-                                className="gap-1 bg-violet-600 hover:bg-violet-700"
-                              >
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                完成变更
-                              </Button>
-                            )}
-                            {/* 服务中 → 已建交 */}
+                            {/* 服务中 - 显示合同状态提示 */}
                             {processStatus === "active" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    try {
-                                      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                        method: "PUT",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ process_status: "established" }),
-                                      });
-                                      const result = await response.json();
-                                      if (result.success) {
-                                        toast({ title: "服务已暂停" });
-                                        fetchEnterprises();
-                                      } else {
-                                        toast({ title: "操作失败", variant: "destructive" });
-                                      }
-                                    } catch (err) {
-                                      toast({ title: "操作失败", variant: "destructive" });
-                                    }
-                                  }}
-                                  className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
-                                >
-                                  <StopCircle className="h-3.5 w-3.5" />
-                                  暂停服务
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button size="sm" variant="outline" className="gap-1">
-                                      <MoreHorizontal className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      className="text-red-600"
-                                      onClick={async () => {
-                                        if (!confirm(`确定要终止「${enterprise.name}」的服务吗？此操作不可撤销。`)) return;
-                                        try {
-                                          const response = await fetch(`/api/enterprises/${enterprise.id}`, {
-                                            method: "PUT",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ process_status: "terminated" }),
-                                          });
-                                          const result = await response.json();
-                                          if (result.success) {
-                                            toast({ title: "服务已终止" });
-                                            fetchEnterprises();
-                                          } else {
-                                            toast({ title: "操作失败", variant: "destructive" });
-                                          }
-                                        } catch (err) {
-                                          toast({ title: "操作失败", variant: "destructive" });
-                                        }
-                                      }}
-                                    >
-                                      <Ban className="h-4 w-4 mr-2" />
-                                      彻底终止
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </>
+                              <span className="text-xs text-emerald-600 px-2">
+                                合同执行中
+                              </span>
                             )}
                           </>
                         )}
