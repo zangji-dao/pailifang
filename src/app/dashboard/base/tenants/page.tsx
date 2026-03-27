@@ -9,7 +9,7 @@ import {
   Loader2,
   Search,
   Eye,
-  Edit,
+  Trash2,
   Store,
   ArrowRight,
 } from "lucide-react";
@@ -485,28 +485,55 @@ export default function EnterpriseListPage() {
                         {/* 服务企业状态切换按钮 */}
                         {activeTab === "non_tenant" && (
                           <>
-                            {/* 洽谈中 → 继续注册 */}
+                            {/* 洽谈中 → 继续注册 + 删除 */}
                             {(processStatus === "new" || processStatus === undefined) && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => {
-                                  if (tabs) {
-                                    tabs.openTab({
-                                      id: `continue-${enterprise.id}`,
-                                      label: `继续注册-${enterprise.name}`,
-                                      path: `/dashboard/base/tenants/create?continue=${enterprise.id}`,
-                                      icon: <ArrowRight className="h-3.5 w-3.5" />,
-                                    });
-                                  } else {
-                                    router.push(`/dashboard/base/tenants/create?continue=${enterprise.id}`);
-                                  }
-                                }}
-                                className="gap-1 bg-primary hover:bg-primary/90"
-                              >
-                                <ArrowRight className="h-3.5 w-3.5" />
-                                继续注册
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => {
+                                    if (tabs) {
+                                      tabs.openTab({
+                                        id: `continue-${enterprise.id}`,
+                                        label: `继续注册-${enterprise.name}`,
+                                        path: `/dashboard/base/tenants/create?continue=${enterprise.id}`,
+                                        icon: <ArrowRight className="h-3.5 w-3.5" />,
+                                      });
+                                    } else {
+                                      router.push(`/dashboard/base/tenants/create?continue=${enterprise.id}`);
+                                    }
+                                  }}
+                                  className="gap-1 bg-primary hover:bg-primary/90"
+                                >
+                                  <ArrowRight className="h-3.5 w-3.5" />
+                                  继续注册
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={async () => {
+                                    if (!confirm(`确定要删除「${enterprise.name}」吗？此操作不可撤销。`)) return;
+                                    try {
+                                      const response = await fetch(`/api/enterprises/${enterprise.id}`, {
+                                        method: "DELETE",
+                                      });
+                                      const result = await response.json();
+                                      if (result.success) {
+                                        toast({ title: "删除成功" });
+                                        fetchEnterprises();
+                                      } else {
+                                        toast({ title: "删除失败", variant: "destructive" });
+                                      }
+                                    } catch (err) {
+                                      toast({ title: "删除失败", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  删除
+                                </Button>
+                              </>
                             )}
                             {/* 已建交 - 提示去合同管理 */}
                             {processStatus === "established" && (
@@ -541,15 +568,6 @@ export default function EnterpriseListPage() {
                         >
                           <Eye className="h-3.5 w-3.5" />
                           查看
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => router.push(`/dashboard/base/tenants/${enterprise.id}/edit`)}
-                          className="gap-1"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                          编辑
                         </Button>
                       </div>
                     </td>
