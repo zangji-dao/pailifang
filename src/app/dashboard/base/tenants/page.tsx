@@ -290,7 +290,7 @@ export default function EnterpriseListPage() {
       {/* 入驻企业 - 状态卡片 */}
       {activeTab === "tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {Object.entries(tenantStatusConfig).map(([key, config]) => {
               const count = tenantStats[key as keyof typeof tenantStats] || 0;
               return (
@@ -321,7 +321,7 @@ export default function EnterpriseListPage() {
       {/* 服务企业 - 状态卡片 */}
       {activeTab === "non_tenant" && (
         <div className="pb-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {Object.entries(nonTenantStatusConfig).map(([key, config]) => {
               const count = nonTenantStats[key as keyof typeof nonTenantStats];
               return (
