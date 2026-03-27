@@ -46,15 +46,20 @@ export default function DashboardLayout({
           reasonStr === "[object AbortError]" ||
           (event.reason instanceof Error && event.reason.name === "AbortError")
         ) {
+          // 阻止错误冒泡和默认处理
           event.preventDefault();
-          return;
+          event.stopPropagation();
+          // 停止立即传播
+          event.stopImmediatePropagation?.();
+          return false;
         }
       }
     };
     
-    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    // 使用捕获阶段来确保我们的处理器最先执行
+    window.addEventListener("unhandledrejection", handleUnhandledRejection, true);
     return () => {
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection, true);
     };
   }, []);
 

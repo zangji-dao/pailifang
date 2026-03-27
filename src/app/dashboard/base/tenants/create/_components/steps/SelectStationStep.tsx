@@ -49,30 +49,35 @@ export function SelectStationStep({
 
   // 加载可用工位号
   useEffect(() => {
-    if (baseId) {
-      fetchAvailableRegNumbers();
-    }
-  }, [baseId]);
+    if (!baseId) return;
+    
+    const controller = new AbortController();
+    
+    const fetchAvailableRegNumbers = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/registration-numbers/available?base_id=${baseId}`, {
+          signal: controller.signal,
+        });
+        const result = await res.json();
+        if (result.success) {
+          const mappedData = (result.data || []).map(mapRegNumberFromAPI);
+          setAvailableRegNumbers(mappedData);
+        }
+      } catch (error) {
+        // 忽略 AbortError
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        console.error("获取可用工位号失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchAvailableRegNumbers = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/registration-numbers/available?base_id=${baseId}`);
-      const result = await res.json();
-      if (result.success) {
-        const mappedData = (result.data || []).map(mapRegNumberFromAPI);
-        setAvailableRegNumbers(mappedData);
-      }
-    } catch (error) {
-      // 忽略 AbortError
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-      console.error("获取可用工位号失败:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchAvailableRegNumbers();
+    return () => controller.abort();
+  }, [baseId]);
 
   // 提取唯一的物业列表
   const meters = [...new Set(availableRegNumbers.map(r => r.meterName))];
