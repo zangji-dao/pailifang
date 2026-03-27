@@ -86,30 +86,48 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 格式化返回数据
-    const formattedData = (data || []).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      enterpriseCode: item.enterprise_code,
-      creditCode: item.credit_code,
-      legalPerson: item.legal_person,
-      phone: item.phone,
-      industry: item.industry,
-      type: item.type,
-      status: item.status,
-      processStatus: item.process_status,
-      registeredAddress: item.registered_address,
-      businessAddress: item.business_address,
-      businessScope: item.business_scope,
-      settledDate: item.settled_date,
-      remarks: item.remarks,
-      proofDocumentUrl: item.proof_document_url,
-      registrationNumber: item.registration_number,
-      baseId: item.base_id,
-      spaceId: item.space_id,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-    }));
+    // 格式化返回数据，包含合同信息
+    const enterpriseIds = (data || []).map((item: any) => item.id);
+    
+    // 获取合同信息
+    const { data: contracts } = await supabase
+      .from('contracts')
+      .select('id, enterprise_id, contract_type, contract_number')
+      .in('enterprise_id', enterpriseIds);
+    
+    // 构建合同映射
+    const contractMap = new Map((contracts || []).map((c: any) => [c.enterprise_id, c]));
+    
+    const formattedData = (data || []).map((item: any) => {
+      const contract = contractMap.get(item.id);
+      return {
+        id: item.id,
+        name: item.name,
+        enterpriseCode: item.enterprise_code,
+        creditCode: item.credit_code,
+        legalPerson: item.legal_person,
+        phone: item.phone,
+        industry: item.industry,
+        type: item.type,
+        status: item.status,
+        processStatus: item.process_status,
+        registeredAddress: item.registered_address,
+        businessAddress: item.business_address,
+        businessScope: item.business_scope,
+        settledDate: item.settled_date,
+        remarks: item.remarks,
+        proofDocumentUrl: item.proof_document_url,
+        registrationNumber: item.registration_number,
+        baseId: item.base_id,
+        spaceId: item.space_id,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        // 合同信息
+        contractId: contract?.id || null,
+        contractType: contract?.contract_type || null,
+        contractNumber: contract?.contract_number || null,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -302,17 +320,31 @@ export async function POST(request: NextRequest) {
 
     // 如果有关联合同ID，更新合同的企业关联
     if (body.contract_id) {
+      // 先尝试更新 contracts 表
       const { error: contractError } = await supabase
-        .from('pi_contracts')
+        .from('contracts')
         .update({
           enterprise_id: enterprise.id,
-          status: 'active',
+          status: 'signed',
           updated_at: new Date().toISOString(),
         })
         .eq('id', body.contract_id);
 
       if (contractError) {
-        console.error('关联合同失败:', contractError);
+        console.error('关联合同失败(contracts):', contractError);
+        // 尝试更新 pi_contracts 表
+        const { error: piContractError } = await supabase
+          .from('pi_contracts')
+          .update({
+            enterprise_id: enterprise.id,
+            status: 'active',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', body.contract_id);
+
+        if (piContractError) {
+          console.error('关联合同失败(pi_contracts):', piContractError);
+        }
       }
     }
 

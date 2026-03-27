@@ -48,7 +48,18 @@ interface Enterprise {
   registeredAddress?: string;
   settledDate?: string;
   createdAt: string;
+  // 合同信息
+  contractId?: string | null;
+  contractType?: string | null;
+  contractNumber?: string | null;
 }
+
+// 合同类型配置
+const contractTypeConfig: Record<string, { label: string; color: string; bgColor: string }> = {
+  free: { label: "免费", color: "text-green-600", bgColor: "bg-green-50" },
+  paid: { label: "收费", color: "text-blue-600", bgColor: "bg-blue-50" },
+  agreement: { label: "协议", color: "text-amber-600", bgColor: "bg-amber-50" },
+};
 
 // 入驻企业流程状态配置（从待工商注册开始）
 const tenantStatusConfig: Record<string, { 
@@ -408,6 +419,9 @@ export default function EnterpriseListPage() {
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">法人/电话</th>
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">行业</th>
                 <th className="p-4 text-left text-sm font-medium text-muted-foreground">状态</th>
+                {activeTab === "tenant" && (
+                  <th className="p-4 text-left text-sm font-medium text-muted-foreground">合同类型</th>
+                )}
                 <th className="p-4 text-right text-sm font-medium text-muted-foreground">操作</th>
               </tr>
             </thead>
@@ -449,6 +463,22 @@ export default function EnterpriseListPage() {
                         {statusInfo.label}
                       </div>
                     </td>
+                    {/* 合同类型列 - 仅入驻企业显示 */}
+                    {activeTab === "tenant" && (
+                      <td className="p-4">
+                        {enterprise.contractType ? (
+                          <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                            contractTypeConfig[enterprise.contractType]?.bgColor || "bg-gray-50",
+                            contractTypeConfig[enterprise.contractType]?.color || "text-gray-600"
+                          )}>
+                            {contractTypeConfig[enterprise.contractType]?.label || enterprise.contractType}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">未绑定</span>
+                        )}
+                      </td>
+                    )}
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
                         {/* 入驻企业 - 继续注册按钮 */}
