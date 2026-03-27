@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Plus, RefreshCw, Loader2, ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -424,19 +425,19 @@ function RecordDialog({
 
   const handleSubmit = async () => {
     if (!formData.enterprise_id) {
-      alert("请选择企业");
+      toast.warning("请选择企业");
       return;
     }
     if (!formData.category) {
-      alert("请选择类型");
+      toast.warning("请选择类型");
       return;
     }
     if (!formData.amount) {
-      alert("请填写金额");
+      toast.warning("请填写金额");
       return;
     }
     if (!formData.summary) {
-      alert("请填写摘要");
+      toast.warning("请填写摘要");
       return;
     }
 
@@ -456,14 +457,15 @@ function RecordDialog({
       });
 
       if (response.ok) {
+        toast.success(type === "income" ? "收入记录添加成功" : "支出记录添加成功");
         onSuccess();
       } else {
         const data = await response.json();
-        alert(data.error || "保存失败");
+        toast.error(data.error || "保存失败");
       }
     } catch (error) {
       console.error("保存失败:", error);
-      alert("保存失败");
+      toast.error("保存失败，请重试");
     } finally {
       setLoading(false);
     }
