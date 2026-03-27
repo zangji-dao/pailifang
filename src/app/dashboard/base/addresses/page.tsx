@@ -210,7 +210,7 @@ export default function AddressManagementPage() {
     }
   };
 
-  // 获取待分配地址的企业（审批通过但未分配地址的申请）
+  // 获取待分配地址的企业（填报中/审批通过且未分配地址的申请）
   const fetchFillingApplications = async () => {
     try {
       setLoadingApplications(true);
@@ -219,15 +219,15 @@ export default function AddressManagementPage() {
       const appsRes = await fetch("/api/settlement/applications");
       const appsResult = await appsRes.json();
       
-      // 过滤出审批通过且未分配地址的申请
+      // 过滤出：填报中/已提交/审批通过，且未分配地址，且企业名称已填写的申请
       if (appsResult.success || appsResult.data) {
-        const approvedApps = (appsResult.data || []).filter(
+        const validApps = (appsResult.data || []).filter(
           (app: any) => 
-            app.approvalStatus === "approved" && 
+            (app.approvalStatus === "filling" || app.approvalStatus === "submitted" || app.approvalStatus === "approved") && 
             !app.assignedAddressId && 
             app.enterpriseName?.trim()
         );
-        setFillingApplications(approvedApps);
+        setFillingApplications(validApps);
       }
       
       // 获取已有企业但未分配工位号的
@@ -735,11 +735,11 @@ export default function AddressManagementPage() {
                       <SelectValue placeholder={loadingApplications ? "加载中..." : "选择企业"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* 审批通过待分配地址的申请 */}
+                      {/* 填报中/审批通过待分配地址的申请 */}
                       {fillingApplications.length > 0 && (
                         <>
                           <SelectItem value="_filling_header" disabled className="font-medium text-muted-foreground">
-                            审批通过待分配地址
+                            入驻申请（待分配地址）
                           </SelectItem>
                           {fillingApplications
                             .filter((app) => app.enterpriseName && app.enterpriseName.trim() !== "")
