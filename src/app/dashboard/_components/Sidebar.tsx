@@ -42,6 +42,9 @@ export function Sidebar({
 
         {navigation.map((item) => {
           if (item.expandable && item.children) {
+            // 获取路径的基础部分（不含查询参数）
+            const pathnameBase = pathname.split("?")[0];
+            
             // 检查子菜单是否匹配当前路径（排除空href的情况）
             const hasActiveChild = item.children.some(
               (child) => {
@@ -49,12 +52,17 @@ export function Sidebar({
                   // 如果子菜单有嵌套子项，检查嵌套子项
                   if (child.children && child.children.length > 0) {
                     return child.children.some(
-                      (nested) => nested.href && (pathname === nested.href || pathname.startsWith(nested.href + "/"))
+                      (nested) => {
+                        if (!nested.href) return false;
+                        const nestedHrefBase = nested.href.split("?")[0];
+                        return pathnameBase === nestedHrefBase || pathnameBase.startsWith(nestedHrefBase + "/");
+                      }
                     );
                   }
                   return false;
                 }
-                return pathname === child.href || pathname.startsWith(child.href + "/");
+                const childHrefBase = child.href.split("?")[0];
+                return pathnameBase === childHrefBase || pathnameBase.startsWith(childHrefBase + "/");
               }
             );
             
@@ -171,16 +179,25 @@ function ExpandableNavItem({
               );
             }
 
+            // 获取路径的基础部分（不含查询参数）
+            const pathnameBase = pathname.split("?")[0];
+            const childHrefBase = child.href?.split("?")[0];
+
             // 检查是否有其他子菜单项更精确地匹配当前路径
             const moreSpecificMatch = item.children?.some(
-              (sibling) =>
-                sibling.href &&
-                sibling.href !== child.href &&
-                (pathname === sibling.href || pathname.startsWith(sibling.href + "/"))
+              (sibling) => {
+                if (!sibling.href || sibling.href === child.href) return false;
+                const siblingHrefBase = sibling.href.split("?")[0];
+                // 更精确匹配：sibling 的路径是当前路径的前缀，且比当前 child 更长
+                return (
+                  pathnameBase === siblingHrefBase ||
+                  pathnameBase.startsWith(siblingHrefBase + "/")
+                );
+              }
             );
 
-            const childIsActive = pathname === child.href || 
-              (pathname.startsWith(child.href + "/") && !moreSpecificMatch);
+            const childIsActive = pathnameBase === childHrefBase || 
+              (childHrefBase && pathnameBase.startsWith(childHrefBase + "/") && !moreSpecificMatch);
             const childBadge = child.badge;
 
             return (
@@ -268,9 +285,16 @@ function NestedMenuItem({ item, pathname, onCloseSidebar, parentExpanded }: Nest
   
   if (!item.children || item.children.length === 0) return null;
   
+  // 获取路径的基础部分（不含查询参数）
+  const pathnameBase = pathname.split("?")[0];
+  
   // 检查是否有子菜单项处于激活状态
   const hasActiveChild = item.children.some(
-    (child) => pathname === child.href || pathname.startsWith(child.href + "/")
+    (child) => {
+      if (!child.href) return false;
+      const childHrefBase = child.href.split("?")[0];
+      return pathnameBase === childHrefBase || pathnameBase.startsWith(childHrefBase + "/");
+    }
   );
 
   return (
@@ -304,20 +328,27 @@ function NestedMenuItem({ item, pathname, onCloseSidebar, parentExpanded }: Nest
       >
         <div className="ml-4 pl-3 border-l border-slate-200 space-y-0.5">
           {item.children.map((nestedChild) => {
+            if (!nestedChild.href) return null;
+            
+            // 获取路径基础部分
+            const nestedHrefBase = nestedChild.href.split("?")[0];
+            
             // 三级菜单激活逻辑：
             // 1. 精确匹配
             // 2. 子路径匹配（但排除其他同级菜单的路径）
-            const isExactMatch = pathname === nestedChild.href;
+            const isExactMatch = pathnameBase === nestedHrefBase;
             
-            // 子路径匹配时，需要排除其他同级菜单的特殊路径
-            // 例如：/dashboard/base/tenants/create 不应匹配 /dashboard/base/tenants
+            // 检查是否有其他子菜单项更精确匹配
+            const moreSpecificMatch = item.children?.some(
+              (sibling) => {
+                if (!sibling.href || sibling.href === nestedChild.href) return false;
+                const siblingHrefBase = sibling.href.split("?")[0];
+                return pathnameBase === siblingHrefBase || pathnameBase.startsWith(siblingHrefBase + "/");
+              }
+            );
+            
             const isSubPathMatch = 
-              pathname.startsWith(nestedChild.href + "/") &&
-              !item.children?.some(
-                (sibling) => 
-                  sibling.href !== nestedChild.href && 
-                  pathname.startsWith(sibling.href)
-              );
+              pathnameBase.startsWith(nestedHrefBase + "/") && !moreSpecificMatch;
             
             const isActive = isExactMatch || isSubPathMatch;
             
