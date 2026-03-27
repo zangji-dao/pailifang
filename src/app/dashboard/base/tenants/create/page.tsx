@@ -362,8 +362,8 @@ export default function NewTenantPage() {
       case "address_confirm_info":
         return enterpriseName.trim() !== "";
       case "registration_upload_license":
-        // 工商注册步骤：需要上传营业执照并填写基本信息
-        return businessLicense !== null && creditCode.trim() !== "" && legalPerson.trim() !== "";
+        // 工商注册步骤：填写基本信息（营业执照非必填）
+        return creditCode.trim() !== "" && legalPerson.trim() !== "";
       case "contract_select_contract":
         // 签订合同步骤：需要选择一个合同
         return contract?.contractId !== null && contract?.contractId !== undefined;
