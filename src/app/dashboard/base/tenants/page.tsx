@@ -13,6 +13,7 @@ import {
   Store,
   ArrowRight,
   LogOut,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -469,8 +470,8 @@ export default function EnterpriseListPage() {
                         {activeTab === "tenant" && processStatus === "active" && (
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="gap-1 text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                            variant="link"
+                            className="gap-1 text-amber-600 hover:text-amber-700 px-2"
                             onClick={async () => {
                               if (!confirm(`确定要将「${enterprise.name}」迁出吗？迁出后将转为服务企业。`)) return;
                               try {
@@ -489,8 +490,30 @@ export default function EnterpriseListPage() {
                               }
                             }}
                           >
-                            <LogOut className="h-3.5 w-3.5" />
                             迁出
+                          </Button>
+                        )}
+                        {/* 入驻企业 - 修改按钮 */}
+                        {activeTab === "tenant" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1"
+                            onClick={() => {
+                              if (tabs) {
+                                tabs.openTab({
+                                  id: `edit-${enterprise.id}`,
+                                  label: `编辑-${enterprise.name}`,
+                                  path: `/dashboard/base/tenants/${enterprise.id}/edit`,
+                                  icon: <Pencil className="h-3.5 w-3.5" />,
+                                });
+                              } else {
+                                router.push(`/dashboard/base/tenants/${enterprise.id}/edit`);
+                              }
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            修改
                           </Button>
                         )}
                         {/* 服务企业状态切换按钮 */}
