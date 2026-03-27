@@ -350,6 +350,7 @@ export default function NewTenantPage() {
   const validateCurrentStep = useCallback((): boolean => {
     switch (`${currentMainStepId}_${currentSubStepId}`) {
       case "address_select_base":
+        if (isNonTenant) return true;
         return selectedBaseId !== "";
       case "address_select_type":
         return enterpriseType !== null;
@@ -475,14 +476,14 @@ export default function NewTenantPage() {
 
   // 上一步
   const handlePrev = useCallback(() => {
-    const prevStep = getPrevStep(currentMainStepId, currentSubStepId);
+    const prevStep = getPrevStep(currentMainStepId, currentSubStepId, isNonTenant);
     if (prevStep) {
       updateFormState({
         currentMainStepId: prevStep.mainStepId,
         currentSubStepId: prevStep.subStepId,
       });
     }
-  }, [currentMainStepId, currentSubStepId, updateFormState]);
+  }, [currentMainStepId, currentSubStepId, isNonTenant, updateFormState]);
 
   // 跳转到大步骤
   const handleMainStepClick = useCallback((stepId: string) => {
@@ -645,6 +646,9 @@ export default function NewTenantPage() {
     if (currentMainStepId === "address") {
       switch (currentSubStepId) {
         case "select_base":
+          if (isNonTenant) {
+            return null;
+          }
           return (
             <SelectBaseStep
               selectedBaseId={selectedBaseId}

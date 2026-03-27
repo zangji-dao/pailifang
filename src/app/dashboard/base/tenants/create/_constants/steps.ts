@@ -47,6 +47,7 @@ export const mainSteps: MainStep[] = [
         title: "选择基地",
         description: "选择入驻的合作基地",
         icon: Building2,
+        isOptional: true, // 非入驻企业可跳过
       },
       {
         id: "select_type",
@@ -190,7 +191,8 @@ export function getNextStep(
 // 获取上一个步骤
 export function getPrevStep(
   currentMainStepId: string,
-  currentSubStepId: string
+  currentSubStepId: string,
+  skipOptional: boolean = false
 ): { mainStepId: string; subStepId: string } | null {
   const index = getStepIndex(currentMainStepId, currentSubStepId);
   if (!index) return null;
@@ -200,6 +202,10 @@ export function getPrevStep(
   // 检查当前大步骤是否有上一个子步骤
   if (subIndex > 0) {
     const prevSubStep = mainSteps[mainIndex].subSteps[subIndex - 1];
+    // 如果需要跳过可选步骤且上一个是可选的，继续找
+    if (skipOptional && prevSubStep.isOptional) {
+      return getPrevStep(currentMainStepId, prevSubStep.id, skipOptional);
+    }
     return { mainStepId: currentMainStepId, subStepId: prevSubStep.id };
   }
 
@@ -207,6 +213,9 @@ export function getPrevStep(
   if (mainIndex > 0) {
     const prevMainStep = mainSteps[mainIndex - 1];
     const lastSubStep = prevMainStep.subSteps[prevMainStep.subSteps.length - 1];
+    if (skipOptional && lastSubStep.isOptional) {
+      return getPrevStep(prevMainStep.id, lastSubStep.id, skipOptional);
+    }
     return { mainStepId: prevMainStep.id, subStepId: lastSubStep.id };
   }
 
