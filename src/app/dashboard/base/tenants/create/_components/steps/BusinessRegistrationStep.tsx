@@ -13,10 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye, MapPin, DollarSign, Briefcase, Calendar } from "lucide-react";
+import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye, MapPin, DollarSign, Briefcase, Calendar, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustries } from "@/hooks/useIndustries";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface BusinessRegistrationStepProps {
   enterpriseName: string;
@@ -68,8 +68,33 @@ export function BusinessRegistrationStep({
   const [uploading, setUploading] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [addIndustryOpen, setAddIndustryOpen] = useState(false);
+  const [newIndustryName, setNewIndustryName] = useState("");
+  const [addingIndustry, setAddingIndustry] = useState(false);
   const { toast } = useToast();
-  const { industries, loading: industriesLoading } = useIndustries();
+  const { industries, loading: industriesLoading, createIndustry } = useIndustries();
+
+  // 添加新行业
+  const handleAddIndustry = async () => {
+    if (!newIndustryName.trim()) {
+      toast({ title: "请输入行业名称", variant: "destructive" });
+      return;
+    }
+    setAddingIndustry(true);
+    try {
+      const newIndustry = await createIndustry(newIndustryName.trim());
+      if (newIndustry) {
+        toast({ title: "添加成功", description: `已添加行业「${newIndustry.name}」` });
+        onUpdateIndustry(newIndustry.name);
+        setNewIndustryName("");
+        setAddIndustryOpen(false);
+      }
+    } catch (error: any) {
+      toast({ title: "添加失败", description: error.message, variant: "destructive" });
+    } finally {
+      setAddingIndustry(false);
+    }
+  };
 
   // 识别营业执照
   const recognizeLicense = async (imageUrl: string) => {
@@ -356,12 +381,28 @@ export function BusinessRegistrationStep({
             </div>
             <div className="space-y-2">
               <Label htmlFor="industry">所属行业</Label>
-              <Select value={industry} onValueChange={onUpdateIndustry}>
+              <Select 
+                value={industry} 
+                onValueChange={(value) => {
+                  if (value === "_add_new") {
+                    setAddIndustryOpen(true);
+                  } else {
+                    onUpdateIndustry(value);
+                  }
+                }}
+              >
                 <SelectTrigger className="relative">
                   <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <SelectValue placeholder="请选择行业" className="pl-6" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* 添加新行业选项 */}
+                  <SelectItem value="_add_new">
+                    <span className="flex items-center gap-2 text-primary">
+                      <Plus className="w-4 h-4" />
+                      添加新行业...
+                    </span>
+                  </SelectItem>
                   {industriesLoading ? (
                     <SelectItem value="_loading" disabled>加载中...</SelectItem>
                   ) : industries.length === 0 ? (
@@ -377,6 +418,41 @@ export function BusinessRegistrationStep({
               </Select>
             </div>
           </div>
+
+          {/* 添加新行业对话框 */}
+          <Dialog open={addIndustryOpen} onOpenChange={setAddIndustryOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>添加新行业</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newIndustry">行业名称</Label>
+                  <Input
+                    id="newIndustry"
+                    value={newIndustryName}
+                    onChange={(e) => setNewIndustryName(e.target.value)}
+                    placeholder="请输入行业名称"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddIndustry();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddIndustryOpen(false)}>
+                  取消
+                </Button>
+                <Button onClick={handleAddIndustry} disabled={addingIndustry}>
+                  {addingIndustry && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  添加
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* 注册地址 */}
           <div className="space-y-2">

@@ -37,6 +37,29 @@ export function useIndustries() {
     }
   }, []);
 
+  // 创建新行业
+  const createIndustry = useCallback(async (name: string): Promise<Industry | null> => {
+    try {
+      const response = await fetch("/api/industries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        // 刷新列表
+        await fetchIndustries();
+        return data.data;
+      } else {
+        throw new Error(data.error || "创建行业失败");
+      }
+    } catch (err) {
+      console.error("创建行业失败:", err);
+      throw err;
+    }
+  }, [fetchIndustries]);
+
   useEffect(() => {
     fetchIndustries();
   }, [fetchIndustries]);
@@ -46,5 +69,6 @@ export function useIndustries() {
     loading,
     error,
     refresh: fetchIndustries,
+    createIndustry,
   };
 }
