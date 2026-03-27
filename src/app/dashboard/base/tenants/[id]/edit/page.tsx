@@ -39,23 +39,31 @@ interface Enterprise {
   registeredAddress: string;
   businessAddress: string;
   industry: string;
-  入驻Date: string;
+  registeredCapital: string;
+  establishDate: string;
+  businessScope: string;
+  settledDate: string;
+  registrationNumber: string;
   status: EnterpriseStatus;
   type: EnterpriseType;
   remarks: string;
 }
 
-// API响应类型
+// API响应类型 - 使用下划线命名
 interface ApiEnterprise {
   id: string;
   name: string;
-  creditCode: string | null;
-  legalPerson: string | null;
+  credit_code: string | null;
+  legal_person: string | null;
   phone: string | null;
-  registeredAddress: string | null;
-  businessAddress: string | null;
+  registered_address: string | null;
+  business_address: string | null;
   industry: string | null;
-  settledDate: string | null;
+  registered_capital: string | null;
+  establish_date: string | null;
+  business_scope: string | null;
+  settled_date: string | null;
+  registration_number: string | null;
   status: string;
   type: string;
   remarks: string | null;
@@ -66,13 +74,17 @@ function transformEnterprise(api: ApiEnterprise): Enterprise {
   return {
     id: api.id,
     name: api.name,
-    creditCode: api.creditCode || "",
-    legalPerson: api.legalPerson || "",
+    creditCode: api.credit_code || "",
+    legalPerson: api.legal_person || "",
     phone: api.phone || "",
-    registeredAddress: api.registeredAddress || "",
-    businessAddress: api.businessAddress || "",
+    registeredAddress: api.registered_address || "",
+    businessAddress: api.business_address || "",
     industry: api.industry || "",
-    入驻Date: api.settledDate || "",
+    registeredCapital: api.registered_capital || "",
+    establishDate: api.establish_date || "",
+    businessScope: api.business_scope || "",
+    settledDate: api.settled_date || "",
+    registrationNumber: api.registration_number || "",
     status: api.status as EnterpriseStatus,
     type: api.type as EnterpriseType,
     remarks: api.remarks || "",
@@ -150,13 +162,17 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
         },
         body: JSON.stringify({
           name: formData.name,
-          creditCode: formData.creditCode,
-          legalPerson: formData.legalPerson,
+          credit_code: formData.creditCode,
+          legal_person: formData.legalPerson,
           phone: formData.phone,
-          registeredAddress: formData.registeredAddress,
-          businessAddress: formData.businessAddress,
+          registered_address: formData.registeredAddress,
+          business_address: formData.businessAddress,
           industry: formData.industry,
-          settledDate: formData.入驻Date,
+          registered_capital: formData.registeredCapital,
+          establish_date: formData.establishDate,
+          business_scope: formData.businessScope,
+          settled_date: formData.settledDate,
+          registration_number: formData.registrationNumber,
           status: formData.status,
           type: formData.type,
           remarks: formData.remarks,
@@ -350,8 +366,35 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
                   <Label className="text-sm font-medium">入驻日期</Label>
                   <Input
                     type="date"
-                    value={formData.入驻Date || ""}
-                    onChange={(e) => setFormData({ ...formData, 入驻Date: e.target.value })}
+                    value={formData.settledDate || ""}
+                    onChange={(e) => setFormData({ ...formData, settledDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">注册资本</Label>
+                  <Input
+                    value={formData.registeredCapital || ""}
+                    onChange={(e) => setFormData({ ...formData, registeredCapital: e.target.value })}
+                    placeholder="请输入注册资本"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">成立日期</Label>
+                  <Input
+                    type="date"
+                    value={formData.establishDate || ""}
+                    onChange={(e) => setFormData({ ...formData, establishDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">注册号</Label>
+                  <Input
+                    value={formData.registrationNumber || ""}
+                    onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
+                    placeholder="请输入注册号"
                   />
                 </div>
 
@@ -395,6 +438,16 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
                       <SelectItem value="inactive">已迁出</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-sm font-medium">经营范围</Label>
+                  <textarea
+                    className="w-full min-h-[80px] px-3 py-2 text-sm border border-input rounded-md bg-background resize-y"
+                    value={formData.businessScope || ""}
+                    onChange={(e) => setFormData({ ...formData, businessScope: e.target.value })}
+                    placeholder="请输入经营范围"
+                  />
                 </div>
 
                 <div className="space-y-2 col-span-2">

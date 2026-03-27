@@ -125,7 +125,9 @@ export async function PUT(
     if (body.type !== undefined) updateData.type = body.type;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.process_status !== undefined) updateData.process_status = body.process_status;
-    if (body.registered_address !== undefined) updateData.registered_address = body.registered_address;
+    if (body.registered_capital !== undefined) updateData.registered_capital = body.registered_capital;
+    if (body.establish_date !== undefined) updateData.establish_date = body.establish_date;
+    if (body.registration_number !== undefined) updateData.registration_number = body.registration_number;
     if (body.business_address !== undefined) updateData.business_address = body.business_address;
     if (body.business_scope !== undefined) updateData.business_scope = body.business_scope;
     if (body.settled_date !== undefined) updateData.settled_date = body.settled_date;
