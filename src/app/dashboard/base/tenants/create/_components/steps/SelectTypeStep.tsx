@@ -22,29 +22,38 @@ export function SelectTypeStep({
 
   // 选择类型后生成企业编号
   useEffect(() => {
-    if (enterpriseType && !enterpriseCode) {
-      generateEnterpriseCode(enterpriseType);
-    }
-  }, [enterpriseType, enterpriseCode]);
-
-  const generateEnterpriseCode = async (type: EnterpriseType) => {
-    try {
-      const res = await fetch("/api/enterprises/generate-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        setGeneratedCode(result.data.code);
+    const controller = new AbortController();
+    
+    const generateCode = async (type: EnterpriseType) => {
+      try {
+        const res = await fetch("/api/enterprises/generate-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type }),
+          signal: controller.signal,
+        });
+        const result = await res.json();
+        if (result.success) {
+          setGeneratedCode(result.data.code);
+        }
+      } catch (error) {
+        // 忽略 AbortError
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        console.error("生成企业编号失败:", error);
+        const prefix = type === "tenant" ? "RQ" : "NQ";
+        const timestamp = Date.now().toString().slice(-8);
+        setGeneratedCode(`${prefix}-${timestamp}`);
       }
-    } catch (error) {
-      console.error("生成企业编号失败:", error);
-      const prefix = type === "tenant" ? "RQ" : "NQ";
-      const timestamp = Date.now().toString().slice(-8);
-      setGeneratedCode(`${prefix}-${timestamp}`);
+    };
+
+    if (enterpriseType && !enterpriseCode) {
+      generateCode(enterpriseType);
     }
-  };
+    
+    return () => controller.abort();
+  }, [enterpriseType, enterpriseCode]);
 
   return (
     <Card>

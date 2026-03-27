@@ -102,12 +102,14 @@ export default function ContractDetailPage() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    fetchContract();
+    const controller = new AbortController();
+    fetchContract(controller.signal);
+    return () => controller.abort();
   }, [contractId]);
 
-  const fetchContract = async () => {
+  const fetchContract = async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(`/api/settlement/contracts/${contractId}`);
+      const response = await fetch(`/api/settlement/contracts/${contractId}`, { signal });
       if (!response.ok) throw new Error("获取合同详情失败");
       const result = await response.json();
       // 标准化状态
@@ -119,7 +121,7 @@ export default function ContractDetailPage() {
 
       // 如果有 enterpriseId 但没有 enterpriseName，则获取企业信息
       if (contractData.enterpriseId && !contractData.enterpriseName) {
-        const enterpriseRes = await fetch(`/api/enterprises/${contractData.enterpriseId}`);
+        const enterpriseRes = await fetch(`/api/enterprises/${contractData.enterpriseId}`, { signal });
         if (enterpriseRes.ok) {
           const enterpriseResult = await enterpriseRes.json();
           // 处理蛇形命名到小驼峰命名的转换
@@ -132,6 +134,10 @@ export default function ContractDetailPage() {
         }
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取合同详情失败:", error);
       toast.error("获取合同详情失败");
     } finally {

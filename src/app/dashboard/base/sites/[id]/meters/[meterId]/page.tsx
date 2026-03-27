@@ -90,9 +90,11 @@ export default function MeterDetailPage() {
 
   // 获取物业详情
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchMeter = async () => {
       try {
-        const res = await fetch(`/api/bases/${baseId}`);
+        const res = await fetch(`/api/bases/${baseId}`, { signal: controller.signal });
         const result = await res.json();
         if (result.success) {
           const foundMeter = result.data.meters?.find((m: Meter) => m.id === meterId);
@@ -120,6 +122,10 @@ export default function MeterDetailPage() {
           }
         }
       } catch (error) {
+        // 忽略 AbortError
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("获取物业详情失败:", error);
       } finally {
         setLoading(false);
@@ -129,23 +135,32 @@ export default function MeterDetailPage() {
     if (baseId && meterId) {
       fetchMeter();
     }
+    
+    return () => controller.abort();
   }, [baseId, meterId]);
 
   // 获取入驻企业列表
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchEnterprises = async () => {
       try {
-        const res = await fetch("/api/enterprises?type=tenant");
+        const res = await fetch("/api/enterprises?type=tenant", { signal: controller.signal });
         const result = await res.json();
         if (result.success) {
           setEnterprises(result.data || []);
         }
       } catch (error) {
+        // 忽略 AbortError
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("获取企业列表失败:", error);
       }
     };
 
     fetchEnterprises();
+    return () => controller.abort();
   }, []);
 
   // 刷新数据

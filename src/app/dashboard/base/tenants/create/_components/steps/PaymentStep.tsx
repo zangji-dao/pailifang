@@ -75,6 +75,8 @@ export function PaymentStep({
 
   // 加载该企业的收款记录
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchRecords = async () => {
       if (!enterpriseId) {
         setRecords([]);
@@ -84,7 +86,9 @@ export function PaymentStep({
       setLoading(true);
       try {
         // 获取该企业的所有收款记录
-        const response = await fetch(`/api/dashboard/base/finances/enterprises`);
+        const response = await fetch(`/api/dashboard/base/finances/enterprises`, {
+          signal: controller.signal,
+        });
         if (response.ok) {
           const result = await response.json();
           // 过滤出当前企业的收入记录
@@ -99,6 +103,10 @@ export function PaymentStep({
           setRecords(incomeRecords);
         }
       } catch (error) {
+        // 忽略 AbortError（组件卸载时请求被取消是正常行为）
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("获取收款记录失败:", error);
       } finally {
         setLoading(false);
@@ -106,6 +114,8 @@ export function PaymentStep({
     };
 
     fetchRecords();
+    
+    return () => controller.abort();
   }, [enterpriseId]);
 
   // 选择/取消选择记录

@@ -64,6 +64,10 @@ export function SelectStationStep({
         setAvailableRegNumbers(mappedData);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取可用工位号失败:", error);
     } finally {
       setLoading(false);

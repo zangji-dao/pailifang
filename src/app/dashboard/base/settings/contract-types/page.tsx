@@ -154,14 +154,18 @@ export default function ContractTypesPage() {
   );
 
   // 获取合同类型列表
-  const fetchContractTypes = useCallback(async () => {
+  const fetchContractTypes = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch("/api/contract-types");
+      const response = await fetch("/api/contract-types", { signal });
       const data = await response.json();
       if (data.success) {
         setContractTypes(data.data);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取合同类型列表失败:", error);
       toast.error("无法获取合同类型列表");
     } finally {
@@ -170,7 +174,9 @@ export default function ContractTypesPage() {
   }, []);
 
   useEffect(() => {
-    fetchContractTypes();
+    const controller = new AbortController();
+    fetchContractTypes(controller.signal);
+    return () => controller.abort();
   }, [fetchContractTypes]);
 
   // 拖拽排序结束

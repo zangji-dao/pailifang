@@ -65,12 +65,14 @@ export default function EditContractPage() {
   });
 
   useEffect(() => {
-    fetchContract();
+    const controller = new AbortController();
+    fetchContract(controller.signal);
+    return () => controller.abort();
   }, [contractId]);
 
-  const fetchContract = async () => {
+  const fetchContract = async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(`/api/settlement/contracts/${contractId}`);
+      const response = await fetch(`/api/settlement/contracts/${contractId}`, { signal });
       if (!response.ok) throw new Error("获取合同详情失败");
       const result = await response.json();
       const contract = result.data as Contract;
@@ -94,6 +96,10 @@ export default function EditContractPage() {
         remarks: contract.remarks || "",
       });
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取合同详情失败:", error);
       toast.error("获取合同详情失败");
       router.push("/dashboard/base/contracts");

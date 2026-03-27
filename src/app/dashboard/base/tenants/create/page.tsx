@@ -178,15 +178,21 @@ export default function NewTenantPage() {
   const initializedRef = useRef(false);
   
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchData = async () => {
       // 加载基地列表
       try {
-        const res = await fetch("/api/bases");
+        const res = await fetch("/api/bases", { signal: controller.signal });
         const result = await res.json();
         if (result.success) {
           setBases(result.data || []);
         }
       } catch (error) {
+        // 忽略 AbortError
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("获取基地列表失败:", error);
       }
 
@@ -336,6 +342,7 @@ export default function NewTenantPage() {
       }
     };
     fetchData();
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

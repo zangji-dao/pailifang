@@ -158,10 +158,10 @@ export default function ApplicationsPage() {
   };
 
   // 获取申请列表
-  const fetchApplications = async () => {
+  const fetchApplications = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const response = await fetch("/api/settlement/applications");
+      const response = await fetch("/api/settlement/applications", { signal });
       if (!response.ok) {
         throw new Error("获取申请列表失败");
       }
@@ -169,6 +169,10 @@ export default function ApplicationsPage() {
       setApplications(result.data || []);
       setError(null);
     } catch (err) {
+      // 忽略 AbortError
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       console.error("获取申请列表失败:", err);
       setError(err instanceof Error ? err.message : "获取申请列表失败");
     } finally {
@@ -177,7 +181,9 @@ export default function ApplicationsPage() {
   };
 
   useEffect(() => {
-    fetchApplications();
+    const controller = new AbortController();
+    fetchApplications(controller.signal);
+    return () => controller.abort();
   }, []);
 
   // 从 URL 参数恢复筛选状态（从编辑页返回时）

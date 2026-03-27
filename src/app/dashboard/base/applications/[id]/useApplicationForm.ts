@@ -78,11 +78,11 @@ export function useApplicationForm(id: string) {
   const [shareholderCropperTarget, setShareholderCropperTarget] = useState<ShareholderCropperTarget | null>(null);
 
   // 获取申请详情
-  const loadApplication = useCallback(async () => {
+  const loadApplication = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       setPageError("");
-      const response = await fetch(`/api/applications/${id}`);
+      const response = await fetch(`/api/applications/${id}`, { signal });
       const result = await response.json();
       if (result.success) {
         setFormData({
@@ -95,6 +95,10 @@ export function useApplicationForm(id: string) {
         setPageError(result.error || "获取申请详情失败");
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取申请详情失败:", error);
       setPageError("获取申请详情失败");
     } finally {
@@ -103,7 +107,11 @@ export function useApplicationForm(id: string) {
   }, [id]);
 
   useEffect(() => {
-    if (id) loadApplication();
+    if (id) {
+      const controller = new AbortController();
+      loadApplication(controller.signal);
+      return () => controller.abort();
+    }
   }, [id, loadApplication]);
 
   // 更新字段

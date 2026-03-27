@@ -66,9 +66,11 @@ export default function EditBasePage() {
 
   // 加载基地数据
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchBase = async () => {
       try {
-        const response = await fetch(`/api/bases/${baseId}`);
+        const response = await fetch(`/api/bases/${baseId}`, { signal: controller.signal });
         const result = await response.json();
         
         if (result.success) {
@@ -88,6 +90,10 @@ export default function EditBasePage() {
           setError(result.error || "获取基地信息失败");
         }
       } catch (err) {
+        // 忽略 AbortError
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
         console.error("获取基地信息失败:", err);
         setError("获取基地信息失败");
       } finally {
@@ -96,6 +102,7 @@ export default function EditBasePage() {
     };
 
     fetchBase();
+    return () => controller.abort();
   }, [baseId]);
 
   // 更新基地

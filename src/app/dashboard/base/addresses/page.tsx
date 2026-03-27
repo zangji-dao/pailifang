@@ -184,39 +184,47 @@ export default function AddressManagementPage() {
   const [saving, setSaving] = useState(false);
 
   // 获取级联数据
-  const fetchCascadeData = async () => {
+  const fetchCascadeData = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch("/api/bases/cascade");
+      const res = await fetch("/api/bases/cascade", { signal });
       const result = await res.json();
       if (result.success) {
         setCascadeData(result.data || []);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取级联数据失败:", error);
       toast.error("获取数据失败");
     }
   };
 
   // 获取工位号列表
-  const fetchRegNumbers = async () => {
+  const fetchRegNumbers = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch("/api/registration-numbers");
+      const res = await fetch("/api/registration-numbers", { signal });
       const result = await res.json();
       if (result.success) {
         setRegNumbers(result.data || []);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取工位号失败:", error);
     }
   };
 
   // 获取待分配地址的企业（填报中/审批通过且未分配地址的申请）
-  const fetchFillingApplications = async () => {
+  const fetchFillingApplications = async (signal?: AbortSignal) => {
     try {
       setLoadingApplications(true);
       
       // 获取所有申请
-      const appsRes = await fetch("/api/settlement/applications");
+      const appsRes = await fetch("/api/settlement/applications", { signal });
       const appsResult = await appsRes.json();
       
       // 过滤出：填报中/已提交/审批通过，且未分配地址，且企业名称已填写的申请
@@ -231,7 +239,7 @@ export default function AddressManagementPage() {
       }
       
       // 获取已有企业但未分配工位号的
-      const unassignedRes = await fetch("/api/enterprises");
+      const unassignedRes = await fetch("/api/enterprises", { signal });
       const unassignedResult = await unassignedRes.json();
       
       if (unassignedResult.success && unassignedResult.data) {
@@ -239,6 +247,10 @@ export default function AddressManagementPage() {
         setUnassignedEnterprises(unassignedResult.data);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取企业数据失败:", error);
     } finally {
       setLoadingApplications(false);
@@ -246,12 +258,20 @@ export default function AddressManagementPage() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+    
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchCascadeData(), fetchRegNumbers(), fetchFillingApplications()]);
+      await Promise.allSettled([
+        fetchCascadeData(controller.signal),
+        fetchRegNumbers(controller.signal),
+        fetchFillingApplications(controller.signal)
+      ]);
       setLoading(false);
     };
     init();
+    
+    return () => controller.abort();
   }, []);
 
   // 基地变化时，重置物业和空间

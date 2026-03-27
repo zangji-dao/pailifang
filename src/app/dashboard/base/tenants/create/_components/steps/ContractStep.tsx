@@ -114,10 +114,14 @@ export function ContractStep({
 
   // 加载可选择的合同列表
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchContracts = async () => {
       setLoading(true);
       try {
-        const response = await fetch("/api/settlement/contracts");
+        const response = await fetch("/api/settlement/contracts", {
+          signal: controller.signal,
+        });
         if (response.ok) {
           const result = await response.json();
           const validStatuses = ["signed", "pending"];
@@ -127,6 +131,10 @@ export function ContractStep({
           setContracts(filteredContracts);
         }
       } catch (error) {
+        // 忽略 AbortError（组件卸载时请求被取消是正常行为）
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("获取合同列表失败:", error);
       } finally {
         setLoading(false);
@@ -134,6 +142,8 @@ export function ContractStep({
     };
 
     fetchContracts();
+    
+    return () => controller.abort();
   }, []);
 
   // 选择已有合同

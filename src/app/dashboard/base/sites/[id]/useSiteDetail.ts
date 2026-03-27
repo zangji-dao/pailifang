@@ -16,14 +16,18 @@ export function useSiteDetail(baseId: string) {
   const [deleting, setDeleting] = useState(false);
 
   // 获取基地详情
-  const fetchBaseDetail = useCallback(async () => {
+  const fetchBaseDetail = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(`/api/bases/${baseId}`);
+      const response = await fetch(`/api/bases/${baseId}`, { signal });
       const result = await response.json();
       if (result.success) {
         setBaseDetail(result.data);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取基地详情失败:", error);
     }
   }, [baseId]);
@@ -31,7 +35,9 @@ export function useSiteDetail(baseId: string) {
   // 初始加载
   useEffect(() => {
     if (baseId) {
-      fetchBaseDetail().finally(() => setLoading(false));
+      const controller = new AbortController();
+      fetchBaseDetail(controller.signal).finally(() => setLoading(false));
+      return () => controller.abort();
     }
   }, [baseId, fetchBaseDetail]);
 

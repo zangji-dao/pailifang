@@ -114,13 +114,15 @@ export default function ContractsPage() {
 
   // 获取合同列表
   useEffect(() => {
-    fetchContracts();
+    const controller = new AbortController();
+    fetchContracts(controller.signal);
+    return () => controller.abort();
   }, []);
 
-  const fetchContracts = async () => {
+  const fetchContracts = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const response = await fetch("/api/settlement/contracts");
+      const response = await fetch("/api/settlement/contracts", { signal });
       if (!response.ok) throw new Error("获取合同列表失败");
       const result = await response.json();
       // 标准化状态
@@ -131,6 +133,10 @@ export default function ContractsPage() {
       setContracts(normalizedData);
       setError(null);
     } catch (err) {
+      // 忽略 AbortError
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       console.error("获取合同列表失败:", err);
       setError(err instanceof Error ? err.message : "获取合同列表失败");
     } finally {

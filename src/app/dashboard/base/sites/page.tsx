@@ -80,18 +80,20 @@ export default function BaseListPage() {
   });
   const [deleting, setDeleting] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     try {
-      // 并行获取所有数据
-      const [basesResponse, enterpriseResponse] = await Promise.all([
-        fetch("/api/bases"),
-        fetch('/api/enterprises/stats').catch(() => null),
+      // 并行获取所有数据，使用 allSettled 来处理部分失败
+      const results = await Promise.allSettled([
+        fetch("/api/bases", { signal }),
+        fetch('/api/enterprises/stats', { signal }),
       ]);
       
-      const basesResult = await basesResponse.json();
+      // 处理基地列表
+      if (results[0].status === "fulfilled" && results[0].value.ok) {
+        const basesResult = await results[0].value.json();
       
-      if (basesResult.success) {
-        setBases(basesResult.data);
+        if (basesResult.success) {
+          setBases(basesResult.data);
         
         // 并行获取所有基地的详细统计（而不是串行）
         const stats: Record<string, BaseStats> = {};
@@ -126,12 +128,13 @@ export default function BaseListPage() {
           }
         });
         setBaseStats(stats);
+        }
       }
 
       // 处理企业统计
-      if (enterpriseResponse) {
+      if (results[1].status === "fulfilled" && results[1].value.ok) {
         try {
-          const enterpriseResult = await enterpriseResponse.json();
+          const enterpriseResult = await results[1].value.json();
           if (enterpriseResult.success) {
             setEnterpriseStats(enterpriseResult.data);
           }
@@ -140,6 +143,10 @@ export default function BaseListPage() {
         }
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取基地列表失败:", error);
     } finally {
       setLoading(false);
@@ -147,7 +154,9 @@ export default function BaseListPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, []);
 
   // 删除基地

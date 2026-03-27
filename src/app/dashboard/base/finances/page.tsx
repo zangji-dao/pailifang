@@ -108,7 +108,7 @@ export default function FinancesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // 加载数据
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -117,7 +117,7 @@ export default function FinancesPage() {
       if (typeFilter) params.set("type", typeFilter);
       if (dateFilter) params.set("date", dateFilter);
 
-      const response = await fetch(`/api/dashboard/base/finances?${params}`);
+      const response = await fetch(`/api/dashboard/base/finances?${params}`, { signal });
       const data = await response.json();
 
       if (response.ok) {
@@ -126,6 +126,10 @@ export default function FinancesPage() {
         setPagination((prev) => ({ ...prev, total: data.pagination?.total || 0, totalPages: data.pagination?.totalPages || 0 }));
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("加载数据失败:", error);
     } finally {
       setLoading(false);
@@ -133,7 +137,9 @@ export default function FinancesPage() {
   }, [pagination.page, pagination.pageSize, typeFilter, dateFilter]);
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => controller.abort();
   }, [loadData]);
 
   // 打开新增对话框
@@ -245,7 +251,7 @@ export default function FinancesPage() {
           onChange={(e) => setDateFilter(e.target.value)}
           className="w-40"
         />
-        <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
+        <Button variant="outline" size="icon" onClick={() => loadData()} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
       </div>

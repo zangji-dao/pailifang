@@ -39,6 +39,10 @@ export function SelectBaseStep({ selectedBaseId, onSelectBase }: SelectBaseStepP
         setBases(result.data || []);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取基地列表失败:", error);
     } finally {
       setLoading(false);

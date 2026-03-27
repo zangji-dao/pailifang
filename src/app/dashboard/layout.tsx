@@ -34,12 +34,21 @@ export default function DashboardLayout({
     handleLogout,
   } = useDashboardLayout();
 
-  // 全局错误处理 - 捕获未处理的 Promise 错误（如图片加载失败）
+  // 全局错误处理 - 捕获未处理的 Promise 错误（如 AbortError）
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // 忽略 [object Event] 类型的错误（通常是资源加载失败）
-      if (event.reason && String(event.reason) === "[object Event]") {
-        event.preventDefault();
+      // 忽略 [object Event] 类型的错误（通常是 fetch 请求被取消导致的 AbortError）
+      // 这在 Fast Refresh 或组件卸载时是正常行为
+      if (event.reason) {
+        const reasonStr = String(event.reason);
+        if (
+          reasonStr === "[object Event]" ||
+          reasonStr === "[object AbortError]" ||
+          (event.reason instanceof Error && event.reason.name === "AbortError")
+        ) {
+          event.preventDefault();
+          return;
+        }
       }
     };
     

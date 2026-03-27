@@ -148,14 +148,18 @@ export default function IndustriesPage() {
   );
 
   // 获取行业列表
-  const fetchIndustries = useCallback(async () => {
+  const fetchIndustries = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch("/api/industries");
+      const response = await fetch("/api/industries", { signal });
       const data = await response.json();
       if (data.success) {
         setIndustries(data.data);
       }
     } catch (error) {
+      // 忽略 AbortError
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("获取行业列表失败:", error);
       toast({
         title: "获取失败",
@@ -168,7 +172,9 @@ export default function IndustriesPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchIndustries();
+    const controller = new AbortController();
+    fetchIndustries(controller.signal);
+    return () => controller.abort();
   }, [fetchIndustries]);
 
   // 拖拽排序结束

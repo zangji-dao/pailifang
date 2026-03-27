@@ -89,17 +89,20 @@ export default function NewContractPage() {
 
   // 加载企业列表和合同类型
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 并行加载企业列表和合同类型
-        const [enterprisesRes, contractTypesRes] = await Promise.all([
-          fetch("/api/enterprises"),
-          fetch("/api/contract-types"),
+        // 并行加载企业列表和合同类型，使用 allSettled 来处理部分失败
+        const results = await Promise.allSettled([
+          fetch("/api/enterprises", { signal: controller.signal }),
+          fetch("/api/contract-types", { signal: controller.signal }),
         ]);
 
-        if (enterprisesRes.ok) {
-          const result = await enterprisesRes.json();
+        // 处理企业列表结果
+        if (results[0].status === "fulfilled" && results[0].value.ok) {
+          const result = await results[0].value.json();
           // 排除不可签约的企业状态（草稿、已搬离、已终止）
           const invalidStatuses = ["draft", "moved_out", "terminated"];
           const filtered = (result.data || []).filter((e: Enterprise) => {
@@ -111,8 +114,9 @@ export default function NewContractPage() {
           setEnterprises(filtered);
         }
 
-        if (contractTypesRes.ok) {
-          const result = await contractTypesRes.json();
+        // 处理合同类型结果
+        if (results[1].status === "fulfilled" && results[1].value.ok) {
+          const result = await results[1].value.json();
           setContractTypes(result.data || []);
           // 默认选择第一个合同类型
           if (result.data?.length > 0) {
@@ -120,12 +124,18 @@ export default function NewContractPage() {
           }
         }
       } catch (error) {
+        // 忽略 AbortError（组件卸载时请求被取消是正常行为）
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("加载数据失败:", error);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
+    
+    return () => controller.abort();
   }, []);
 
   // 生成合同号
