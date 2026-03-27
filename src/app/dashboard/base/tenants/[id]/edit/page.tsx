@@ -102,31 +102,6 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Enterprise>>({});
 
-  // 判断日期是否在2024年之后
-  const isAfter2024 = (dateStr: string | undefined) => {
-    if (!dateStr) return false;
-    const year = new Date(dateStr).getFullYear();
-    return year >= 2024;
-  };
-
-  // 处理入驻日期变更
-  const handleSettledDateChange = (value: string) => {
-    setFormData({ ...formData, settledDate: value });
-    // 如果入驻日期和成立日期都在2024年之后，同步成立日期
-    if (isAfter2024(value) && isAfter2024(formData.establishDate)) {
-      setFormData(prev => ({ ...prev, settledDate: value, establishDate: value }));
-    }
-  };
-
-  // 处理成立日期变更
-  const handleEstablishDateChange = (value: string) => {
-    setFormData({ ...formData, establishDate: value });
-    // 如果入驻日期和成立日期都在2024年之后，同步入驻日期
-    if (isAfter2024(value) && isAfter2024(formData.settledDate)) {
-      setFormData(prev => ({ ...prev, settledDate: value, establishDate: value }));
-    }
-  };
-
   // 获取企业详情
   useEffect(() => {
     const controller = new AbortController();
@@ -404,11 +379,8 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
                   <Input
                     type="date"
                     value={formData.settledDate || ""}
-                    onChange={(e) => handleSettledDateChange(e.target.value)}
+                    onChange={(e) => setFormData({ ...formData, settledDate: e.target.value })}
                   />
-                  {isAfter2024(formData.settledDate) && isAfter2024(formData.establishDate) && (
-                    <p className="text-xs text-amber-600">修改后将自动同步成立日期</p>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -425,11 +397,8 @@ export default function EnterpriseEditPage({ params }: { params: Promise<{ id: s
                   <Input
                     type="date"
                     value={formData.establishDate || ""}
-                    onChange={(e) => handleEstablishDateChange(e.target.value)}
+                    onChange={(e) => setFormData({ ...formData, establishDate: e.target.value })}
                   />
-                  {isAfter2024(formData.settledDate) && isAfter2024(formData.establishDate) && (
-                    <p className="text-xs text-amber-600">修改后将自动同步入驻日期</p>
-                  )}
                 </div>
 
                 <div className="space-y-2">
