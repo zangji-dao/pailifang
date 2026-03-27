@@ -50,13 +50,18 @@ type EnterpriseType = "tenant" | "non_tenant";
 interface Enterprise {
   id: string;
   name: string;
+  enterpriseCode: string;
   creditCode: string;
   legalPerson: string;
   phone: string;
+  industry: string;
+  registeredCapital: string;
+  establishDate: string;
   registeredAddress: string;
   businessAddress: string;
-  industry: string;
-  入驻Date: string;
+  businessScope: string;
+  settledDate: string;
+  registrationNumber: string;
   status: EnterpriseStatus;
   type: EnterpriseType;
   processStatus?: string;
@@ -94,13 +99,18 @@ const typeConfig: Record<string, { label: string; description: string; className
 interface ApiEnterprise {
   id: string;
   name: string;
+  enterprise_code: string | null;
   credit_code: string | null;
   legal_person: string | null;
   phone: string | null;
   registered_address: string | null;
   business_address: string | null;
   industry: string | null;
+  registered_capital: string | null;
+  establish_date: string | null;
+  business_scope: string | null;
   settled_date: string | null;
+  registration_number: string | null;
   status: string;
   type: string;
   process_status: string | null;
@@ -112,13 +122,18 @@ function transformEnterprise(api: ApiEnterprise): Enterprise {
   return {
     id: api.id,
     name: api.name,
+    enterpriseCode: api.enterprise_code || "",
     creditCode: api.credit_code || "",
     legalPerson: api.legal_person || "",
     phone: api.phone || "",
+    industry: api.industry || "",
+    registeredCapital: api.registered_capital || "",
+    establishDate: api.establish_date || "",
     registeredAddress: api.registered_address || "",
     businessAddress: api.business_address || "",
-    industry: api.industry || "",
-    入驻Date: api.settled_date || "",
+    businessScope: api.business_scope || "",
+    settledDate: api.settled_date || "",
+    registrationNumber: api.registration_number || "",
     status: api.status as EnterpriseStatus,
     type: api.type as EnterpriseType,
     processStatus: api.process_status || undefined,
@@ -351,7 +366,10 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                       {statusConfig[enterprise.status]?.label || enterprise.status}
                     </Badge>
                   </div>
-                  <p className="text-slate-500 font-mono text-sm">{enterprise.creditCode}</p>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <span className="font-mono">编号: {enterprise.enterpriseCode || "—"}</span>
+                    <span className="font-mono">信用代码: {enterprise.creditCode || "—"}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -394,13 +412,46 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
 
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-slate-500">
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm">注册资本</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.registeredCapital ? `${enterprise.registeredCapital}万元` : "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">成立日期</span>
+                  </div>
+                  <p className="text-slate-900 font-medium pl-6">
+                    {enterprise.establishDate || "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500">
                     <Calendar className="h-4 w-4" />
                     <span className="text-sm">入驻日期</span>
                   </div>
                   <p className="text-slate-900 font-medium pl-6">
-                    {enterprise.入驻Date || "—"}
+                    {enterprise.settledDate || "—"}
                   </p>
                 </div>
+
+                {/* 入驻企业显示工位号 */}
+                {enterprise.type === "tenant" && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <MapPin className="h-4 w-4" />
+                      <span className="text-sm">工位号</span>
+                    </div>
+                    <p className="text-slate-900 font-medium pl-6 font-mono">
+                      {enterprise.registrationNumber || "—"}
+                    </p>
+                  </div>
+                )}
 
                 <div className="col-span-2 space-y-1">
                   <div className="flex items-center gap-2 text-slate-500">
@@ -421,6 +472,16 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                     {enterprise.businessAddress || "—"}
                   </p>
                 </div>
+
+                {enterprise.businessScope && (
+                  <div className="col-span-2 space-y-1">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">经营范围</span>
+                    </div>
+                    <p className="text-slate-900 font-medium pl-6">{enterprise.businessScope}</p>
+                  </div>
+                )}
 
                 {enterprise.remarks && (
                   <div className="col-span-2 space-y-1">
