@@ -69,6 +69,15 @@ export interface TemplateClause {
   editable: boolean;
 }
 
+// 合同附件类型
+export interface ContractAttachment {
+  id: string;
+  name: string;
+  description?: string;
+  required: boolean;
+  order: number;
+}
+
 export interface ContractTemplateData {
   id: string;
   name: string;
@@ -76,8 +85,15 @@ export interface ContractTemplateData {
   type: string;
   styleConfig: TemplateStyleConfig;
   clauses: TemplateClause[];
+  attachments?: ContractAttachment[]; // 合同附件列表
   isDefault: boolean;
   isActive: boolean;
+}
+
+// PDF导出选项
+export interface PdfExportOptions {
+  includeAttachments?: boolean; // 是否包含附件
+  selectedAttachments?: string[]; // 选中的附件ID列表
 }
 
 // ============ 申请表类型定义 ============
@@ -439,7 +455,11 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
  * 创建合同模板 HTML 内容 - 1:1还原原始PDF样式
  * 支持数据库条款数据或使用默认完整模板
  */
-function createContractTemplateHtml(template: ContractTemplateData): string {
+function createContractTemplateHtml(
+  template: ContractTemplateData,
+  options: PdfExportOptions = {}
+): string {
+  const { includeAttachments = false, selectedAttachments = [] } = options;
   const clauses = template.clauses || [];
   const hasClauses = clauses.length > 0;
 
@@ -704,11 +724,7 @@ function createContractTemplateHtml(template: ContractTemplateData): string {
         </table>
       </div>
       <div class="subsection">
-        <div class="subsection-title" style="text-indent: 0;">2.4 增值服务引用</div>
-        <div class="paragraph">乙方可选购《特色服务超市价目表》(附件三)项目，另行签署服务订单</div>
-      </div>
-      <div class="subsection">
-        <div class="subsection-title" style="text-indent: 0;">2.5 独栋办公室服务标准按《独栋补充协议》(附件四)执行</div>
+        <div class="subsection-title" style="text-indent: 0;">2.4 独栋办公室服务标准按《独栋补充协议》(附件三)执行</div>
       </div>`;
     }
     
@@ -759,7 +775,7 @@ function createContractTemplateHtml(template: ContractTemplateData): string {
       <div class="subsection">
         <div class="subsection-title" style="text-indent: 0;">4.2 乙方义务</div>
         <div class="paragraph">(一)合规使用场地:遵守《空间使用与管理规范》(附件二)</div>
-        <div class="paragraph">(二)安全主体责任:签署《安全责任承诺书》(附件五)</div>
+        <div class="paragraph">(二)安全主体责任:签署《安全责任承诺书》(附件四)</div>
         <div class="paragraph">(三)每季度提交经营简报(含营收、雇员情况)</div>
       </div>`;
     }
@@ -814,9 +830,8 @@ function createContractTemplateHtml(template: ContractTemplateData): string {
       <div class="paragraph">下列附件与本合同具有同等法律效力:</div>
       <div class="paragraph">附件一:《Π立方服务标准清单》</div>
       <div class="paragraph">附件二:《空间使用与管理规范》</div>
-      <div class="paragraph">附件三:《特色服务超市价目表》</div>
-      <div class="paragraph">附件四:《独栋办公室补充条款》</div>
-      <div class="paragraph">附件五:《安全责任承诺书》</div>`;
+      <div class="paragraph">附件三:《独栋办公室补充条款》</div>
+      <div class="paragraph">附件四:《安全责任承诺书》</div>`;
     }
     
     // 默认：将换行转换为<br/>
@@ -989,10 +1004,9 @@ function getFullTemplateContent(): string {
         </table>
       </div>
       <div class="subsection">
-        <div class="subsection-title" style="text-indent: 0;">2.4 增值服务引用</div>
-        <div class="paragraph">乙方可选购《特色服务超市价目表》(附件三)项目，另行签署服务订单</div>
+        <div class="subsection-title" style="text-indent: 0;">2.4 独栋办公室服务标准按《独栋补充协议》(附件三)执行</div>
       </div>
-      <div class="subsection">
+    </div>
         <div class="subsection-title" style="text-indent: 0;">2.5 独栋办公室服务标准按《独栋补充协议》(附件四)执行</div>
       </div>
     </div>
@@ -1042,7 +1056,7 @@ function getFullTemplateContent(): string {
       <div class="subsection">
         <div class="subsection-title" style="text-indent: 0;">4.2 乙方义务</div>
         <div class="paragraph">(一)合规使用场地:遵守《空间使用与管理规范》(附件二)</div>
-        <div class="paragraph">(二)安全主体责任:签署《安全责任承诺书》(附件五)</div>
+        <div class="paragraph">(二)安全主体责任:签署《安全责任承诺书》(附件四)</div>
         <div class="paragraph">(三)每季度提交经营简报(含营收、雇员情况)</div>
       </div>
     </div>
@@ -1094,9 +1108,8 @@ function getFullTemplateContent(): string {
       <div class="paragraph">下列附件与本合同具有同等法律效力:</div>
       <div class="paragraph">附件一:《Π立方服务标准清单》</div>
       <div class="paragraph">附件二:《空间使用与管理规范》</div>
-      <div class="paragraph">附件三:《特色服务超市价目表》</div>
-      <div class="paragraph">附件四:《独栋办公室补充条款》</div>
-      <div class="paragraph">附件五:《安全责任承诺书》</div>
+      <div class="paragraph">附件三:《独栋办公室补充条款》</div>
+      <div class="paragraph">附件四:《安全责任承诺书》</div>
     </div>
   `;
 }
@@ -1104,7 +1117,11 @@ function getFullTemplateContent(): string {
 /**
  * 导出合同模板为 PDF - 专业合同样式
  */
-export async function exportContractTemplateToPdf(template: ContractTemplateData): Promise<void> {
+export async function exportContractTemplateToPdf(
+  template: ContractTemplateData,
+  options: PdfExportOptions = {}
+): Promise<void> {
+  const { includeAttachments = false, selectedAttachments = [] } = options;
   const style = template.styleConfig;
   const format = style?.pageSize?.toLowerCase() === 'a5' ? 'a5' 
     : style?.pageSize?.toLowerCase() === 'letter' ? 'letter' 
@@ -1117,7 +1134,7 @@ export async function exportContractTemplateToPdf(template: ContractTemplateData
   iframe.style.left = "-9999px";
   iframe.style.top = "0";
   iframe.style.width = "800px";
-  iframe.style.height = "2000px";
+  iframe.style.height = "4000px"; // 增加高度以容纳附件
   iframe.style.border = "none";
   document.body.appendChild(iframe);
 
@@ -1129,7 +1146,7 @@ export async function exportContractTemplateToPdf(template: ContractTemplateData
 
   // 写入 HTML 内容到 iframe
   iframeDoc.open();
-  iframeDoc.write(createContractTemplateHtml(template));
+  iframeDoc.write(createContractTemplateHtml(template, options));
   iframeDoc.close();
 
   // 等待内容渲染
