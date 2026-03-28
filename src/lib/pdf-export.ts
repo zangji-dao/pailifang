@@ -701,14 +701,14 @@ function createContractTemplateHtml(
     if (title.includes('合同主体')) {
       return `
       <div class="subsection">
-        <div class="info-row">甲方(服务方):________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
+        <div class="info-row">甲方(服务方):_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">乙方(入驻方):________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
+        <div class="info-row">乙方(入驻方):_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
       </div>`;
     }
     
@@ -921,9 +921,9 @@ function createContractTemplateHtml(
       <div class="cover-title">加速器/孵化器入驻协议</div>
     </div>
     <div class="cover-info">
-      <div class="cover-row">入驻企业:________________________________________</div>
-      <div class="cover-row">合同编号:________________________________________</div>
-      <div class="cover-row">签订日期:________________________________________</div>
+      <div class="cover-row">入驻企业:_________________________________</div>
+      <div class="cover-row">合同编号:_________________________________</div>
+      <div class="cover-row">签订日期:_________________________________</div>
     </div>
   </div>
   
