@@ -492,79 +492,20 @@ export default function EditTemplatePage() {
       setExporting(true);
       toast.info('正在生成PDF...');
 
-      // 动态导入库
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-
-      // 创建预览内容的容器
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = styleConfig.orientation === 'portrait' ? '210mm' : '297mm';
-      container.style.minHeight = styleConfig.orientation === 'portrait' ? '297mm' : '210mm';
-      container.style.backgroundColor = 'white';
-      container.style.padding = `${styleConfig.margins.top}mm ${styleConfig.margins.right}mm ${styleConfig.margins.bottom}mm ${styleConfig.margins.left}mm`;
-      container.style.fontFamily = styleConfig.font.family;
-      container.style.fontSize = `${styleConfig.font.size}pt`;
-      container.style.lineHeight = String(styleConfig.font.lineHeight);
-      container.style.color = styleConfig.colors.text;
-
-      // 构建内容
-      let content = '';
-
-      // 页眉
-      if (styleConfig.layout.showLogo) {
-        content += `<div style="height: ${styleConfig.layout.headerHeight}px; text-align: ${styleConfig.layout.logoPosition}; background-color: ${styleConfig.colors.headerBg}; margin-bottom: 24px;">[Logo]</div>`;
-      }
-
-      // 标题
-      content += `<h1 style="text-align: center; margin-bottom: 32px; font-family: ${styleConfig.titleFont.family}; font-size: ${styleConfig.titleFont.size}pt; font-weight: ${styleConfig.titleFont.weight}; color: ${styleConfig.colors.primary};">${name || '合同模板'}</h1>`;
-
-      // 条款
-      clauses.forEach((clause, index) => {
-        content += `<div style="margin-bottom: ${styleConfig.clauseStyle.spacing}px; padding-left: ${styleConfig.clauseStyle.indent}px;">`;
-        content += `<h3 style="font-weight: bold; margin-bottom: 8px; color: ${styleConfig.colors.primary};">${index + 1}. ${clause.title}</h3>`;
-        content += `<p style="white-space: pre-line;">${clause.content}</p>`;
-        content += `</div>`;
+      // 使用统一的PDF导出库
+      const { exportContractTemplateToPdf } = await import('@/lib/pdf-export');
+      
+      await exportContractTemplateToPdf({
+        id: templateId,
+        name,
+        description,
+        type,
+        styleConfig,
+        clauses,
+        isDefault,
+        isActive: true,
       });
 
-      // 页脚
-      if (styleConfig.layout.showPageNumber) {
-        content += `<div style="margin-top: 32px; height: ${styleConfig.layout.footerHeight}px; text-align: ${styleConfig.layout.pageNumberPosition};">第 1 页</div>`;
-      }
-
-      container.innerHTML = content;
-      document.body.appendChild(container);
-
-      // 转换为canvas
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
-
-      // 移除临时容器
-      document.body.removeChild(container);
-
-      // 创建PDF
-      const orientation = styleConfig.orientation === 'portrait' ? 'p' : 'l';
-      const pdf = new jsPDF({
-        orientation,
-        unit: 'mm',
-        format: styleConfig.pageSize.toLowerCase() === 'a5' ? 'a5' : styleConfig.pageSize.toLowerCase() === 'letter' ? 'letter' : 'a4',
-      });
-
-      // 计算图片尺寸
-      const imgWidth = pdf.internal.pageSize.getWidth();
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // 添加图片到PDF
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-      // 下载PDF
-      pdf.save(`${name || '合同模板'}.pdf`);
       toast.success('PDF导出成功');
 
     } catch (err) {

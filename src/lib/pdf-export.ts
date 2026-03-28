@@ -30,6 +30,58 @@ const shareholderTypeMap: Record<string, string> = {
   enterprise: "企业",
 };
 
+// ============ 合同模板类型定义 ============
+
+export interface TemplateStyleConfig {
+  pageSize: 'A4' | 'A5' | 'Letter';
+  orientation: 'portrait' | 'landscape';
+  margins: { top: number; right: number; bottom: number; left: number };
+  font: { family: string; size: number; lineHeight: number };
+  titleFont: { family: string; size: number; weight: string };
+  colors: {
+    primary: string;
+    secondary: string;
+    text: string;
+    border: string;
+    headerBg: string;
+  };
+  layout: {
+    showLogo: boolean;
+    logoPosition: string;
+    showPageNumber: boolean;
+    pageNumberPosition: string;
+    headerHeight: number;
+    footerHeight: number;
+  };
+  clauseStyle: {
+    numberingStyle: string;
+    indent: number;
+    spacing: number;
+  };
+}
+
+export interface TemplateClause {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+  required: boolean;
+  editable: boolean;
+}
+
+export interface ContractTemplateData {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  styleConfig: TemplateStyleConfig;
+  clauses: TemplateClause[];
+  isDefault: boolean;
+  isActive: boolean;
+}
+
+// ============ 申请表类型定义 ============
+
 export interface ApplicationData {
   id: string;
   applicationNo: string;
@@ -379,6 +431,218 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
     pdf.save(`入驻申请表-${application.enterpriseName}-${application.applicationNo}.pdf`);
   } finally {
     // 清理 iframe
+    document.body.removeChild(iframe);
+  }
+}
+
+/**
+ * 创建合同模板 HTML 内容
+ */
+function createContractTemplateHtml(template: ContractTemplateData): string {
+  const style = template.styleConfig;
+  const clauses = template.clauses || [];
+
+  return `
+    <div style="
+      font-family: ${style?.font?.family || 'SimSun, 宋体, serif'};
+      font-size: ${style?.font?.size || 12}pt;
+      line-height: ${style?.font?.lineHeight || 1.8};
+      color: ${style?.colors?.text || '#333333'};
+      background: #ffffff;
+      padding: ${style?.margins?.top || 25}mm ${style?.margins?.right || 20}mm ${style?.margins?.bottom || 25}mm ${style?.margins?.left || 20}mm;
+      width: ${style?.orientation === 'landscape' ? '297mm' : '210mm'};
+      min-height: ${style?.orientation === 'landscape' ? '210mm' : '297mm'};
+    ">
+      <!-- 页眉 -->
+      ${style?.layout?.showLogo ? `
+        <div style="
+          height: ${style.layout.headerHeight || 60}px;
+          text-align: ${style.layout.logoPosition || 'center'};
+          background-color: ${style.colors?.headerBg || '#f5f5f5'};
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <span style="color: #999999;">[Logo 占位]</span>
+        </div>
+      ` : ''}
+
+      <!-- 标题 -->
+      <h1 style="
+        text-align: center;
+        margin-bottom: 32px;
+        font-family: ${style?.titleFont?.family || 'SimHei, 黑体'};
+        font-size: ${style?.titleFont?.size || 18}pt;
+        font-weight: ${style?.titleFont?.weight || 'bold'};
+        color: ${style?.colors?.primary || '#1a1a1a'};
+      ">${template.name || '合同模板'}</h1>
+
+      <!-- 条款内容 -->
+      <div style="space-y: 16px;">
+        ${clauses.map((clause, index) => `
+          <div style="
+            margin-bottom: ${style?.clauseStyle?.spacing || 12}px;
+            padding-left: ${style?.clauseStyle?.indent || 24}px;
+          ">
+            <h3 style="
+              font-weight: bold;
+              margin-bottom: 8px;
+              color: ${style?.colors?.primary || '#1a1a1a'};
+            ">${index + 1}. ${clause.title}</h3>
+            <p style="white-space: pre-line; margin: 0;">${clause.content}</p>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- 页脚 -->
+      ${style?.layout?.showPageNumber ? `
+        <div style="
+          margin-top: 32px;
+          height: ${style.layout.footerHeight || 40}px;
+          text-align: ${style.layout.pageNumberPosition || 'center'};
+          border-top: 1px solid #e5e5e5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <span style="color: #666666; font-size: 10pt;">第 1 页</span>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+/**
+ * 导出合同模板为 PDF
+ */
+export async function exportContractTemplateToPdf(template: ContractTemplateData): Promise<void> {
+  const style = template.styleConfig;
+  const orientation = style?.orientation === 'landscape' ? 'l' : 'p';
+  const format = style?.pageSize?.toLowerCase() === 'a5' ? 'a5' 
+    : style?.pageSize?.toLowerCase() === 'letter' ? 'letter' 
+    : 'a4';
+
+  // 创建 iframe 来完全隔离样式
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-9999px";
+  iframe.style.top = "0";
+  iframe.style.width = style?.orientation === 'landscape' ? "1100px" : "800px";
+  iframe.style.height = "2000px";
+  iframe.style.border = "none";
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) {
+    document.body.removeChild(iframe);
+    throw new Error("无法创建 iframe 文档");
+  }
+
+  // 写入 HTML 内容到 iframe
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; }
+      </style>
+    </head>
+    <body>
+      ${createContractTemplateHtml(template)}
+    </body>
+    </html>
+  `);
+  iframeDoc.close();
+
+  // 等待内容渲染
+  await new Promise(resolve => setTimeout(resolve, 200));
+
+  const container = iframeDoc.body.firstElementChild as HTMLElement;
+
+  try {
+    // 使用 html2canvas 生成图片
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    // 根据纸张大小设置尺寸
+    const pageSizes: Record<string, { width: number; height: number }> = {
+      a4: { width: 210, height: 297 },
+      a5: { width: 148, height: 210 },
+      letter: { width: 215.9, height: 279.4 },
+    };
+    
+    const pageSize = pageSizes[format] || pageSizes.a4;
+    const pageWidth = orientation === 'l' ? pageSize.height : pageSize.width;
+    const pageHeight = orientation === 'l' ? pageSize.width : pageSize.height;
+    
+    const marginTop = style?.margins?.top || 25;
+    const marginLeft = style?.margins?.left || 20;
+    const contentWidth = pageWidth - marginLeft * 2;
+    const contentHeight = pageHeight - marginTop - (style?.margins?.bottom || 25);
+
+    // 计算图片尺寸
+    const imgWidth = contentWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    const pdf = new jsPDF({
+      orientation: orientation as "portrait" | "landscape",
+      unit: "mm",
+      format: format,
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+    
+    // 每页能放的内容高度
+    const usableHeight = contentHeight;
+    let currentY = 0;
+    let pageNum = 0;
+
+    // 分页处理
+    while (currentY < imgHeight) {
+      if (pageNum > 0) {
+        pdf.addPage();
+      }
+
+      const sourceY = (currentY / imgHeight) * canvas.height;
+      const sourceHeight = Math.min(
+        (usableHeight / imgHeight) * canvas.height,
+        canvas.height - sourceY
+      );
+
+      if (pageNum === 0 && imgHeight <= usableHeight) {
+        pdf.addImage(imgData, "PNG", marginLeft, marginTop, imgWidth, imgHeight);
+      } else {
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sourceHeight;
+        const ctx = pageCanvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            0, sourceY, canvas.width, sourceHeight,
+            0, 0, canvas.width, sourceHeight
+          );
+          const pageImgData = pageCanvas.toDataURL("image/png");
+          const pageImgHeight = (sourceHeight * imgWidth) / canvas.width;
+          pdf.addImage(pageImgData, "PNG", marginLeft, marginTop, imgWidth, pageImgHeight);
+        }
+      }
+
+      currentY += usableHeight;
+      pageNum++;
+    }
+
+    // 下载 PDF
+    pdf.save(`${template.name || '合同模板'}.pdf`);
+  } finally {
     document.body.removeChild(iframe);
   }
 }
