@@ -579,18 +579,33 @@ function createContractTemplateHtml(
       width: 100%;
       border-collapse: collapse;
       margin: 15px 0;
-      font-size: 11pt;
+      font-size: 10pt;
+      table-layout: fixed;
     }
     .simple-table th,
     .simple-table td {
       border: 1px solid #000;
-      padding: 8px 10px;
+      padding: 6px 8px;
       text-align: left;
+      word-wrap: break-word;
     }
     .simple-table th {
       background: #f5f5f5;
       font-weight: bold;
     }
+    /* 表格列宽优化 */
+    .simple-table th:nth-child(1),
+    .simple-table td:nth-child(1) { width: 12%; }
+    .simple-table th:nth-child(2),
+    .simple-table td:nth-child(2) { width: 22%; }
+    .simple-table th:nth-child(3),
+    .simple-table td:nth-child(3) { width: 10%; }
+    .simple-table th:nth-child(4),
+    .simple-table td:nth-child(4) { width: 12%; }
+    .simple-table th:nth-child(5),
+    .simple-table td:nth-child(5) { width: 12%; }
+    .simple-table th:nth-child(6),
+    .simple-table td:nth-child(6) { width: 12%; }
     
     /* 签章区域 */
     .signature-area {
@@ -1059,9 +1074,6 @@ function getFullTemplateContent(): string {
       </div>
       <div class="subsection">
         <div class="subsection-title" style="text-indent: 0;">2.4 独栋办公室服务标准按《独栋补充协议》(附件三)执行</div>
-      </div>
-    </div>
-        <div class="subsection-title" style="text-indent: 0;">2.5 独栋办公室服务标准按《独栋补充协议》(附件四)执行</div>
       </div>
     </div>
     
