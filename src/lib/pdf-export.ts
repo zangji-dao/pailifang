@@ -485,21 +485,21 @@ function createContractTemplateHtml(
     .cover-page {
       width: 210mm;
       height: 297mm;
-      padding: 60mm 30mm;
+      padding: 40mm 30mm 60mm 30mm;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
       page-break-after: always;
       background: #fff;
     }
     .cover-title {
       font-family: SimHei, 黑体;
-      font-size: 22pt;
-      font-weight: normal;
-      letter-spacing: 4px;
-      margin-bottom: 80px;
+      font-size: 26pt;
+      font-weight: bold;
+      letter-spacing: 6px;
+      margin-bottom: 120px;
       text-align: center;
+      width: 100%;
     }
     .cover-info {
       width: 100%;
@@ -507,12 +507,17 @@ function createContractTemplateHtml(
     .cover-row {
       display: flex;
       align-items: center;
-      padding: 15px 0;
+      padding: 12px 0;
       border-bottom: 1px solid #000;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     .cover-label {
-      width: 100px;
+      width: 90px;
+      flex-shrink: 0;
+    }
+    .cover-value {
+      flex: 1;
+    }
       font-size: 12pt;
     }
     .cover-value {
@@ -607,6 +612,21 @@ function createContractTemplateHtml(
     .simple-table th:nth-child(6),
     .simple-table td:nth-child(6) { width: 12%; }
     
+    /* 防止表格跨页断开 */
+    .subsection {
+      page-break-inside: avoid;
+    }
+    .section {
+      page-break-inside: auto;
+    }
+    .simple-table {
+      page-break-inside: avoid;
+    }
+    .signature-area {
+      page-break-inside: avoid;
+      page-break-before: always;
+    }
+    
     /* 签章区域 */
     .signature-area {
       margin-top: 50px;
@@ -637,17 +657,21 @@ function createContractTemplateHtml(
     .info-row {
       margin-bottom: 12px;
       line-height: 2.2;
+      display: flex;
+      align-items: center;
     }
     .info-label {
       display: inline-block;
       font-weight: normal;
-      min-width: 120px;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .info-underline {
       display: inline-block;
       border-bottom: 1px solid #000;
-      min-width: 350px;
+      flex: 1;
       margin-left: 10px;
+      min-height: 1em;
     }
     
     /* 附件列表 */
@@ -684,12 +708,12 @@ function createContractTemplateHtml(
           <span class="info-label">甲方(服务方):</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">企业名称:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">统一社会信用代码:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
           <span class="info-underline"></span>
         </div>
       </div>
@@ -698,12 +722,12 @@ function createContractTemplateHtml(
           <span class="info-label">乙方(入驻方):</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">企业名称:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">统一社会信用代码:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
           <span class="info-underline"></span>
         </div>
       </div>`;
@@ -984,12 +1008,12 @@ function getFullTemplateContent(): string {
           <span class="info-label">甲方(服务方):</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">企业名称:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">统一社会信用代码:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
           <span class="info-underline"></span>
         </div>
       </div>
@@ -998,12 +1022,12 @@ function getFullTemplateContent(): string {
           <span class="info-label">乙方(入驻方):</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">企业名称:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
           <span class="info-underline"></span>
         </div>
-        <div class="info-row" style="margin-left: 2em;">
-          <span class="info-label">统一社会信用代码:</span>
+        <div class="info-row">
+          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
           <span class="info-underline"></span>
         </div>
       </div>
