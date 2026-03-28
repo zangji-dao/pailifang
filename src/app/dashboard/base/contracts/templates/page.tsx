@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Palette,
   Settings,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -234,6 +235,96 @@ export default function ContractTemplatesPage() {
     }
   };
 
+  // 导出PDF
+  const handleExportPDF = async (template: ContractTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      toast.info('正在生成PDF...');
+
+      // 动态导入库
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const styleConfig = template.styleConfig;
+      const orientation = styleConfig?.orientation === 'landscape' ? 'l' : 'p';
+
+      // 创建预览内容的容器
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = styleConfig?.orientation === 'landscape' ? '297mm' : '210mm';
+      container.style.minHeight = styleConfig?.orientation === 'landscape' ? '210mm' : '297mm';
+      container.style.backgroundColor = 'white';
+      container.style.padding = `${styleConfig?.margins?.top || 25}mm ${styleConfig?.margins?.right || 20}mm ${styleConfig?.margins?.bottom || 25}mm ${styleConfig?.margins?.left || 20}mm`;
+      container.style.fontFamily = styleConfig?.font?.family || 'SimSun';
+      container.style.fontSize = `${styleConfig?.font?.size || 12}pt`;
+      container.style.lineHeight = String(styleConfig?.font?.lineHeight || 1.8);
+      container.style.color = styleConfig?.colors?.text || '#333333';
+
+      // 构建内容
+      let content = '';
+
+      // 页眉
+      if (styleConfig?.layout?.showLogo) {
+        content += `<div style="height: ${styleConfig.layout.headerHeight || 60}px; text-align: ${styleConfig.layout.logoPosition || 'center'}; background-color: ${styleConfig.colors?.headerBg || '#f5f5f5'}; margin-bottom: 24px;">[Logo]</div>`;
+      }
+
+      // 标题
+      content += `<h1 style="text-align: center; margin-bottom: 32px; font-family: ${styleConfig?.titleFont?.family || 'SimHei'}; font-size: ${styleConfig?.titleFont?.size || 18}pt; font-weight: ${styleConfig?.titleFont?.weight || 'bold'}; color: ${styleConfig?.colors?.primary || '#1a1a1a'};">${template.name || '合同模板'}</h1>`;
+
+      // 条款
+      const clauses = template.clauses || [];
+      clauses.forEach((clause, index) => {
+        content += `<div style="margin-bottom: ${styleConfig?.clauseStyle?.spacing || 12}px; padding-left: ${styleConfig?.clauseStyle?.indent || 24}px;">`;
+        content += `<h3 style="font-weight: bold; margin-bottom: 8px; color: ${styleConfig?.colors?.primary || '#1a1a1a'};">${index + 1}. ${clause.title}</h3>`;
+        content += `<p style="white-space: pre-line;">${clause.content}</p>`;
+        content += `</div>`;
+      });
+
+      // 页脚
+      if (styleConfig?.layout?.showPageNumber) {
+        content += `<div style="margin-top: 32px; height: ${styleConfig.layout.footerHeight || 40}px; text-align: ${styleConfig.layout.pageNumberPosition || 'center'};">第 1 页</div>`;
+      }
+
+      container.innerHTML = content;
+      document.body.appendChild(container);
+
+      // 转换为canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+
+      // 移除临时容器
+      document.body.removeChild(container);
+
+      // 创建PDF
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'mm',
+        format: styleConfig?.pageSize?.toLowerCase() === 'a5' ? 'a5' : styleConfig?.pageSize?.toLowerCase() === 'letter' ? 'letter' : 'a4',
+      });
+
+      // 计算图片尺寸
+      const imgWidth = pdf.internal.pageSize.getWidth();
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // 添加图片到PDF
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+      // 下载PDF
+      pdf.save(`${template.name || '合同模板'}.pdf`);
+      toast.success('PDF导出成功');
+
+    } catch (err) {
+      console.error('导出PDF失败:', err);
+      toast.error('导出失败');
+    }
+  };
+
   // 加载状态
   if (loading) {
     return (
@@ -408,6 +499,15 @@ export default function ContractTemplatesPage() {
                         title="复制"
                       >
                         <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                        onClick={(e) => handleExportPDF(template, e)}
+                        title="导出PDF"
+                      >
+                        <FileDown className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
