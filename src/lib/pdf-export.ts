@@ -490,13 +490,10 @@ function createContractTemplateHtml(
     .cover-page {
       width: 210mm;
       height: 297mm;
-      padding: 30mm;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      padding: 50mm 40mm;
+      background: #fff;
       page-break-after: always;
       break-after: page;
-      background: #fff;
     }
     .cover-title {
       font-family: SimHei, 黑体;
@@ -505,6 +502,7 @@ function createContractTemplateHtml(
       letter-spacing: 6px;
       text-align: center;
       width: 100%;
+      margin-bottom: 150mm;
     }
     .cover-info {
       width: 100%;
