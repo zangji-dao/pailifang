@@ -489,11 +489,16 @@ function createContractTemplateHtml(
     /* 封面页 */
     .cover-page {
       width: 210mm;
-      height: 297mm;
-      padding: 50mm 40mm;
+      min-height: 297mm;
+      padding: 40mm 40mm 50mm 40mm;
       background: #fff;
       page-break-after: always;
       break-after: page;
+    }
+    .cover-title-wrapper {
+      text-align: center;
+      padding-top: 10mm;
+      margin-bottom: 120mm;
     }
     .cover-title {
       font-family: SimHei, 黑体;
@@ -501,8 +506,7 @@ function createContractTemplateHtml(
       font-weight: bold;
       letter-spacing: 6px;
       text-align: center;
-      width: 100%;
-      margin-bottom: 150mm;
+      display: inline-block;
     }
     .cover-info {
       width: 100%;
@@ -956,7 +960,9 @@ function createContractTemplateHtml(
 <body>
   <!-- 封面 -->
   <div class="cover-page">
-    <div class="cover-title">加速器/孵化器入驻协议</div>
+    <div class="cover-title-wrapper">
+      <div class="cover-title">加速器/孵化器入驻协议</div>
+    </div>
     <div class="cover-info">
       <div class="cover-row">
         <span class="cover-label">入驻企业:</span>
