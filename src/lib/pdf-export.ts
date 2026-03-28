@@ -471,8 +471,6 @@ function createContractTemplateHtml(
     }
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
     body {
       font-family: SimSun, 宋体, serif;
@@ -480,6 +478,13 @@ function createContractTemplateHtml(
       line-height: 1.8;
       color: #000;
       background: #fff;
+      margin: 0;
+      padding: 0;
+    }
+    /* 孤行/寡行控制 */
+    p, .paragraph {
+      orphans: 3;
+      widows: 3;
     }
     /* 封面页 */
     .cover-page {
@@ -490,6 +495,7 @@ function createContractTemplateHtml(
       flex-direction: column;
       align-items: center;
       page-break-after: always;
+      break-after: page;
       background: #fff;
     }
     .cover-title {
@@ -518,17 +524,11 @@ function createContractTemplateHtml(
     .cover-value {
       flex: 1;
     }
-      font-size: 12pt;
-    }
-    .cover-value {
-      flex: 1;
-    }
     
     /* 正文页 */
     .content-page {
       width: 210mm;
-      min-height: 297mm;
-      padding: 25mm 20mm;
+      padding: 20mm;
       background: #fff;
     }
     .main-title {
@@ -537,6 +537,8 @@ function createContractTemplateHtml(
       text-align: center;
       margin-bottom: 30px;
       font-weight: normal;
+      page-break-after: avoid;
+      break-after: avoid;
     }
     .section {
       margin-bottom: 20px;
@@ -612,7 +614,7 @@ function createContractTemplateHtml(
     .simple-table th:nth-child(6),
     .simple-table td:nth-child(6) { width: 12%; }
     
-    /* 防止表格跨页断开 */
+    /* 防止跨页断开 - 关键样式 */
     .no-break {
       page-break-inside: avoid;
       break-inside: avoid;
@@ -623,6 +625,19 @@ function createContractTemplateHtml(
     }
     .section {
       page-break-inside: auto;
+      break-inside: auto;
+    }
+    .section-title {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .subsection-title {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .paragraph {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
     .simple-table {
       page-break-inside: avoid;
@@ -1209,7 +1224,7 @@ function getFullTemplateContent(): string {
 }
 
 /**
- * 导出合同模板为 PDF - 专业合同样式
+ * 导出合同模板为 PDF - 智能分页避免内容截断
  */
 export async function exportContractTemplateToPdf(
   template: ContractTemplateData,
@@ -1228,7 +1243,7 @@ export async function exportContractTemplateToPdf(
   iframe.style.left = "-9999px";
   iframe.style.top = "0";
   iframe.style.width = "800px";
-  iframe.style.height = "4000px";
+  iframe.style.height = "6000px";
   iframe.style.border = "none";
   document.body.appendChild(iframe);
 
@@ -1244,12 +1259,12 @@ export async function exportContractTemplateToPdf(
   iframeDoc.close();
 
   // 等待内容渲染
-  await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   const container = iframeDoc.body;
 
   try {
-    // 使用 html2canvas 生成图片
+    // 使用 html2canvas 生成整个内容的图片
     const canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,
@@ -1269,9 +1284,9 @@ export async function exportContractTemplateToPdf(
     const pageWidth = orientation === 'l' ? pageSize.height : pageSize.width;
     const pageHeight = orientation === 'l' ? pageSize.width : pageSize.height;
     
-    const marginTop = 20;
+    const marginTop = 15;
     const marginBottom = 15;
-    const marginLeft = 20;
+    const marginLeft = 15;
     const contentWidth = pageWidth - marginLeft * 2;
     const contentHeight = pageHeight - marginTop - marginBottom;
 
@@ -1287,30 +1302,83 @@ export async function exportContractTemplateToPdf(
 
     const imgData = canvas.toDataURL("image/png");
     
-    // 每页能放的内容高度
-    const usableHeight = contentHeight;
+    // 获取所有需要保护的元素位置（section、subsection、表格等）
+    const protectedElements = iframeDoc.querySelectorAll('.section, .subsection, .simple-table, .no-break');
+    const protectedRegions: Array<{start: number; end: number; priority: number}> = [];
+    
+    protectedElements.forEach((el, index) => {
+      const rect = el.getBoundingClientRect();
+      const iframeRect = iframe.getBoundingClientRect();
+      // 计算元素在canvas上的Y坐标（考虑scale=2）
+      const startY = (rect.top - iframeRect.top) * 2;
+      const endY = startY + rect.height * 2;
+      // 根据元素类型设置优先级
+      const priority = el.classList.contains('no-break') ? 10 : 
+                       el.tagName === 'TABLE' ? 8 : 
+                       el.classList.contains('subsection') ? 5 : 1;
+      protectedRegions.push({ start: startY, end: endY, priority });
+    });
+
+    // 按开始位置排序
+    protectedRegions.sort((a, b) => a.start - b.start);
+    
+    // 智能分页函数：找到安全的分页点
+    const findSafeBreakPoint = (proposedY: number): number => {
+      const tolerance = 30; // 容差（像素）
+      
+      // 检查是否有保护区域会被截断
+      for (const region of protectedRegions) {
+        // 如果分页点在保护区域内部（且不是刚好在边界上）
+        if (proposedY > region.start + tolerance && proposedY < region.end - tolerance) {
+          // 返回该区域的开始位置作为新的分页点
+          // 这样整个区域会被移到下一页
+          return Math.max(0, region.start - tolerance);
+        }
+      }
+      return proposedY;
+    };
+    
+    // 每页能放的内容高度（像素）
+    const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
+    
     let currentY = 0;
     let pageNum = 0;
+    const breakPoints: number[] = [0]; // 记录所有分页点
 
-    // 分页处理
-    while (currentY < imgHeight) {
-      if (pageNum > 0) {
+    // 预先计算所有分页点
+    let tempY = 0;
+    while (tempY < canvas.height) {
+      let nextBreak = tempY + pageContentHeightPx;
+      
+      if (nextBreak < canvas.height) {
+        nextBreak = findSafeBreakPoint(nextBreak);
+      }
+      
+      breakPoints.push(Math.min(nextBreak, canvas.height));
+      tempY = nextBreak;
+      
+      // 防止死循环
+      if (tempY <= breakPoints[breakPoints.length - 2]) {
+        breakPoints.push(tempY + pageContentHeightPx);
+        tempY += pageContentHeightPx;
+      }
+    }
+
+    // 根据分页点生成PDF页面
+    for (let i = 0; i < breakPoints.length - 1; i++) {
+      if (i > 0) {
         pdf.addPage();
       }
 
-      // 计算当前页显示的图片区域
-      const sourceY = (currentY / imgHeight) * canvas.height;
-      const sourceHeight = Math.min(
-        (usableHeight / imgHeight) * canvas.height,
-        canvas.height - sourceY
-      );
+      const startY = breakPoints[i];
+      const endY = breakPoints[i + 1];
+      const sourceHeight = endY - startY;
 
-      // 创建当前页的图片
-      if (pageNum === 0 && imgHeight <= usableHeight) {
+      if (i === 0 && canvas.height <= pageContentHeightPx) {
         // 内容不超过一页，直接添加
         pdf.addImage(imgData, "PNG", marginLeft, marginTop, imgWidth, imgHeight);
       } else {
-        // 需要分页，裁剪图片
+        // 裁剪图片
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = canvas.width;
         pageCanvas.height = sourceHeight;
@@ -1320,7 +1388,7 @@ export async function exportContractTemplateToPdf(
           ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
           ctx.drawImage(
             canvas,
-            0, sourceY, canvas.width, sourceHeight,
+            0, startY, canvas.width, sourceHeight,
             0, 0, canvas.width, sourceHeight
           );
           const pageImgData = pageCanvas.toDataURL("image/png");
@@ -1328,9 +1396,6 @@ export async function exportContractTemplateToPdf(
           pdf.addImage(pageImgData, "PNG", marginLeft, marginTop, imgWidth, pageImgHeight);
         }
       }
-
-      currentY += usableHeight;
-      pageNum++;
     }
 
     // 下载 PDF
