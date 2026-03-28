@@ -697,18 +697,18 @@ function createContractTemplateHtml(
   const parseClauseContent = (clause: TemplateClause): string => {
     const { title, content } = clause;
     
-    // 第一条：合同主体 - 特殊格式（带下划线填空，右边对齐）
+    // 第一条：合同主体 - 特殊格式（带下划线填空，下划线填满一行）
     if (title.includes('合同主体')) {
       return `
       <div class="subsection">
-        <div class="info-row">甲方(服务方):_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
+        <div class="info-row">甲方(服务方):________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">乙方(入驻方):_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
+        <div class="info-row">乙方(入驻方):________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
       </div>`;
     }
     
@@ -962,14 +962,14 @@ function getFullTemplateContent(): string {
     <div class="section">
       <div class="section-title">第一条 合同主体</div>
       <div class="subsection">
-        <div class="info-row">甲方(服务方):_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
+        <div class="info-row">甲方(服务方):________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">乙方(入驻方):_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
+        <div class="info-row">乙方(入驻方):________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
       </div>
     </div>
     
@@ -1224,62 +1224,50 @@ export async function exportContractTemplateToPdf(
     
     // 获取所有需要保护的元素位置（仅保护no-break和表格）
     const protectedElements = iframeDoc.querySelectorAll('.no-break, .simple-table');
-    const protectedRegions: Array<{start: number; end: number; priority: number}> = [];
+    const protectedRegions: Array<{start: number; end: number}> = [];
     
-    protectedElements.forEach((el, index) => {
+    protectedElements.forEach((el) => {
       const rect = el.getBoundingClientRect();
       const iframeRect = iframe.getBoundingClientRect();
       // 计算元素在canvas上的Y坐标（考虑scale=2）
       const startY = (rect.top - iframeRect.top) * 2;
       const endY = startY + rect.height * 2;
-      // 根据元素类型设置优先级
-      const priority = el.classList.contains('no-break') ? 10 : 5;
-      protectedRegions.push({ start: startY, end: endY, priority });
+      protectedRegions.push({ start: startY, end: endY });
     });
 
-    // 按开始位置排序
-    protectedRegions.sort((a, b) => a.start - b.start);
-    
-    // 智能分页函数：找到安全的分页点
-    const findSafeBreakPoint = (proposedY: number): number => {
-      const tolerance = 50; // 容差（像素），增大以更好保护内容
-      
-      // 检查是否有保护区域会被截断
-      for (const region of protectedRegions) {
-        // 如果分页点在保护区域内部（且不是刚好在边界上）
-        if (proposedY > region.start + tolerance && proposedY < region.end - tolerance) {
-          // 返回该区域的开始位置作为新的分页点
-          // 这样整个区域会被移到下一页
-          return Math.max(0, region.start - tolerance);
-        }
-      }
-      return proposedY;
-    };
-    
     // 每页能放的内容高度（像素）
     const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
     
+    // 计算所有分页点
+    const breakPoints: number[] = [0];
     let currentY = 0;
-    let pageNum = 0;
-    const breakPoints: number[] = [0]; // 记录所有分页点
-
-    // 预先计算所有分页点
-    let tempY = 0;
-    while (tempY < canvas.height) {
-      let nextBreak = tempY + pageContentHeightPx;
+    
+    while (currentY < canvas.height) {
+      let nextBreak = currentY + pageContentHeightPx;
       
-      if (nextBreak < canvas.height) {
-        nextBreak = findSafeBreakPoint(nextBreak);
+      if (nextBreak >= canvas.height) {
+        breakPoints.push(canvas.height);
+        break;
+      }
+      
+      // 检查这个分页点是否会切断任何保护区域
+      for (const region of protectedRegions) {
+        if (nextBreak > region.start && nextBreak < region.end) {
+          // 将分页点调整到保护区域之前
+          const adjustedBreak = region.start - 20;
+          // 如果调整后的位置有效（比当前位置前进），使用调整后的位置
+          if (adjustedBreak > currentY) {
+            nextBreak = adjustedBreak;
+          } else {
+            // 否则，调整到保护区域之后
+            nextBreak = region.end + 20;
+          }
+          break;
+        }
       }
       
       breakPoints.push(Math.min(nextBreak, canvas.height));
-      tempY = nextBreak;
-      
-      // 防止死循环
-      if (tempY <= breakPoints[breakPoints.length - 2]) {
-        breakPoints.push(tempY + pageContentHeightPx);
-        tempY += pageContentHeightPx;
-      }
+      currentY = nextBreak;
     }
 
     // 根据分页点生成PDF页面
