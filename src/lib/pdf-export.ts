@@ -697,18 +697,18 @@ function createContractTemplateHtml(
   const parseClauseContent = (clause: TemplateClause): string => {
     const { title, content } = clause;
     
-    // 第一条：合同主体 - 特殊格式（带下划线填空）
+    // 第一条：合同主体 - 特殊格式（带下划线填空，右边对齐）
     if (title.includes('合同主体')) {
       return `
       <div class="subsection">
-        <div class="info-row">甲方(服务方):____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
+        <div class="info-row">甲方(服务方):_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">乙方(入驻方):____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
+        <div class="info-row">乙方(入驻方):_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
       </div>`;
     }
     
@@ -962,14 +962,14 @@ function getFullTemplateContent(): string {
     <div class="section">
       <div class="section-title">第一条 合同主体</div>
       <div class="subsection">
-        <div class="info-row">甲方(服务方):____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
+        <div class="info-row">甲方(服务方):_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">乙方(入驻方):____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
-        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
+        <div class="info-row">乙方(入驻方):_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:_________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:_________________________</div>
       </div>
     </div>
     
@@ -1222,8 +1222,8 @@ export async function exportContractTemplateToPdf(
 
     const imgData = canvas.toDataURL("image/png");
     
-    // 获取所有需要保护的元素位置（section、subsection、表格等）
-    const protectedElements = iframeDoc.querySelectorAll('.section, .subsection, .simple-table, .no-break');
+    // 获取所有需要保护的元素位置（仅保护no-break和表格）
+    const protectedElements = iframeDoc.querySelectorAll('.no-break, .simple-table');
     const protectedRegions: Array<{start: number; end: number; priority: number}> = [];
     
     protectedElements.forEach((el, index) => {
@@ -1233,9 +1233,7 @@ export async function exportContractTemplateToPdf(
       const startY = (rect.top - iframeRect.top) * 2;
       const endY = startY + rect.height * 2;
       // 根据元素类型设置优先级
-      const priority = el.classList.contains('no-break') ? 10 : 
-                       el.tagName === 'TABLE' ? 8 : 
-                       el.classList.contains('subsection') ? 5 : 1;
+      const priority = el.classList.contains('no-break') ? 10 : 5;
       protectedRegions.push({ start: startY, end: endY, priority });
     });
 
