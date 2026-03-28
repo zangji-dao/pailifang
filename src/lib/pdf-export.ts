@@ -650,6 +650,9 @@ function createContractTemplateHtml(
       margin-top: 50px;
       display: flex;
       justify-content: space-between;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: always;
     }
     .signature-box {
       width: 220px;
@@ -661,35 +664,11 @@ function createContractTemplateHtml(
     .signature-line {
       margin-bottom: 25px;
     }
-    .signature-label {
-      display: inline-block;
-    }
-    .signature-underline {
-      display: inline-block;
-      border-bottom: 1px solid #000;
-      min-width: 120px;
-      margin-left: 5px;
-    }
     
     /* 信息行样式（合同主体等） */
     .info-row {
       margin-bottom: 12px;
       line-height: 2.2;
-      display: flex;
-      align-items: center;
-    }
-    .info-label {
-      display: inline-block;
-      font-weight: normal;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .info-underline {
-      display: inline-block;
-      border-bottom: 1px solid #000;
-      flex: 1;
-      margin-left: 10px;
-      min-height: 1em;
     }
     
     /* 附件列表 */
@@ -722,32 +701,14 @@ function createContractTemplateHtml(
     if (title.includes('合同主体')) {
       return `
       <div class="subsection">
-        <div class="info-row">
-          <span class="info-label">甲方(服务方):</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
-          <span class="info-underline"></span>
-        </div>
+        <div class="info-row">甲方(服务方):____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">
-          <span class="info-label">乙方(入驻方):</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
-          <span class="info-underline"></span>
-        </div>
+        <div class="info-row">乙方(入驻方):____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
       </div>`;
     }
     
@@ -976,25 +937,13 @@ function createContractTemplateHtml(
     <div class="signature-area">
       <div class="signature-box">
         <div class="signature-title">甲方签章处</div>
-        <div class="signature-line">
-          <span class="signature-label">法定代表人签字:</span>
-          <span class="signature-underline"></span>
-        </div>
-        <div class="signature-line">
-          <span class="signature-label">日期:</span>
-          <span class="signature-underline">____年____月____日</span>
-        </div>
+        <div class="signature-line">法定代表人签字:____________________</div>
+        <div class="signature-line">日期:____年____月____日</div>
       </div>
       <div class="signature-box">
         <div class="signature-title">乙方签章处</div>
-        <div class="signature-line">
-          <span class="signature-label">法定代表人签字:</span>
-          <span class="signature-underline"></span>
-        </div>
-        <div class="signature-line">
-          <span class="signature-label">日期:</span>
-          <span class="signature-underline">____年____月____日</span>
-        </div>
+        <div class="signature-line">法定代表人签字:____________________</div>
+        <div class="signature-line">日期:____年____月____日</div>
       </div>
     </div>
     
@@ -1013,32 +962,14 @@ function getFullTemplateContent(): string {
     <div class="section">
       <div class="section-title">第一条 合同主体</div>
       <div class="subsection">
-        <div class="info-row">
-          <span class="info-label">甲方(服务方):</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
-          <span class="info-underline"></span>
-        </div>
+        <div class="info-row">甲方(服务方):____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">
-          <span class="info-label">乙方(入驻方):</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">企业名称:</span>
-          <span class="info-underline"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label" style="padding-left: 2em;">统一社会信用代码:</span>
-          <span class="info-underline"></span>
-        </div>
+        <div class="info-row">乙方(入驻方):____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">企业名称:____________________________________</div>
+        <div class="info-row" style="padding-left: 2em;">统一社会信用代码:____________________________________</div>
       </div>
     </div>
     
