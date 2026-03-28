@@ -1209,7 +1209,7 @@ function getFullTemplateContent(): string {
 }
 
 /**
- * 导出合同模板为 PDF - 专业合同样式（智能分页避免表格被截断）
+ * 导出合同模板为 PDF - 专业合同样式
  */
 export async function exportContractTemplateToPdf(
   template: ContractTemplateData,
@@ -1287,42 +1287,8 @@ export async function exportContractTemplateToPdf(
 
     const imgData = canvas.toDataURL("image/png");
     
-    // 获取所有"不可分割块"（表格和其说明文字）的位置
-    const noBreakElements = iframeDoc.querySelectorAll('.no-break, .subsection');
-    const noBreakRegions: Array<{start: number; end: number}> = [];
-    
-    noBreakElements.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      const iframeRect = iframe.getBoundingClientRect();
-      // 计算元素在canvas上的Y坐标
-      const startY = (rect.top - iframeRect.top) * 2; // scale=2
-      const endY = startY + rect.height * 2;
-      noBreakRegions.push({ start: startY, end: endY });
-    });
-
-    // 智能分页函数：避免在不可分割块中间分页
-    const findSafePageBreak = (proposedBreak: number): number => {
-      const tolerance = 50; // 容差（像素）
-      
-      for (const region of noBreakRegions) {
-        // 如果分页点在某个不可分割块内部，则调整到该块的开始位置
-        if (proposedBreak > region.start + tolerance && proposedBreak < region.end - tolerance) {
-          // 检查是否可以将整个块放到下一页
-          const regionHeight = region.end - region.start;
-          const maxRegionHeight = contentHeight * (canvas.width / contentWidth) * 0.9; // 最多占90%页面高度
-          
-          if (regionHeight < maxRegionHeight) {
-            // 将分页点调整到块的开始位置
-            return region.start - 10; // 留一点边距
-          }
-        }
-      }
-      return proposedBreak;
-    };
-    
-    // 每页能放的内容高度（像素）
-    const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
-    
+    // 每页能放的内容高度
+    const usableHeight = contentHeight;
     let currentY = 0;
     let pageNum = 0;
 
@@ -1332,23 +1298,19 @@ export async function exportContractTemplateToPdf(
         pdf.addPage();
       }
 
-      let proposedBreak = currentY + pageContentHeightPx;
-      
-      // 智能调整分页点，避免切断表格
-      if (proposedBreak < canvas.height) {
-        proposedBreak = findSafePageBreak(proposedBreak);
-      }
-      
-      const sourceY = currentY * (canvas.height / imgHeight);
+      // 计算当前页显示的图片区域
+      const sourceY = (currentY / imgHeight) * canvas.height;
       const sourceHeight = Math.min(
-        (proposedBreak - currentY) * (canvas.height / imgHeight),
+        (usableHeight / imgHeight) * canvas.height,
         canvas.height - sourceY
       );
 
-      if (pageNum === 0 && imgHeight <= pageContentHeightPx) {
+      // 创建当前页的图片
+      if (pageNum === 0 && imgHeight <= usableHeight) {
         // 内容不超过一页，直接添加
         pdf.addImage(imgData, "PNG", marginLeft, marginTop, imgWidth, imgHeight);
       } else {
+        // 需要分页，裁剪图片
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = canvas.width;
         pageCanvas.height = sourceHeight;
@@ -1367,7 +1329,7 @@ export async function exportContractTemplateToPdf(
         }
       }
 
-      currentY = proposedBreak;
+      currentY += usableHeight;
       pageNum++;
     }
 
