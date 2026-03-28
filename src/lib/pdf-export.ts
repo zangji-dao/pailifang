@@ -655,7 +655,7 @@ function createContractTemplateHtml(
       page-break-before: always;
     }
     .signature-box {
-      width: 220px;
+      width: 280px;
     }
     .signature-title {
       font-weight: bold;
@@ -921,9 +921,9 @@ function createContractTemplateHtml(
       <div class="cover-title">加速器/孵化器入驻协议</div>
     </div>
     <div class="cover-info">
-      <div class="cover-row">入驻企业:_________________________________</div>
-      <div class="cover-row">合同编号:_________________________________</div>
-      <div class="cover-row">签订日期:_________________________________</div>
+      <div class="cover-row">&nbsp;&nbsp;入驻企业:__________________________</div>
+      <div class="cover-row">&nbsp;&nbsp;合同编号:__________________________</div>
+      <div class="cover-row">&nbsp;&nbsp;签订日期:__________________________</div>
     </div>
   </div>
   
@@ -937,13 +937,13 @@ function createContractTemplateHtml(
     <div class="signature-area">
       <div class="signature-box">
         <div class="signature-title">甲方签章处</div>
-        <div class="signature-line">法定代表人签字:____________________</div>
-        <div class="signature-line">日期:____年____月____日</div>
+        <div class="signature-line">法定代表人签字:________</div>
+        <div class="signature-line">日期:___年___月___日</div>
       </div>
       <div class="signature-box">
         <div class="signature-title">乙方签章处</div>
-        <div class="signature-line">法定代表人签字:____________________</div>
-        <div class="signature-line">日期:____年____月____日</div>
+        <div class="signature-line">法定代表人签字:________</div>
+        <div class="signature-line">日期:___年___月___日</div>
       </div>
     </div>
     
@@ -962,14 +962,14 @@ function getFullTemplateContent(): string {
     <div class="section">
       <div class="section-title">第一条 合同主体</div>
       <div class="subsection">
-        <div class="info-row">甲方(服务方):________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;甲方(服务方):____________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:______________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:______________________________</div>
       </div>
       <div class="subsection">
-        <div class="info-row">乙方(入驻方):________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:________________________________________________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;乙方(入驻方):____________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;企业名称:______________________________________</div>
+        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:______________________________</div>
       </div>
     </div>
     
