@@ -518,6 +518,7 @@ function createContractTemplateHtml(
     .cover-line {
       text-decoration: underline;
       text-decoration-color: #000;
+      white-space: pre;
     }
     
     /* 正文页 */
