@@ -957,8 +957,6 @@ function createContractTemplateHtml(
         <div class="signature-line">日期:____年____月____日</div>
       </div>
     </div>
-    
-    <div class="page-footer">第 1 页</div>
   </div>
 </body>
 </html>
@@ -1253,6 +1251,9 @@ export async function exportContractTemplateToPdf(
     const breakPoints: number[] = [0];
     let currentY = 0;
     
+    // 按起始位置排序保护区域
+    protectedRegions.sort((a, b) => a.start - b.start);
+    
     while (currentY < canvas.height) {
       let nextBreak = currentY + pageContentHeightPx;
       
@@ -1262,19 +1263,26 @@ export async function exportContractTemplateToPdf(
       }
       
       // 检查这个分页点是否会切断任何保护区域
-      for (const region of protectedRegions) {
-        if (nextBreak > region.start && nextBreak < region.end) {
-          // 将分页点调整到保护区域之前
-          const adjustedBreak = region.start - 20;
-          // 如果调整后的位置有效（比当前位置前进），使用调整后的位置
-          if (adjustedBreak > currentY) {
-            nextBreak = adjustedBreak;
-          } else {
-            // 否则，调整到保护区域之后
-            nextBreak = region.end + 20;
+      let needsAdjustment = true;
+      while (needsAdjustment) {
+        needsAdjustment = false;
+        for (const region of protectedRegions) {
+          // 如果分页点在保护区域内部
+          if (nextBreak > region.start && nextBreak < region.end) {
+            // 如果保护区域在本页范围内，调整到保护区域之后
+            if (region.start < nextBreak) {
+              nextBreak = region.end + 10;
+              needsAdjustment = true;
+              break;
+            }
           }
-          break;
         }
+      }
+      
+      // 确保至少前进一页高度的10%，避免产生太多小页面
+      const minAdvance = currentY + pageContentHeightPx * 0.3;
+      if (nextBreak < minAdvance) {
+        nextBreak = minAdvance;
       }
       
       breakPoints.push(Math.min(nextBreak, canvas.height));
@@ -1313,6 +1321,13 @@ export async function exportContractTemplateToPdf(
           pdf.addImage(pageImgData, "PNG", marginLeft, marginTop, imgWidth, pageImgHeight);
         }
       }
+      
+      // 添加页脚
+      const totalPages = breakPoints.length - 1;
+      const footerY = pageHeight - 10; // 距底部10mm
+      pdf.setFontSize(10);
+      pdf.setTextColor(102, 102, 102);
+      pdf.text(`第 ${i + 1} 页 / 共 ${totalPages} 页`, pageWidth / 2, footerY, { align: 'center' });
     }
 
     // 下载 PDF
