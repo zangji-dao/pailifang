@@ -694,14 +694,6 @@ function createContractTemplateHtml(
       text-indent: 2em;
       margin-bottom: 5px;
     }
-    
-    /* 页脚 */
-    .page-footer {
-      text-align: center;
-      font-size: 10pt;
-      color: #666;
-      margin-top: 30px;
-    }
   `;
 
   // 解析条款内容并转换为HTML（包含表格识别）
@@ -1321,13 +1313,6 @@ export async function exportContractTemplateToPdf(
           pdf.addImage(pageImgData, "PNG", marginLeft, marginTop, imgWidth, pageImgHeight);
         }
       }
-      
-      // 添加页脚
-      const totalPages = breakPoints.length - 1;
-      const footerY = pageHeight - 10; // 距底部10mm
-      pdf.setFontSize(10);
-      pdf.setTextColor(102, 102, 102);
-      pdf.text(`第 ${i + 1} 页 / 共 ${totalPages} 页`, pageWidth / 2, footerY, { align: 'center' });
     }
 
     // 下载 PDF
