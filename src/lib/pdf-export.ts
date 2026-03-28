@@ -856,7 +856,7 @@ function createContractTemplateHtml(
           </tr>
         </table>
       </div>
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">5.2 合同解除条件</div>
         <div class="paragraph">(一)乙方欠费超30日</div>
         <div class="paragraph">(二)乙方从事违法经营经书面警告未整改</div>
@@ -1113,7 +1113,7 @@ function getFullTemplateContent(): string {
           </tr>
         </table>
       </div>
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">5.2 合同解除条件</div>
         <div class="paragraph">(一)乙方欠费超30日</div>
         <div class="paragraph">(二)乙方从事违法经营经书面警告未整改</div>
@@ -1242,7 +1242,7 @@ export async function exportContractTemplateToPdf(
     
     // 智能分页函数：找到安全的分页点
     const findSafeBreakPoint = (proposedY: number): number => {
-      const tolerance = 30; // 容差（像素）
+      const tolerance = 50; // 容差（像素），增大以更好保护内容
       
       // 检查是否有保护区域会被截断
       for (const region of protectedRegions) {
