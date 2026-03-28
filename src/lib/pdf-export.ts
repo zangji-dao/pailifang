@@ -620,18 +620,19 @@ function createContractTemplateHtml(
     
     /* 信息行样式（合同主体等） */
     .info-row {
-      margin-bottom: 10px;
-      line-height: 2;
+      margin-bottom: 12px;
+      line-height: 2.2;
     }
     .info-label {
       display: inline-block;
       font-weight: normal;
+      min-width: 120px;
     }
     .info-underline {
       display: inline-block;
       border-bottom: 1px solid #000;
-      min-width: 200px;
-      margin-left: 5px;
+      min-width: 350px;
+      margin-left: 10px;
     }
     
     /* 附件列表 */
@@ -795,6 +796,7 @@ function createContractTemplateHtml(
           </tr>
         </table>
         <div class="paragraph">注:押金于合同终止后30日内无息退还(扣除违约赔偿金)</div>
+        <div class="paragraph">特别约定: 合同签订后，乙方已支付的服务费用不再返还。</div>
       </div>`;
     }
     
@@ -865,8 +867,7 @@ function createContractTemplateHtml(
       <div class="paragraph">附件一:《Π立方服务标准清单》</div>
       <div class="paragraph">附件二:《空间使用与管理规范》</div>
       <div class="paragraph">附件三:《独栋办公室补充条款》</div>
-      <div class="paragraph">附件四:《安全责任承诺书》</div>
-      <div class="paragraph" style="margin-top: 15px;">特别约定: 合同签订后，乙方已支付的服务费用不再返还。</div>`;
+      <div class="paragraph">附件四:《安全责任承诺书》</div>`;
     }
     
     // 默认：将换行转换为<br/>
@@ -1096,6 +1097,7 @@ function getFullTemplateContent(): string {
           </tr>
         </table>
         <div class="paragraph">注:押金于合同终止后30日内无息退还(扣除违约赔偿金)</div>
+        <div class="paragraph">特别约定: 合同签订后，乙方已支付的服务费用不再返还。</div>
       </div>
     </div>
     
@@ -1163,7 +1165,6 @@ function getFullTemplateContent(): string {
       <div class="paragraph">附件二:《空间使用与管理规范》</div>
       <div class="paragraph">附件三:《独栋办公室补充条款》</div>
       <div class="paragraph">附件四:《安全责任承诺书》</div>
-      <div class="paragraph" style="margin-top: 15px;">特别约定: 合同签订后，乙方已支付的服务费用不再返还。</div>
     </div>
   `;
 }
