@@ -618,6 +618,22 @@ function createContractTemplateHtml(
       margin-left: 5px;
     }
     
+    /* 信息行样式（合同主体等） */
+    .info-row {
+      margin-bottom: 10px;
+      line-height: 2;
+    }
+    .info-label {
+      display: inline-block;
+      font-weight: normal;
+    }
+    .info-underline {
+      display: inline-block;
+      border-bottom: 1px solid #000;
+      min-width: 200px;
+      margin-left: 5px;
+    }
+    
     /* 附件列表 */
     .annex-section {
       margin-top: 30px;
@@ -644,18 +660,36 @@ function createContractTemplateHtml(
   const parseClauseContent = (clause: TemplateClause): string => {
     const { title, content } = clause;
     
-    // 第一条：合同主体 - 特殊格式
+    // 第一条：合同主体 - 特殊格式（带下划线填空）
     if (title.includes('合同主体')) {
       return `
       <div class="subsection">
-        <div class="subsection-content">甲方(服务方):</div>
-        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
-        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+        <div class="info-row">
+          <span class="info-label">甲方(服务方):</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">企业名称:</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">统一社会信用代码:</span>
+          <span class="info-underline"></span>
+        </div>
       </div>
       <div class="subsection">
-        <div class="subsection-content">乙方(入驻方):</div>
-        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
-        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+        <div class="info-row">
+          <span class="info-label">乙方(入驻方):</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">企业名称:</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">统一社会信用代码:</span>
+          <span class="info-underline"></span>
+        </div>
       </div>`;
     }
     
@@ -831,7 +865,8 @@ function createContractTemplateHtml(
       <div class="paragraph">附件一:《Π立方服务标准清单》</div>
       <div class="paragraph">附件二:《空间使用与管理规范》</div>
       <div class="paragraph">附件三:《独栋办公室补充条款》</div>
-      <div class="paragraph">附件四:《安全责任承诺书》</div>`;
+      <div class="paragraph">附件四:《安全责任承诺书》</div>
+      <div class="paragraph" style="margin-top: 15px;">特别约定: 合同签订后，乙方已支付的服务费用不再返还。</div>`;
     }
     
     // 默认：将换行转换为<br/>
@@ -929,14 +964,32 @@ function getFullTemplateContent(): string {
     <div class="section">
       <div class="section-title">第一条 合同主体</div>
       <div class="subsection">
-        <div class="subsection-content">甲方(服务方):</div>
-        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
-        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+        <div class="info-row">
+          <span class="info-label">甲方(服务方):</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">企业名称:</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">统一社会信用代码:</span>
+          <span class="info-underline"></span>
+        </div>
       </div>
       <div class="subsection">
-        <div class="subsection-content">乙方(入驻方):</div>
-        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
-        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+        <div class="info-row">
+          <span class="info-label">乙方(入驻方):</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">企业名称:</span>
+          <span class="info-underline"></span>
+        </div>
+        <div class="info-row" style="margin-left: 2em;">
+          <span class="info-label">统一社会信用代码:</span>
+          <span class="info-underline"></span>
+        </div>
       </div>
     </div>
     
@@ -1110,6 +1163,7 @@ function getFullTemplateContent(): string {
       <div class="paragraph">附件二:《空间使用与管理规范》</div>
       <div class="paragraph">附件三:《独栋办公室补充条款》</div>
       <div class="paragraph">附件四:《安全责任承诺书》</div>
+      <div class="paragraph" style="margin-top: 15px;">特别约定: 合同签订后，乙方已支付的服务费用不再返还。</div>
     </div>
   `;
 }
