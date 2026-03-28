@@ -620,12 +620,215 @@ function createContractTemplateHtml(template: ContractTemplateData): string {
     }
   `;
 
+  // 解析条款内容并转换为HTML（包含表格识别）
+  const parseClauseContent = (clause: TemplateClause): string => {
+    const { title, content } = clause;
+    
+    // 第一条：合同主体 - 特殊格式
+    if (title.includes('合同主体')) {
+      return `
+      <div class="subsection">
+        <div class="subsection-content">甲方(服务方):</div>
+        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
+        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-content">乙方(入驻方):</div>
+        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
+        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+      </div>`;
+    }
+    
+    // 第二条：服务内容与标的 - 包含多个表格
+    if (title.includes('服务内容与标的')) {
+      return `
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.1 场地服务</div>
+        <div class="paragraph">(一)甲方同意将位于Π立方企服中心内的的场地无偿提供给乙方使用，用途仅限于办公。乙方不得擅自扩大使用范围或改变用途，否则甲方有权终止免费条款并要求赔偿。</div>
+        <div class="paragraph">(二)甲方应配合乙方出具工商注册所需的场地证明文件(如房产证复印件、租赁合同等)。合同终止或解除后，乙方须在30自然日内将注册地址从甲方场地迁出，并完成工商变更登记。若乙方逾期未迁出，每逾期一日按50元/日支付违约金；逾期超过90日的，乙方应按1200元/年的标准向甲方支付违约金，直至完成迁出手续为止。若因乙方未迁出导致甲方被行政处罚或第三方索赔的，乙方应全额赔偿甲方损失。</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.2 基础办公服务</div>
+        <div class="paragraph">(一)甲方为乙方免费提供以下基础服务:</div>
+        <table class="simple-table">
+          <tr>
+            <th>服务项目</th>
+            <th>水、电、暖</th>
+            <th>物业服务</th>
+            <th>网络服务</th>
+          </tr>
+          <tr>
+            <td>服务内容</td>
+            <td>基础物业</td>
+            <td>保洁、保安、公共设施维护</td>
+            <td>宽带、Wi-Fi</td>
+          </tr>
+        </table>
+        <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
+        <table class="simple-table">
+          <tr>
+            <th>类别</th>
+            <th>乙方选择项目(✔)</th>
+            <th>数量</th>
+            <th>计价单位</th>
+            <th>单价(元)</th>
+            <th>押金(元)</th>
+          </tr>
+          <tr>
+            <td>固定工位</td>
+            <td>□开放工位</td>
+            <td></td>
+            <td>个/年</td>
+            <td>1200</td>
+            <td>1200</td>
+          </tr>
+          <tr>
+            <td>独立办公室</td>
+            <td>□无窗 □有窗</td>
+            <td></td>
+            <td>间/年</td>
+            <td>3000/3600</td>
+            <td>1200</td>
+          </tr>
+          <tr>
+            <td>独栋办公室</td>
+            <td>□独栋</td>
+            <td></td>
+            <td>栋/年</td>
+            <td>3600</td>
+            <td>5000</td>
+          </tr>
+        </table>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.4 增值服务引用</div>
+        <div class="paragraph">乙方可选购《特色服务超市价目表》(附件三)项目，另行签署服务订单</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.5 独栋办公室服务标准按《独栋补充协议》(附件四)执行</div>
+      </div>`;
+    }
+    
+    // 第三条：合同周期与费用 - 包含费用表格
+    if (title.includes('合同周期与费用')) {
+      return `
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">3.1 服务期限</div>
+        <div class="paragraph">起始日: ____年____月____日</div>
+        <div class="paragraph">终止日: ____年____月____日 (共计____年)</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">3.2 费用结算(人民币)</div>
+        <table class="simple-table">
+          <tr>
+            <th>项目</th>
+            <th>金额(元)</th>
+            <th>支付时间</th>
+          </tr>
+          <tr>
+            <td>首年服务费</td>
+            <td>¥____</td>
+            <td>签约后5个工作日内</td>
+          </tr>
+          <tr>
+            <td>押金</td>
+            <td>¥____</td>
+            <td>同服务费支付</td>
+          </tr>
+          <tr>
+            <td>次年续费</td>
+            <td>¥____</td>
+            <td>到期前30日</td>
+          </tr>
+        </table>
+        <div class="paragraph">注:押金于合同终止后30日内无息退还(扣除违约赔偿金)</div>
+      </div>`;
+    }
+    
+    // 第四条：双方权利义务
+    if (title.includes('双方权利义务')) {
+      return `
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">4.1 甲方承诺</div>
+        <div class="paragraph">(一)保障基础设施:提供千兆网络/24小时安保(标准见附件一)</div>
+        <div class="paragraph">(二)维护服务品质:客服响应时效按《入驻告知书》第4章执行</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">4.2 乙方义务</div>
+        <div class="paragraph">(一)合规使用场地:遵守《空间使用与管理规范》(附件二)</div>
+        <div class="paragraph">(二)安全主体责任:签署《安全责任承诺书》(附件五)</div>
+        <div class="paragraph">(三)每季度提交经营简报(含营收、雇员情况)</div>
+      </div>`;
+    }
+    
+    // 第五条：违约责任 - 包含违约金表格
+    if (title.includes('违约责任')) {
+      return `
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">5.1 违约金计算</div>
+        <table class="simple-table">
+          <tr>
+            <th>违约情形</th>
+            <th>违约金标准</th>
+          </tr>
+          <tr>
+            <td>乙方逾期付款</td>
+            <td>应付未付金额×0.05%/日</td>
+          </tr>
+          <tr>
+            <td>乙方擅自转租</td>
+            <td>当年服务费总额的30%</td>
+          </tr>
+          <tr>
+            <td>甲方服务中断超72小时</td>
+            <td>按中断天数200%退还日服务费</td>
+          </tr>
+        </table>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">5.2 合同解除条件</div>
+        <div class="paragraph">(一)乙方欠费超30日</div>
+        <div class="paragraph">(二)乙方从事违法经营经书面警告未整改</div>
+        <div class="paragraph">(三)甲方丧失场地运营权(提前90日通知)</div>
+      </div>`;
+    }
+    
+    // 第六条：法律适用与争议解决
+    if (title.includes('法律适用与争议解决')) {
+      return `
+      <div class="paragraph">适用法律:《中华人民共和国民法典》《商业房屋租赁管理办法》</div>
+      <div class="paragraph">争议解决:提交松原市仲裁委员会仲裁(仲裁费由败诉方承担)</div>`;
+    }
+    
+    // 第七条：其他
+    if (title.includes('其他')) {
+      return `<div class="paragraph">本合同一式贰份(甲乙双方各执壹份)</div>`;
+    }
+    
+    // 第八条：合同附件
+    if (title.includes('合同附件')) {
+      return `
+      <div class="paragraph">下列附件与本合同具有同等法律效力:</div>
+      <div class="paragraph">附件一:《Π立方服务标准清单》</div>
+      <div class="paragraph">附件二:《空间使用与管理规范》</div>
+      <div class="paragraph">附件三:《特色服务超市价目表》</div>
+      <div class="paragraph">附件四:《独栋办公室补充条款》</div>
+      <div class="paragraph">附件五:《安全责任承诺书》</div>`;
+    }
+    
+    // 默认：将换行转换为<br/>
+    return `<div class="section-content">${content.replace(/\n/g, '<br/>')}</div>`;
+  };
+
   // 如果有条款数据，动态生成条款内容
   const clausesHtml = hasClauses 
     ? clauses.map(clause => `
       <div class="section">
         <div class="section-title">${clause.title}</div>
-        <div class="section-content">${clause.content.replace(/\n/g, '<br/>')}</div>
+        ${parseClauseContent(clause)}
       </div>
     `).join('')
     : '';
