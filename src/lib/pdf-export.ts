@@ -960,9 +960,9 @@ function createContractTemplateHtml(
       <div class="cover-title">加速器/孵化器入驻协议</div>
     </div>
     <div class="cover-info">
-      <div class="cover-row">入驻企业:<span class="cover-line">                                              </span></div>
-      <div class="cover-row">合同编号:<span class="cover-line">                                              </span></div>
-      <div class="cover-row">签订日期:<span class="cover-line">                                              </span></div>
+      <div class="cover-row">入驻企业:________________________________________</div>
+      <div class="cover-row">合同编号:________________________________________</div>
+      <div class="cover-row">签订日期:________________________________________</div>
     </div>
   </div>
   
