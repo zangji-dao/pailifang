@@ -515,14 +515,9 @@ function createContractTemplateHtml(
       margin-bottom: 20px;
       line-height: 2;
     }
-    .cover-label {
-      display: inline;
-    }
-    .cover-value {
-      display: inline-block;
-      border-bottom: 1px solid #000;
-      width: 200px;
-      margin-left: 5px;
+    .cover-line {
+      text-decoration: underline;
+      text-decoration-color: #000;
     }
     
     /* 正文页 */
@@ -964,18 +959,9 @@ function createContractTemplateHtml(
       <div class="cover-title">加速器/孵化器入驻协议</div>
     </div>
     <div class="cover-info">
-      <div class="cover-row">
-        <span class="cover-label">入驻企业:</span>
-        <span class="cover-value"></span>
-      </div>
-      <div class="cover-row">
-        <span class="cover-label">合同编号:</span>
-        <span class="cover-value"></span>
-      </div>
-      <div class="cover-row">
-        <span class="cover-label">签订日期:</span>
-        <span class="cover-value"></span>
-      </div>
+      <div class="cover-row">入驻企业:<span class="cover-line">                                              </span></div>
+      <div class="cover-row">合同编号:<span class="cover-line">                                              </span></div>
+      <div class="cover-row">签订日期:<span class="cover-line">                                              </span></div>
     </div>
   </div>
   
