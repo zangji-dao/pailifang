@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Inspector } from 'react-dev-inspector';
 import { Toaster } from '@/components/ui/sonner';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { GlobalErrorHandler } from '@/components/global-error-handler';
@@ -41,13 +40,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isDev = process.env.NODE_ENV === 'development';
-
   return (
     <html lang="zh-CN">
       <body className="antialiased">
         <GlobalErrorHandler />
-        {isDev && <Inspector />}
         <ConfirmProvider>
           {children}
         </ConfirmProvider>

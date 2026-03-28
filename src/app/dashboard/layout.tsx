@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { TabsContext } from "./tabs-context";
 import { useDashboardLayout } from "./useDashboardLayout";
 import { getNavigation } from "./constants";
@@ -33,35 +32,6 @@ export default function DashboardLayout({
     toggleMenu,
     handleLogout,
   } = useDashboardLayout();
-
-  // 全局错误处理 - 捕获未处理的 Promise 错误（如 AbortError）
-  useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // 忽略 [object Event] 类型的错误（通常是 fetch 请求被取消导致的 AbortError）
-      // 这在 Fast Refresh 或组件卸载时是正常行为
-      if (event.reason) {
-        const reasonStr = String(event.reason);
-        if (
-          reasonStr === "[object Event]" ||
-          reasonStr === "[object AbortError]" ||
-          (event.reason instanceof Error && event.reason.name === "AbortError")
-        ) {
-          // 阻止错误冒泡和默认处理
-          event.preventDefault();
-          event.stopPropagation();
-          // 停止立即传播
-          event.stopImmediatePropagation?.();
-          return false;
-        }
-      }
-    };
-    
-    // 使用捕获阶段来确保我们的处理器最先执行
-    window.addEventListener("unhandledrejection", handleUnhandledRejection, true);
-    return () => {
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection, true);
-    };
-  }, []);
 
   // 用户未登录时不渲染
   if (!user) return null;
