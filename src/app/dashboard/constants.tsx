@@ -83,8 +83,9 @@ export const SETTINGS_CHILDREN: NavChildItem[] = [
  * 合同管理子菜单
  */
 export const CONTRACT_CHILDREN: NavChildItem[] = [
+  { name: "新建合同", href: "/dashboard/base/contracts/new", icon: PlusCircle },
   { name: "合同列表", href: "/dashboard/base/contracts", icon: FileText },
-  { name: "新建合同", href: "/dashboard/base/contracts/new", icon: FileSignature },
+  { name: "合同模板", href: "/dashboard/base/contracts/templates", icon: FileSignature },
 ];
 
 /**
