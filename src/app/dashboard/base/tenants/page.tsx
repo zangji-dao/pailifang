@@ -28,7 +28,8 @@ type ProcessStatus =
   | "draft"
   | "new" 
   | "pending_address" 
-  | "pending_registration" 
+  | "pending_registration"
+  | "registering"
   | "pending_contract" 
   | "pending_payment" 
   | "active" 
@@ -62,6 +63,7 @@ const contractTypeConfig: Record<string, { label: string; color: string; bgColor
 };
 
 // 入驻企业流程状态配置（从待工商注册开始）
+// 注意：数据库中可能存储为 "registering" 或 "pending_registration"
 const tenantStatusConfig: Record<string, { 
   label: string; 
   color: string; 
@@ -75,6 +77,13 @@ const tenantStatusConfig: Record<string, {
     bgColor: "bg-sky-50",
     borderColor: "border-sky-300",
     dotColor: "bg-sky-500",
+  },
+  registering: { 
+    label: "待工商注册", 
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-300",
+    dotColor: "bg-purple-500",
   },
   pending_registration: { 
     label: "待工商注册", 
@@ -196,8 +205,13 @@ export default function EnterpriseListPage() {
 
   // 过滤企业列表
   const filteredEnterprises = tabEnterprises.filter((e) => {
-    // 状态过滤
-    const matchStatus = statusFilter === null || e.processStatus === statusFilter;
+    // 状态过滤（pending_registration 同时匹配 registering 和 pending_registration）
+    let matchStatus = statusFilter === null;
+    if (statusFilter === "pending_registration") {
+      matchStatus = e.processStatus === "pending_registration" || e.processStatus === "registering";
+    } else if (statusFilter !== null) {
+      matchStatus = e.processStatus === statusFilter;
+    }
     // 关键词过滤
     if (!searchKeyword) return matchStatus;
     const keyword = searchKeyword.toLowerCase();
@@ -211,9 +225,10 @@ export default function EnterpriseListPage() {
   });
 
   // 入驻企业统计（排除草稿状态）
+  // 注意：数据库中 process_status 可能存储为 "registering" 或 "pending_registration"
   const tenantStats = {
     total: enterprises.filter((e) => e.type === "tenant" && e.processStatus !== "draft" && e.status !== "draft").length,
-    pending_registration: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_registration").length,
+    pending_registration: enterprises.filter((e) => e.type === "tenant" && (e.processStatus === "pending_registration" || e.processStatus === "registering")).length,
     pending_contract: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_contract").length,
     pending_payment: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "pending_payment").length,
     active: enterprises.filter((e) => e.type === "tenant" && e.processStatus === "active").length,
@@ -312,8 +327,38 @@ export default function EnterpriseListPage() {
       {activeTab === "tenant" && (
         <div className="pb-4">
           <div className="grid grid-cols-5 gap-2">
-            {Object.entries(tenantStatusConfig).map(([key, config]) => {
-              const count = tenantStats[key as keyof typeof tenantStats] || 0;
+            {/* 待工商注册 - 合并显示 registering 和 pending_registration */}
+            {(() => {
+              const config = tenantStatusConfig.pending_registration;
+              const count = tenantStats.pending_registration;
+              const filterKeys = ["registering", "pending_registration"];
+              const isActive = filterKeys.includes(statusFilter || "");
+              return (
+                <button
+                  key="pending_registration"
+                  onClick={() => setStatusFilter(isActive ? null : "pending_registration")}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
+                    isActive 
+                      ? `${config.borderColor} ${config.bgColor}` 
+                      : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                  )}
+                >
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">{config.label}</div>
+                    <div className={cn("text-lg font-semibold", isActive ? config.color : "text-foreground")}>
+                      {count}
+                    </div>
+                  </div>
+                  <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
+                </button>
+              );
+            })()}
+            {/* 待签合同 */}
+            {(() => {
+              const key = "pending_contract";
+              const config = tenantStatusConfig[key];
+              const count = tenantStats[key];
               return (
                 <button
                   key={key}
@@ -334,7 +379,59 @@ export default function EnterpriseListPage() {
                   <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
                 </button>
               );
-            })}
+            })()}
+            {/* 待缴费 */}
+            {(() => {
+              const key = "pending_payment";
+              const config = tenantStatusConfig[key];
+              const count = tenantStats[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
+                    statusFilter === key 
+                      ? `${config.borderColor} ${config.bgColor}` 
+                      : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                  )}
+                >
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">{config.label}</div>
+                    <div className={cn("text-lg font-semibold", statusFilter === key ? config.color : "text-foreground")}>
+                      {count}
+                    </div>
+                  </div>
+                  <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
+                </button>
+              );
+            })()}
+            {/* 入驻中 */}
+            {(() => {
+              const key = "active";
+              const config = tenantStatusConfig[key];
+              const count = tenantStats[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-2 py-2 transition-all",
+                    statusFilter === key 
+                      ? `${config.borderColor} ${config.bgColor}` 
+                      : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                  )}
+                >
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">{config.label}</div>
+                    <div className={cn("text-lg font-semibold", statusFilter === key ? config.color : "text-foreground")}>
+                      {count}
+                    </div>
+                  </div>
+                  <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
+                </button>
+              );
+            })()}
           </div>
         </div>
       )}
