@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   Clock,
   Timer,
+  Palette,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,21 +209,41 @@ export default function ContractsPage() {
           <h1 className="text-2xl font-semibold">合同管理</h1>
           <p className="text-muted-foreground mt-1">管理企业入驻合同</p>
         </div>
-        <Button onClick={() => {
-          if (tabs) {
-            tabs.openTab({
-              id: "new-contract",
-              label: "新建合同",
-              path: "/dashboard/base/contracts/new",
-              icon: <Plus className="h-3.5 w-3.5" />,
-            });
-          } else {
-            router.push("/dashboard/base/contracts/new");
-          }
-        }}>
-          <Plus className="h-4 w-4 mr-2" />
-          新建合同
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              if (tabs) {
+                tabs.openTab({
+                  id: "contract-templates",
+                  label: "模板配置",
+                  path: "/dashboard/base/contracts/templates",
+                  icon: <Palette className="h-3.5 w-3.5" />,
+                });
+              } else {
+                router.push("/dashboard/base/contracts/templates");
+              }
+            }}
+          >
+            <Palette className="h-4 w-4 mr-2" />
+            模板配置
+          </Button>
+          <Button onClick={() => {
+            if (tabs) {
+              tabs.openTab({
+                id: "new-contract",
+                label: "新建合同",
+                path: "/dashboard/base/contracts/new",
+                icon: <Plus className="h-3.5 w-3.5" />,
+              });
+            } else {
+              router.push("/dashboard/base/contracts/new");
+            }
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            新建合同
+          </Button>
+        </div>
       </div>
 
       {/* 统计卡片 */}
