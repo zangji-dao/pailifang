@@ -613,17 +613,24 @@ function createContractTemplateHtml(
     .simple-table td:nth-child(6) { width: 12%; }
     
     /* 防止表格跨页断开 */
+    .no-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
     .subsection {
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     .section {
       page-break-inside: auto;
     }
     .simple-table {
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     .signature-area {
       page-break-inside: avoid;
+      break-inside: avoid;
       page-break-before: always;
     }
     
@@ -760,7 +767,7 @@ function createContractTemplateHtml(
         </table>
         <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
       </div>
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
         <table class="simple-table">
           <tr>
@@ -796,9 +803,7 @@ function createContractTemplateHtml(
             <td>5000</td>
           </tr>
         </table>
-      </div>
-      <div class="subsection">
-        <div class="subsection-title" style="text-indent: 0;">2.4 独栋办公室服务标准按《独栋补充协议》(附件三)执行</div>
+        <div class="paragraph" style="margin-top: 10px;">★4、独栋办公室租金按《独栋办公室协议》（附件三）执行</div>
       </div>`;
     }
     
@@ -810,7 +815,7 @@ function createContractTemplateHtml(
         <div class="paragraph">起始日: ____年____月____日</div>
         <div class="paragraph">终止日: ____年____月____日 (共计____年)</div>
       </div>
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">3.2 费用结算(人民币)</div>
         <table class="simple-table">
           <tr>
@@ -858,7 +863,7 @@ function createContractTemplateHtml(
     // 第五条：违约责任 - 包含违约金表格
     if (title.includes('违约责任')) {
       return `
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">5.1 违约金计算</div>
         <table class="simple-table">
           <tr>
@@ -1059,7 +1064,7 @@ function getFullTemplateContent(): string {
         </table>
         <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
       </div>
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
         <table class="simple-table">
           <tr>
@@ -1095,9 +1100,7 @@ function getFullTemplateContent(): string {
             <td>5000</td>
           </tr>
         </table>
-      </div>
-      <div class="subsection">
-        <div class="subsection-title" style="text-indent: 0;">2.4 独栋办公室服务标准按《独栋补充协议》(附件三)执行</div>
+        <div class="paragraph" style="margin-top: 10px;">★4、独栋办公室租金按《独栋办公室协议》（附件三）执行</div>
       </div>
     </div>
     
@@ -1154,7 +1157,7 @@ function getFullTemplateContent(): string {
     
     <div class="section">
       <div class="section-title">第五条 违约责任</div>
-      <div class="subsection">
+      <div class="subsection no-break">
         <div class="subsection-title" style="text-indent: 0;">5.1 违约金计算</div>
         <table class="simple-table">
           <tr>
@@ -1206,7 +1209,7 @@ function getFullTemplateContent(): string {
 }
 
 /**
- * 导出合同模板为 PDF - 专业合同样式
+ * 导出合同模板为 PDF - 专业合同样式（智能分页避免表格被截断）
  */
 export async function exportContractTemplateToPdf(
   template: ContractTemplateData,
@@ -1225,7 +1228,7 @@ export async function exportContractTemplateToPdf(
   iframe.style.left = "-9999px";
   iframe.style.top = "0";
   iframe.style.width = "800px";
-  iframe.style.height = "4000px"; // 增加高度以容纳附件
+  iframe.style.height = "4000px";
   iframe.style.border = "none";
   document.body.appendChild(iframe);
 
@@ -1255,7 +1258,7 @@ export async function exportContractTemplateToPdf(
       windowWidth: 800,
     });
 
-    // A4 尺寸 (mm)
+    // 页面尺寸配置
     const pageSizes: Record<string, { width: number; height: number }> = {
       a4: { width: 210, height: 297 },
       a5: { width: 148, height: 210 },
@@ -1266,8 +1269,8 @@ export async function exportContractTemplateToPdf(
     const pageWidth = orientation === 'l' ? pageSize.height : pageSize.width;
     const pageHeight = orientation === 'l' ? pageSize.width : pageSize.height;
     
-    const marginTop = 25;
-    const marginBottom = 20;
+    const marginTop = 20;
+    const marginBottom = 15;
     const marginLeft = 20;
     const contentWidth = pageWidth - marginLeft * 2;
     const contentHeight = pageHeight - marginTop - marginBottom;
@@ -1284,8 +1287,42 @@ export async function exportContractTemplateToPdf(
 
     const imgData = canvas.toDataURL("image/png");
     
-    // 每页能放的内容高度
-    const usableHeight = contentHeight;
+    // 获取所有"不可分割块"（表格和其说明文字）的位置
+    const noBreakElements = iframeDoc.querySelectorAll('.no-break, .subsection');
+    const noBreakRegions: Array<{start: number; end: number}> = [];
+    
+    noBreakElements.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const iframeRect = iframe.getBoundingClientRect();
+      // 计算元素在canvas上的Y坐标
+      const startY = (rect.top - iframeRect.top) * 2; // scale=2
+      const endY = startY + rect.height * 2;
+      noBreakRegions.push({ start: startY, end: endY });
+    });
+
+    // 智能分页函数：避免在不可分割块中间分页
+    const findSafePageBreak = (proposedBreak: number): number => {
+      const tolerance = 50; // 容差（像素）
+      
+      for (const region of noBreakRegions) {
+        // 如果分页点在某个不可分割块内部，则调整到该块的开始位置
+        if (proposedBreak > region.start + tolerance && proposedBreak < region.end - tolerance) {
+          // 检查是否可以将整个块放到下一页
+          const regionHeight = region.end - region.start;
+          const maxRegionHeight = contentHeight * (canvas.width / contentWidth) * 0.9; // 最多占90%页面高度
+          
+          if (regionHeight < maxRegionHeight) {
+            // 将分页点调整到块的开始位置
+            return region.start - 10; // 留一点边距
+          }
+        }
+      }
+      return proposedBreak;
+    };
+    
+    // 每页能放的内容高度（像素）
+    const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
+    
     let currentY = 0;
     let pageNum = 0;
 
@@ -1295,13 +1332,21 @@ export async function exportContractTemplateToPdf(
         pdf.addPage();
       }
 
-      const sourceY = (currentY / imgHeight) * canvas.height;
+      let proposedBreak = currentY + pageContentHeightPx;
+      
+      // 智能调整分页点，避免切断表格
+      if (proposedBreak < canvas.height) {
+        proposedBreak = findSafePageBreak(proposedBreak);
+      }
+      
+      const sourceY = currentY * (canvas.height / imgHeight);
       const sourceHeight = Math.min(
-        (usableHeight / imgHeight) * canvas.height,
+        (proposedBreak - currentY) * (canvas.height / imgHeight),
         canvas.height - sourceY
       );
 
-      if (pageNum === 0 && imgHeight <= usableHeight) {
+      if (pageNum === 0 && imgHeight <= pageContentHeightPx) {
+        // 内容不超过一页，直接添加
         pdf.addImage(imgData, "PNG", marginLeft, marginTop, imgWidth, imgHeight);
       } else {
         const pageCanvas = document.createElement("canvas");
@@ -1322,7 +1367,7 @@ export async function exportContractTemplateToPdf(
         }
       }
 
-      currentY += usableHeight;
+      currentY = proposedBreak;
       pageNum++;
     }
 
