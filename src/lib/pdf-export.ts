@@ -436,227 +436,465 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
 }
 
 /**
- * 创建合同模板 HTML 内容 - 专业合同样式
+ * 创建合同模板 HTML 内容 - 1:1还原原始PDF样式
+ * 支持数据库条款数据或使用默认完整模板
  */
 function createContractTemplateHtml(template: ContractTemplateData): string {
   const clauses = template.clauses || [];
-  const style = template.styleConfig;
-  
-  // 默认专业合同样式
-  const fontFamily = style?.font?.family || 'SimSun, 宋体, serif';
-  const fontSize = style?.font?.size || 12;
-  const lineHeight = style?.font?.lineHeight || 2;
-  const titleFontFamily = style?.titleFont?.family || 'SimHei, 黑体';
-  const titleFontSize = style?.titleFont?.size || 18;
-  const primaryColor = style?.colors?.primary || '#000000';
+  const hasClauses = clauses.length > 0;
 
-  // 构建条款HTML
-  const clausesHtml = clauses.map((clause, index) => {
-    // 处理条款内容，保留换行和表格
-    const content = clause.content
-      .replace(/\n/g, '<br/>')
-      .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+  // 共享的CSS样式
+  const sharedStyles = `
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: SimSun, 宋体, serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      color: #000;
+      background: #fff;
+    }
+    /* 封面页 */
+    .cover-page {
+      width: 210mm;
+      height: 297mm;
+      padding: 60mm 30mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      page-break-after: always;
+      background: #fff;
+    }
+    .cover-title {
+      font-family: SimHei, 黑体;
+      font-size: 22pt;
+      font-weight: normal;
+      letter-spacing: 4px;
+      margin-bottom: 80px;
+      text-align: center;
+    }
+    .cover-info {
+      width: 100%;
+    }
+    .cover-row {
+      display: flex;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid #000;
+      margin-bottom: 10px;
+    }
+    .cover-label {
+      width: 100px;
+      font-size: 12pt;
+    }
+    .cover-value {
+      flex: 1;
+    }
     
-    return `
-      <div style="margin-bottom: 20px;">
-        <div style="font-weight: bold; font-size: ${fontSize + 1}pt; margin-bottom: 10px; color: ${primaryColor};">
-          ${clause.title}
-        </div>
-        <div style="text-indent: 2em; text-align: justify; line-height: ${lineHeight};">
-          ${content}
-        </div>
+    /* 正文页 */
+    .content-page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 25mm 20mm;
+      background: #fff;
+    }
+    .main-title {
+      font-family: SimHei, 黑体;
+      font-size: 16pt;
+      text-align: center;
+      margin-bottom: 30px;
+      font-weight: normal;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-weight: bold;
+      margin-bottom: 12px;
+      font-size: 12pt;
+    }
+    .section-content {
+      text-indent: 2em;
+      text-align: justify;
+      margin-bottom: 8px;
+      font-size: 12pt;
+      white-space: pre-wrap;
+    }
+    .subsection {
+      margin-bottom: 15px;
+    }
+    .subsection-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-indent: 0;
+    }
+    .subsection-content {
+      text-indent: 2em;
+      text-align: justify;
+      margin-bottom: 5px;
+    }
+    .paragraph {
+      text-indent: 2em;
+      text-align: justify;
+      margin-bottom: 5px;
+    }
+    .list-item {
+      margin-bottom: 5px;
+      text-indent: 2em;
+    }
+    .highlight {
+      font-weight: bold;
+    }
+    
+    /* 表格样式 */
+    .simple-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11pt;
+    }
+    .simple-table th,
+    .simple-table td {
+      border: 1px solid #000;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .simple-table th {
+      background: #f5f5f5;
+      font-weight: bold;
+    }
+    
+    /* 签章区域 */
+    .signature-area {
+      margin-top: 50px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-box {
+      width: 220px;
+    }
+    .signature-title {
+      font-weight: bold;
+      margin-bottom: 50px;
+    }
+    .signature-line {
+      margin-bottom: 25px;
+    }
+    .signature-label {
+      display: inline-block;
+    }
+    .signature-underline {
+      display: inline-block;
+      border-bottom: 1px solid #000;
+      min-width: 120px;
+      margin-left: 5px;
+    }
+    
+    /* 附件列表 */
+    .annex-section {
+      margin-top: 30px;
+    }
+    .annex-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .annex-item {
+      text-indent: 2em;
+      margin-bottom: 5px;
+    }
+    
+    /* 页脚 */
+    .page-footer {
+      text-align: center;
+      font-size: 10pt;
+      color: #666;
+      margin-top: 30px;
+    }
+  `;
+
+  // 如果有条款数据，动态生成条款内容
+  const clausesHtml = hasClauses 
+    ? clauses.map(clause => `
+      <div class="section">
+        <div class="section-title">${clause.title}</div>
+        <div class="section-content">${clause.content.replace(/\n/g, '<br/>')}</div>
       </div>
-    `;
-  }).join('');
+    `).join('')
+    : '';
+
+  // 根据是否有条款数据决定使用哪种正文内容
+  const bodyContent = hasClauses 
+    ? clausesHtml  // 使用数据库条款
+    : getFullTemplateContent(); // 使用完整的硬编码模板
 
   return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        @page {
-          size: A4;
-          margin: 25mm 20mm;
-        }
-        body {
-          font-family: ${fontFamily};
-          font-size: ${fontSize}pt;
-          line-height: ${lineHeight};
-          color: #000;
-          margin: 0;
-          padding: 0;
-        }
-        .cover-page {
-          page-break-after: always;
-          min-height: calc(297mm - 50mm);
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
-        }
-        .main-title {
-          font-family: ${titleFontFamily};
-          font-size: 26pt;
-          font-weight: bold;
-          letter-spacing: 8px;
-          margin-bottom: 60px;
-        }
-        .cover-info {
-          width: 80%;
-          margin: 0 auto;
-        }
-        .cover-row {
-          display: flex;
-          justify-content: flex-start;
-          padding: 12px 0;
-          border-bottom: 1px solid #333;
-          margin-bottom: 20px;
-        }
-        .cover-label {
-          width: 100px;
-          text-align: left;
-          font-weight: bold;
-        }
-        .cover-value {
-          flex: 1;
-          text-align: left;
-        }
-        .content-page {
-          padding-top: 10mm;
-        }
-        .page-title {
-          font-family: ${titleFontFamily};
-          font-size: ${titleFontSize}pt;
-          font-weight: bold;
-          text-align: center;
-          margin-bottom: 30px;
-          padding-bottom: 15px;
-          border-bottom: 2px solid #000;
-        }
-        .article {
-          margin-bottom: 25px;
-        }
-        .article-title {
-          font-weight: bold;
-          font-size: ${fontSize + 1}pt;
-          margin-bottom: 12px;
-        }
-        .article-content {
-          text-indent: 2em;
-          text-align: justify;
-          margin-bottom: 8px;
-        }
-        .signature-area {
-          margin-top: 60px;
-          display: flex;
-          justify-content: space-between;
-        }
-        .signature-box {
-          width: 45%;
-        }
-        .signature-title {
-          font-weight: bold;
-          margin-bottom: 40px;
-        }
-        .signature-line {
-          padding: 8px 0;
-          margin-bottom: 20px;
-        }
-        .signature-label {
-          display: inline-block;
-          width: 80px;
-        }
-        .signature-value {
-          display: inline-block;
-          border-bottom: 1px solid #000;
-          min-width: 150px;
-        }
-        .annex-list {
-          margin-top: 40px;
-          padding: 20px;
-          border: 1px solid #ccc;
-          background: #fafafa;
-        }
-        .annex-title {
-          font-weight: bold;
-          margin-bottom: 15px;
-        }
-        .annex-item {
-          padding: 5px 0;
-          text-indent: 1em;
-        }
-        .page-footer {
-          position: fixed;
-          bottom: 20mm;
-          left: 20mm;
-          right: 20mm;
-          text-align: center;
-          font-size: 10pt;
-          color: #666;
-        }
-      </style>
-    </head>
-    <body>
-      <!-- 封面页 -->
-      <div class="cover-page">
-        <div class="main-title">加速器/孵化器入驻协议</div>
-        <div class="cover-info">
-          <div class="cover-row">
-            <span class="cover-label">入驻企业：</span>
-            <span class="cover-value"></span>
-          </div>
-          <div class="cover-row">
-            <span class="cover-label">合同编号：</span>
-            <span class="cover-value"></span>
-          </div>
-          <div class="cover-row">
-            <span class="cover-label">签订日期：</span>
-            <span class="cover-value"></span>
-          </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    ${sharedStyles}
+  </style>
+</head>
+<body>
+  <!-- 封面 -->
+  <div class="cover-page">
+    <div class="cover-title">加速器/孵化器入驻协议</div>
+    <div class="cover-info">
+      <div class="cover-row">
+        <span class="cover-label">入驻企业:</span>
+        <span class="cover-value"></span>
+      </div>
+      <div class="cover-row">
+        <span class="cover-label">合同编号:</span>
+        <span class="cover-value"></span>
+      </div>
+      <div class="cover-row">
+        <span class="cover-label">签订日期:</span>
+        <span class="cover-value"></span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 正文 -->
+  <div class="content-page">
+    <div class="main-title">${template.name || 'Π立方企业服务中心企业加速孵化合同'}</div>
+    
+    ${bodyContent}
+    
+    <!-- 签章区域 -->
+    <div class="signature-area">
+      <div class="signature-box">
+        <div class="signature-title">甲方签章处</div>
+        <div class="signature-line">
+          <span class="signature-label">法定代表人签字:</span>
+          <span class="signature-underline"></span>
+        </div>
+        <div class="signature-line">
+          <span class="signature-label">日期:</span>
+          <span class="signature-underline">____年____月____日</span>
         </div>
       </div>
-
-      <!-- 正文页 -->
-      <div class="content-page">
-        <div class="page-title">${template.name || 'Π立方企业服务中心企业加速孵化合同'}</div>
-        
-        ${clausesHtml}
-
-        <!-- 签章区域 -->
-        <div class="signature-area">
-          <div class="signature-box">
-            <div class="signature-title">甲方签章处</div>
-            <div class="signature-line">
-              <span class="signature-label">法定代表人签字：</span>
-              <span class="signature-value"></span>
-            </div>
-            <div class="signature-line">
-              <span class="signature-label">日期：</span>
-              <span class="signature-value">____年____月____日</span>
-            </div>
-          </div>
-          <div class="signature-box">
-            <div class="signature-title">乙方签章处</div>
-            <div class="signature-line">
-              <span class="signature-label">法定代表人签字：</span>
-              <span class="signature-value"></span>
-            </div>
-            <div class="signature-line">
-              <span class="signature-label">日期：</span>
-              <span class="signature-value">____年____月____日</span>
-            </div>
-          </div>
+      <div class="signature-box">
+        <div class="signature-title">乙方签章处</div>
+        <div class="signature-line">
+          <span class="signature-label">法定代表人签字:</span>
+          <span class="signature-underline"></span>
         </div>
-
-        <!-- 页脚 -->
-        <div style="margin-top: 50px; text-align: center; font-size: 10pt; color: #666;">
-          第 1 页
+        <div class="signature-line">
+          <span class="signature-label">日期:</span>
+          <span class="signature-underline">____年____月____日</span>
         </div>
       </div>
-    </body>
-    </html>
+    </div>
+    
+    <div class="page-footer">第 1 页</div>
+  </div>
+</body>
+</html>
+`;
+}
+
+/**
+ * 获取完整的合同模板内容 - 1:1还原原始PDF
+ */
+function getFullTemplateContent(): string {
+  return `
+    <div class="section">
+      <div class="section-title">第一条 合同主体</div>
+      <div class="subsection">
+        <div class="subsection-content">甲方(服务方):</div>
+        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
+        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-content">乙方(入驻方):</div>
+        <div class="subsection-content" style="text-indent: 4em;">企业名称:</div>
+        <div class="subsection-content" style="text-indent: 4em;">统一社会信用代码:</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第二条 服务内容与标的</div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.1 场地服务</div>
+        <div class="paragraph">(一)甲方同意将位于Π立方企服中心内的的场地无偿提供给乙方使用，用途仅限于办公。乙方不得擅自扩大使用范围或改变用途，否则甲方有权终止免费条款并要求赔偿。</div>
+        <div class="paragraph">(二)甲方应配合乙方出具工商注册所需的场地证明文件(如房产证复印件、租赁合同等)。合同终止或解除后，乙方须在30自然日内将注册地址从甲方场地迁出，并完成工商变更登记。若乙方逾期未迁出，每逾期一日按50元/日支付违约金；逾期超过90日的，乙方应按1200元/年的标准向甲方支付违约金，直至完成迁出手续为止。若因乙方未迁出导致甲方被行政处罚或第三方索赔的，乙方应全额赔偿甲方损失。</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.2 基础办公服务</div>
+        <div class="paragraph">(一)甲方为乙方免费提供以下基础服务:</div>
+        <table class="simple-table">
+          <tr>
+            <th>服务项目</th>
+            <th>水、电、暖</th>
+            <th>物业服务</th>
+            <th>网络服务</th>
+          </tr>
+          <tr>
+            <td>服务内容</td>
+            <td>基础物业</td>
+            <td>保洁、保安、公共设施维护</td>
+            <td>宽带、Wi-Fi</td>
+          </tr>
+        </table>
+        <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
+        <table class="simple-table">
+          <tr>
+            <th>类别</th>
+            <th>乙方选择项目(✔)</th>
+            <th>数量</th>
+            <th>计价单位</th>
+            <th>单价(元)</th>
+            <th>押金(元)</th>
+          </tr>
+          <tr>
+            <td>固定工位</td>
+            <td>□开放工位</td>
+            <td></td>
+            <td>个/年</td>
+            <td>1200</td>
+            <td>1200</td>
+          </tr>
+          <tr>
+            <td>独立办公室</td>
+            <td>□无窗 □有窗</td>
+            <td></td>
+            <td>间/年</td>
+            <td>3000/3600</td>
+            <td>1200</td>
+          </tr>
+          <tr>
+            <td>独栋办公室</td>
+            <td>□独栋</td>
+            <td></td>
+            <td>栋/年</td>
+            <td>3600</td>
+            <td>5000</td>
+          </tr>
+        </table>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.4 增值服务引用</div>
+        <div class="paragraph">乙方可选购《特色服务超市价目表》(附件三)项目，另行签署服务订单</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">2.5 独栋办公室服务标准按《独栋补充协议》(附件四)执行</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第三条 合同周期与费用</div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">3.1 服务期限</div>
+        <div class="paragraph">起始日: ____年____月____日</div>
+        <div class="paragraph">终止日: ____年____月____日 (共计____年)</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">3.2 费用结算(人民币)</div>
+        <table class="simple-table">
+          <tr>
+            <th>项目</th>
+            <th>金额(元)</th>
+            <th>支付时间</th>
+          </tr>
+          <tr>
+            <td>首年服务费</td>
+            <td>¥____</td>
+            <td>签约后5个工作日内</td>
+          </tr>
+          <tr>
+            <td>押金</td>
+            <td>¥____</td>
+            <td>同服务费支付</td>
+          </tr>
+          <tr>
+            <td>次年续费</td>
+            <td>¥____</td>
+            <td>到期前30日</td>
+          </tr>
+        </table>
+        <div class="paragraph">注:押金于合同终止后30日内无息退还(扣除违约赔偿金)</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第四条 双方权利义务</div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">4.1 甲方承诺</div>
+        <div class="paragraph">(一)保障基础设施:提供千兆网络/24小时安保(标准见附件一)</div>
+        <div class="paragraph">(二)维护服务品质:客服响应时效按《入驻告知书》第4章执行</div>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">4.2 乙方义务</div>
+        <div class="paragraph">(一)合规使用场地:遵守《空间使用与管理规范》(附件二)</div>
+        <div class="paragraph">(二)安全主体责任:签署《安全责任承诺书》(附件五)</div>
+        <div class="paragraph">(三)每季度提交经营简报(含营收、雇员情况)</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第五条 违约责任</div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">5.1 违约金计算</div>
+        <table class="simple-table">
+          <tr>
+            <th>违约情形</th>
+            <th>违约金标准</th>
+          </tr>
+          <tr>
+            <td>乙方逾期付款</td>
+            <td>应付未付金额×0.05%/日</td>
+          </tr>
+          <tr>
+            <td>乙方擅自转租</td>
+            <td>当年服务费总额的30%</td>
+          </tr>
+          <tr>
+            <td>甲方服务中断超72小时</td>
+            <td>按中断天数200%退还日服务费</td>
+          </tr>
+        </table>
+      </div>
+      <div class="subsection">
+        <div class="subsection-title" style="text-indent: 0;">5.2 合同解除条件</div>
+        <div class="paragraph">(一)乙方欠费超30日</div>
+        <div class="paragraph">(二)乙方从事违法经营经书面警告未整改</div>
+        <div class="paragraph">(三)甲方丧失场地运营权(提前90日通知)</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第六条 法律适用与争议解决</div>
+      <div class="paragraph">适用法律:《中华人民共和国民法典》《商业房屋租赁管理办法》</div>
+      <div class="paragraph">争议解决:提交松原市仲裁委员会仲裁(仲裁费由败诉方承担)</div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第七条 其他</div>
+      <div class="paragraph">本合同一式贰份(甲乙双方各执壹份)</div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">第八条 合同附件</div>
+      <div class="paragraph">下列附件与本合同具有同等法律效力:</div>
+      <div class="paragraph">附件一:《Π立方服务标准清单》</div>
+      <div class="paragraph">附件二:《空间使用与管理规范》</div>
+      <div class="paragraph">附件三:《特色服务超市价目表》</div>
+      <div class="paragraph">附件四:《独栋办公室补充条款》</div>
+      <div class="paragraph">附件五:《安全责任承诺书》</div>
+    </div>
   `;
 }
 
