@@ -508,16 +508,19 @@ function createContractTemplateHtml(
       width: 100%;
     }
     .cover-row {
+      display: flex;
+      align-items: center;
       margin-bottom: 20px;
     }
     .cover-label {
-      display: block;
-      margin-bottom: 5px;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .cover-value {
+      flex: 1;
       border-bottom: 1px solid #000;
-      min-height: 1.5em;
-      width: 100%;
+      min-height: 1em;
+      margin-left: 5px;
     }
     
     /* 正文页 */
