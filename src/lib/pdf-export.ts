@@ -436,99 +436,246 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
 }
 
 /**
- * 创建合同模板 HTML 内容
+ * 创建合同模板 HTML 内容 - 专业合同样式
  */
 function createContractTemplateHtml(template: ContractTemplateData): string {
-  const style = template.styleConfig;
   const clauses = template.clauses || [];
+  const style = template.styleConfig;
+  
+  // 默认专业合同样式
+  const fontFamily = style?.font?.family || 'SimSun, 宋体, serif';
+  const fontSize = style?.font?.size || 12;
+  const lineHeight = style?.font?.lineHeight || 2;
+  const titleFontFamily = style?.titleFont?.family || 'SimHei, 黑体';
+  const titleFontSize = style?.titleFont?.size || 18;
+  const primaryColor = style?.colors?.primary || '#000000';
+
+  // 构建条款HTML
+  const clausesHtml = clauses.map((clause, index) => {
+    // 处理条款内容，保留换行和表格
+    const content = clause.content
+      .replace(/\n/g, '<br/>')
+      .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+    
+    return `
+      <div style="margin-bottom: 20px;">
+        <div style="font-weight: bold; font-size: ${fontSize + 1}pt; margin-bottom: 10px; color: ${primaryColor};">
+          ${clause.title}
+        </div>
+        <div style="text-indent: 2em; text-align: justify; line-height: ${lineHeight};">
+          ${content}
+        </div>
+      </div>
+    `;
+  }).join('');
 
   return `
-    <div style="
-      font-family: ${style?.font?.family || 'SimSun, 宋体, serif'};
-      font-size: ${style?.font?.size || 12}pt;
-      line-height: ${style?.font?.lineHeight || 1.8};
-      color: ${style?.colors?.text || '#333333'};
-      background: #ffffff;
-      padding: ${style?.margins?.top || 25}mm ${style?.margins?.right || 20}mm ${style?.margins?.bottom || 25}mm ${style?.margins?.left || 20}mm;
-      width: ${style?.orientation === 'landscape' ? '297mm' : '210mm'};
-      min-height: ${style?.orientation === 'landscape' ? '210mm' : '297mm'};
-    ">
-      <!-- 页眉 -->
-      ${style?.layout?.showLogo ? `
-        <div style="
-          height: ${style.layout.headerHeight || 60}px;
-          text-align: ${style.layout.logoPosition || 'center'};
-          background-color: ${style.colors?.headerBg || '#f5f5f5'};
-          margin-bottom: 24px;
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        @page {
+          size: A4;
+          margin: 25mm 20mm;
+        }
+        body {
+          font-family: ${fontFamily};
+          font-size: ${fontSize}pt;
+          line-height: ${lineHeight};
+          color: #000;
+          margin: 0;
+          padding: 0;
+        }
+        .cover-page {
+          page-break-after: always;
+          min-height: calc(297mm - 50mm);
           display: flex;
-          align-items: center;
+          flex-direction: column;
           justify-content: center;
-        ">
-          <span style="color: #999999;">[Logo 占位]</span>
-        </div>
-      ` : ''}
-
-      <!-- 标题 -->
-      <h1 style="
-        text-align: center;
-        margin-bottom: 32px;
-        font-family: ${style?.titleFont?.family || 'SimHei, 黑体'};
-        font-size: ${style?.titleFont?.size || 18}pt;
-        font-weight: ${style?.titleFont?.weight || 'bold'};
-        color: ${style?.colors?.primary || '#1a1a1a'};
-      ">${template.name || '合同模板'}</h1>
-
-      <!-- 条款内容 -->
-      <div style="space-y: 16px;">
-        ${clauses.map((clause, index) => `
-          <div style="
-            margin-bottom: ${style?.clauseStyle?.spacing || 12}px;
-            padding-left: ${style?.clauseStyle?.indent || 24}px;
-          ">
-            <h3 style="
-              font-weight: bold;
-              margin-bottom: 8px;
-              color: ${style?.colors?.primary || '#1a1a1a'};
-            ">${index + 1}. ${clause.title}</h3>
-            <p style="white-space: pre-line; margin: 0;">${clause.content}</p>
+          align-items: center;
+          text-align: center;
+        }
+        .main-title {
+          font-family: ${titleFontFamily};
+          font-size: 26pt;
+          font-weight: bold;
+          letter-spacing: 8px;
+          margin-bottom: 60px;
+        }
+        .cover-info {
+          width: 80%;
+          margin: 0 auto;
+        }
+        .cover-row {
+          display: flex;
+          justify-content: flex-start;
+          padding: 12px 0;
+          border-bottom: 1px solid #333;
+          margin-bottom: 20px;
+        }
+        .cover-label {
+          width: 100px;
+          text-align: left;
+          font-weight: bold;
+        }
+        .cover-value {
+          flex: 1;
+          text-align: left;
+        }
+        .content-page {
+          padding-top: 10mm;
+        }
+        .page-title {
+          font-family: ${titleFontFamily};
+          font-size: ${titleFontSize}pt;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 30px;
+          padding-bottom: 15px;
+          border-bottom: 2px solid #000;
+        }
+        .article {
+          margin-bottom: 25px;
+        }
+        .article-title {
+          font-weight: bold;
+          font-size: ${fontSize + 1}pt;
+          margin-bottom: 12px;
+        }
+        .article-content {
+          text-indent: 2em;
+          text-align: justify;
+          margin-bottom: 8px;
+        }
+        .signature-area {
+          margin-top: 60px;
+          display: flex;
+          justify-content: space-between;
+        }
+        .signature-box {
+          width: 45%;
+        }
+        .signature-title {
+          font-weight: bold;
+          margin-bottom: 40px;
+        }
+        .signature-line {
+          padding: 8px 0;
+          margin-bottom: 20px;
+        }
+        .signature-label {
+          display: inline-block;
+          width: 80px;
+        }
+        .signature-value {
+          display: inline-block;
+          border-bottom: 1px solid #000;
+          min-width: 150px;
+        }
+        .annex-list {
+          margin-top: 40px;
+          padding: 20px;
+          border: 1px solid #ccc;
+          background: #fafafa;
+        }
+        .annex-title {
+          font-weight: bold;
+          margin-bottom: 15px;
+        }
+        .annex-item {
+          padding: 5px 0;
+          text-indent: 1em;
+        }
+        .page-footer {
+          position: fixed;
+          bottom: 20mm;
+          left: 20mm;
+          right: 20mm;
+          text-align: center;
+          font-size: 10pt;
+          color: #666;
+        }
+      </style>
+    </head>
+    <body>
+      <!-- 封面页 -->
+      <div class="cover-page">
+        <div class="main-title">加速器/孵化器入驻协议</div>
+        <div class="cover-info">
+          <div class="cover-row">
+            <span class="cover-label">入驻企业：</span>
+            <span class="cover-value"></span>
           </div>
-        `).join('')}
+          <div class="cover-row">
+            <span class="cover-label">合同编号：</span>
+            <span class="cover-value"></span>
+          </div>
+          <div class="cover-row">
+            <span class="cover-label">签订日期：</span>
+            <span class="cover-value"></span>
+          </div>
+        </div>
       </div>
 
-      <!-- 页脚 -->
-      ${style?.layout?.showPageNumber ? `
-        <div style="
-          margin-top: 32px;
-          height: ${style.layout.footerHeight || 40}px;
-          text-align: ${style.layout.pageNumberPosition || 'center'};
-          border-top: 1px solid #e5e5e5;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          <span style="color: #666666; font-size: 10pt;">第 1 页</span>
+      <!-- 正文页 -->
+      <div class="content-page">
+        <div class="page-title">${template.name || 'Π立方企业服务中心企业加速孵化合同'}</div>
+        
+        ${clausesHtml}
+
+        <!-- 签章区域 -->
+        <div class="signature-area">
+          <div class="signature-box">
+            <div class="signature-title">甲方签章处</div>
+            <div class="signature-line">
+              <span class="signature-label">法定代表人签字：</span>
+              <span class="signature-value"></span>
+            </div>
+            <div class="signature-line">
+              <span class="signature-label">日期：</span>
+              <span class="signature-value">____年____月____日</span>
+            </div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-title">乙方签章处</div>
+            <div class="signature-line">
+              <span class="signature-label">法定代表人签字：</span>
+              <span class="signature-value"></span>
+            </div>
+            <div class="signature-line">
+              <span class="signature-label">日期：</span>
+              <span class="signature-value">____年____月____日</span>
+            </div>
+          </div>
         </div>
-      ` : ''}
-    </div>
+
+        <!-- 页脚 -->
+        <div style="margin-top: 50px; text-align: center; font-size: 10pt; color: #666;">
+          第 1 页
+        </div>
+      </div>
+    </body>
+    </html>
   `;
 }
 
 /**
- * 导出合同模板为 PDF
+ * 导出合同模板为 PDF - 专业合同样式
  */
 export async function exportContractTemplateToPdf(template: ContractTemplateData): Promise<void> {
   const style = template.styleConfig;
-  const orientation = style?.orientation === 'landscape' ? 'l' : 'p';
   const format = style?.pageSize?.toLowerCase() === 'a5' ? 'a5' 
     : style?.pageSize?.toLowerCase() === 'letter' ? 'letter' 
     : 'a4';
+  const orientation = style?.orientation === 'landscape' ? 'l' : 'p';
 
   // 创建 iframe 来完全隔离样式
   const iframe = document.createElement("iframe");
   iframe.style.position = "fixed";
   iframe.style.left = "-9999px";
   iframe.style.top = "0";
-  iframe.style.width = style?.orientation === 'landscape' ? "1100px" : "800px";
+  iframe.style.width = "800px";
   iframe.style.height = "2000px";
   iframe.style.border = "none";
   document.body.appendChild(iframe);
@@ -541,27 +688,13 @@ export async function exportContractTemplateToPdf(template: ContractTemplateData
 
   // 写入 HTML 内容到 iframe
   iframeDoc.open();
-  iframeDoc.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; }
-      </style>
-    </head>
-    <body>
-      ${createContractTemplateHtml(template)}
-    </body>
-    </html>
-  `);
+  iframeDoc.write(createContractTemplateHtml(template));
   iframeDoc.close();
 
   // 等待内容渲染
-  await new Promise(resolve => setTimeout(resolve, 200));
+  await new Promise(resolve => setTimeout(resolve, 300));
 
-  const container = iframeDoc.body.firstElementChild as HTMLElement;
+  const container = iframeDoc.body;
 
   try {
     // 使用 html2canvas 生成图片
@@ -570,9 +703,10 @@ export async function exportContractTemplateToPdf(template: ContractTemplateData
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
+      windowWidth: 800,
     });
 
-    // 根据纸张大小设置尺寸
+    // A4 尺寸 (mm)
     const pageSizes: Record<string, { width: number; height: number }> = {
       a4: { width: 210, height: 297 },
       a5: { width: 148, height: 210 },
@@ -583,10 +717,11 @@ export async function exportContractTemplateToPdf(template: ContractTemplateData
     const pageWidth = orientation === 'l' ? pageSize.height : pageSize.width;
     const pageHeight = orientation === 'l' ? pageSize.width : pageSize.height;
     
-    const marginTop = style?.margins?.top || 25;
-    const marginLeft = style?.margins?.left || 20;
+    const marginTop = 25;
+    const marginBottom = 20;
+    const marginLeft = 20;
     const contentWidth = pageWidth - marginLeft * 2;
-    const contentHeight = pageHeight - marginTop - (style?.margins?.bottom || 25);
+    const contentHeight = pageHeight - marginTop - marginBottom;
 
     // 计算图片尺寸
     const imgWidth = contentWidth;
@@ -625,6 +760,8 @@ export async function exportContractTemplateToPdf(template: ContractTemplateData
         pageCanvas.height = sourceHeight;
         const ctx = pageCanvas.getContext("2d");
         if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
           ctx.drawImage(
             canvas,
             0, sourceY, canvas.width, sourceHeight,
