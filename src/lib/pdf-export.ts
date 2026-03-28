@@ -508,18 +508,16 @@ function createContractTemplateHtml(
       width: 100%;
     }
     .cover-row {
-      display: flex;
-      align-items: baseline;
       margin-bottom: 20px;
+      line-height: 2;
     }
     .cover-label {
-      flex-shrink: 0;
-      white-space: nowrap;
+      display: inline;
     }
     .cover-value {
-      flex: 1;
+      display: inline-block;
       border-bottom: 1px solid #000;
-      min-height: 0;
+      width: 200px;
       margin-left: 5px;
     }
     
