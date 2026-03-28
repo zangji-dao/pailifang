@@ -6,20 +6,15 @@ const nextConfig: NextConfig = {
   /* config options here */
   allowedDevOrigins: ['*.dev.coze.site'],
   devIndicators: false,
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'lf-coze-web-cdn.coze.cn',
-        pathname: '/**',
-      },
-    ],
-  },
+  // 禁用 devtools 以避免 [object Event] 错误
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
     },
   },
 };
+
+// 禁用 Next.js devtools
+process.env.NEXT_PRIVATE_DISABLE_DEVTOOLS = '1';
 
 export default nextConfig;

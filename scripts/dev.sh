@@ -55,7 +55,7 @@ if [[ ! -d "node_modules" ]]; then
 fi
 
 # 后台启动后端（显式指定后端端口）
-COZE_PROJECT_ENV=DEV PG_PASSWORD="${PG_PASSWORD}" PORT=${BACKEND_PORT} npx tsx src/index.ts > /app/work/logs/bypass/backend.log 2>&1 &
+COZE_PROJECT_ENV=DEV PG_PASSWORD="${PG_PASSWORD}" PORT=${BACKEND_PORT} pnpm tsx src/index.ts > /app/work/logs/bypass/backend.log 2>&1 &
 BACKEND_PID=$!
 echo "Backend started with PID: ${BACKEND_PID}"
 
@@ -98,4 +98,4 @@ echo "=============================================="
 echo ""
 
 # 前台启动前端（这是主进程）
-npx next dev --webpack --port $PORT
+pnpm next dev --webpack --port $PORT
