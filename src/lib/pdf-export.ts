@@ -509,7 +509,7 @@ function createContractTemplateHtml(
     }
     .cover-row {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       margin-bottom: 20px;
     }
     .cover-label {
@@ -519,7 +519,7 @@ function createContractTemplateHtml(
     .cover-value {
       flex: 1;
       border-bottom: 1px solid #000;
-      min-height: 1em;
+      min-height: 0;
       margin-left: 5px;
     }
     
