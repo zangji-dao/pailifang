@@ -490,7 +490,7 @@ function createContractTemplateHtml(
     .cover-page {
       width: 210mm;
       height: 297mm;
-      padding: 40mm 30mm 60mm 30mm;
+      padding: 60mm 30mm 60mm 30mm;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -503,7 +503,7 @@ function createContractTemplateHtml(
       font-size: 26pt;
       font-weight: bold;
       letter-spacing: 6px;
-      margin-bottom: 120px;
+      margin-bottom: 80px;
       text-align: center;
       width: 100%;
     }
@@ -512,17 +512,19 @@ function createContractTemplateHtml(
     }
     .cover-row {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       padding: 12px 0;
-      border-bottom: 1px solid #000;
       margin-bottom: 15px;
     }
     .cover-label {
-      width: 90px;
       flex-shrink: 0;
+      white-space: nowrap;
     }
     .cover-value {
       flex: 1;
+      border-bottom: 1px solid #000;
+      min-height: 1em;
+      margin-left: 5px;
     }
     
     /* 正文页 */
