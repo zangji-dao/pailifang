@@ -512,14 +512,16 @@ function createContractTemplateHtml(
       width: 100%;
     }
     .cover-row {
+      display: flex;
       margin-bottom: 20px;
       line-height: 2;
-      white-space: nowrap;
     }
-    .cover-line {
-      text-decoration: underline;
-      text-decoration-color: #000;
-      white-space: pre;
+    .cover-label {
+      flex-shrink: 0;
+    }
+    .cover-underline {
+      flex: 1;
+      border-bottom: 1px solid #000;
     }
     
     /* 正文页 */
@@ -668,9 +670,16 @@ function createContractTemplateHtml(
     
     /* 信息行样式（合同主体等） */
     .info-row {
+      display: flex;
       margin-bottom: 12px;
       line-height: 2.2;
-      white-space: nowrap;
+    }
+    .info-label {
+      flex-shrink: 0;
+    }
+    .info-underline {
+      flex: 1;
+      border-bottom: 1px solid #000;
     }
     
     /* 附件列表 */
@@ -703,14 +712,14 @@ function createContractTemplateHtml(
     if (title.includes('合同主体')) {
       return `
       <div class="subsection">
-        <div class="info-row">&nbsp;&nbsp;甲方(服务方):____________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:____________________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:____________________________________________________________________________________________________</div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;甲方(服务方):</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;企业名称:</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;统一社会信用代码:</span><span class="info-underline"></span></div>
       </div>
       <div class="subsection">
-        <div class="info-row">&nbsp;&nbsp;乙方(入驻方):____________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:____________________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:____________________________________________________________________________________________________</div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;乙方(入驻方):</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;企业名称:</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;统一社会信用代码:</span><span class="info-underline"></span></div>
       </div>`;
     }
     
@@ -923,9 +932,9 @@ function createContractTemplateHtml(
       <div class="cover-title">加速器/孵化器入驻协议</div>
     </div>
     <div class="cover-info">
-      <div class="cover-row">&nbsp;&nbsp;入驻企业:_________________________________________________</div>
-      <div class="cover-row">&nbsp;&nbsp;合同编号:_________________________________________________</div>
-      <div class="cover-row">&nbsp;&nbsp;签订日期:_________________________________________________</div>
+      <div class="cover-row"><span class="cover-label">&nbsp;&nbsp;入驻企业:</span><span class="cover-underline"></span></div>
+      <div class="cover-row"><span class="cover-label">&nbsp;&nbsp;合同编号:</span><span class="cover-underline"></span></div>
+      <div class="cover-row"><span class="cover-label">&nbsp;&nbsp;签订日期:</span><span class="cover-underline"></span></div>
     </div>
   </div>
   
@@ -964,14 +973,14 @@ function getFullTemplateContent(): string {
     <div class="section">
       <div class="section-title">第一条 合同主体</div>
       <div class="subsection">
-        <div class="info-row">&nbsp;&nbsp;甲方(服务方):____________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:____________________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:____________________________________________________________________________________________________</div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;甲方(服务方):</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;企业名称:</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;统一社会信用代码:</span><span class="info-underline"></span></div>
       </div>
       <div class="subsection">
-        <div class="info-row">&nbsp;&nbsp;乙方(入驻方):____________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;企业名称:____________________________________________________________________________________________________________</div>
-        <div class="info-row">&nbsp;&nbsp;统一社会信用代码:____________________________________________________________________________________________________</div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;乙方(入驻方):</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;企业名称:</span><span class="info-underline"></span></div>
+        <div class="info-row"><span class="info-label">&nbsp;&nbsp;统一社会信用代码:</span><span class="info-underline"></span></div>
       </div>
     </div>
     
