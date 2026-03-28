@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * 全局错误处理组件
@@ -11,14 +11,20 @@ import { useEffect } from "react";
  * 2. AbortError - fetch 请求被取消
  */
 export function GlobalErrorHandler() {
+  const installedRef = useRef(false);
+
   useEffect(() => {
-    // 保存原始的 console.error
+    // 防止重复安装
+    if (installedRef.current) return;
+    installedRef.current = true;
+
+    // 保存原始方法
     const originalConsoleError = console.error;
-    
+    const originalPromiseReject = Promise.reject.bind(Promise);
+
     // 过滤控制台错误输出
     console.error = (...args: unknown[]) => {
       const errorStr = args.map(arg => String(arg)).join(' ');
-      // 过滤掉已知的无害错误
       if (
         errorStr.includes('[object Event]') ||
         errorStr.includes('AbortError') ||
@@ -29,8 +35,8 @@ export function GlobalErrorHandler() {
       }
       originalConsoleError.apply(console, args);
     };
-    
-    // 处理未捕获的 Promise 拒绝
+
+    // 处理未捕获的 Promise 拒绝 - 使用捕获阶段
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
       const reasonStr = String(reason);
@@ -47,7 +53,6 @@ export function GlobalErrorHandler() {
         reasonMessage.includes('The user aborted a request');
       
       if (isHarmlessError) {
-        // 完全阻止错误传播
         event.preventDefault();
         event.stopPropagation();
         if ('stopImmediatePropagation' in event) {
@@ -55,8 +60,6 @@ export function GlobalErrorHandler() {
         }
         return false;
       }
-      
-      // 其他错误保持原样
     };
     
     // 处理普通错误
@@ -66,7 +69,6 @@ export function GlobalErrorHandler() {
       const errorName = error instanceof Error ? error.name : '';
       const errorMessage = error instanceof Error ? error.message : '';
       
-      // 检查是否是已知的无害错误
       const isHarmlessError =
         errorStr === '[object Event]' ||
         errorStr.includes('AbortError') ||
@@ -81,15 +83,31 @@ export function GlobalErrorHandler() {
         return false;
       }
     };
+
+    // 处理自定义错误事件（Next.js devtools 使用的事件）
+    const handleCustomError = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      const errorStr = String(detail || event);
+      
+      if (errorStr === '[object Event]' || errorStr.includes('AbortError')) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        return false;
+      }
+    };
     
-    // 使用捕获阶段来确保我们的处理器最先执行
+    // 注册事件监听器 - 全部使用捕获阶段
     window.addEventListener('unhandledrejection', handleUnhandledRejection, true);
     window.addEventListener('error', handleError, true);
+    window.addEventListener('error', handleCustomError as EventListener, true);
     
     return () => {
       console.error = originalConsoleError;
+      Promise.reject = originalPromiseReject;
       window.removeEventListener('unhandledrejection', handleUnhandledRejection, true);
       window.removeEventListener('error', handleError, true);
+      window.removeEventListener('error', handleCustomError as EventListener, true);
     };
   }, []);
 

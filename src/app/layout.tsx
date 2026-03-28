@@ -35,6 +35,41 @@ export const metadata: Metadata = {
   },
 };
 
+// 阻止 [object Event] 错误的脚本 - 必须在页面加载前执行
+const errorSuppressScript = `
+(function() {
+  const isHarmless = (reason) => {
+    const str = String(reason);
+    const name = (reason && reason.name) || '';
+    const msg = (reason && reason.message) || '';
+    return str === '[object Event]' || 
+           str.includes('AbortError') || 
+           name === 'AbortError' ||
+           msg.includes('aborted') ||
+           msg.includes('cancelled');
+  };
+  
+  // 捕获阶段拦截
+  window.addEventListener('unhandledrejection', function(e) {
+    if (isHarmless(e.reason)) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation && e.stopImmediatePropagation();
+      return false;
+    }
+  }, true);
+  
+  window.addEventListener('error', function(e) {
+    if (isHarmless(e.error || e.message)) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation && e.stopImmediatePropagation();
+      return false;
+    }
+  }, true);
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,6 +77,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: errorSuppressScript }} />
+      </head>
       <body className="antialiased">
         <GlobalErrorHandler />
         <ConfirmProvider>
