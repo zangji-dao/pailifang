@@ -598,15 +598,15 @@ function getAttachmentContent(attachmentId: string): string {
     'att-3': `
       <div class="section force-break-before">
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：独栋办公室补充条款</div>
-        <div style="margin: 20px 0;">
-          <div class="paragraph">甲方（服务方）：</div>
-          <div class="paragraph">企业名称：__________</div>
-          <div class="paragraph">统一社会信用代码：__________</div>
+        <div style="margin: 20px 0; line-height: 2.5;">
+          <div style="white-space: nowrap;">甲方（服务方）：<span style="display: inline-block; width: 180px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 180px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 150px; border-bottom: 1px solid #000;">&nbsp;</span></div>
         </div>
-        <div style="margin: 20px 0;">
-          <div class="paragraph">乙方（入驻方）：</div>
-          <div class="paragraph">企业名称：__________</div>
-          <div class="paragraph">统一社会信用代码：__________</div>
+        <div style="margin: 20px 0; line-height: 2.5;">
+          <div style="white-space: nowrap;">乙方（入驻方）：<span style="display: inline-block; width: 180px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 180px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 150px; border-bottom: 1px solid #000;">&nbsp;</span></div>
         </div>
         <div class="subsection">
           <div class="subsection-title">一、基础服务条款</div>
