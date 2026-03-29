@@ -489,6 +489,7 @@ function createContractTemplateHtml(
     /* 封面页 */
     .cover-page {
       width: 210mm;
+      height: 267mm;
       padding: 30mm;
       background: #fff;
     }
