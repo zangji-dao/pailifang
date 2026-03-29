@@ -652,6 +652,21 @@ function createContractTemplateHtml(
       margin-bottom: 25px;
     }
     
+    /* 附件列表样式 */
+    .attachment-section {
+      margin-top: 50px;
+      padding-top: 30px;
+      border-top: 1px solid #000;
+    }
+    .attachment-list {
+      margin-top: 20px;
+    }
+    .attachment-item {
+      margin-bottom: 15px;
+      text-indent: 2em;
+      line-height: 2;
+    }
+    
     /* 信息行样式（合同主体等） */
     .info-row {
       display: flex;
@@ -933,6 +948,25 @@ function createContractTemplateHtml(
         <div class="signature-line">日期:____年____月____日</div>
       </div>
     </div>
+    
+    <!-- 附件列表 -->
+    ${includeAttachments && selectedAttachments.length > 0 ? `
+    <div class="attachment-section force-break-before">
+      <div class="section-title">附件清单</div>
+      <div class="attachment-list">
+        ${selectedAttachments.map((id, index) => {
+          const attachmentNames: Record<string, { name: string; desc: string }> = {
+            'attachment-1': { name: '入驻申请表', desc: '企业入驻申请表格' },
+            'attachment-2': { name: '营业执照副本复印件', desc: '需加盖公章' },
+            'attachment-3': { name: '法定代表人身份证复印件', desc: '正反面复印件' },
+            'attachment-4': { name: '授权委托书', desc: '非法人办理时需要' },
+          };
+          const att = attachmentNames[id];
+          return att ? `<div class="attachment-item">${index + 1}. ${att.name}${att.desc ? `（${att.desc}）` : ''}</div>` : '';
+        }).join('')}
+      </div>
+    </div>
+    ` : ''}
   </div>
 </body>
 </html>

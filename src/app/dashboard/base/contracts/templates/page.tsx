@@ -14,10 +14,13 @@ import {
   Palette,
   Settings,
   FileDown,
+  Paperclip,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,9 +31,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
+
+// 默认合同附件列表
+const DEFAULT_ATTACHMENTS = [
+  { id: 'attachment-1', name: '入驻申请表', description: '企业入驻申请表格', required: true, order: 1 },
+  { id: 'attachment-2', name: '营业执照副本复印件', description: '需加盖公章', required: true, order: 2 },
+  { id: 'attachment-3', name: '法定代表人身份证复印件', description: '正反面复印件', required: true, order: 3 },
+  { id: 'attachment-4', name: '授权委托书', description: '非法人办理时需要', required: false, order: 4 },
+];
 
 // 类型定义
 interface TemplateStyleConfig {
@@ -99,6 +118,13 @@ export default function ContractTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState<ContractTemplate | null>(null);
+  
+  // 附件选择弹窗状态
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
+  const [exportingTemplate, setExportingTemplate] = useState<ContractTemplate | null>(null);
+  const [selectedAttachments, setSelectedAttachments] = useState<string[]>(
+    DEFAULT_ATTACHMENTS.filter(a => a.required).map(a => a.id)
+  );
 
   // 获取模板列表
   const fetchTemplates = useCallback(async (signal?: AbortSignal) => {
@@ -235,15 +261,28 @@ export default function ContractTemplatesPage() {
     }
   };
 
-  // 导出PDF
-  const handleExportPDF = async (template: ContractTemplate, e: React.MouseEvent) => {
+  // 打开附件选择弹窗
+  const openAttachmentDialog = (template: ContractTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
+    setExportingTemplate(template);
+    setSelectedAttachments(DEFAULT_ATTACHMENTS.filter(a => a.required).map(a => a.id));
+    setAttachmentDialogOpen(true);
+  };
+
+  // 导出PDF（带附件选择）
+  const handleExportPDF = async () => {
+    if (!exportingTemplate) return;
+    
     try {
+      setAttachmentDialogOpen(false);
       toast.info('正在生成PDF...');
 
       // 使用统一的PDF导出库
       const { exportContractTemplateToPdf } = await import('@/lib/pdf-export');
-      await exportContractTemplateToPdf(template);
+      await exportContractTemplateToPdf(exportingTemplate, {
+        includeAttachments: selectedAttachments.length > 0,
+        selectedAttachments: selectedAttachments,
+      });
 
       toast.success('PDF导出成功');
 
@@ -251,6 +290,17 @@ export default function ContractTemplatesPage() {
       console.error('导出PDF失败:', err);
       toast.error('导出失败');
     }
+  };
+
+  // 切换附件选择
+  const toggleAttachment = (attachmentId: string, required: boolean) => {
+    if (required) return; // 必选附件不能取消
+    
+    setSelectedAttachments(prev => 
+      prev.includes(attachmentId)
+        ? prev.filter(id => id !== attachmentId)
+        : [...prev, attachmentId]
+    );
   };
 
   // 加载状态
@@ -432,7 +482,7 @@ export default function ContractTemplatesPage() {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
-                        onClick={(e) => handleExportPDF(template, e)}
+                        onClick={(e) => openAttachmentDialog(template, e)}
                         title="导出PDF"
                       >
                         <FileDown className="h-4 w-4" />
@@ -490,6 +540,81 @@ export default function ContractTemplatesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 附件选择弹窗 */}
+      <Dialog open={attachmentDialogOpen} onOpenChange={setAttachmentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              选择导出附件
+            </DialogTitle>
+            <DialogDescription>
+              选择需要包含在合同中的附件，导出时将作为合同附件列表
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-3">
+              {DEFAULT_ATTACHMENTS.map((attachment) => {
+                const isSelected = selectedAttachments.includes(attachment.id);
+                return (
+                  <div
+                    key={attachment.id}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+                      attachment.required && "cursor-default"
+                    )}
+                    onClick={() => toggleAttachment(attachment.id, attachment.required)}
+                  >
+                    <Checkbox
+                      id={attachment.id}
+                      checked={isSelected}
+                      disabled={attachment.required}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor={attachment.id}
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {attachment.name}
+                        </label>
+                        {attachment.required && (
+                          <Badge variant="secondary" className="text-xs">
+                            必选
+                          </Badge>
+                        )}
+                      </div>
+                      {attachment.description && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {attachment.description}
+                        </p>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              已选择 {selectedAttachments.length} / {DEFAULT_ATTACHMENTS.length} 个附件
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAttachmentDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleExportPDF} className="bg-blue-600 hover:bg-blue-700">
+              <FileDown className="h-4 w-4 mr-2" />
+              导出PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
