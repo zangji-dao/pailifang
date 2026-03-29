@@ -950,20 +950,15 @@ function createContractTemplateHtml(
     </div>
     
     <!-- 附件列表 -->
-    ${includeAttachments && selectedAttachments.length > 0 ? `
+    ${includeAttachments && selectedAttachments.length > 0 && template.attachments && template.attachments.length > 0 ? `
     <div class="attachment-section force-break-before">
       <div class="section-title">附件清单</div>
       <div class="attachment-list">
-        ${selectedAttachments.map((id, index) => {
-          const attachmentNames: Record<string, { name: string; desc: string }> = {
-            'attachment-1': { name: '入驻申请表', desc: '企业入驻申请表格' },
-            'attachment-2': { name: '营业执照副本复印件', desc: '需加盖公章' },
-            'attachment-3': { name: '法定代表人身份证复印件', desc: '正反面复印件' },
-            'attachment-4': { name: '授权委托书', desc: '非法人办理时需要' },
-          };
-          const att = attachmentNames[id];
-          return att ? `<div class="attachment-item">${index + 1}. ${att.name}${att.desc ? `（${att.desc}）` : ''}</div>` : '';
-        }).join('')}
+        ${template.attachments
+          .filter(att => selectedAttachments.includes(att.id))
+          .sort((a, b) => a.order - b.order)
+          .map((att, index) => `<div class="attachment-item">${index + 1}. ${att.name}${att.description ? `（${att.description}）` : ''}</div>`)
+          .join('')}
       </div>
     </div>
     ` : ''}

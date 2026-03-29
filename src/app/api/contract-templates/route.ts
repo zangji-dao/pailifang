@@ -11,6 +11,7 @@ interface ContractTemplate {
   type: string; // 入驻合同、服务合同等
   style_config: TemplateStyleConfig;
   clauses: TemplateClause[];
+  attachments?: ContractAttachment[]; // 合同附件列表
   is_default: boolean;
   is_active: boolean;
   created_at: string;
@@ -70,6 +71,15 @@ interface TemplateClause {
   order: number;
   required: boolean;
   editable: boolean;
+}
+
+// 合同附件类型
+interface ContractAttachment {
+  id: string;
+  name: string;
+  description?: string;
+  required: boolean;
+  order: number;
 }
 
 /**
@@ -322,6 +332,7 @@ function formatTemplate(item: any): ContractTemplate {
     type: item.type,
     style_config: item.style_config,
     clauses: item.clauses || [],
+    attachments: item.attachments || [],
     is_default: item.is_default,
     is_active: item.is_active,
     created_at: item.created_at,

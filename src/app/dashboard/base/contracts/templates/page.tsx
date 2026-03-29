@@ -43,14 +43,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
 
-// 默认合同附件列表
-const DEFAULT_ATTACHMENTS = [
-  { id: 'attachment-1', name: '入驻申请表', description: '企业入驻申请表格', required: true, order: 1 },
-  { id: 'attachment-2', name: '营业执照副本复印件', description: '需加盖公章', required: true, order: 2 },
-  { id: 'attachment-3', name: '法定代表人身份证复印件', description: '正反面复印件', required: true, order: 3 },
-  { id: 'attachment-4', name: '授权委托书', description: '非法人办理时需要', required: false, order: 4 },
-];
-
 // 类型定义
 interface TemplateStyleConfig {
   pageSize: 'A4' | 'A5' | 'Letter';
@@ -96,6 +88,13 @@ interface ContractTemplate {
   type: string;
   styleConfig: TemplateStyleConfig;
   clauses: TemplateClause[];
+  attachments?: {
+    id: string;
+    name: string;
+    description?: string;
+    required: boolean;
+    order: number;
+  }[];
   isDefault: boolean;
   isActive: boolean;
   createdAt: string;
@@ -122,9 +121,7 @@ export default function ContractTemplatesPage() {
   // 附件选择弹窗状态
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [exportingTemplate, setExportingTemplate] = useState<ContractTemplate | null>(null);
-  const [selectedAttachments, setSelectedAttachments] = useState<string[]>(
-    DEFAULT_ATTACHMENTS.filter(a => a.required).map(a => a.id)
-  );
+  const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
 
   // 获取模板列表
   const fetchTemplates = useCallback(async (signal?: AbortSignal) => {
@@ -265,7 +262,9 @@ export default function ContractTemplatesPage() {
   const openAttachmentDialog = (template: ContractTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
     setExportingTemplate(template);
-    setSelectedAttachments(DEFAULT_ATTACHMENTS.filter(a => a.required).map(a => a.id));
+    // 使用模板自带的附件，如果没有则默认全选必选附件
+    const attachments = template.attachments || [];
+    setSelectedAttachments(attachments.filter(a => a.required).map(a => a.id));
     setAttachmentDialogOpen(true);
   };
 
@@ -554,55 +553,71 @@ export default function ContractTemplatesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="space-y-3">
-              {DEFAULT_ATTACHMENTS.map((attachment) => {
-                const isSelected = selectedAttachments.includes(attachment.id);
+            {(() => {
+              const attachments = exportingTemplate?.attachments || [];
+              if (attachments.length === 0) {
                 return (
-                  <div
-                    key={attachment.id}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                      isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
-                      attachment.required && "cursor-default"
-                    )}
-                    onClick={() => toggleAttachment(attachment.id, attachment.required)}
-                  >
-                    <Checkbox
-                      id={attachment.id}
-                      checked={isSelected}
-                      disabled={attachment.required}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <label
-                          htmlFor={attachment.id}
-                          className="text-sm font-medium cursor-pointer"
-                        >
-                          {attachment.name}
-                        </label>
-                        {attachment.required && (
-                          <Badge variant="secondary" className="text-xs">
-                            必选
-                          </Badge>
-                        )}
-                      </div>
-                      {attachment.description && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {attachment.description}
-                        </p>
-                      )}
-                    </div>
-                    {isSelected && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Paperclip className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>该合同模板暂无附件</p>
+                    <p className="text-xs mt-1">可在模板编辑页面添加附件</p>
                   </div>
                 );
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground mt-4">
-              已选择 {selectedAttachments.length} / {DEFAULT_ATTACHMENTS.length} 个附件
-            </p>
+              }
+              return (
+                <>
+                  <div className="space-y-3">
+                    {attachments.map((attachment) => {
+                      const isSelected = selectedAttachments.includes(attachment.id);
+                      return (
+                        <div
+                          key={attachment.id}
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                            isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+                            attachment.required && "cursor-default"
+                          )}
+                          onClick={() => toggleAttachment(attachment.id, attachment.required)}
+                        >
+                          <Checkbox
+                            id={attachment.id}
+                            checked={isSelected}
+                            disabled={attachment.required}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <label
+                                htmlFor={attachment.id}
+                                className="text-sm font-medium cursor-pointer"
+                              >
+                                {attachment.name}
+                              </label>
+                              {attachment.required && (
+                                <Badge variant="secondary" className="text-xs">
+                                  必选
+                                </Badge>
+                              )}
+                            </div>
+                            {attachment.description && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {attachment.description}
+                              </p>
+                            )}
+                          </div>
+                          {isSelected && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4">
+                    已选择 {selectedAttachments.length} / {attachments.length} 个附件
+                  </p>
+                </>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAttachmentDialogOpen(false)}>
