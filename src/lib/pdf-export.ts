@@ -622,6 +622,9 @@ function createContractTemplateHtml(
       break-inside: avoid;
     }
     .signature-area {
+      margin-top: 50px;
+      display: flex;
+      justify-content: space-between;
       page-break-inside: avoid;
       break-inside: avoid;
     }
