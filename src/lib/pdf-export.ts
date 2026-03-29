@@ -489,13 +489,13 @@ function createContractTemplateHtml(
     /* 封面页 */
     .cover-page {
       width: 210mm;
-      padding: 40mm 40mm 50mm 40mm;
+      padding: 30mm;
       background: #fff;
     }
     .cover-title-wrapper {
       text-align: center;
       padding-top: 10mm;
-      margin-bottom: 120mm;
+      margin-bottom: 20mm;
     }
     .cover-title {
       font-family: SimHei, 黑体;
@@ -1129,8 +1129,8 @@ export async function exportContractTemplateToPdf(
   iframe.style.position = "fixed";
   iframe.style.left = "-9999px";
   iframe.style.top = "0";
-  iframe.style.width = "800px";
-  iframe.style.height = "6000px";
+  iframe.style.width = "794px"; // 210mm ≈ 794px at 96dpi
+  iframe.style.height = "3000px";
   iframe.style.border = "none";
   document.body.appendChild(iframe);
 
