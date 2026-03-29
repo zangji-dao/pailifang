@@ -1211,20 +1211,6 @@ function createContractTemplateHtml(
       </div>
     </div>
     
-    <!-- 附件列表 -->
-    ${includeAttachments && selectedAttachments.length > 0 && template.attachments && template.attachments.length > 0 ? `
-    <div class="attachment-section force-break-before">
-      <div class="section-title">附件清单</div>
-      <div class="attachment-list">
-        ${template.attachments
-          .filter(att => selectedAttachments.includes(att.id))
-          .sort((a, b) => a.order - b.order)
-          .map((att, index) => `<div class="attachment-item">${index + 1}. ${att.name}（${att.description}）</div>`)
-          .join('')}
-      </div>
-    </div>
-    ` : ''}
-    
     <!-- 附件内容 -->
     ${includeAttachments && selectedAttachments.length > 0 ? 
       selectedAttachments
