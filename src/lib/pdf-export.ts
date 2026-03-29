@@ -599,14 +599,14 @@ function getAttachmentContent(attachmentId: string): string {
       <div class="section force-break-before">
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：独栋办公室补充条款</div>
         <div style="margin: 20px 0; line-height: 2.5;">
-          <div style="white-space: nowrap;">甲方（服务方）：<span style="display: inline-block; width: 350px; border-bottom: 1px solid #000;">&nbsp;</span></div>
-          <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 380px; border-bottom: 1px solid #000;">&nbsp;</span></div>
-          <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 320px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">甲方（服务方）：<span style="display: inline-block; width: 500px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 530px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 470px; border-bottom: 1px solid #000;">&nbsp;</span></div>
         </div>
         <div style="margin: 20px 0; line-height: 2.5;">
-          <div style="white-space: nowrap;">乙方（入驻方）：<span style="display: inline-block; width: 350px; border-bottom: 1px solid #000;">&nbsp;</span></div>
-          <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 380px; border-bottom: 1px solid #000;">&nbsp;</span></div>
-          <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 320px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">乙方（入驻方）：<span style="display: inline-block; width: 500px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 530px; border-bottom: 1px solid #000;">&nbsp;</span></div>
+          <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 470px; border-bottom: 1px solid #000;">&nbsp;</span></div>
         </div>
         <div class="subsection">
           <div class="subsection-title">一、基础服务条款</div>
