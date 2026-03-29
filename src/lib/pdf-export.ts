@@ -499,7 +499,7 @@ function createContractTemplateHtml(
     }
     .cover-title-wrapper {
       text-align: center;
-      margin-top: 60mm;
+      margin-top: 30mm;
     }
     .cover-title {
       font-family: SimHei, 黑体;
