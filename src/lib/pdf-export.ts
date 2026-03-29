@@ -1166,6 +1166,21 @@ export async function exportContractTemplateToPdf(
     const coverElement = iframeDoc.querySelector('.cover-page') as HTMLElement;
     const coverHeight = coverElement ? coverElement.offsetHeight * 2 : 0; // scale=2
     
+    // 在html2canvas之前获取avoid-break元素的位置
+    const avoidBreakElements = iframeDoc.querySelectorAll('.avoid-break');
+    const containerRect = container.getBoundingClientRect();
+    const avoidBreakRanges: { start: number; end: number }[] = [];
+    
+    avoidBreakElements.forEach((el) => {
+      const element = el as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      // 计算元素在canvas中的位置（考虑scale=2）
+      const startY = (rect.top - containerRect.top) * 2;
+      const endY = (rect.bottom - containerRect.top) * 2;
+      console.log('Avoid-break element:', startY, '-', endY, 'Height:', endY - startY);
+      avoidBreakRanges.push({ start: startY, end: endY });
+    });
+    
     // 使用 html2canvas 生成整个内容的图片
     const canvas = await html2canvas(container, {
       scale: 2,
@@ -1206,19 +1221,8 @@ export async function exportContractTemplateToPdf(
     // 每页能放的内容高度（像素）
     const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
     
-    // 获取所有避免分页的元素位置
-    const avoidBreakElements = iframeDoc.querySelectorAll('.avoid-break');
-    const avoidBreakRanges: { start: number; end: number }[] = [];
-    
-    avoidBreakElements.forEach((el) => {
-      const element = el as HTMLElement;
-      const rect = element.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      // 计算元素在canvas中的位置（考虑scale=2）
-      const startY = (rect.top - containerRect.top) * 2;
-      const endY = (rect.bottom - containerRect.top) * 2;
-      avoidBreakRanges.push({ start: startY, end: endY });
-    });
+    console.log('Canvas height:', canvas.height, 'Page content height:', pageContentHeightPx);
+    console.log('Avoid break ranges:', avoidBreakRanges);
     
     // 计算分页点：第一页是封面，后续按固定高度分页（但避开avoid-break元素）
     const breakPoints: number[] = [0];
@@ -1226,6 +1230,7 @@ export async function exportContractTemplateToPdf(
     // 如果有封面，第一页为封面高度
     if (coverHeight > 0 && coverHeight < pageContentHeightPx * 1.5) {
       breakPoints.push(coverHeight);
+      console.log('Cover height break point:', coverHeight);
     }
     
     // 后续页面按固定高度分页，但调整分页点以避免截断avoid-break元素
@@ -1237,30 +1242,29 @@ export async function exportContractTemplateToPdf(
         break;
       }
       
-      // 检查这个分页点是否会截断某个avoid-break元素
+      // 检查当前页面范围内是否有avoid-break元素会被截断
       for (const range of avoidBreakRanges) {
-        // 如果分页点落在元素中间，则将分页点调整到元素开始处
-        if (nextBreak > range.start && nextBreak < range.end) {
-          // 检查元素是否适合放在当前页剩余空间
-          const elementHeight = range.end - range.start;
-          const remainingSpace = nextBreak - currentY;
-          
-          if (elementHeight > remainingSpace && range.start > currentY) {
-            // 元素放不下，在元素开始处分页
-            nextBreak = range.start;
-          }
+        // 元素开始于当前页，但结束于当前页之后 -> 会被截断
+        if (range.start >= currentY && range.start < nextBreak && range.end > nextBreak) {
+          console.log('Element will be truncated at:', nextBreak, 'Element range:', range.start, '-', range.end);
+          // 在元素开始处分页，把整个元素推到下一页
+          nextBreak = range.start;
+          console.log('Adjusted break point to:', nextBreak);
           break;
         }
       }
       
-      // 确保不会倒退
+      // 确保不会倒退（至少前进1像素）
       if (nextBreak <= currentY) {
-        nextBreak = currentY + pageContentHeightPx;
+        nextBreak = currentY + 100; // 最小前进距离
       }
       
       breakPoints.push(nextBreak);
+      console.log('Added break point:', nextBreak);
       currentY = nextBreak;
     }
+    
+    console.log('All break points:', breakPoints);
     
     // 根据分页点生成PDF页面
     for (let i = 0; i < breakPoints.length - 1; i++) {
