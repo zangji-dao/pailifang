@@ -524,39 +524,7 @@ function getAttachmentContent(attachmentId: string): string {
     `,
     'att-3': `
       <div class="section force-break-before">
-        <div class="section-title" style="text-align: center; font-size: 16pt;">附件三：特色服务超市价目表</div>
-        <div class="subsection">
-          <div class="subsection-title">一、财务服务</div>
-          <table class="simple-table">
-            <tr><th>服务项目</th><th>价格（元/年）</th><th>备注</th></tr>
-            <tr><td>代理记账（小规模）</td><td>2,400</td><td>含月报、季报、年报</td></tr>
-            <tr><td>代理记账（一般纳税人）</td><td>4,800</td><td>含月报、季报、年报</td></tr>
-            <tr><td>税务筹划</td><td>面议</td><td>按项目复杂度定价</td></tr>
-          </table>
-        </div>
-        <div class="subsection">
-          <div class="subsection-title">二、工商服务</div>
-          <table class="simple-table">
-            <tr><th>服务项目</th><th>价格（元/次）</th><th>备注</th></tr>
-            <tr><td>工商变更</td><td>500</td><td>含地址、法人、股东变更</td></tr>
-            <tr><td>工商注销</td><td>1,500</td><td>简易注销</td></tr>
-            <tr><td>工商注销</td><td>3,000</td><td>一般注销</td></tr>
-          </table>
-        </div>
-        <div class="subsection">
-          <div class="subsection-title">三、人力资源服务</div>
-          <table class="simple-table">
-            <tr><th>服务项目</th><th>价格</th><th>备注</th></tr>
-            <tr><td>社保代缴</td><td>50元/人/月</td><td>含增减员办理</td></tr>
-            <tr><td>公积金代缴</td><td>30元/人/月</td><td>含增减员办理</td></tr>
-            <tr><td>招聘服务</td><td>面议</td><td>按岗位需求定价</td></tr>
-          </table>
-        </div>
-      </div>
-    `,
-    'att-4': `
-      <div class="section force-break-before">
-        <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：独栋办公室补充条款</div>
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件三：独栋办公室补充条款</div>
         <div class="subsection">
           <div class="subsection-title">一、服务范围</div>
           <div class="paragraph">独栋办公室不包含基础办公家具，需乙方自行配置。</div>
@@ -598,9 +566,9 @@ function getAttachmentContent(attachmentId: string): string {
         </div>
       </div>
     `,
-    'att-5': `
+    'att-4': `
       <div class="section force-break-before">
-        <div class="section-title" style="text-align: center; font-size: 16pt;">附件五：Π立方企业服务中心安全责任承诺书</div>
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：Π立方企业服务中心安全责任承诺书</div>
         <div class="subsection">
           <div class="subsection-title">一、乙方承诺事项</div>
           <div class="paragraph">（一）主体责任承担：对乙方所有人员（含正式员工、实习生、访客）在企服中心内的安全行为负全责。发生安全事故，立即启动应急预案并10分钟内通报甲方安保部。</div>
