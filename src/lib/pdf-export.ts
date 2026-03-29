@@ -511,7 +511,7 @@ function createContractTemplateHtml(
     }
     .cover-info {
       width: 100%;
-      margin-bottom: 40mm;
+      margin-bottom: 60mm;
     }
     .cover-row {
       display: flex;
@@ -562,6 +562,10 @@ function createContractTemplateHtml(
     .subsection.avoid-break {
       page-break-inside: avoid;
       break-inside: avoid;
+    }
+    .force-break-before {
+      page-break-before: always;
+      break-before: page;
     }
     .subsection-title {
       font-weight: bold;
@@ -818,7 +822,7 @@ function createContractTemplateHtml(
     // 第五条：违约责任 - 包含违约金表格
     if (title.includes('违约责任')) {
       return `
-      <div class="subsection no-break">
+      <div class="subsection no-break force-break-before">
         <div class="subsection-title" style="text-indent: 0;">5.1 违约金计算</div>
         <table class="simple-table">
           <tr>
@@ -1182,6 +1186,19 @@ export async function exportContractTemplateToPdf(
       const endY = (rect.bottom - containerRect.top) * 2;
       console.log('Avoid-break element:', startY, '-', endY, 'Height:', endY - startY);
       avoidBreakRanges.push({ start: startY, end: endY });
+    });
+    
+    // 获取强制分页元素的位置
+    const forceBreakElements = iframeDoc.querySelectorAll('.force-break-before');
+    const forceBreakPoints: number[] = [];
+    
+    forceBreakElements.forEach((el) => {
+      const element = el as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      // 计算元素在canvas中的位置（考虑scale=2）
+      const startY = (rect.top - containerRect.top) * 2;
+      console.log('Force-break element at:', startY);
+      forceBreakPoints.push(startY);
     });
     
     // 使用 html2canvas 生成整个内容的图片
