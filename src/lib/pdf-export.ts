@@ -452,7 +452,7 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
 }
 
 /**
- * 获取附件内容的HTML
+ * 获取附件内容的HTML - 完整还原PDF原文
  */
 function getAttachmentContent(attachmentId: string): string {
   const attachments: Record<string, string> = {
@@ -471,7 +471,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="subsection-title">二、运营服务标准</div>
           <table class="simple-table">
             <tr><th>服务项目</th><th>服务承诺</th><th>响应时效</th></tr>
-            <tr><td>日常保洁</td><td>公共区域每日1次清洁</td><td>8：00-17：00</td></tr>
+            <tr><td>日常保洁</td><td>公共区域每日1次清洁</td><td>8:00-17:00</td></tr>
             <tr><td>安保监控</td><td>24小时电子巡更</td><td>巡更记录实时可查</td></tr>
             <tr><td>维修响应</td><td>灯具/门锁等基础维修</td><td>接单后2小时内完成</td></tr>
             <tr><td>客服咨询</td><td>业务咨询/投诉受理</td><td>电话15秒接听</td></tr>
@@ -482,43 +482,116 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="paragraph">已包含在基础服务费中的项目（独栋办公室除外）</div>
           <table class="simple-table">
             <tr><th>类别</th><th>服务内容</th><th>限制条件</th></tr>
-            <tr><td>空间配套</td><td>基础办公家具（1桌1椅/工位）</td><td>独栋与独立办公室不包含</td></tr>
-            <tr><td>会议资源</td><td>共享会议室</td><td>须提前预约</td></tr>
+            <tr><td>空间配套</td><td>- 基础办公家具（1桌1椅/工位）</td><td>独栋与独立办公室不包含</td></tr>
+            <tr><td>会议资源</td><td>- 共享会议室</td><td>须提前预约</td></tr>
           </table>
         </div>
         <div class="subsection">
           <div class="subsection-title">四、服务监督机制</div>
-          <div class="paragraph">服务内容由园区管委会监督。联系电话：__________</div>
+          <div class="paragraph">服务内容由园区管委会监督。</div>
+          <div class="paragraph">联系电话：__________</div>
         </div>
       </div>
     `,
     'att-2': `
       <div class="section force-break-before">
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件二：Π立方企业服务中心空间使用与管理规范</div>
+        <div class="paragraph" style="text-align: center;">（2025年执行版）</div>
         <div class="subsection">
           <div class="subsection-title">第一章 总则</div>
-          <div class="paragraph">第一条 适用范围：本规范适用于所有入驻Π立方企业服务中心的企业及人员（含访客）。</div>
-          <div class="paragraph">第二条 核心原则：安全第一、资源节约、秩序共建。</div>
+          <div class="paragraph">第一条 适用范围</div>
+          <div class="paragraph">本规范适用于所有入驻Π立方企业服务中心（下称"企服中心"）的企业及人员（含访客）。</div>
+          <div class="paragraph">第二条 核心原则</div>
+          <div class="paragraph">安全第一：严守消防、电力、网络安全红线</div>
+          <div class="paragraph">资源节约：水电网络等公共资源按需使用</div>
+          <div class="paragraph">秩序共建：维护安静、整洁、高效的办公环境</div>
         </div>
         <div class="subsection">
           <div class="subsection-title">第二章 企业入驻与退出流程</div>
-          <div class="paragraph">第三条 入驻流程：</div>
-          <div class="paragraph">第一步：签署入驻企服中心申请表，提交《入驻申请表》（法定代表人/个人签字并加盖公章）</div>
-          <div class="paragraph">第二步：预缴管理服务费（审核通过后3个工作日内完成缴费）</div>
-          <div class="paragraph">第三步：获取地址证明（企服中心运营部门出具《场地使用证明》）</div>
+          <div class="paragraph">第一节 企业入驻全流程标准化指南</div>
+          <div class="paragraph">第三条 入驻流程</div>
+          <div class="paragraph">第一步：签署入驻企服中心申请表</div>
+          <div class="paragraph">材料清单：《入驻申请表》（法定代表人/个人签字并加盖公章）</div>
+          <div class="paragraph">审核要点：产业匹配度、资质合规性，评估企业行业属性是否符合定位，外资企业需额外提交商务局核准文件</div>
+          <div class="paragraph">时效：初审通常需1-2个工作日。</div>
+          <div class="paragraph">第二步：预缴管理服务费</div>
+          <table class="simple-table">
+            <tr><th>类别</th><th>乙方选择项目（✔）</th><th>数量</th><th>计价单位</th><th>单价（元）</th><th>押金（元）</th></tr>
+            <tr><td>固定工位</td><td>□开放工位</td><td></td><td>个/年</td><td>1200</td><td>1200</td></tr>
+            <tr><td>独立办公室</td><td>□无窗 □有窗</td><td></td><td>间/年</td><td>3000/3600</td><td>1200</td></tr>
+            <tr><td>独栋办公室</td><td>□独栋</td><td></td><td>栋/年</td><td>3600</td><td>5000</td></tr>
+          </table>
+          <div class="paragraph">支付节点：审核通过后3个工作日内完成缴费，否则视为放弃资格。</div>
+          <div class="paragraph">第三步：获取地址证明</div>
+          <div class="paragraph">用途：用于工商注册地址变更或新设登记。</div>
+          <div class="paragraph">操作规范：企服中心运营部门出具《场地使用证明》（加盖公章）</div>
           <div class="paragraph">第四步：完成工商注册</div>
+          <div class="paragraph">需准备材料：名称核准通知书、公司章程、场地使用证明</div>
+          <div class="paragraph">第五步：签署入驻合同</div>
+          <div class="paragraph">合同类型：企业管理服务合同：加速服务/孵化服务</div>
+          <div class="paragraph">第六步：交接水电暖（独栋企业专属）</div>
+          <div class="paragraph">操作步骤：（一）企服中心提供《设施交接清单》（记录水电表初始值、设备状态）；（二）双方签字确认后移交钥匙；</div>
+          <div class="paragraph">第七步：企服中心商务对接</div>
+          <div class="paragraph">（一）信息备案：1）登记企业联络员（姓名、职务、联系方式）；2）上传企业基本信息至企服中心信息管理系统（如统一社会信用代码、经营范围）。</div>
+          <div class="paragraph">（二）数字化接入：加入企服中心企业微信/商务群（接收政策通知、活动邀请、预约会议室）</div>
+          <div class="paragraph">第八步：正式入驻</div>
+          <div class="paragraph">开业备案：向企服中心提交《开业备案表》及员工花名册。</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">第三章 空间使用规范</div>
-          <div class="paragraph">第四条 办公区域使用规范：</div>
-          <div class="paragraph">（一）办公时间：工作日8:00-18:00，特殊情况需提前申请</div>
-          <div class="paragraph">（二）禁止行为：吸烟、大声喧哗、私拉电线、存放违禁品</div>
-          <div class="paragraph">第五条 公共区域管理：会议室需提前预约，公共设施损坏需及时报修</div>
+          <div class="paragraph">第二节 企业退出企服中心的标准化流程</div>
+          <div class="paragraph">第四条：退出流程</div>
+          <div class="paragraph">第一步：退出申请与受理阶段</div>
+          <div class="paragraph">（一）向企服中心提交《退出申请书》（需法定代表人签字并加盖公章），说明退出原因（如经营调整、合约到期等）。附企业营业执照复印件、租赁合同终止协议等证明材料。</div>
+          <div class="paragraph">（二）企服中心审核：企服中心会在3个工作日内完成初审，确认退出类型（主动退出/强制清退）并书面通知企业后续流程。</div>
+          <div class="paragraph">（三）退出类型判定:</div>
+          <table class="simple-table">
+            <tr><th>类型</th><th>内容</th></tr>
+            <tr><td>主动退出</td><td>合约到期或企业战略调整，需提前30日申请。</td></tr>
+            <tr><td>强制清退</td><td>因环保不达标、重大安全隐患或长期欠费，企服中心出具《清退通知书》并限期整改（整改期≤15日）。</td></tr>
+          </table>
+          <div class="paragraph">第二步：费用清算与资产处置</div>
+          <div class="paragraph">（一）费用结清证明开具</div>
+          <div class="paragraph">1）企服中心责任：核算企业应付费用，生成《费用结清清单》并盖章确认</div>
+          <table class="simple-table">
+            <tr><th>费用项目</th><th>结算方式</th></tr>
+            <tr><td>水电暖费</td><td>按分户表读数结算（独栋企业需现场抄表）</td></tr>
+            <tr><td>罚金</td><td>合同违约金、环保/安全处罚金（需附处罚文书）</td></tr>
+            <tr><td>管理服务费</td><td>截至退出日的物业费、公共维护费等</td></tr>
+            <tr><td>办公物品赔偿</td><td>损坏或未归还的资产（如桌椅、门禁设备）按采购价折算</td></tr>
+          </table>
+          <div class="paragraph">2）企业责任：在5个工作日内结清所有费用，逾期按每日0.5%计滞纳金。</div>
+          <div class="paragraph">资产交接与处置：双方签署《资产交接确认单》</div>
+          <div class="paragraph">《资产交接确认单》：企业留存资产（可搬离设备）、企服中心回收资产（如定制货架、固定装修）、废弃物品处理方案（需符合环保规定）</div>
+          <div class="paragraph">第三步、权限注销与行政变更</div>
+          <table class="simple-table">
+            <tr><th>项目</th><th>内容</th></tr>
+            <tr><td>门禁权限注销</td><td>企业提交《门禁权限注销申请表》至企服中心办公室；管理员在系统内注销权限卡（需同步删除人脸识别信息）；实体门禁卡回收或远程失效处理（丢失卡需挂失备案）。</td></tr>
+            <tr><td>工商登记变更/注销</td><td>地址变更：企业需在30日内完成工商地址变更登记，企服中心配合提供《场地使用终止证明》。公司注销：简易注销（无债务）通过"企业注销一网通办"平台办理，15日内办结；普通注销（有债务）需公告45日并完成清算审计。</td></tr>
+          </table>
+          <div class="paragraph">第四步：押金退还与正式退出</div>
+          <div class="paragraph">条件审核：确认无未结费用、资产无缺损、无未决纠纷；</div>
+          <div class="paragraph">退还操作：企服中心在10个工作日内原路退回押金至企业账户（需提供付款凭证）；押金抵扣欠费的，需出具《押金抵扣说明》并双方签字确认。</div>
+          <div class="paragraph">正式退出确认：1）签署《企服中心退出确认书》，注明退出日期及双方责任终止；2）企服中心移除企业名录，公告退出信息（如官网、企业群）。</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">第四章 退出机制</div>
-          <div class="paragraph">第六条 合同到期退出：提前30日书面通知，结清费用，恢复场地原状</div>
-          <div class="paragraph">第七条 提前解约：按合同约定执行违约责任</div>
+          <div class="subsection-title">第三章 空间使用规则</div>
+          <div class="paragraph">第一节 基础区域</div>
+          <div class="paragraph">第五条 工位与办公室</div>
+          <table class="simple-table">
+            <tr><th>条款</th><th>要求</th></tr>
+            <tr><td>私密性</td><td>独立办公室玻璃墙禁止贴膜/遮挡（安保需要）</td></tr>
+            <tr><td>改造限制</td><td>严禁改动电路/网络端口，如需增容需书面申请</td></tr>
+            <tr><td>物品存放</td><td>过夜物品不得阻塞消防通道，贵重物品自行保管</td></tr>
+            <tr><td>场地使用</td><td>严禁将办公室用于麻将、娱乐等非工作相关场地使用</td></tr>
+            <tr><td>场地使用</td><td>严禁将办公室或者工位转租给第三方使用</td></tr>
+          </table>
+          <div class="paragraph">第六条 公共区域</div>
+          <table class="simple-table">
+            <tr><th>区域</th><th>使用规则</th></tr>
+            <tr><td>会议室</td><td>- 须与客服预约（最长提前7天）- 超时未使用自动释放，迟到超15分钟取消资格</td></tr>
+            <tr><td>茶水间</td><td>- 食物残渣当日清理 - 私人食品不可过夜存放</td></tr>
+            <tr><td>吸烟区</td><td>- 仅限指定区域，违规者首次警告，二次罚款200元</td></tr>
+          </table>
         </div>
       </div>
     `,
@@ -527,8 +600,9 @@ function getAttachmentContent(attachmentId: string): string {
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件三：独栋办公室补充条款</div>
         <div class="subsection">
           <div class="subsection-title">一、服务范围</div>
-          <div class="paragraph">独栋办公室不包含基础办公家具，需乙方自行配置。</div>
-          <div class="paragraph">水、电、暖、网络等费用由乙方自行承担。</div>
+          <div class="paragraph">1. 独栋办公室不包含基础办公家具，需乙方自行配置。</div>
+          <div class="paragraph">2. 水、电、暖、网络等费用由乙方自行承担。</div>
+          <div class="paragraph">3. 甲方为乙方提供基础物业服务（公共区域保洁、安保监控）。</div>
         </div>
         <div class="subsection">
           <div class="subsection-title">二、费用标准</div>
@@ -540,7 +614,7 @@ function getAttachmentContent(attachmentId: string): string {
         </div>
         <div class="subsection">
           <div class="subsection-title">三、税收对赌条款</div>
-          <div class="paragraph">乙方承诺年度全口径税收≥¥500万元，若未完成按以下标准缴纳对赌管理费：</div>
+          <div class="paragraph">乙方承诺年度全口径税收≥¥500万元（以税务完税凭证为准），若未完成按照下表标准缴纳对赌管理费：</div>
           <table class="simple-table">
             <tr><th>税收完成额（T）</th><th>对赌管理费计算方式</th></tr>
             <tr><td>T≥800万元</td><td>退基础管理费3600元/年</td></tr>
@@ -549,10 +623,21 @@ function getAttachmentContent(attachmentId: string): string {
             <tr><td>300万≤T<400万元</td><td>(500万-T)×2%</td></tr>
             <tr><td>T<300万元</td><td>¥50,000元（固定）</td></tr>
           </table>
+          <div class="paragraph">执行流程：</div>
+          <div class="paragraph">1）次年3月31日前提交审计报告</div>
+          <div class="paragraph">2）补偿金于报告确认后15日内支付</div>
+          <div class="paragraph">3）欠缴按日加收0.05%滞纳金</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">四、协议效力</div>
-          <div class="paragraph">本协议与主合同冲突时，以本协议为准；未约定事项按《空间使用与管理规范》执行。</div>
+          <div class="subsection-title">四、押金管理</div>
+          <div class="paragraph">1）金额：签约时缴纳¥5,000元押金</div>
+          <div class="paragraph">2）退还：合同终止后30个工作日内无息退还</div>
+          <div class="paragraph">3）扣除项：场地修复费、欠缴费用（需乙方签署退场确认单）</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">五、附则</div>
+          <div class="paragraph">1）本协议与主合同冲突时，以本协议为准</div>
+          <div class="paragraph">2）未约定事项按《Π立方企业服务中心空间使用与管理规范》（附件二）执行</div>
         </div>
         <div class="signature-area" style="margin-top: 30px;">
           <div class="signature-box">
@@ -571,26 +656,31 @@ function getAttachmentContent(attachmentId: string): string {
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：Π立方企业服务中心安全责任承诺书</div>
         <div class="subsection">
           <div class="subsection-title">一、乙方承诺事项</div>
-          <div class="paragraph">（一）主体责任承担：对乙方所有人员（含正式员工、实习生、访客）在企服中心内的安全行为负全责。发生安全事故，立即启动应急预案并10分钟内通报甲方安保部。</div>
-          <div class="paragraph">（二）安全规范执行：</div>
+          <div class="paragraph">（一）主体责任承担</div>
+          <div class="paragraph">对乙方所有人员（含正式员工、实习生、访客）在企服中心内的安全行为负全责。若发生安全事故，立即启动应急预案并10分钟内通报甲方安保部（电话：__________）。</div>
+          <div class="paragraph">（二）安全规范执行</div>
           <table class="simple-table">
             <tr><th>类别</th><th>具体承诺内容</th></tr>
-            <tr><td>消防安全</td><td>严禁遮挡消防设施/通道；每月自查电气线路（留存记录备查）；大功率设备（＞500W）报备使用</td></tr>
-            <tr><td>网络安全</td><td>不私接网络设备；不进行黑客攻击/挖矿/传播病毒；涉密数据存储符合《网络安全法》</td></tr>
-            <tr><td>操作安全</td><td>危化品零存放（实验样品需单独申报）</td></tr>
+            <tr><td>消防安全</td><td>- 严禁遮挡消防设施/通道<br/>- 每月自查电气线路（留存记录备查）<br/>- 大功率设备（＞500W）报备使用</td></tr>
+            <tr><td>网络安全</td><td>- 不私接网络设备<br/>- 不进行黑客攻击/挖矿/传播病毒<br/>- 涉密数据存储符合《网络安全法》</td></tr>
+            <tr><td>操作安全</td><td>- 危化品零存放（实验样品需单独申报）</td></tr>
           </table>
-          <div class="paragraph">（三）人员安全管理：新员工入职24小时内完成《安全培训视频》学习并签署回执；访客进入前告知《空间管理规范》重点条款。</div>
+          <div class="paragraph">（三）人员安全管理</div>
+          <div class="paragraph">✓ 新员工入职24小时内完成甲方《安全培训视频》学习并签署回执。</div>
+          <div class="paragraph">✓ 访客进入前告知甲方《空间管理规范》重点条款（附签字确认单）。</div>
         </div>
         <div class="subsection">
           <div class="subsection-title">二、事故处理机制</div>
-          <div class="paragraph">（一）责任认定原则：</div>
+          <div class="paragraph">（一）责任认定原则</div>
           <table class="simple-table">
             <tr><th>情形</th><th>责任主体</th></tr>
             <tr><td>因乙方设备/操作导致事故</td><td>乙方承担全部赔偿及法律责任</td></tr>
             <tr><td>甲方公共设施缺陷导致事故</td><td>甲方按实际损失赔偿（最高≤乙方当年支付服务费总额）</td></tr>
             <tr><td>第三方原因导致事故</td><td>由直接责任方承担，甲乙双方配合追责</td></tr>
           </table>
-          <div class="paragraph">（二）赔偿标准：造成甲方财产损失按修复成本+20%服务中断补偿金赔付；造成人员伤亡由责任方依法承担医疗/抚恤费用。</div>
+          <div class="paragraph">（二）赔偿标准</div>
+          <div class="paragraph">✓ 造成甲方财产损失：按修复成本+20%服务中断补偿金赔付</div>
+          <div class="paragraph">✓ 造成人员伤亡：由责任方依法承担医疗/抚恤费用</div>
         </div>
         <div class="subsection">
           <div class="subsection-title">三、承诺效力</div>
@@ -606,7 +696,6 @@ function getAttachmentContent(attachmentId: string): string {
   
   return attachments[attachmentId] || '';
 }
-
 /**
  * 创建合同模板 HTML 内容 - 1:1还原原始PDF样式
  * 支持数据库条款数据或使用默认完整模板
