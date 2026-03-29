@@ -608,6 +608,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 530px; border-bottom: 1px solid #000;">&nbsp;</span></div>
           <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 470px; border-bottom: 1px solid #000;">&nbsp;</span></div>
         </div>
+        <div style="height: 200px;"></div>
         <div class="subsection">
           <div class="subsection-title">一、基础服务条款</div>
           <div class="paragraph">第一条 服务范围</div>
