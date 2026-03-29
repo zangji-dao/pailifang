@@ -608,7 +608,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div style="white-space: nowrap;">企业名称：<span style="display: inline-block; width: 530px; border-bottom: 1px solid #000;">&nbsp;</span></div>
           <div style="white-space: nowrap;">统一社会信用代码：<span style="display: inline-block; width: 470px; border-bottom: 1px solid #000;">&nbsp;</span></div>
         </div>
-        <div style="height: 200px;"></div>
+        <div style="height: 100px;"></div>
         <div class="subsection">
           <div class="subsection-title">一、基础服务条款</div>
           <div class="paragraph">第一条 服务范围</div>
@@ -629,7 +629,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="paragraph">2) 保洁费：¥7,200/年（可选）需书面确认启用，每日专属区域保洁</div>
           <div class="paragraph">3) 对赌管理费（仅税收未达标时触发）：乙方承诺年度全口径税收≥¥500万元（以税务完税凭证为准），若未完成按照下表标准缴纳对赌管理费：</div>
         </div>
-        <div class="subsection">
+        <div class="subsection force-break-before">
           <div class="paragraph" style="text-align: center; font-weight: bold;">税收完成额补偿金计算规则表</div>
           <table class="simple-table">
             <tr><th>税收完成额（T）</th><th>对赌管理费计算方式</th></tr>
