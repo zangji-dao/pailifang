@@ -489,11 +489,8 @@ function createContractTemplateHtml(
     /* 封面页 */
     .cover-page {
       width: 210mm;
-      min-height: 297mm;
       padding: 40mm 40mm 50mm 40mm;
       background: #fff;
-      page-break-after: always;
-      break-after: page;
     }
     .cover-title-wrapper {
       text-align: center;
@@ -613,28 +610,8 @@ function createContractTemplateHtml(
     .simple-table th:nth-child(6),
     .simple-table td:nth-child(6) { width: 12%; }
     
-    /* 防止跨页断开 - 关键样式 */
+    /* 防止跨页断开 - 只保护表格和no-break */
     .no-break {
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    .subsection {
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    .section {
-      page-break-inside: auto;
-      break-inside: auto;
-    }
-    .section-title {
-      page-break-after: avoid;
-      break-after: avoid;
-    }
-    .subsection-title {
-      page-break-after: avoid;
-      break-after: avoid;
-    }
-    .paragraph {
       page-break-inside: avoid;
       break-inside: avoid;
     }
@@ -645,17 +622,6 @@ function createContractTemplateHtml(
     .signature-area {
       page-break-inside: avoid;
       break-inside: avoid;
-      page-break-before: always;
-    }
-    
-    /* 签章区域 */
-    .signature-area {
-      margin-top: 50px;
-      display: flex;
-      justify-content: space-between;
-      page-break-inside: avoid;
-      break-inside: avoid;
-      page-break-before: always;
     }
     .signature-box {
       width: 280px;
@@ -1191,7 +1157,6 @@ export async function exportContractTemplateToPdf(
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
-      windowWidth: 800,
     });
 
     // 页面尺寸配置
