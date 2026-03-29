@@ -556,10 +556,16 @@ function createContractTemplateHtml(
     .subsection {
       margin-bottom: 15px;
     }
+    .subsection.avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
     .subsection-title {
       font-weight: bold;
       margin-bottom: 8px;
       text-indent: 0;
+      page-break-after: avoid;
+      break-after: avoid;
     }
     .subsection-content {
       text-indent: 2em;
@@ -713,7 +719,7 @@ function createContractTemplateHtml(
         </table>
         <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
       </div>
-      <div class="subsection">
+      <div class="subsection avoid-break">
         <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
         <table class="simple-table">
           <tr>
@@ -971,7 +977,7 @@ function getFullTemplateContent(): string {
         </table>
         <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
       </div>
-      <div class="subsection">
+      <div class="subsection avoid-break">
         <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
         <table class="simple-table">
           <tr>
@@ -1200,7 +1206,21 @@ export async function exportContractTemplateToPdf(
     // 每页能放的内容高度（像素）
     const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
     
-    // 计算分页点：第一页是封面，后续按固定高度分页
+    // 获取所有避免分页的元素位置
+    const avoidBreakElements = iframeDoc.querySelectorAll('.avoid-break');
+    const avoidBreakRanges: { start: number; end: number }[] = [];
+    
+    avoidBreakElements.forEach((el) => {
+      const element = el as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      // 计算元素在canvas中的位置（考虑scale=2）
+      const startY = (rect.top - containerRect.top) * 2;
+      const endY = (rect.bottom - containerRect.top) * 2;
+      avoidBreakRanges.push({ start: startY, end: endY });
+    });
+    
+    // 计算分页点：第一页是封面，后续按固定高度分页（但避开avoid-break元素）
     const breakPoints: number[] = [0];
     
     // 如果有封面，第一页为封面高度
@@ -1208,14 +1228,36 @@ export async function exportContractTemplateToPdf(
       breakPoints.push(coverHeight);
     }
     
-    // 后续页面按固定高度分页
+    // 后续页面按固定高度分页，但调整分页点以避免截断avoid-break元素
     let currentY = breakPoints[breakPoints.length - 1];
     while (currentY < canvas.height) {
-      const nextBreak = currentY + pageContentHeightPx;
+      let nextBreak = currentY + pageContentHeightPx;
       if (nextBreak >= canvas.height) {
         breakPoints.push(canvas.height);
         break;
       }
+      
+      // 检查这个分页点是否会截断某个avoid-break元素
+      for (const range of avoidBreakRanges) {
+        // 如果分页点落在元素中间，则将分页点调整到元素开始处
+        if (nextBreak > range.start && nextBreak < range.end) {
+          // 检查元素是否适合放在当前页剩余空间
+          const elementHeight = range.end - range.start;
+          const remainingSpace = nextBreak - currentY;
+          
+          if (elementHeight > remainingSpace && range.start > currentY) {
+            // 元素放不下，在元素开始处分页
+            nextBreak = range.start;
+          }
+          break;
+        }
+      }
+      
+      // 确保不会倒退
+      if (nextBreak <= currentY) {
+        nextBreak = currentY + pageContentHeightPx;
+      }
+      
       breakPoints.push(nextBreak);
       currentY = nextBreak;
     }
