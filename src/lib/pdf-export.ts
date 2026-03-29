@@ -488,15 +488,16 @@ function createContractTemplateHtml(
     }
     /* 封面页 */
     .cover-page {
-      width: 210mm;
-      height: 267mm;
-      padding: 30mm;
+      width: 180mm;
+      padding: 30mm 20mm;
       background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     .cover-title-wrapper {
       text-align: center;
-      padding-top: 10mm;
-      margin-bottom: 20mm;
+      padding-top: 40mm;
     }
     .cover-title {
       font-family: SimHei, 黑体;
@@ -1152,6 +1153,10 @@ export async function exportContractTemplateToPdf(
   const container = iframeDoc.body;
 
   try {
+    // 获取封面元素，用于确定分页点
+    const coverElement = iframeDoc.querySelector('.cover-page') as HTMLElement;
+    const coverHeight = coverElement ? coverElement.offsetHeight * 2 : 0; // scale=2
+    
     // 使用 html2canvas 生成整个内容的图片
     const canvas = await html2canvas(container, {
       scale: 2,
@@ -1192,17 +1197,34 @@ export async function exportContractTemplateToPdf(
     // 每页能放的内容高度（像素）
     const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
     
-    // 计算总页数
-    const totalPages = Math.ceil(canvas.height / pageContentHeightPx);
+    // 计算分页点：第一页是封面，后续按固定高度分页
+    const breakPoints: number[] = [0];
     
-    // 根据分页生成PDF页面
-    for (let i = 0; i < totalPages; i++) {
+    // 如果有封面，第一页为封面高度
+    if (coverHeight > 0 && coverHeight < pageContentHeightPx * 1.5) {
+      breakPoints.push(coverHeight);
+    }
+    
+    // 后续页面按固定高度分页
+    let currentY = breakPoints[breakPoints.length - 1];
+    while (currentY < canvas.height) {
+      const nextBreak = currentY + pageContentHeightPx;
+      if (nextBreak >= canvas.height) {
+        breakPoints.push(canvas.height);
+        break;
+      }
+      breakPoints.push(nextBreak);
+      currentY = nextBreak;
+    }
+    
+    // 根据分页点生成PDF页面
+    for (let i = 0; i < breakPoints.length - 1; i++) {
       if (i > 0) {
         pdf.addPage();
       }
 
-      const startY = i * pageContentHeightPx;
-      const endY = Math.min((i + 1) * pageContentHeightPx, canvas.height);
+      const startY = breakPoints[i];
+      const endY = breakPoints[i + 1];
       const sourceHeight = endY - startY;
 
       // 裁剪图片
