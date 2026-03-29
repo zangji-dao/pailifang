@@ -489,15 +489,17 @@ function createContractTemplateHtml(
     /* 封面页 */
     .cover-page {
       width: 180mm;
-      padding: 30mm 20mm;
+      height: 257mm;
+      padding: 20mm;
       background: #fff;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      box-sizing: border-box;
     }
     .cover-title-wrapper {
       text-align: center;
-      padding-top: 40mm;
+      margin-top: 60mm;
     }
     .cover-title {
       font-family: SimHei, 黑体;
@@ -509,6 +511,7 @@ function createContractTemplateHtml(
     }
     .cover-info {
       width: 100%;
+      margin-bottom: 20mm;
     }
     .cover-row {
       display: flex;
