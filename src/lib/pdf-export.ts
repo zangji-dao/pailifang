@@ -452,6 +452,194 @@ export async function exportApplicationToPdf(application: ApplicationData): Prom
 }
 
 /**
+ * 获取附件内容的HTML
+ */
+function getAttachmentContent(attachmentId: string): string {
+  const attachments: Record<string, string> = {
+    'att-1': `
+      <div class="section force-break-before">
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件一：Π立方企业服务中心服务标准清单</div>
+        <div class="subsection">
+          <div class="subsection-title">一、基础环境服务标准</div>
+          <table class="simple-table">
+            <tr><th>服务类别</th><th>具体标准</th><th>检测方式</th><th>未达标的补偿措施</th></tr>
+            <tr><td>电力供应</td><td>≥99.9%可用率（月度）</td><td>电表云端记录</td><td>按中断时长200%退还日费</td></tr>
+            <tr><td>网络服务</td><td>共享千兆光纤</td><td>第三方测速软件验证</td><td>超24小时未修复免当月网费</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">二、运营服务标准</div>
+          <table class="simple-table">
+            <tr><th>服务项目</th><th>服务承诺</th><th>响应时效</th></tr>
+            <tr><td>日常保洁</td><td>公共区域每日1次清洁</td><td>8：00-17：00</td></tr>
+            <tr><td>安保监控</td><td>24小时电子巡更</td><td>巡更记录实时可查</td></tr>
+            <tr><td>维修响应</td><td>灯具/门锁等基础维修</td><td>接单后2小时内完成</td></tr>
+            <tr><td>客服咨询</td><td>业务咨询/投诉受理</td><td>电话15秒接听</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">三、免费服务范围</div>
+          <div class="paragraph">已包含在基础服务费中的项目（独栋办公室除外）</div>
+          <table class="simple-table">
+            <tr><th>类别</th><th>服务内容</th><th>限制条件</th></tr>
+            <tr><td>空间配套</td><td>基础办公家具（1桌1椅/工位）</td><td>独栋与独立办公室不包含</td></tr>
+            <tr><td>会议资源</td><td>共享会议室</td><td>须提前预约</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">四、服务监督机制</div>
+          <div class="paragraph">服务内容由园区管委会监督。联系电话：__________</div>
+        </div>
+      </div>
+    `,
+    'att-2': `
+      <div class="section force-break-before">
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件二：Π立方企业服务中心空间使用与管理规范</div>
+        <div class="subsection">
+          <div class="subsection-title">第一章 总则</div>
+          <div class="paragraph">第一条 适用范围：本规范适用于所有入驻Π立方企业服务中心的企业及人员（含访客）。</div>
+          <div class="paragraph">第二条 核心原则：安全第一、资源节约、秩序共建。</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">第二章 企业入驻与退出流程</div>
+          <div class="paragraph">第三条 入驻流程：</div>
+          <div class="paragraph">第一步：签署入驻企服中心申请表，提交《入驻申请表》（法定代表人/个人签字并加盖公章）</div>
+          <div class="paragraph">第二步：预缴管理服务费（审核通过后3个工作日内完成缴费）</div>
+          <div class="paragraph">第三步：获取地址证明（企服中心运营部门出具《场地使用证明》）</div>
+          <div class="paragraph">第四步：完成工商注册</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">第三章 空间使用规范</div>
+          <div class="paragraph">第四条 办公区域使用规范：</div>
+          <div class="paragraph">（一）办公时间：工作日8:00-18:00，特殊情况需提前申请</div>
+          <div class="paragraph">（二）禁止行为：吸烟、大声喧哗、私拉电线、存放违禁品</div>
+          <div class="paragraph">第五条 公共区域管理：会议室需提前预约，公共设施损坏需及时报修</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">第四章 退出机制</div>
+          <div class="paragraph">第六条 合同到期退出：提前30日书面通知，结清费用，恢复场地原状</div>
+          <div class="paragraph">第七条 提前解约：按合同约定执行违约责任</div>
+        </div>
+      </div>
+    `,
+    'att-3': `
+      <div class="section force-break-before">
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件三：特色服务超市价目表</div>
+        <div class="subsection">
+          <div class="subsection-title">一、财务服务</div>
+          <table class="simple-table">
+            <tr><th>服务项目</th><th>价格（元/年）</th><th>备注</th></tr>
+            <tr><td>代理记账（小规模）</td><td>2,400</td><td>含月报、季报、年报</td></tr>
+            <tr><td>代理记账（一般纳税人）</td><td>4,800</td><td>含月报、季报、年报</td></tr>
+            <tr><td>税务筹划</td><td>面议</td><td>按项目复杂度定价</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">二、工商服务</div>
+          <table class="simple-table">
+            <tr><th>服务项目</th><th>价格（元/次）</th><th>备注</th></tr>
+            <tr><td>工商变更</td><td>500</td><td>含地址、法人、股东变更</td></tr>
+            <tr><td>工商注销</td><td>1,500</td><td>简易注销</td></tr>
+            <tr><td>工商注销</td><td>3,000</td><td>一般注销</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">三、人力资源服务</div>
+          <table class="simple-table">
+            <tr><th>服务项目</th><th>价格</th><th>备注</th></tr>
+            <tr><td>社保代缴</td><td>50元/人/月</td><td>含增减员办理</td></tr>
+            <tr><td>公积金代缴</td><td>30元/人/月</td><td>含增减员办理</td></tr>
+            <tr><td>招聘服务</td><td>面议</td><td>按岗位需求定价</td></tr>
+          </table>
+        </div>
+      </div>
+    `,
+    'att-4': `
+      <div class="section force-break-before">
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：独栋办公室补充条款</div>
+        <div class="subsection">
+          <div class="subsection-title">一、服务范围</div>
+          <div class="paragraph">独栋办公室不包含基础办公家具，需乙方自行配置。</div>
+          <div class="paragraph">水、电、暖、网络等费用由乙方自行承担。</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">二、费用标准</div>
+          <table class="simple-table">
+            <tr><th>项目</th><th>标准</th><th>备注</th></tr>
+            <tr><td>年租金</td><td>¥3,600/栋/年</td><td>-</td></tr>
+            <tr><td>押金</td><td>¥5,000</td><td>合同终止后30个工作日内无息退还</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">三、税收对赌条款</div>
+          <div class="paragraph">乙方承诺年度全口径税收≥¥500万元，若未完成按以下标准缴纳对赌管理费：</div>
+          <table class="simple-table">
+            <tr><th>税收完成额（T）</th><th>对赌管理费计算方式</th></tr>
+            <tr><td>T≥800万元</td><td>退基础管理费3600元/年</td></tr>
+            <tr><td>T≥500万元</td><td>0</td></tr>
+            <tr><td>400万≤T<500万元</td><td>(500万-T)×1.5%</td></tr>
+            <tr><td>300万≤T<400万元</td><td>(500万-T)×2%</td></tr>
+            <tr><td>T<300万元</td><td>¥50,000元（固定）</td></tr>
+          </table>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">四、协议效力</div>
+          <div class="paragraph">本协议与主合同冲突时，以本协议为准；未约定事项按《空间使用与管理规范》执行。</div>
+        </div>
+        <div class="signature-area" style="margin-top: 30px;">
+          <div class="signature-box">
+            <div class="signature-title">甲方签章：__________</div>
+            <div class="signature-line">签约日期：____年____月____日</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-title">乙方签章：__________</div>
+            <div class="signature-line">签约日期：____年____月____日</div>
+          </div>
+        </div>
+      </div>
+    `,
+    'att-5': `
+      <div class="section force-break-before">
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件五：Π立方企业服务中心安全责任承诺书</div>
+        <div class="subsection">
+          <div class="subsection-title">一、乙方承诺事项</div>
+          <div class="paragraph">（一）主体责任承担：对乙方所有人员（含正式员工、实习生、访客）在企服中心内的安全行为负全责。发生安全事故，立即启动应急预案并10分钟内通报甲方安保部。</div>
+          <div class="paragraph">（二）安全规范执行：</div>
+          <table class="simple-table">
+            <tr><th>类别</th><th>具体承诺内容</th></tr>
+            <tr><td>消防安全</td><td>严禁遮挡消防设施/通道；每月自查电气线路（留存记录备查）；大功率设备（＞500W）报备使用</td></tr>
+            <tr><td>网络安全</td><td>不私接网络设备；不进行黑客攻击/挖矿/传播病毒；涉密数据存储符合《网络安全法》</td></tr>
+            <tr><td>操作安全</td><td>危化品零存放（实验样品需单独申报）</td></tr>
+          </table>
+          <div class="paragraph">（三）人员安全管理：新员工入职24小时内完成《安全培训视频》学习并签署回执；访客进入前告知《空间管理规范》重点条款。</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">二、事故处理机制</div>
+          <div class="paragraph">（一）责任认定原则：</div>
+          <table class="simple-table">
+            <tr><th>情形</th><th>责任主体</th></tr>
+            <tr><td>因乙方设备/操作导致事故</td><td>乙方承担全部赔偿及法律责任</td></tr>
+            <tr><td>甲方公共设施缺陷导致事故</td><td>甲方按实际损失赔偿（最高≤乙方当年支付服务费总额）</td></tr>
+            <tr><td>第三方原因导致事故</td><td>由直接责任方承担，甲乙双方配合追责</td></tr>
+          </table>
+          <div class="paragraph">（二）赔偿标准：造成甲方财产损失按修复成本+20%服务中断补偿金赔付；造成人员伤亡由责任方依法承担医疗/抚恤费用。</div>
+        </div>
+        <div class="subsection">
+          <div class="subsection-title">三、承诺效力</div>
+          <div class="paragraph">本承诺书作为《场地租赁与服务合同》附件，具有同等法律效力。违约方需承担守约方维权产生的律师费、鉴定费、差旅费。</div>
+        </div>
+        <div style="margin-top: 50px;">
+          <div class="paragraph">企业法定代表人（或授权代表）：__________</div>
+          <div class="paragraph">签字日期：______年______月______日</div>
+        </div>
+      </div>
+    `
+  };
+  
+  return attachments[attachmentId] || '';
+}
+
+/**
  * 创建合同模板 HTML 内容 - 1:1还原原始PDF样式
  * 支持数据库条款数据或使用默认完整模板
  */
@@ -957,11 +1145,23 @@ function createContractTemplateHtml(
         ${template.attachments
           .filter(att => selectedAttachments.includes(att.id))
           .sort((a, b) => a.order - b.order)
-          .map((att, index) => `<div class="attachment-item">${index + 1}. ${att.name}${att.description ? `（${att.description}）` : ''}</div>`)
+          .map((att, index) => `<div class="attachment-item">${index + 1}. ${att.name}（${att.description}）</div>`)
           .join('')}
       </div>
     </div>
     ` : ''}
+    
+    <!-- 附件内容 -->
+    ${includeAttachments && selectedAttachments.length > 0 ? 
+      selectedAttachments
+        .sort((a, b) => {
+          const attA = template.attachments?.find(t => t.id === a);
+          const attB = template.attachments?.find(t => t.id === b);
+          return (attA?.order || 0) - (attB?.order || 0);
+        })
+        .map(id => getAttachmentContent(id))
+        .join('') 
+      : ''}
   </div>
 </body>
 </html>
