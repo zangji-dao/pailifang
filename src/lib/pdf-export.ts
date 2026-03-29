@@ -1253,13 +1253,22 @@ export async function exportContractTemplateToPdf(
       console.log('Cover height break point:', coverHeight);
     }
     
-    // 后续页面按固定高度分页，但调整分页点以避免截断avoid-break元素
+    // 后续页面按固定高度分页，但调整分页点以避免截断avoid-break元素，并在强制分页点处分页
     let currentY = breakPoints[breakPoints.length - 1];
     while (currentY < canvas.height) {
       let nextBreak = currentY + pageContentHeightPx;
       if (nextBreak >= canvas.height) {
         breakPoints.push(canvas.height);
         break;
+      }
+      
+      // 检查当前页面范围内是否有强制分页点
+      for (const forcePoint of forceBreakPoints) {
+        if (forcePoint > currentY && forcePoint < nextBreak) {
+          console.log('Force break at:', forcePoint);
+          nextBreak = forcePoint;
+          break;
+        }
       }
       
       // 检查当前页面范围内是否有avoid-break元素会被截断
