@@ -1223,95 +1223,38 @@ export async function exportContractTemplateToPdf(
 
     const imgData = canvas.toDataURL("image/png");
     
-    // 获取所有需要保护的元素位置（仅保护no-break和表格）
-    const protectedElements = iframeDoc.querySelectorAll('.no-break, .simple-table');
-    const protectedRegions: Array<{start: number; end: number}> = [];
-    
-    protectedElements.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      const iframeRect = iframe.getBoundingClientRect();
-      // 计算元素在canvas上的Y坐标（考虑scale=2）
-      const startY = (rect.top - iframeRect.top) * 2;
-      const endY = startY + rect.height * 2;
-      protectedRegions.push({ start: startY, end: endY });
-    });
-
     // 每页能放的内容高度（像素）
     const pageContentHeightPx = contentHeight * (canvas.width / contentWidth);
     
-    // 计算所有分页点
-    const breakPoints: number[] = [0];
-    let currentY = 0;
+    // 计算总页数
+    const totalPages = Math.ceil(canvas.height / pageContentHeightPx);
     
-    // 按起始位置排序保护区域
-    protectedRegions.sort((a, b) => a.start - b.start);
-    
-    while (currentY < canvas.height) {
-      let nextBreak = currentY + pageContentHeightPx;
-      
-      if (nextBreak >= canvas.height) {
-        breakPoints.push(canvas.height);
-        break;
-      }
-      
-      // 检查这个分页点是否会切断任何保护区域
-      let needsAdjustment = true;
-      while (needsAdjustment) {
-        needsAdjustment = false;
-        for (const region of protectedRegions) {
-          // 如果分页点在保护区域内部
-          if (nextBreak > region.start && nextBreak < region.end) {
-            // 如果保护区域在本页范围内，调整到保护区域之后
-            if (region.start < nextBreak) {
-              nextBreak = region.end + 10;
-              needsAdjustment = true;
-              break;
-            }
-          }
-        }
-      }
-      
-      // 确保至少前进一页高度的10%，避免产生太多小页面
-      const minAdvance = currentY + pageContentHeightPx * 0.3;
-      if (nextBreak < minAdvance) {
-        nextBreak = minAdvance;
-      }
-      
-      breakPoints.push(Math.min(nextBreak, canvas.height));
-      currentY = nextBreak;
-    }
-
-    // 根据分页点生成PDF页面
-    for (let i = 0; i < breakPoints.length - 1; i++) {
+    // 根据分页生成PDF页面
+    for (let i = 0; i < totalPages; i++) {
       if (i > 0) {
         pdf.addPage();
       }
 
-      const startY = breakPoints[i];
-      const endY = breakPoints[i + 1];
+      const startY = i * pageContentHeightPx;
+      const endY = Math.min((i + 1) * pageContentHeightPx, canvas.height);
       const sourceHeight = endY - startY;
 
-      if (i === 0 && canvas.height <= pageContentHeightPx) {
-        // 内容不超过一页，直接添加
-        pdf.addImage(imgData, "PNG", marginLeft, marginTop, imgWidth, imgHeight);
-      } else {
-        // 裁剪图片
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sourceHeight;
-        const ctx = pageCanvas.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0, startY, canvas.width, sourceHeight,
-            0, 0, canvas.width, sourceHeight
-          );
-          const pageImgData = pageCanvas.toDataURL("image/png");
-          const pageImgHeight = (sourceHeight * imgWidth) / canvas.width;
-          pdf.addImage(pageImgData, "PNG", marginLeft, marginTop, imgWidth, pageImgHeight);
-        }
+      // 裁剪图片
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sourceHeight;
+      const ctx = pageCanvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(
+          canvas,
+          0, startY, canvas.width, sourceHeight,
+          0, 0, canvas.width, sourceHeight
+        );
+        const pageImgData = pageCanvas.toDataURL("image/png");
+        const pageImgHeight = (sourceHeight * imgWidth) / canvas.width;
+        pdf.addImage(pageImgData, "PNG", marginLeft, marginTop, imgWidth, pageImgHeight);
       }
     }
 
