@@ -492,14 +492,12 @@ function createContractTemplateHtml(
       height: 257mm;
       padding: 20mm;
       background: #fff;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      position: relative;
       box-sizing: border-box;
     }
     .cover-title-wrapper {
       text-align: center;
-      margin-top: 20mm;
+      padding-top: 40mm;
     }
     .cover-title {
       font-family: SimHei, 黑体;
@@ -510,8 +508,10 @@ function createContractTemplateHtml(
       display: inline-block;
     }
     .cover-info {
-      width: 100%;
-      margin-bottom: 60mm;
+      width: calc(100% - 40mm);
+      position: absolute;
+      bottom: 30mm;
+      left: 20mm;
     }
     .cover-row {
       display: flex;
