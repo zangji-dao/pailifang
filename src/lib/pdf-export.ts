@@ -713,7 +713,7 @@ function createContractTemplateHtml(
         </table>
         <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
       </div>
-      <div class="subsection no-break">
+      <div class="subsection">
         <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
         <table class="simple-table">
           <tr>
@@ -971,7 +971,7 @@ function getFullTemplateContent(): string {
         </table>
         <div class="paragraph">(二)若乙方租赁或使用甲方名下的独栋办公室，则上述服务不再免费提供，乙方需自行承担相关费用</div>
       </div>
-      <div class="subsection no-break">
+      <div class="subsection">
         <div class="subsection-title" style="text-indent: 0;">2.3 孵化加速管理服务</div>
         <table class="simple-table">
           <tr>
