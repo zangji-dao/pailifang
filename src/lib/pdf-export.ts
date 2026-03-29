@@ -597,24 +597,39 @@ function getAttachmentContent(attachmentId: string): string {
     `,
     'att-3': `
       <div class="section force-break-before">
-        <div class="section-title" style="text-align: center; font-size: 16pt;">附件三：独栋办公室补充条款</div>
-        <div class="subsection">
-          <div class="subsection-title">一、服务范围</div>
-          <div class="paragraph">1. 独栋办公室不包含基础办公家具，需乙方自行配置。</div>
-          <div class="paragraph">2. 水、电、暖、网络等费用由乙方自行承担。</div>
-          <div class="paragraph">3. 甲方为乙方提供基础物业服务（公共区域保洁、安保监控）。</div>
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：独栋办公室补充条款</div>
+        <div style="margin: 20px 0;">
+          <div class="paragraph">甲方（服务方）：</div>
+          <div class="paragraph">企业名称：__________</div>
+          <div class="paragraph">统一社会信用代码：__________</div>
+        </div>
+        <div style="margin: 20px 0;">
+          <div class="paragraph">乙方（入驻方）：</div>
+          <div class="paragraph">企业名称：__________</div>
+          <div class="paragraph">统一社会信用代码：__________</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">二、费用标准</div>
-          <table class="simple-table">
-            <tr><th>项目</th><th>标准</th><th>备注</th></tr>
-            <tr><td>年租金</td><td>¥3,600/栋/年</td><td>-</td></tr>
-            <tr><td>押金</td><td>¥5,000</td><td>合同终止后30个工作日内无息退还</td></tr>
-          </table>
+          <div class="subsection-title">一、基础服务条款</div>
+          <div class="paragraph">第一条 服务范围</div>
+          <div class="paragraph">甲方为乙方提供独栋办公场地及配套服务，包括：</div>
+          <div class="paragraph">1）公共区域维护、安防监控及垃圾清运服务</div>
+          <div class="paragraph">2）场地基础设施（水、电、网络）接入支持</div>
+          <div class="paragraph">3）企业政策咨询与基础行政支持</div>
+          <div class="paragraph">第二条 场地使用规范</div>
+          <div class="paragraph">1）乙方不得擅自进行外立面改造，未经批准施工需支付¥20,000元恢复押金</div>
+          <div class="paragraph">2）严禁转租/分租场地，违约将触发合同解除+押金没收+追偿30%年服务费</div>
+          <div class="paragraph">第三条 能源管理</div>
+          <div class="paragraph">水、电、网络费用由乙方直接向供应方缴纳，计量表号需于入驻时备案登记</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">三、税收对赌条款</div>
-          <div class="paragraph">乙方承诺年度全口径税收≥¥500万元（以税务完税凭证为准），若未完成按照下表标准缴纳对赌管理费：</div>
+          <div class="subsection-title">三、财务条款</div>
+          <div class="paragraph">第四条 费用体系</div>
+          <div class="paragraph">1) 基础管理费：¥3,600/年（固定必缴，达标可退）</div>
+          <div class="paragraph">2) 保洁费：¥7,200/年（可选）需书面确认启用，每日专属区域保洁</div>
+          <div class="paragraph">3) 对赌管理费（仅税收未达标时触发）：乙方承诺年度全口径税收≥¥500万元（以税务完税凭证为准），若未完成按照下表标准缴纳对赌管理费：</div>
+        </div>
+        <div class="subsection">
+          <div class="paragraph" style="text-align: center; font-weight: bold;">税收完成额补偿金计算规则表</div>
           <table class="simple-table">
             <tr><th>税收完成额（T）</th><th>对赌管理费计算方式</th></tr>
             <tr><td>T≥800万元</td><td>退基础管理费3600元/年</td></tr>
@@ -629,13 +644,14 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="paragraph">3）欠缴按日加收0.05%滞纳金</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">四、押金管理</div>
+          <div class="subsection-title">第七条 押金管理</div>
           <div class="paragraph">1）金额：签约时缴纳¥5,000元押金</div>
           <div class="paragraph">2）退还：合同终止后30个工作日内无息退还</div>
           <div class="paragraph">3）扣除项：场地修复费、欠缴费用（需乙方签署退场确认单）</div>
         </div>
         <div class="subsection">
-          <div class="subsection-title">五、附则</div>
+          <div class="subsection-title">四、附则</div>
+          <div class="paragraph">第五条 协议效力</div>
           <div class="paragraph">1）本协议与主合同冲突时，以本协议为准</div>
           <div class="paragraph">2）未约定事项按《Π立方企业服务中心空间使用与管理规范》（附件二）执行</div>
         </div>
@@ -653,7 +669,7 @@ function getAttachmentContent(attachmentId: string): string {
     `,
     'att-4': `
       <div class="section force-break-before">
-        <div class="section-title" style="text-align: center; font-size: 16pt;">附件四：Π立方企业服务中心安全责任承诺书</div>
+        <div class="section-title" style="text-align: center; font-size: 16pt;">附件五：Π立方企业服务中心安全责任承诺书</div>
         <div class="subsection">
           <div class="subsection-title">一、乙方承诺事项</div>
           <div class="paragraph">（一）主体责任承担</div>
