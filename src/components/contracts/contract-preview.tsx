@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ContractFieldDefinition, FieldType } from '@/types/contract-template';
-import { Eye, Plus, Trash2, Settings, Check, X } from 'lucide-react';
+import { Eye, Plus, Trash2, Settings, Check, X, Bug } from 'lucide-react';
 
 interface ContractPreviewProps {
   html: string;
@@ -58,6 +58,7 @@ export function ContractPreview({
 }: ContractPreviewProps) {
   const [editingField, setEditingField] = useState<EditingField | null>(null);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 处理字段点击
@@ -199,13 +200,37 @@ export function ContractPreview({
               <Eye className="h-4 w-4 text-muted-foreground" />
               <CardTitle className="text-sm">合同预览</CardTitle>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-block w-4 h-1 bg-yellow-300 rounded" />
-              <span>点击高亮区域选择字段</span>
+            <div className="flex items-center gap-3">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs"
+              >
+                <Bug className="h-3 w-3 mr-1" />
+                {showDebug ? '隐藏调试' : '显示调试'}
+              </Button>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="inline-block w-4 h-1 bg-yellow-300 rounded" />
+                <span>点击高亮区域选择字段</span>
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
+          {/* 调试信息 */}
+          {showDebug && (
+            <div className="p-4 bg-slate-900 text-green-400 text-xs font-mono max-h-60 overflow-auto border-b">
+              <div className="mb-2 text-yellow-400">=== 解析后的HTML内容 (查找下划线和u标签) ===</div>
+              <pre className="whitespace-pre-wrap break-all">
+                {html.substring(0, 5000)}
+                {html.length > 5000 && '\n... (内容过长，已截断)'}
+              </pre>
+              <div className="mt-4 text-yellow-400">=== 检测u标签数量 ===</div>
+              <div>&lt;u&gt;标签数量: {(html.match(/<u>/g) || []).length}</div>
+              <div>field-placeholder数量: {(html.match(/field-placeholder/g) || []).length}</div>
+            </div>
+          )}
           <div className="p-6 bg-muted/30">
             <style jsx global>{`
               .contract-content {
