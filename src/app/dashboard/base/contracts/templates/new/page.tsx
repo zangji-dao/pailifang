@@ -12,12 +12,9 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
-  File,
-  Image,
   Building2,
   Plus,
   MousePointer,
-  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,18 +166,16 @@ export default function NewTemplatePage() {
   
   const handleAttachmentsSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    // 附件只支持 Word 格式
     const allowedTypes = [
-      'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
-      'image/jpeg',
-      'image/png',
     ];
     
     const validFiles: AttachmentFile[] = [];
     for (const file of files) {
       if (!allowedTypes.includes(file.type)) {
-        toast.error(`文件"${file.name}"格式不支持`);
+        toast.error(`文件"${file.name}"格式不支持，附件仅支持 Word 格式`);
         continue;
       }
       validFiles.push({
@@ -203,13 +198,6 @@ export default function NewTemplatePage() {
   
   const removeAttachment = (id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
-  };
-  
-  const getFileTypeIcon = (type: string) => {
-    if (type.includes('pdf')) return <FileText className="h-4 w-4 text-red-500" />;
-    if (type.includes('word')) return <FileText className="h-4 w-4 text-blue-500" />;
-    if (type.includes('image')) return <Image className="h-4 w-4 text-green-500" />;
-    return <File className="h-4 w-4 text-gray-500" />;
   };
   
   const formatFileSize = (bytes: number) => {
@@ -245,6 +233,15 @@ export default function NewTemplatePage() {
       setUploading(false);
       
       setParsing(true);
+      
+      // 构建附件信息
+      const attachmentInfos = (uploadData.data.attachments || []).map((att: any) => ({
+        id: att.id,
+        name: att.name,
+        url: att.url,
+        fileType: att.fileType,
+      }));
+      
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -253,6 +250,7 @@ export default function NewTemplatePage() {
           fileUrl: uploadData.data.fileUrl,
           fileName: uploadData.data.fileName,
           fileType: uploadData.data.fileType,
+          attachments: attachmentInfos,
         }),
       });
       
@@ -555,7 +553,7 @@ export default function NewTemplatePage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>合同附件</CardTitle>
-              <CardDescription>上传合同相关的附件文件（可选）</CardDescription>
+              <CardDescription>附件将与主合同合并展示，支持绑定变量</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => attachmentInputRef.current?.click()}>
               <Plus className="h-4 w-4 mr-1" />
@@ -564,7 +562,7 @@ export default function NewTemplatePage() {
             <input
               ref={attachmentInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              accept=".doc,.docx"
               multiple
               onChange={handleAttachmentsSelect}
               className="hidden"
@@ -576,15 +574,19 @@ export default function NewTemplatePage() {
             <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
               <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">点击"添加附件"上传附件文件</p>
+              <p className="text-xs mt-1">仅支持 Word 格式，将合并到主合同预览</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {attachments.map((att) => (
+              {attachments.map((att, index) => (
                 <div key={att.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-3">
-                    {getFileTypeIcon(att.type)}
+                    <FileText className="h-4 w-4 text-blue-500" />
                     <div>
-                      <p className="font-medium text-sm">{att.name}</p>
+                      <p className="font-medium text-sm">
+                        <span className="text-muted-foreground mr-2">附件{index + 1}:</span>
+                        {att.name}
+                      </p>
                       <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
                     </div>
                   </div>
@@ -662,6 +664,8 @@ export default function NewTemplatePage() {
                 .variable-binding { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #22c55e; font-weight: 500; }
                 .variable-binding:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #dc2626; }
                 .contract-content u { background: rgba(251, 191, 36, 0.2); padding: 0 4px; border-radius: 2px; }
+                .document-separator { margin: 40px 0; padding: 20px 0; border-top: 2px dashed #d1d5db; }
+                .document-separator h2 { text-align: center; color: #374151; font-size: 18px; margin-bottom: 20px; padding: 10px; background: #f3f4f6; border-radius: 4px; }
               `}</style>
               <div
                 ref={contentRef}

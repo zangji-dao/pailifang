@@ -6,15 +6,28 @@ import { ParseResult, ContractFieldDefinition, ParsedPage } from '@/types/contra
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+interface AttachmentInfo {
+  id: string;
+  name: string;
+  url: string;
+  fileType: string;
+}
+
 /**
  * POST /api/contract-templates/parse
- * 解析已上传的合同文档（仅 Word 文档）
+ * 解析已上传的合同文档和附件（仅 Word 文档）
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
-    const { templateId, fileUrl, fileName, fileType } = body;
+    const { templateId, fileUrl, fileName, fileType, attachments = [] } = body as {
+      templateId: string;
+      fileUrl: string;
+      fileName: string;
+      fileType: string;
+      attachments?: AttachmentInfo[];
+    };
 
     if (!templateId || !fileUrl) {
       return NextResponse.json(
@@ -38,20 +51,71 @@ export async function POST(request: NextRequest) {
       .eq('id', templateId);
 
     try {
-      // 下载文件内容
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error('下载文件失败');
+      // 1. 解析主文档
+      const mainResponse = await fetch(fileUrl);
+      if (!mainResponse.ok) {
+        throw new Error('下载主文档失败');
       }
       
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const mainArrayBuffer = await mainResponse.arrayBuffer();
+      const mainBuffer = Buffer.from(mainArrayBuffer);
+      const mainParseResult = await parseWord(mainBuffer, fileName, fileType, '主合同');
 
-      // 解析 Word 文档
-      const parseResult = await parseWord(buffer, fileName, fileType);
+      // 2. 解析所有附件
+      const attachmentResults: { name: string; html: string; text: string }[] = [];
+      
+      for (const attachment of attachments) {
+        try {
+          const attResponse = await fetch(attachment.url);
+          if (!attResponse.ok) continue;
+          
+          const attArrayBuffer = await attResponse.arrayBuffer();
+          const attBuffer = Buffer.from(attArrayBuffer);
+          const attParseResult = await parseWord(attBuffer, attachment.name, attachment.fileType, attachment.name);
+          
+          attachmentResults.push({
+            name: attachment.name,
+            html: attParseResult.html || '',
+            text: attParseResult.fullText,
+          });
+        } catch (attError) {
+          console.error(`解析附件 ${attachment.name} 失败:`, attError);
+        }
+      }
 
-      // 保存识别出的字段到数据库
-      await saveFields(supabase, templateId, parseResult.detectedFields);
+      // 3. 合并 HTML
+      const mergedHtml = mergeDocuments(mainParseResult.html || '', attachmentResults);
+
+      // 4. 合并文本
+      let fullText = mainParseResult.fullText;
+      for (const att of attachmentResults) {
+        fullText += `\n\n【${att.name}】\n${att.text}`;
+      }
+
+      // 5. 更新解析结果
+      const parseResult: ParseResult = {
+        success: true,
+        totalPages: 1,
+        fileName,
+        fileType: fileType as 'docx' | 'doc',
+        pages: [{
+          pageNumber: 1,
+          text: fullText,
+          html: mergedHtml,
+          hasTables: detectTables(fullText),
+          hasImages: false,
+        }],
+        fullText,
+        html: mergedHtml,
+        detectedAttachments: [],
+        detectedFields: [],
+        mainContract: {
+          startPage: 1,
+          endPage: 1,
+          pageRange: '1',
+          content: fullText,
+        },
+      };
 
       // 更新解析状态为完成
       await supabase
@@ -94,9 +158,35 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * 合并主文档和附件 HTML
+ */
+function mergeDocuments(mainHtml: string, attachments: { name: string; html: string; text: string }[]): string {
+  let result = mainHtml;
+  
+  // 为每个附件添加分隔和标题
+  for (const att of attachments) {
+    if (att.html) {
+      result += `
+        <div class="document-separator" style="margin: 40px 0; padding: 20px 0; border-top: 2px dashed #d1d5db; page-break-before: always;">
+          <h2 style="text-align: center; color: #374151; font-size: 18px; margin-bottom: 20px; padding: 10px; background: #f3f4f6; border-radius: 4px;">
+            📎 ${att.name.replace(/\.[^/.]+$/, '')}
+          </h2>
+          ${att.html}
+        </div>
+      `;
+    }
+  }
+  
+  return result;
+}
+
+/**
  * 解析Word文档 - 同时返回文本和HTML
  */
-async function parseWord(buffer: Buffer, fileName: string, fileType: string): Promise<ParseResult> {
+async function parseWord(buffer: Buffer, fileName: string, fileType: string, docTitle?: string): Promise<{ 
+  html: string; 
+  fullText: string;
+}> {
   // 动态导入mammoth
   const mammoth = await import('mammoth');
   
@@ -107,129 +197,11 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string): Pr
   // 提取HTML（保留格式）
   const htmlResult = await mammoth.convertToHtml({ buffer });
   let html = htmlResult.value;
-  
-  // 处理HTML，标记下划线区域为可点击的字段
-  html = markFieldsInHtml(html, fullText);
-
-  const pages: ParsedPage[] = [{
-    pageNumber: 1,
-    text: fullText,
-    html: html,
-    hasTables: detectTables(fullText),
-    hasImages: false,
-  }];
-
-  // 检测可填充字段
-  const detectedFields = detectFillableFields(fullText);
 
   return {
-    success: true,
-    totalPages: 1,
-    fileName,
-    fileType: fileType as 'docx' | 'doc',
-    pages,
+    html,
     fullText,
-    html: html,
-    detectedAttachments: [],
-    detectedFields,
-    mainContract: {
-      startPage: 1,
-      endPage: 1,
-      pageRange: '1',
-      content: fullText,
-    },
   };
-}
-
-/**
- * 标记HTML中的下划线字段为可点击区域
- */
-function markFieldsInHtml(html: string, rawText: string): string {
-  let fieldIndex = 0;
-  const fieldMap = new Map<string, { id: string; key: string; label: string }>();
-  
-  // 方案1: 处理 <u> 标签（Word下划线样式）
-  // 匹配冒号后紧跟的 <u> 标签内容
-  html = html.replace(
-    /([^\n<：:>]+?)[：:]\s*(<u>([^<]*)<\/u>)/g,
-    (match, label, uTag, uContent) => {
-      const trimmedLabel = label.trim();
-      // 过滤掉太短的标签或纯数字
-      if (trimmedLabel.length < 2 || /^\d+$/.test(trimmedLabel)) return match;
-      
-      const fieldId = `field-${fieldIndex++}`;
-      const key = trimmedLabel
-        .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
-        .toLowerCase()
-        .replace(/_+/g, '_')
-        .replace(/^_|_$/g, '');
-      
-      fieldMap.set(fieldId, { id: fieldId, key, label: trimmedLabel });
-      
-      // 将下划线标签替换为可点击的标记
-      return `<span class="field-label">${trimmedLabel}：</span><span class="field-placeholder" data-field-id="${fieldId}" data-field-key="${key}" data-field-label="${trimmedLabel}" data-selected="false">${uTag}</span>`;
-    }
-  );
-  
-  // 方案2: 处理纯文本下划线
-  const underlinePattern = /([^\n：:>]+?)[：:]\s*([_＿\s]{3,})/g;
-  html = html.replace(underlinePattern, (match, label, underlines) => {
-    const trimmedLabel = label.trim();
-    if (trimmedLabel.length < 2 || /^\d+$/.test(trimmedLabel)) return match;
-    
-    // 如果这个标签已经被处理过（方案1），跳过
-    if (html.includes(`data-field-label="${trimmedLabel}"`)) return match;
-    
-    const fieldId = `field-${fieldIndex++}`;
-    const key = trimmedLabel
-      .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
-      .toLowerCase()
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '');
-    
-    return `<span class="field-label">${trimmedLabel}：</span><span class="field-placeholder" data-field-id="${fieldId}" data-field-key="${key}" data-field-label="${trimmedLabel}" data-selected="false">${underlines}</span>`;
-  });
-  
-  // 方案3: 处理独立的 <u> 标签（没有冒号前缀的）
-  html = html.replace(
-    /<u>([^<]{3,})<\/u>/g,
-    (match, uContent) => {
-      // 如果已经处理过，跳过
-      if (match.includes('field-placeholder')) return match;
-      
-      const fieldId = `field-${fieldIndex++}`;
-      const content = uContent.trim();
-      
-      // 如果内容是空格或下划线，标记为可点击
-      if (/^[\s_＿]+$/.test(content)) {
-        return `<span class="field-placeholder" data-field-id="${fieldId}" data-field-key="field_${fieldIndex}" data-field-label="填充字段" data-selected="false"><u>${content}</u></span>`;
-      }
-      
-      return match;
-    }
-  );
-  
-  // 方案4: 处理日期格式：____年____月____日
-  const datePattern = /([_＿\s]{2,})年([_＿\s]{2,})月([_＿\s]{2,})日/g;
-  html = html.replace(datePattern, (match) => {
-    const fieldId = `field-${fieldIndex++}`;
-    return `<span class="field-placeholder field-date" data-field-id="${fieldId}" data-field-key="date" data-field-label="日期" data-selected="false">${match}</span>`;
-  });
-  
-  // 方案5: 处理 Word 中下划线加空格的情况
-  // <u> </u> 或 <u>  </u> 等
-  html = html.replace(
-    /<u>(\s+)<\/u>/g,
-    (match, spaces) => {
-      if (spaces.length < 3) return match;
-      
-      const fieldId = `field-${fieldIndex++}`;
-      return `<span class="field-placeholder" data-field-id="${fieldId}" data-field-key="field_${fieldIndex}" data-field-label="填充字段" data-selected="false"><u>${spaces}</u></span>`;
-    }
-  );
-  
-  // 不再添加内联样式，由前端组件统一处理
-  return html;
 }
 
 /**
@@ -243,96 +215,4 @@ function detectTables(text: string): boolean {
   ];
   
   return tablePatterns.some(pattern => pattern.test(text));
-}
-
-/**
- * 检测可填充字段
- */
-function detectFillableFields(text: string): ContractFieldDefinition[] {
-  const fields: ContractFieldDefinition[] = [];
-  const seen = new Set<string>();
-  
-  // 下划线占位符模式
-  const underlinePattern = /([^\n：:_]+?)[:：]\s*([_＿\s]{3,})/g;
-  
-  let match;
-  while ((match = underlinePattern.exec(text)) !== null) {
-    const label = match[1].trim();
-    
-    if (label.length < 2 || /^\d+$/.test(label)) continue;
-    
-    const key = label
-      .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
-      .toLowerCase()
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '');
-    
-    if (seen.has(key)) continue;
-    seen.add(key);
-    
-    fields.push({
-      key,
-      label,
-      type: inferFieldType(label),
-      required: false,
-    });
-  }
-
-  // 日期字段模式
-  const datePattern = /____年____月____日/g;
-  if (datePattern.test(text) && !seen.has('date')) {
-    fields.push({
-      key: 'date',
-      label: '日期',
-      type: 'date',
-      required: true,
-    });
-  }
-
-  return fields;
-}
-
-/**
- * 根据标签推断字段类型
- */
-function inferFieldType(label: string): 'text' | 'date' | 'number' | 'select' {
-  const lowerLabel = label.toLowerCase();
-  
-  if (lowerLabel.includes('日期') || lowerLabel.includes('时间') || lowerLabel.includes('年月日')) {
-    return 'date';
-  }
-  if (lowerLabel.includes('金额') || lowerLabel.includes('数量') || lowerLabel.includes('价格') || lowerLabel.includes('电话')) {
-    return 'number';
-  }
-  
-  return 'text';
-}
-
-/**
- * 保存字段到数据库
- */
-async function saveFields(
-  supabase: ReturnType<typeof createClient>,
-  templateId: string,
-  fields: ContractFieldDefinition[]
-) {
-  if (fields.length === 0) return;
-
-  const fieldsData = fields.map((field, index) => ({
-    template_id: templateId,
-    field_key: field.key,
-    field_label: field.label,
-    field_type: field.type,
-    default_value: field.defaultValue || null,
-    required: field.required || false,
-    sort_order: index,
-  }));
-
-  const { error } = await supabase
-    .from('contract_fields')
-    .insert(fieldsData);
-  
-  if (error) {
-    console.error('保存字段失败:', error);
-  }
 }
