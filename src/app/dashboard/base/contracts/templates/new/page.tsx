@@ -1264,74 +1264,57 @@ export default function NewTemplatePage() {
           )}>
             <div className="p-6 bg-muted/30 min-h-full flex justify-center overflow-auto">
               <style jsx global>{`
-                /* A4纸张模拟样式 */
+                /* A4纸张容器样式 - 仅设置容器属性，不覆盖内容样式 */
                 .a4-paper {
                   /* A4尺寸: 210mm x 297mm */
                   width: 210mm;
                   min-height: 297mm;
                   max-width: 210mm;
-                  /* 页边距：上下2.5cm，左右2.8cm（符合标准公文格式） */
-                  padding: 2.5cm 2.8cm;
+                  /* 页边距 - 保持与Word一致 */
+                  padding: 2.54cm 3.17cm; /* Word默认边距：上下2.54cm，左右3.17cm */
                   background: white;
                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                  font-size: 12pt;
-                  line-height: 1.5;
                   color: #000;
-                  /* 确保内容不会溢出 */
+                  /* 让Word的内联样式生效 */
                   box-sizing: border-box;
                   word-wrap: break-word;
+                  /* 默认字体 - 与Word一致 */
+                  font-family: "Times New Roman", "宋体", serif;
+                  font-size: 12pt;
+                  line-height: 1.3;
                 }
                 
-                /* 标题样式 */
-                .a4-paper h1 { 
-                  font-size: 18pt; 
-                  font-weight: bold; 
-                  text-align: center; 
-                  margin: 0.5em 0;
+                /* 重置Tailwind prose样式的影响 */
+                .a4-paper.prose {
+                  max-width: none;
                 }
-                .a4-paper h2 { 
-                  font-size: 14pt; 
-                  font-weight: bold; 
-                  margin: 0.8em 0 0.4em;
+                .a4-paper.prose p {
+                  margin: 0;
+                  text-indent: 0;
                 }
-                .a4-paper h3 { 
-                  font-size: 12pt; 
-                  font-weight: bold; 
-                  margin: 0.6em 0 0.3em;
+                .a4-paper.prose h1,
+                .a4-paper.prose h2,
+                .a4-paper.prose h3 {
+                  margin: 0;
+                  font-size: inherit;
                 }
                 
-                /* 段落样式 - 减少间距 */
-                .a4-paper p { 
-                  margin: 0.5em 0;
-                  text-align: justify;
+                /* 仅在没有内联样式时应用默认样式 */
+                .a4-paper p:not([style*="font-size"]):not([style*="line-height"]) {
+                  font-size: 12pt;
+                  line-height: 1.3;
                 }
                 
-                /* 表格样式 */
-                .a4-paper table { 
-                  width: 100%; 
+                /* 表格默认样式 - 仅当表格没有内联样式时 */
+                .a4-paper table:not([style*="border"]) { 
                   border-collapse: collapse; 
-                  margin: 0.5em 0; 
-                  font-size: 10.5pt; 
+                  width: 100%;
                 }
-                .a4-paper table th, .a4-paper table td { 
+                .a4-paper table td:not([style*="border"]),
+                .a4-paper table th:not([style*="border"]) { 
                   border: 1px solid #000; 
-                  padding: 4px 8px; 
-                  text-align: left; 
+                  padding: 0 5.4pt; /* Word默认单元格边距 */
                   vertical-align: top; 
-                }
-                .a4-paper table th { 
-                  background: #f5f5f5; 
-                  font-weight: 600; 
-                  text-align: center;
-                }
-                
-                /* 列表样式 */
-                .a4-paper ul, .a4-paper ol {
-                  margin: 0.5em 0;
-                  padding-left: 1.5em;
-                }
-                .a4-paper li {
-                  margin: 0.2em 0;
                 }
                 
                 /* 绑定模式样式 */
@@ -1348,9 +1331,6 @@ export default function NewTemplatePage() {
                 .variable-marker.pending:hover { background: rgba(251, 191, 36, 0.5); }
                 .variable-marker.bound { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; border: 1px solid #22c55e; font-weight: 500; }
                 .variable-marker.bound:hover { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #dc2626; }
-                
-                /* 下划线高亮 */
-                .a4-paper u { background: rgba(251, 191, 36, 0.2); padding: 0 2px; }
                 
                 /* 打印样式 */
                 @media print {

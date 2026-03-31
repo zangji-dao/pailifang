@@ -189,7 +189,7 @@ function mergeDocuments(mainHtml: string, attachments: { name: string; html: str
 }
 
 /**
- * 解析Word文档 - 同时返回文本和HTML
+ * 解析Word文档 - 同时返回文本和HTML，尽量保留原始格式
  */
 async function parseWord(buffer: Buffer, fileName: string, fileType: string, docTitle?: string): Promise<{ 
   html: string; 
@@ -202,14 +202,50 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string, doc
   const textResult = await mammoth.extractRawText({ buffer });
   const fullText = textResult.value;
   
-  // 提取HTML（保留格式）
-  const htmlResult = await mammoth.convertToHtml({ buffer });
+  // 提取HTML（保留格式）- 使用默认样式映射
+  const htmlResult = await mammoth.convertToHtml(
+    { buffer },
+    {
+      includeDefaultStyleMap: true,
+      convertImage: mammoth.images.imgElement(function(image: any) {
+        return image.readAsBase64String().then(function(imageBuffer: string) {
+          return {
+            src: "data:" + image.contentType + ";base64," + imageBuffer
+          };
+        });
+      })
+    }
+  );
+  
   let html = htmlResult.value;
+  
+  // 后处理：保留原始段落格式
+  html = postProcessHtml(html);
+  
+  // 输出警告信息（用于调试）
+  if (htmlResult.messages.length > 0) {
+    console.log('Mammoth转换警告:', htmlResult.messages);
+  }
 
   return {
     html,
     fullText,
   };
+}
+
+/**
+ * 后处理HTML，保留原始格式
+ */
+function postProcessHtml(html: string): string {
+  // 不额外处理，让HTML保持mammoth输出的原样
+  // 只处理一些必要的清理
+  return html
+    // 清理多余的空行（但保留有意义的空行）
+    .replace(/(<p[^>]*>\s*<\/p>\s*){3,}/g, '<p class="f-empty-line">&nbsp;</p>')
+    // 确保表格边框可见
+    .replace(/<table/g, '<table style="border-collapse: collapse; width: 100%;"')
+    .replace(/<td/g, '<td style="border: 1px solid #333; padding: 6px 10px; vertical-align: top;"')
+    .replace(/<th/g, '<th style="border: 1px solid #333; padding: 6px 10px; background: #f5f5f5; font-weight: bold; text-align: center;"');
 }
 
 /**
