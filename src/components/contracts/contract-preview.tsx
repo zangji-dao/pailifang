@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,16 +58,17 @@ export function ContractPreview({
 }: ContractPreviewProps) {
   const [editingField, setEditingField] = useState<EditingField | null>(null);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // 处理字段点击
-  const handleFieldClick = useCallback((fieldKey: string, fieldLabel: string, fieldId: string) => {
+  const handleFieldClick = useCallback((fieldId: string, fieldKey: string, fieldLabel: string) => {
     const newSelectedIds = new Set(selectedFieldIds);
     const exists = fields.find(f => f.key === fieldKey);
 
     if (newSelectedIds.has(fieldId)) {
       // 取消选择
       newSelectedIds.delete(fieldId);
-      if (exists && !fields.some(f => f.key === fieldKey && f.key !== exists.key)) {
+      if (exists) {
         onFieldsChange(fields.filter(f => f.key !== fieldKey));
       }
     } else {
@@ -88,25 +89,43 @@ export function ContractPreview({
     onSelectedFieldIdsChange(newSelectedIds);
   }, [selectedFieldIds, fields, onFieldsChange, onSelectedFieldIdsChange]);
 
-  // 处理HTML内容，添加点击事件
-  const processedHtml = useMemo(() => {
-    return html.replace(
-      /class="field-placeholder"/g,
-      `class="field-placeholder" onclick="window.handleFieldClick && window.handleFieldClick(this)"`
-    );
-  }, [html]);
+  // 使用事件委托处理点击
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
 
-  // 注册全局点击处理
-  useMemo(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).handleFieldClick = (element: HTMLElement) => {
-        const fieldId = element.dataset.fieldId || '';
-        const fieldKey = element.dataset.fieldKey || '';
-        const fieldLabel = element.dataset.fieldLabel || '';
-        handleFieldClick(fieldKey, fieldLabel, fieldId);
-      };
-    }
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const placeholder = target.closest('.field-placeholder') as HTMLElement;
+      
+      if (placeholder) {
+        const fieldId = placeholder.dataset.fieldId || '';
+        const fieldKey = placeholder.dataset.fieldKey || '';
+        const fieldLabel = placeholder.dataset.fieldLabel || '';
+        
+        if (fieldId && fieldKey) {
+          handleFieldClick(fieldId, fieldKey, fieldLabel);
+        }
+      }
+    };
+
+    container.addEventListener('click', handleClick);
+    return () => container.removeEventListener('click', handleClick);
   }, [handleFieldClick]);
+
+  // 处理HTML，更新选中状态
+  const processedHtml = useMemo(() => {
+    // 移除内联 style 标签（我们用自己的样式）
+    let processed = html.replace(/<style>[\s\S]*?<\/style>/gi, '');
+    
+    // 更新字段的选中状态
+    selectedFieldIds.forEach(id => {
+      const regex = new RegExp(`data-field-id="${id}" data-selected="false"`, 'g');
+      processed = processed.replace(regex, `data-field-id="${id}" data-selected="true"`);
+    });
+    
+    return processed;
+  }, [html, selectedFieldIds]);
 
   // 添加新字段
   const handleAddField = () => {
@@ -171,7 +190,7 @@ export function ContractPreview({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
       {/* 左侧：合同预览 */}
       <Card className="lg:col-span-2 overflow-hidden">
         <CardHeader className="py-3 border-b">
@@ -182,7 +201,7 @@ export function ContractPreview({
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="inline-block w-4 h-1 bg-yellow-300 rounded" />
-              <span>点击下划线区域选择字段</span>
+              <span>点击高亮区域选择字段</span>
             </div>
           </div>
         </CardHeader>
@@ -214,44 +233,39 @@ export function ContractPreview({
                 text-indent: 2em;
                 margin-bottom: 12px;
               }
-              .field-placeholder {
-                cursor: pointer;
-                padding: 2px 4px;
-                border-radius: 2px;
-                transition: all 0.2s;
-                border-bottom: 1px solid currentColor;
-              }
-              .field-placeholder:hover {
-                background: rgba(234, 179, 8, 0.3);
-              }
-              .field-placeholder[data-selected="true"] {
-                background: rgba(34, 197, 94, 0.3);
-                color: #16a34a;
-                font-weight: 500;
-              }
               .field-label {
                 font-weight: 500;
+              }
+              .field-placeholder {
+                cursor: pointer !important;
+                padding: 2px 8px;
+                border-radius: 2px;
+                transition: all 0.2s;
+                border-bottom: 1px solid #d1d5db;
+                background: rgba(251, 191, 36, 0.2);
+                min-width: 60px;
+                display: inline-block;
+              }
+              .field-placeholder:hover {
+                background: rgba(251, 191, 36, 0.4) !important;
+                border-color: #f59e0b;
+              }
+              .field-placeholder[data-selected="true"] {
+                background: rgba(34, 197, 94, 0.3) !important;
+                border-color: #22c55e;
+                color: #16a34a;
               }
               .field-date {
                 letter-spacing: 0.5em;
               }
-              /* 已选择字段的高亮 */
-              .field-placeholder.selected {
-                background: rgba(34, 197, 94, 0.3);
-                border-color: #22c55e;
+              .field-placeholder u {
+                text-decoration: none;
               }
             `}</style>
             <div 
+              ref={contentRef}
               className="contract-content prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ 
-                __html: html.replace(
-                  /data-field-id="([^"]+)"[^>]*>([^<]*)</g,
-                  (match, id, content) => {
-                    const isSelected = selectedFieldIds.has(id);
-                    return `data-field-id="${id}" data-selected="${isSelected}">${content}<`;
-                  }
-                )
-              }}
+              dangerouslySetInnerHTML={{ __html: processedHtml }}
             />
           </div>
         </CardContent>
@@ -272,7 +286,7 @@ export function ContractPreview({
           {fields.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground text-sm">
               <p>暂无字段</p>
-              <p className="mt-1 text-xs">点击预览中的下划线区域，或手动添加字段</p>
+              <p className="mt-1 text-xs">点击预览中的黄色区域，或手动添加字段</p>
             </div>
           ) : (
             <div className="divide-y">
