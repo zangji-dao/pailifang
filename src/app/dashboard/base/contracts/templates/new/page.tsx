@@ -1311,10 +1311,11 @@ export default function NewTemplatePage() {
             )}
           </CardHeader>
           <CardContent className={cn(
-            "p-0 overflow-auto relative",
-            parseResult?.attachments?.length ? "h-[calc(100%-52px-36px)]" : "h-[calc(100%-52px)]"
+            "p-0 flex flex-col",
+            parseResult?.attachments?.length ? "h-[calc(100%-52px)]" : "h-[calc(100%-52px)]"
           )}>
-            <div className="p-6 bg-muted/30 min-h-full flex justify-center overflow-auto">
+            {/* 文档内容区域 - 可滚动 */}
+            <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center">
               <style jsx global>{`
                 /* A4纸张容器样式 - 仅设置容器属性，不覆盖内容样式 */
                 .a4-paper {
@@ -1463,9 +1464,9 @@ export default function NewTemplatePage() {
               />
             </div>
             
-            {/* 文档标签页 - 类似Excel的Sheet标签 */}
+            {/* 文档标签页 - 类似Excel的Sheet标签，固定在底部 */}
             {parseResult && (parseResult.attachments?.length > 0) && (
-              <div className="absolute bottom-0 left-0 right-0 bg-white border-t flex items-center px-2 py-1 gap-1">
+              <div className="shrink-0 bg-white border-t flex items-center px-2 py-1 gap-1">
                 <button
                   onClick={() => setActiveDocumentId('main')}
                   className={cn(
