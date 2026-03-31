@@ -15,6 +15,9 @@ import {
   Building2,
   Plus,
   MousePointer,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,6 +201,21 @@ export default function NewTemplatePage() {
   
   const removeAttachment = (id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+  
+  // 移动附件排序
+  const moveAttachment = (id: string, direction: 'up' | 'down') => {
+    setAttachments(prev => {
+      const index = prev.findIndex(a => a.id === id);
+      if (index === -1) return prev;
+      
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= prev.length) return prev;
+      
+      const newAttachments = [...prev];
+      [newAttachments[index], newAttachments[newIndex]] = [newAttachments[newIndex], newAttachments[index]];
+      return newAttachments;
+    });
   };
   
   const formatFileSize = (bytes: number) => {
@@ -579,18 +597,44 @@ export default function NewTemplatePage() {
           ) : (
             <div className="space-y-2">
               {attachments.map((att, index) => (
-                <div key={att.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-blue-500" />
-                    <div>
-                      <p className="font-medium text-sm">
+                <div key={att.id} className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg group">
+                  {/* 排序手柄 */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-50 hover:opacity-100 disabled:opacity-30"
+                      onClick={() => moveAttachment(att.id, 'up')}
+                      disabled={index === 0}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-50 hover:opacity-100 disabled:opacity-30"
+                      onClick={() => moveAttachment(att.id, 'down')}
+                      disabled={index === attachments.length - 1}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* 文件信息 */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">
                         <span className="text-muted-foreground mr-2">附件{index + 1}:</span>
                         {att.name}
                       </p>
                       <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => removeAttachment(att.id)} className="text-destructive">
+                  
+                  {/* 删除按钮 */}
+                  <Button variant="ghost" size="sm" onClick={() => removeAttachment(att.id)} className="text-destructive shrink-0">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
