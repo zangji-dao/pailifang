@@ -16,6 +16,10 @@ import {
   Plus,
   MousePointer,
   GripVertical,
+  Edit3,
+  Type,
+  Minus,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -318,6 +322,10 @@ export default function NewTemplatePage() {
   
   // ========== 步骤2: 变量绑定 ==========
   
+  // 编辑模式：true 时可编辑文档，false 时可插入标记
+  const [editMode, setEditMode] = useState(false);
+  const [editedHtml, setEditedHtml] = useState<string>(""); // 编辑后的HTML
+  
   // 标记类型：基于用户点击位置
   interface Marker {
     id: string;
@@ -376,8 +384,39 @@ export default function NewTemplatePage() {
     return markers.some(m => m.status === 'bound' && m.variableKey === key);
   };
   
-  // 处理文档点击 - 用户自定义绑定位置
+  // 同步编辑后的HTML
+  const syncEditedContent = useCallback(() => {
+    if (contentRef.current) {
+      setEditedHtml(contentRef.current.innerHTML);
+    }
+  }, []);
+  
+  // 处理编辑模式切换
+  const handleEditModeToggle = () => {
+    if (editMode) {
+      // 退出编辑模式，同步内容
+      syncEditedContent();
+      // 清除标记，因为内容可能已变化
+      if (markers.length > 0) {
+        toast.warning("文档已编辑，之前的标记可能需要重新设置");
+        setMarkers([]);
+      }
+    }
+    setEditMode(!editMode);
+  };
+  
+  // 重置文档到原始状态
+  const handleResetDocument = () => {
+    setEditedHtml("");
+    setMarkers([]);
+    toast.success("文档已重置为原始内容");
+  };
+  
+  // 处理文档点击 - 用户自定义绑定位置（仅在非编辑模式下）
   const handleContentClick = useCallback((e: React.MouseEvent) => {
+    // 编辑模式下不处理点击
+    if (editMode) return;
+    
     const target = e.target as HTMLElement;
     
     // 如果点击的是标记，打开变量选择器
@@ -423,7 +462,7 @@ export default function NewTemplatePage() {
     setMarkers(prev => [...prev, newMarker]);
     setActiveMarkerId(newMarker.id);
     setShowVariablePicker(true);
-  }, []);
+  }, [editMode]);
   
   // 为标记绑定变量
   const handleBindVariable = (variable: TemplateVariable) => {
@@ -497,9 +536,11 @@ export default function NewTemplatePage() {
   
   // 生成处理后的HTML - 在用户点击位置渲染标记
   const processedHtml = useMemo(() => {
-    if (!parseResult?.html) return '';
+    // 优先使用编辑后的HTML，否则使用原始HTML
+    const baseHtml = editedHtml || parseResult?.html || '';
+    if (!baseHtml) return '';
     
-    let result = parseResult.html;
+    let result = baseHtml;
     
     // 为每个标记在对应位置渲染
     // 按照偏移量倒序排列，从后往前插入，避免位置偏移
@@ -539,7 +580,7 @@ export default function NewTemplatePage() {
     });
     
     return result;
-  }, [parseResult?.html, markers, selectedVariables]);
+  }, [editedHtml, parseResult?.html, markers, selectedVariables]);
   
   // ========== 保存模板 ==========
   
@@ -782,11 +823,31 @@ export default function NewTemplatePage() {
           <CardHeader className="py-3 border-b">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">合同预览</CardTitle>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground cursor-crosshair">
-                  点击文档任意位置插入标记
-                </span>
-                {markers.length > 0 && (
+              <div className="flex items-center gap-3">
+                {/* 模式切换 */}
+                <div className="flex items-center border rounded-lg p-0.5">
+                  <Button
+                    variant={editMode ? "ghost" : "secondary"}
+                    size="sm"
+                    className="h-7 px-3 rounded-md"
+                    onClick={() => editMode && handleEditModeToggle()}
+                  >
+                    <MousePointer className="h-3.5 w-3.5 mr-1" />
+                    绑定模式
+                  </Button>
+                  <Button
+                    variant={editMode ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 rounded-md"
+                    onClick={() => !editMode && handleEditModeToggle()}
+                  >
+                    <Edit3 className="h-3.5 w-3.5 mr-1" />
+                    编辑模式
+                  </Button>
+                </div>
+                
+                {/* 状态显示 */}
+                {!editMode && markers.length > 0 && (
                   <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
                       <Badge variant="outline" className="text-amber-600 border-amber-300">
@@ -798,20 +859,45 @@ export default function NewTemplatePage() {
                     </Badge>
                   </div>
                 )}
+                
+                {/* 重置按钮 */}
+                {(editedHtml || markers.length > 0) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-muted-foreground"
+                    onClick={handleResetDocument}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                    重置
+                  </Button>
+                )}
               </div>
             </div>
+            
+            {/* 编辑模式工具栏 */}
+            {editMode && (
+              <div className="flex items-center gap-2 pt-2 border-t mt-2">
+                <span className="text-xs text-muted-foreground">编辑后点击"绑定模式"继续绑定变量</span>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
             <div className="p-6 bg-muted/30 min-h-full">
               <style jsx global>{`
-                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; cursor: crosshair; }
-                .contract-content:hover { outline: 1px dashed #d1d5db; outline-offset: -1px; }
+                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; }
                 .contract-content h1 { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 24px; }
                 .contract-content h2 { font-size: 16px; font-weight: bold; margin: 20px 0 12px; }
                 .contract-content p { text-indent: 2em; margin-bottom: 12px; }
                 .contract-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
                 .contract-content table th, .contract-content table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; vertical-align: top; }
                 .contract-content table th { background: #f3f4f6; font-weight: 600; }
+                /* 绑定模式样式 */
+                .contract-content.bind-mode { cursor: crosshair; }
+                .contract-content.bind-mode:hover { outline: 1px dashed #d1d5db; outline-offset: -1px; }
+                /* 编辑模式样式 */
+                .contract-content.edit-mode { outline: 2px solid #3b82f6; outline-offset: -2px; }
+                .contract-content.edit-mode:focus { outline-color: #2563eb; }
                 /* 变量标记样式 */
                 .variable-marker { cursor: pointer; transition: all 0.15s ease; }
                 .variable-marker.pending { background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px; }
@@ -824,8 +910,14 @@ export default function NewTemplatePage() {
               `}</style>
               <div
                 ref={contentRef}
-                className="contract-content prose prose-sm max-w-none"
+                className={cn(
+                  "contract-content prose prose-sm max-w-none",
+                  editMode ? "edit-mode" : "bind-mode"
+                )}
+                contentEditable={editMode}
+                suppressContentEditableWarning
                 onClick={handleContentClick}
+                onBlur={editMode ? syncEditedContent : undefined}
                 dangerouslySetInnerHTML={{ __html: processedHtml }}
               />
             </div>
@@ -836,7 +928,9 @@ export default function NewTemplatePage() {
         <Card className="overflow-hidden">
           <CardHeader className="py-3 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">标记管理</CardTitle>
+              <CardTitle className="text-sm">
+                {editMode ? "编辑提示" : "标记管理"}
+              </CardTitle>
               <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
                 <Plus className="h-3 w-3 mr-1" />
                 自定义变量
@@ -844,13 +938,44 @@ export default function NewTemplatePage() {
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
-            {markers.length === 0 ? (
+            {editMode ? (
+              /* 编辑模式提示 */
+              <div className="p-6 space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm font-medium text-blue-800 mb-2">编辑模式已开启</p>
+                  <ul className="text-xs text-blue-700 space-y-1.5">
+                    <li>• 直接在文档中点击即可编辑文字</li>
+                    <li>• 可以删除、修改、添加内容</li>
+                    <li>• 编辑完成后切换到"绑定模式"继续</li>
+                    <li>• 编辑会清除已有的标记</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-sm font-medium text-amber-800 mb-2">快捷键</p>
+                  <ul className="text-xs text-amber-700 space-y-1">
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Delete</kbd> 删除选中内容</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Enter</kbd> 换行</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+Z</kbd> 撤销</li>
+                  </ul>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleEditModeToggle}
+                >
+                  <MousePointer className="h-4 w-4 mr-2" />
+                  完成编辑，切换到绑定模式
+                </Button>
+              </div>
+            ) : markers.length === 0 ? (
+              /* 绑定模式 - 无标记 */
               <div className="p-6 text-center text-muted-foreground">
                 <MousePointer className="h-8 w-8 mx-auto mb-3 opacity-50" />
                 <p className="text-sm font-medium">暂无标记</p>
                 <p className="text-xs mt-1">点击合同文档中任意位置添加标记</p>
               </div>
             ) : (
+              /* 绑定模式 - 有标记 */
               <div className="p-3 space-y-2">
                 {markers.map((marker, index) => {
                   const variable = marker.variableKey 
