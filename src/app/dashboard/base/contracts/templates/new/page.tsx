@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save,
@@ -16,6 +16,8 @@ import {
   Image,
   Building2,
   Plus,
+  MousePointer,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,20 +35,19 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ParseResult } from "@/types/contract-template";
-import type { TemplateVariable, VariableBinding } from "@/types/template-variable";
-import { VariablePool } from "@/components/contracts/variable-pool";
-import { ContractBindingEditor } from "@/components/contracts/contract-binding-editor";
+import type { TemplateVariable, VariableBinding, VariableType, VariableCategory, VariableTypeLabels as VTLabels, VariableCategoryLabels as VTCatLabels } from "@/types/template-variable";
+import { PresetVariables, VariableTypeLabels, VariableCategoryLabels } from "@/types/template-variable";
 
 // 步骤定义
 const STEPS = [
   { id: 1, title: "上传文档", description: "上传合同文件" },
-  { id: 2, title: "选择变量", description: "从变量库选择或添加" },
-  { id: 3, title: "绑定位置", description: "将变量绑定到文档位置" },
-  { id: 4, title: "基本信息", description: "填写模板信息" },
-  { id: 5, title: "完成", description: "预览并保存" },
+  { id: 2, title: "绑定变量", description: "选择变量并绑定位置" },
+  { id: 3, title: "基本信息", description: "填写模板信息" },
+  { id: 4, title: "完成", description: "预览并保存" },
 ];
 
 // 附件文件类型
@@ -69,6 +70,7 @@ export default function NewTemplatePage() {
   const router = useRouter();
   const mainFileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   
   // 当前步骤
   const [currentStep, setCurrentStep] = useState(1);
@@ -96,13 +98,29 @@ export default function NewTemplatePage() {
   const [bases, setBases] = useState<Base[]>([]);
   const [loadingBases, setLoadingBases] = useState(false);
   
-  // 步骤2: 选择变量
+  // 步骤2: 变量绑定（合并选择和绑定）
   const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
-  
-  // 步骤3: 绑定位置
   const [bindings, setBindings] = useState<VariableBinding[]>([]);
+  const [insertMode, setInsertMode] = useState(false);
+  const [showVariablePicker, setShowVariablePicker] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<{
+    anchorText: string;
+    offset: number;
+  } | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
   
-  // 步骤4: 基本信息
+  // 自定义变量弹窗
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newVariable, setNewVariable] = useState<Partial<TemplateVariable>>({
+    name: '',
+    key: '',
+    type: 'text',
+    category: 'custom',
+    placeholder: '',
+  });
+  
+  // 步骤3: 基本信息
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("tenant");
@@ -260,6 +278,156 @@ export default function NewTemplatePage() {
     }
   };
   
+  // ========== 步骤2: 变量绑定 ==========
+  
+  // 过滤变量
+  const filteredVariables = useMemo(() => {
+    let vars = PresetVariables;
+    
+    if (activeCategory !== 'all') {
+      vars = vars.filter(v => v.category === activeCategory);
+    }
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      vars = vars.filter(
+        v => v.name.toLowerCase().includes(term) || 
+             v.key.toLowerCase().includes(term)
+      );
+    }
+    
+    return vars;
+  }, [activeCategory, searchTerm]);
+  
+  // 检查变量是否已绑定
+  const isVariableBound = (key: string) => {
+    return bindings.some(b => b.variableKey === key);
+  };
+  
+  // 处理文档点击
+  const handleContentClick = useCallback((e: React.MouseEvent) => {
+    if (!insertMode) return;
+    
+    const target = e.target as HTMLElement;
+    
+    // 如果点击的是已绑定的变量，删除绑定
+    if (target.classList.contains('variable-binding')) {
+      const bindingId = target.dataset.bindingId;
+      if (bindingId) {
+        setBindings(prev => prev.filter(b => b.id !== bindingId));
+        toast.success("已删除绑定");
+      }
+      return;
+    }
+    
+    // 获取点击位置
+    const selection = window.getSelection();
+    if (!selection) return;
+    
+    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    if (!range) return;
+    
+    const textNode = range.startContainer;
+    const textContent = textNode.textContent || '';
+    const offset = range.startOffset;
+    const beforeText = textContent.substring(Math.max(0, offset - 30), offset);
+    
+    // 查找最近的"："作为锚点
+    const colonIndex = beforeText.lastIndexOf('：');
+    const colonIndex2 = beforeText.lastIndexOf(':');
+    const bestIndex = Math.max(colonIndex, colonIndex2);
+    
+    const anchorText = bestIndex >= 0 
+      ? beforeText.substring(bestIndex) 
+      : beforeText.slice(-15);
+    
+    setSelectedPosition({ anchorText, offset: 0 });
+    setShowVariablePicker(true);
+  }, [insertMode]);
+  
+  // 插入变量
+  const handleInsertVariable = (variable: TemplateVariable) => {
+    if (!selectedPosition) return;
+    
+    const newBinding: VariableBinding = {
+      id: `binding-${Date.now()}`,
+      variableKey: variable.key,
+      position: {
+        anchorText: selectedPosition.anchorText,
+        offset: selectedPosition.offset,
+      },
+    };
+    
+    // 如果变量未在选择列表中，添加它
+    if (!selectedVariables.find(v => v.key === variable.key)) {
+      setSelectedVariables(prev => [...prev, variable]);
+    }
+    
+    setBindings(prev => [...prev, newBinding]);
+    setShowVariablePicker(false);
+    setSelectedPosition(null);
+    toast.success(`已绑定变量: ${variable.name}`);
+  };
+  
+  // 删除绑定
+  const handleRemoveBinding = (bindingId: string) => {
+    setBindings(prev => prev.filter(b => b.id !== bindingId));
+  };
+  
+  // 添加自定义变量
+  const handleAddCustomVariable = () => {
+    if (!newVariable.name || !newVariable.key) return;
+    
+    const customVar: TemplateVariable = {
+      id: `var_custom_${Date.now()}`,
+      name: newVariable.name,
+      key: newVariable.key,
+      type: newVariable.type || 'text',
+      category: 'custom',
+      placeholder: newVariable.placeholder,
+    };
+    
+    // 添加到已选变量
+    setSelectedVariables(prev => [...prev, customVar]);
+    
+    // 如果有选中位置，直接绑定
+    if (selectedPosition) {
+      handleInsertVariable(customVar);
+    }
+    
+    setShowAddDialog(false);
+    setNewVariable({
+      name: '',
+      key: '',
+      type: 'text',
+      category: 'custom',
+      placeholder: '',
+    });
+  };
+  
+  // 生成处理后的HTML
+  const processedHtml = useMemo(() => {
+    if (!parseResult?.html) return '';
+    
+    let result = parseResult.html;
+    
+    // 标记已绑定变量
+    bindings.forEach((binding) => {
+      const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === binding.variableKey);
+      if (variable && binding.position.anchorText) {
+        const marker = `<span class="variable-binding" data-binding-id="${binding.id}" data-variable-key="${binding.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
+        
+        // 简单替换：在锚点文本后添加标记
+        result = result.replace(
+          binding.position.anchorText,
+          binding.position.anchorText + marker
+        );
+      }
+    });
+    
+    return result;
+  }, [parseResult?.html, bindings, selectedVariables]);
+  
   // ========== 保存模板 ==========
   
   const handleSave = async () => {
@@ -270,13 +438,13 @@ export default function NewTemplatePage() {
     
     if (!name.trim()) {
       toast.error("请输入模板名称");
-      setCurrentStep(4);
+      setCurrentStep(3);
       return;
     }
     
     if (!baseId) {
       toast.error("请选择所属基地");
-      setCurrentStep(4);
+      setCurrentStep(3);
       return;
     }
     
@@ -328,12 +496,10 @@ export default function NewTemplatePage() {
       case 1:
         return renderUploadStep();
       case 2:
-        return renderVariablePoolStep();
-      case 3:
         return renderBindingStep();
-      case 4:
+      case 3:
         return renderBasicInfoStep();
-      case 5:
+      case 4:
         return renderCompleteStep();
       default:
         return null;
@@ -346,9 +512,7 @@ export default function NewTemplatePage() {
       <Card>
         <CardHeader>
           <CardTitle>上传合同文档</CardTitle>
-          <CardDescription>
-            仅支持 Word 文档（.doc 或 .docx 格式）
-          </CardDescription>
+          <CardDescription>仅支持 Word 文档（.doc 或 .docx 格式）</CardDescription>
         </CardHeader>
         <CardContent>
           <div
@@ -372,18 +536,14 @@ export default function NewTemplatePage() {
                 <FileText className="h-8 w-8 text-green-600" />
                 <div className="text-left">
                   <p className="font-medium">{mainFile.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatFileSize(mainFile.size)}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{formatFileSize(mainFile.size)}</p>
                 </div>
               </div>
             ) : (
               <>
                 <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-lg font-medium mb-2">点击上传合同文档</p>
-                <p className="text-sm text-muted-foreground">
-                  支持 .doc、.docx 格式
-                </p>
+                <p className="text-sm text-muted-foreground">支持 .doc、.docx 格式</p>
               </>
             )}
           </div>
@@ -397,11 +557,7 @@ export default function NewTemplatePage() {
               <CardTitle>合同附件</CardTitle>
               <CardDescription>上传合同相关的附件文件（可选）</CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => attachmentInputRef.current?.click()}
-            >
+            <Button variant="outline" size="sm" onClick={() => attachmentInputRef.current?.click()}>
               <Plus className="h-4 w-4 mr-1" />
               添加附件
             </Button>
@@ -420,15 +576,11 @@ export default function NewTemplatePage() {
             <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
               <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">点击"添加附件"上传附件文件</p>
-              <p className="text-xs mt-1">支持 PDF、Word、图片格式</p>
             </div>
           ) : (
             <div className="space-y-2">
               {attachments.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                >
+                <div key={att.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     {getFileTypeIcon(att.type)}
                     <div>
@@ -436,12 +588,7 @@ export default function NewTemplatePage() {
                       <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeAttachment(att.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => removeAttachment(att.id)} className="text-destructive">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -467,34 +614,7 @@ export default function NewTemplatePage() {
     </div>
   );
   
-  // 步骤2: 选择变量
-  const renderVariablePoolStep = () => (
-    <div className="h-[calc(100vh-280px)] min-h-[500px]">
-      <Card className="h-full">
-        <CardHeader className="py-3 border-b">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">选择需要填充的变量</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                从预设变量库中选择，或添加自定义变量
-              </p>
-            </div>
-            <Badge variant="secondary">
-              已选 {selectedVariables.length} 个变量
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0 h-[calc(100%-80px)]">
-          <VariablePool
-            selectedVariables={selectedVariables}
-            onSelectionChange={setSelectedVariables}
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
-  
-  // 步骤3: 绑定位置
+  // 步骤2: 变量绑定（合并选择和绑定）
   const renderBindingStep = () => {
     if (!parseResult?.html) {
       return (
@@ -506,40 +626,123 @@ export default function NewTemplatePage() {
       );
     }
     
-    if (selectedVariables.length === 0) {
-      return (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <p>请先在步骤2中选择要填充的变量</p>
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => setCurrentStep(2)}
-            >
-              返回选择变量
-            </Button>
+    return (
+      <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* 左侧：合同预览 */}
+        <Card className="lg:col-span-2 overflow-hidden">
+          <CardHeader className="py-3 border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">合同预览</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={insertMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setInsertMode(!insertMode)}
+                  className={insertMode ? 'bg-green-600 hover:bg-green-700' : ''}
+                >
+                  <MousePointer className="h-4 w-4 mr-1" />
+                  {insertMode ? '插入模式已开启' : '开启插入模式'}
+                </Button>
+                {bindings.length > 0 && (
+                  <Badge variant="secondary">{bindings.length} 处绑定</Badge>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
+            <div className="p-6 bg-muted/30 min-h-full">
+              <style jsx global>{`
+                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; }
+                .contract-content h1 { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 24px; }
+                .contract-content h2 { font-size: 16px; font-weight: bold; margin: 20px 0 12px; }
+                .contract-content p { text-indent: 2em; margin-bottom: 12px; }
+                .contract-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+                .contract-content table th, .contract-content table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+                .contract-content table th { background: #f3f4f6; font-weight: 600; }
+                .variable-binding { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #22c55e; font-weight: 500; }
+                .variable-binding:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #dc2626; }
+                .contract-content u { background: rgba(251, 191, 36, 0.2); padding: 0 4px; border-radius: 2px; }
+              `}</style>
+              <div
+                ref={contentRef}
+                className={`contract-content prose prose-sm max-w-none ${insertMode ? 'cursor-crosshair' : ''}`}
+                onClick={handleContentClick}
+                dangerouslySetInnerHTML={{ __html: processedHtml }}
+              />
+            </div>
           </CardContent>
         </Card>
-      );
-    }
-    
-    return (
-      <div className="h-[calc(100vh-280px)] min-h-[500px]">
-        <Card className="h-full">
-          <CardContent className="p-0 h-full">
-            <ContractBindingEditor
-              html={parseResult.html}
-              variables={selectedVariables}
-              bindings={bindings}
-              onBindingsChange={setBindings}
-            />
+
+        {/* 右侧：变量面板 */}
+        <Card className="overflow-hidden">
+          <CardHeader className="py-3 border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">变量列表</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
+                <Plus className="h-3 w-3 mr-1" />
+                自定义
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
+            {/* 搜索和分类 */}
+            <div className="p-3 space-y-2 border-b">
+              <Input
+                placeholder="搜索变量..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8"
+              />
+              <div className="flex gap-1 flex-wrap">
+                <Button variant={activeCategory === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setActiveCategory('all')} className="text-xs h-6 px-2">全部</Button>
+                {(['enterprise', 'contract', 'location', 'date'] as VariableCategory[]).map((cat) => (
+                  <Button key={cat} variant={activeCategory === cat ? 'default' : 'outline'} size="sm" onClick={() => setActiveCategory(cat)} className="text-xs h-6 px-2">
+                    {VariableCategoryLabels[cat]}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            
+            {/* 变量列表 */}
+            <ScrollArea className="h-[calc(100%-120px)]">
+              <div className="p-2 space-y-1">
+                {filteredVariables.map((variable) => {
+                  const bound = isVariableBound(variable.key);
+                  return (
+                    <div
+                      key={variable.id}
+                      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                        bound ? 'bg-green-50 border border-green-200' : 'hover:bg-muted'
+                      }`}
+                      onClick={() => {
+                        if (insertMode) {
+                          setSelectedPosition({ anchorText: '', offset: 0 });
+                          handleInsertVariable(variable);
+                        } else {
+                          toast.info('请先开启插入模式');
+                        }
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium text-sm">{variable.name}</span>
+                          {bound && <Check className="h-3 w-3 text-green-600" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{variable.key}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">{VariableTypeLabels[variable.type]}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
     );
   };
   
-  // 步骤4: 基本信息
+  // 步骤3: 基本信息
   const renderBasicInfoStep = () => (
     <div className="space-y-6">
       <Card>
@@ -551,11 +754,7 @@ export default function NewTemplatePage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>模板名称 *</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="如：园区入驻服务合同模板"
-              />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：园区入驻服务合同模板" />
             </div>
             <div className="space-y-2">
               <Label>所属基地 *</Label>
@@ -580,9 +779,7 @@ export default function NewTemplatePage() {
             <div className="space-y-2">
               <Label>模板类型</Label>
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tenant">入驻合同</SelectItem>
                   <SelectItem value="service">服务合同</SelectItem>
@@ -600,19 +797,14 @@ export default function NewTemplatePage() {
           </div>
           <div className="space-y-2">
             <Label>模板描述</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="描述该模板的用途和特点"
-              rows={3}
-            />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述该模板的用途和特点" rows={3} />
           </div>
         </CardContent>
       </Card>
     </div>
   );
   
-  // 步骤5: 完成
+  // 步骤4: 完成
   const renderCompleteStep = () => {
     const selectedBase = bases.find(b => b.id === baseId);
     
@@ -639,41 +831,28 @@ export default function NewTemplatePage() {
               <div className="space-y-2">
                 <Label className="text-muted-foreground">模板类型</Label>
                 <p className="font-medium">
-                  {type === "tenant" ? "入驻合同" : 
-                   type === "service" ? "服务合同" :
-                   type === "lease" ? "租赁合同" : "其他合同"}
+                  {type === "tenant" ? "入驻合同" : type === "service" ? "服务合同" : type === "lease" ? "租赁合同" : "其他合同"}
                 </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">已选变量</Label>
-                <p className="font-medium">{selectedVariables.length} 个</p>
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground">变量绑定</Label>
                 <p className="font-medium">{bindings.length} 处</p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">合同附件</Label>
-                <p className="font-medium">{uploadedAttachments.length} 个</p>
-              </div>
             </div>
           
-            {selectedVariables.length > 0 && (
+            {bindings.length > 0 && (
               <>
                 <Separator />
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">变量列表</Label>
+                  <Label className="text-muted-foreground">已绑定变量</Label>
                   <div className="flex flex-wrap gap-2">
-                    {selectedVariables.map((variable) => {
-                      const bindCount = bindings.filter(b => b.variableKey === variable.key).length;
-                      return (
-                        <Badge key={variable.key} variant="outline">
+                    {bindings.map((binding) => {
+                      const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === binding.variableKey);
+                      return variable ? (
+                        <Badge key={binding.id} variant="outline" className="bg-green-50">
                           {variable.name}
-                          {bindCount > 0 && (
-                            <span className="ml-1 text-green-600">({bindCount}处绑定)</span>
-                          )}
                         </Badge>
-                      );
+                      ) : null;
                     })}
                   </div>
                 </div>
@@ -692,11 +871,9 @@ export default function NewTemplatePage() {
       case 1:
         return parseResult !== null;
       case 2:
-        return selectedVariables.length > 0;
       case 3:
-      case 4:
         return true;
-      case 5:
+      case 4:
         return false;
       default:
         return false;
@@ -708,7 +885,7 @@ export default function NewTemplatePage() {
       handleUploadAndParse();
       return;
     }
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -723,11 +900,7 @@ export default function NewTemplatePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/dashboard/base/contracts/templates")}
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/contracts/templates")}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             返回
           </Button>
@@ -740,103 +913,140 @@ export default function NewTemplatePage() {
         <div className="flex items-center gap-2">
           {STEPS.map((step, index) => (
             <div key={step.id} className="flex items-center">
-              <div
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-full transition-colors",
-                  currentStep === step.id
-                    ? "bg-amber-600 text-white"
-                    : currentStep > step.id
-                    ? "bg-green-100 text-green-700"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
+              <div className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full transition-colors",
+                currentStep === step.id ? "bg-amber-600 text-white" : currentStep > step.id ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
+              )}>
                 <span className={cn(
                   "flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium",
-                  currentStep === step.id
-                    ? "bg-white/20"
-                    : currentStep > step.id
-                    ? "bg-green-200"
-                    : "bg-muted-foreground/20"
+                  currentStep === step.id ? "bg-white/20" : currentStep > step.id ? "bg-green-200" : "bg-muted-foreground/20"
                 )}>
-                  {currentStep > step.id ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    step.id
-                  )}
+                  {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}
                 </span>
                 <span className="hidden sm:inline">{step.title}</span>
               </div>
-              {index < STEPS.length - 1 && (
-                <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground" />
-              )}
+              {index < STEPS.length - 1 && <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground" />}
             </div>
           ))}
         </div>
       </div>
       
-      {/* 步骤内容 */}
-      <div className="min-h-[400px]">
-        {renderStepContent()}
-      </div>
+      <div className="min-h-[400px]">{renderStepContent()}</div>
       
       {/* 底部导航 */}
       <div className="flex items-center justify-between pt-4 border-t">
-        <Button
-          variant="outline"
-          onClick={handlePrev}
-          disabled={currentStep === 1}
-        >
+        <Button variant="outline" onClick={handlePrev} disabled={currentStep === 1}>
           <ChevronLeft className="h-4 w-4 mr-1" />
           上一步
         </Button>
-        
         <div className="flex items-center gap-2">
-          {currentStep === 5 ? (
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
+          {currentStep === 4 ? (
+            <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
               {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  保存中...
-                </>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
               ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  保存模板
-                </>
+                <><Save className="h-4 w-4 mr-2" />保存模板</>
               )}
             </Button>
           ) : (
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext() && currentStep !== 1}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
+            <Button onClick={handleNext} disabled={!canGoNext() && currentStep !== 1} className="bg-amber-600 hover:bg-amber-700">
               {currentStep === 1 && !parseResult ? (
                 uploading || parsing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {uploading ? "上传中..." : "解析中..."}
-                  </>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{uploading ? "上传中..." : "解析中..."}</>
                 ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    上传并解析
-                  </>
+                  <><Upload className="h-4 w-4 mr-2" />上传并解析</>
                 )
               ) : (
-                <>
-                  下一步
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </>
+                <><span>下一步</span><ChevronRight className="h-4 w-4 ml-1" /></>
               )}
             </Button>
           )}
         </div>
       </div>
+
+      {/* 自定义变量弹窗 */}
+      {showAddDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-[400px]">
+            <CardHeader>
+              <CardTitle>添加自定义变量</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>变量名称 *</Label>
+                <Input
+                  value={newVariable.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setNewVariable({
+                      ...newVariable,
+                      name,
+                      key: name ? name.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fa5]/g, '') : '',
+                    });
+                  }}
+                  placeholder="如：项目负责人"
+                />
+              </div>
+              <div>
+                <Label>变量标识 *</Label>
+                <Input
+                  value={newVariable.key}
+                  onChange={(e) => setNewVariable({ ...newVariable, key: e.target.value })}
+                  placeholder="如：project_manager"
+                />
+              </div>
+              <div>
+                <Label>变量类型</Label>
+                <Select value={newVariable.type} onValueChange={(v) => setNewVariable({ ...newVariable, type: v as VariableType })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">文本</SelectItem>
+                    <SelectItem value="number">数字</SelectItem>
+                    <SelectItem value="date">日期</SelectItem>
+                    <SelectItem value="money">金额</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+            <div className="flex justify-end gap-2 p-4 border-t">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>取消</Button>
+              <Button onClick={handleAddCustomVariable} disabled={!newVariable.name || !newVariable.key}>添加</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* 变量选择弹窗 */}
+      {showVariablePicker && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-[500px] max-h-[80vh] overflow-hidden">
+            <CardHeader>
+              <CardTitle>选择要插入的变量</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-auto max-h-[60vh]">
+              <div className="grid grid-cols-2 gap-2 p-4">
+                {filteredVariables.map((variable) => (
+                  <Button
+                    key={variable.id}
+                    variant="outline"
+                    className="justify-start h-auto py-3"
+                    onClick={() => handleInsertVariable(variable)}
+                  >
+                    <Plus className="h-4 w-4 mr-2 shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium">{variable.name}</div>
+                      <div className="text-xs text-muted-foreground">{VariableTypeLabels[variable.type]}</div>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+            <div className="flex justify-end p-4 border-t">
+              <Button variant="outline" onClick={() => { setShowVariablePicker(false); setSelectedPosition(null); }}>取消</Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

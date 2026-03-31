@@ -8,13 +8,12 @@
 export type VariableType = 'text' | 'number' | 'date' | 'money' | 'select';
 
 /** 变量分类 */
-export type VariableCategory = 'enterprise' | 'contract' | 'contact' | 'location' | 'date' | 'custom';
+export type VariableCategory = 'enterprise' | 'contract' | 'location' | 'date' | 'custom';
 
 /** 变量分类标签 */
 export const VariableCategoryLabels: Record<VariableCategory, string> = {
   enterprise: '企业信息',
   contract: '合同信息',
-  contact: '联系方式',
   location: '场地信息',
   date: '日期时间',
   custom: '自定义变量',
@@ -65,18 +64,9 @@ export interface VariableBinding {
 
 /** 预设变量库 */
 export const PresetVariables: TemplateVariable[] = [
-  // ===== 企业信息 =====
+  // ===== 甲方信息 =====
   {
-    id: 'var_company_name',
-    name: '企业名称',
-    key: 'company_name',
-    type: 'text',
-    category: 'enterprise',
-    placeholder: '请输入企业全称',
-    required: true,
-  },
-  {
-    id: 'var_company_name_a',
+    id: 'var_party_a_name',
     name: '甲方名称',
     key: 'party_a_name',
     type: 'text',
@@ -84,53 +74,128 @@ export const PresetVariables: TemplateVariable[] = [
     placeholder: '甲方企业全称',
   },
   {
-    id: 'var_company_name_b',
+    id: 'var_party_a_credit_code',
+    name: '甲方统一社会信用代码',
+    key: 'party_a_credit_code',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方18位信用代码',
+  },
+  {
+    id: 'var_party_a_legal_person',
+    name: '甲方法定代表人',
+    key: 'party_a_legal_person',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方法人姓名',
+  },
+  {
+    id: 'var_party_a_address',
+    name: '甲方地址',
+    key: 'party_a_address',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方注册地址',
+  },
+  {
+    id: 'var_party_a_contact',
+    name: '甲方联系人',
+    key: 'party_a_contact',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方联系人姓名',
+  },
+  {
+    id: 'var_party_a_phone',
+    name: '甲方联系电话',
+    key: 'party_a_phone',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方联系电话',
+  },
+  {
+    id: 'var_party_a_bank',
+    name: '甲方开户银行',
+    key: 'party_a_bank',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方开户银行',
+  },
+  {
+    id: 'var_party_a_account',
+    name: '甲方银行账号',
+    key: 'party_a_account',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '甲方银行账号',
+  },
+
+  // ===== 乙方信息 =====
+  {
+    id: 'var_party_b_name',
     name: '乙方名称',
     key: 'party_b_name',
     type: 'text',
     category: 'enterprise',
     placeholder: '乙方企业全称',
-  },
-  {
-    id: 'var_credit_code',
-    name: '统一社会信用代码',
-    key: 'credit_code',
-    type: 'text',
-    category: 'enterprise',
-    placeholder: '18位信用代码',
     required: true,
   },
   {
-    id: 'var_legal_person',
-    name: '法定代表人',
-    key: 'legal_person',
+    id: 'var_party_b_credit_code',
+    name: '乙方统一社会信用代码',
+    key: 'party_b_credit_code',
     type: 'text',
     category: 'enterprise',
-    placeholder: '法人姓名',
+    placeholder: '乙方18位信用代码',
+    required: true,
   },
   {
-    id: 'var_registered_address',
-    name: '注册地址',
-    key: 'registered_address',
+    id: 'var_party_b_legal_person',
+    name: '乙方法定代表人',
+    key: 'party_b_legal_person',
     type: 'text',
     category: 'enterprise',
-    placeholder: '营业执照注册地址',
+    placeholder: '乙方法人姓名',
   },
   {
-    id: 'var_bank_name',
-    name: '开户银行',
-    key: 'bank_name',
+    id: 'var_party_b_address',
+    name: '乙方地址',
+    key: 'party_b_address',
     type: 'text',
     category: 'enterprise',
-    placeholder: '如：中国工商银行',
+    placeholder: '乙方注册地址',
   },
   {
-    id: 'var_bank_account',
-    name: '银行账号',
-    key: 'bank_account',
+    id: 'var_party_b_contact',
+    name: '乙方联系人',
+    key: 'party_b_contact',
     type: 'text',
     category: 'enterprise',
-    placeholder: '银行账号',
+    placeholder: '乙方联系人姓名',
+  },
+  {
+    id: 'var_party_b_phone',
+    name: '乙方联系电话',
+    key: 'party_b_phone',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '乙方联系电话',
+  },
+  {
+    id: 'var_party_b_bank',
+    name: '乙方开户银行',
+    key: 'party_b_bank',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '乙方开户银行',
+  },
+  {
+    id: 'var_party_b_account',
+    name: '乙方银行账号',
+    key: 'party_b_account',
+    type: 'text',
+    category: 'enterprise',
+    placeholder: '乙方银行账号',
   },
 
   // ===== 合同信息 =====
@@ -195,40 +260,6 @@ export const PresetVariables: TemplateVariable[] = [
       { value: 'yearly', label: '按年支付' },
       { value: 'once', label: '一次性支付' },
     ],
-  },
-
-  // ===== 联系方式 =====
-  {
-    id: 'var_contact_person',
-    name: '联系人',
-    key: 'contact_person',
-    type: 'text',
-    category: 'contact',
-    placeholder: '联系人姓名',
-  },
-  {
-    id: 'var_contact_phone',
-    name: '联系电话',
-    key: 'contact_phone',
-    type: 'text',
-    category: 'contact',
-    placeholder: '手机/座机',
-  },
-  {
-    id: 'var_email',
-    name: '电子邮箱',
-    key: 'email',
-    type: 'text',
-    category: 'contact',
-    placeholder: '邮箱地址',
-  },
-  {
-    id: 'var_id_card',
-    name: '身份证号',
-    key: 'id_card',
-    type: 'text',
-    category: 'contact',
-    placeholder: '18位身份证号',
   },
 
   // ===== 场地信息 =====

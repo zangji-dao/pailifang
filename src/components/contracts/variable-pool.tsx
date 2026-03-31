@@ -39,7 +39,6 @@ import {
   X,
   Building2,
   FileText,
-  Phone,
   MapPin,
   Calendar,
   Settings,
@@ -54,7 +53,6 @@ interface VariablePoolProps {
 const CategoryIcons: Record<VariableCategory, React.ReactNode> = {
   enterprise: <Building2 className="h-4 w-4" />,
   contract: <FileText className="h-4 w-4" />,
-  contact: <Phone className="h-4 w-4" />,
   location: <MapPin className="h-4 w-4" />,
   date: <Calendar className="h-4 w-4" />,
   custom: <Settings className="h-4 w-4" />,
