@@ -1,0 +1,141 @@
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
+
+/**
+ * POST /api/contract-templates/upload
+ * 上传合同文档并解析
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createClient();
+    const formData = await request.formData();
+    
+    const file = formData.get('file') as File;
+    const templateId = formData.get('templateId') as string | null;
+    
+    if (!file) {
+      return NextResponse.json(
+        { success: false, error: '请选择要上传的文件' },
+        { status: 400 }
+      );
+    }
+
+    // 验证文件类型
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { success: false, error: '不支持的文件类型，请上传 PDF 或 Word 文档' },
+        { status: 400 }
+      );
+    }
+
+    // 确定文件类型
+    const fileType = file.type === 'application/pdf' ? 'pdf' : 
+                     file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'doc';
+
+    // 生成文件存储路径
+    const fileId = randomUUID();
+    const fileName = `${fileId}/${file.name}`;
+    
+    // 上传文件到Supabase存储
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('contract-templates')
+      .upload(fileName, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('上传文件失败:', uploadError);
+      return NextResponse.json(
+        { success: false, error: '上传文件失败' },
+        { status: 500 }
+      );
+    }
+
+    // 获取文件公开URL
+    const { data: urlData } = supabase.storage
+      .from('contract-templates')
+      .getPublicUrl(fileName);
+
+    const fileUrl = urlData.publicUrl;
+
+    // 如果提供了模板ID，更新现有模板
+    if (templateId) {
+      const { error: updateError } = await supabase
+        .from('contract_templates')
+        .update({
+          source_file_url: fileUrl,
+          source_file_name: file.name,
+          source_file_type: fileType,
+          parse_status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', templateId);
+
+      if (updateError) {
+        console.error('更新模板失败:', updateError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          templateId,
+          fileUrl,
+          fileName: file.name,
+          fileType,
+        },
+      });
+    }
+
+    // 创建新的模板记录
+    const newTemplateId = randomUUID();
+    const now = new Date().toISOString();
+
+    const { data: templateData, error: templateError } = await supabase
+      .from('contract_templates')
+      .insert({
+        id: newTemplateId,
+        name: file.name.replace(/\.[^/.]+$/, ''), // 使用文件名作为模板名
+        type: 'tenant',
+        source_file_url: fileUrl,
+        source_file_name: file.name,
+        source_file_type: fileType,
+        parse_status: 'pending',
+        is_active: true,
+        is_default: false,
+        created_at: now,
+        updated_at: now,
+      })
+      .select()
+      .single();
+
+    if (templateError) {
+      console.error('创建模板失败:', templateError);
+      // 删除已上传的文件
+      await supabase.storage.from('contract-templates').remove([fileName]);
+      return NextResponse.json(
+        { success: false, error: '创建模板失败' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        templateId: newTemplateId,
+        fileUrl,
+        fileName: file.name,
+        fileType,
+        template: templateData,
+      },
+    });
+  } catch (error) {
+    console.error('上传文档失败:', error);
+    return NextResponse.json(
+      { success: false, error: '上传文档失败' },
+      { status: 500 }
+    );
+  }
+}
