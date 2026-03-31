@@ -706,6 +706,7 @@ function getAttachmentContent(attachmentId: string): string {
         <div style="margin-top: 15px;">
           <div class="paragraph">企业法定代表人（或授权代表）：__________</div>
           <div class="paragraph">签字日期：______年______月______日</div>
+          <div class="paragraph" style="text-align: center; margin-top: 30px; font-weight: bold;">（文档已完毕）</div>
         </div>
       </div>
     `
