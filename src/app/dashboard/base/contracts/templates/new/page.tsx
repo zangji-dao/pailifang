@@ -15,8 +15,6 @@ import {
   Building2,
   Plus,
   MousePointer,
-  ChevronUp,
-  ChevronDown,
   GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -130,6 +128,10 @@ export default function NewTemplatePage() {
   // 保存状态
   const [saving, setSaving] = useState(false);
   
+  // 拖拽状态
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  
   // 获取基地列表
   useEffect(() => {
     const fetchBases = async () => {
@@ -203,19 +205,52 @@ export default function NewTemplatePage() {
     setAttachments(prev => prev.filter(a => a.id !== id));
   };
   
-  // 移动附件排序
-  const moveAttachment = (id: string, direction: 'up' | 'down') => {
+  // 拖拽排序
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+  
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedId && draggedId !== id) {
+      setDragOverId(id);
+    }
+  };
+  
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+  
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDragOverId(null);
+    
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+    
     setAttachments(prev => {
-      const index = prev.findIndex(a => a.id === id);
-      if (index === -1) return prev;
+      const draggedIndex = prev.findIndex(a => a.id === draggedId);
+      const targetIndex = prev.findIndex(a => a.id === targetId);
       
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
+      if (draggedIndex === -1 || targetIndex === -1) return prev;
       
       const newAttachments = [...prev];
-      [newAttachments[index], newAttachments[newIndex]] = [newAttachments[newIndex], newAttachments[index]];
+      const [draggedItem] = newAttachments.splice(draggedIndex, 1);
+      newAttachments.splice(targetIndex, 0, draggedItem);
       return newAttachments;
     });
+    
+    setDraggedId(null);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
   };
   
   const formatFileSize = (bytes: number) => {
@@ -597,48 +632,51 @@ export default function NewTemplatePage() {
           ) : (
             <div className="space-y-2">
               {attachments.map((att, index) => (
-                <div key={att.id} className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg group">
-                  {/* 排序手柄 */}
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-50 hover:opacity-100 disabled:opacity-30"
-                      onClick={() => moveAttachment(att.id, 'up')}
-                      disabled={index === 0}
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-50 hover:opacity-100 disabled:opacity-30"
-                      onClick={() => moveAttachment(att.id, 'down')}
-                      disabled={index === attachments.length - 1}
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
+                <div
+                  key={att.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, att.id)}
+                  onDragOver={(e) => handleDragOver(e, att.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, att.id)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "flex items-center gap-3 p-3 bg-muted/50 rounded-lg transition-all cursor-move",
+                    draggedId === att.id && "opacity-50 scale-[0.98]",
+                    dragOverId === att.id && "border-2 border-amber-500 bg-amber-50/50"
+                  )}
+                >
+                  {/* 拖拽手柄 */}
+                  <div className="text-muted-foreground hover:text-foreground transition-colors">
+                    <GripVertical className="h-5 w-5" />
+                  </div>
+                  
+                  {/* 序号 */}
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-medium shrink-0">
+                    {index + 1}
                   </div>
                   
                   {/* 文件信息 */}
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <FileText className="h-4 w-4 text-blue-500 shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        <span className="text-muted-foreground mr-2">附件{index + 1}:</span>
-                        {att.name}
-                      </p>
+                      <p className="font-medium text-sm truncate">{att.name}</p>
                       <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
                     </div>
                   </div>
                   
                   {/* 删除按钮 */}
-                  <Button variant="ghost" size="sm" onClick={() => removeAttachment(att.id)} className="text-destructive shrink-0">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); removeAttachment(att.id); }} 
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
+              <p className="text-xs text-muted-foreground text-center pt-2">拖拽附件可调整顺序</p>
             </div>
           )}
         </CardContent>
