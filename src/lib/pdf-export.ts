@@ -656,7 +656,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="paragraph">1）本协议与主合同冲突时，以本协议为准</div>
           <div class="paragraph">2）未约定事项按《Π立方企业服务中心空间使用与管理规范》（附件二）执行</div>
         </div>
-        <div class="signature-area" style="margin-top: 30px;">
+        <div class="signature-area" style="margin-top: 20px;">
           <div class="signature-box">
             <div class="signature-title">甲方签章：__________</div>
             <div class="signature-line">签约日期：____年____月____日</div>
@@ -703,7 +703,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="subsection-title">三、承诺效力</div>
           <div class="paragraph">本承诺书作为《场地租赁与服务合同》附件，具有同等法律效力。违约方需承担守约方维权产生的律师费、鉴定费、差旅费。</div>
         </div>
-        <div style="margin-top: 50px;">
+        <div style="margin-top: 30px;">
           <div class="paragraph">企业法定代表人（或授权代表）：__________</div>
           <div class="paragraph">签字日期：______年______月______日</div>
         </div>
@@ -897,7 +897,7 @@ function createContractTemplateHtml(
       break-inside: avoid;
     }
     .signature-area {
-      margin-top: 50px;
+      margin-top: 30px;
       display: flex;
       justify-content: space-between;
       page-break-inside: avoid;
@@ -908,10 +908,10 @@ function createContractTemplateHtml(
     }
     .signature-title {
       font-weight: bold;
-      margin-bottom: 50px;
+      margin-bottom: 30px;
     }
     .signature-line {
-      margin-bottom: 25px;
+      margin-bottom: 15px;
     }
     
     /* 附件列表样式 */
@@ -1198,7 +1198,7 @@ function createContractTemplateHtml(
     ${bodyContent}
     
     <!-- 签章区域 -->
-    <div class="signature-area">
+    <div class="signature-area" style="margin-top: 30px;">
       <div class="signature-box">
         <div class="signature-title">甲方签章处</div>
         <div class="signature-line">法定代表人签字:__________</div>
