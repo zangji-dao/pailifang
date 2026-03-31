@@ -430,7 +430,6 @@ export default function NewTemplatePage() {
     }
     
     // 获取点击位置的文本信息
-    const selection = window.getSelection();
     const range = document.caretRangeFromPoint(e.clientX, e.clientY);
     
     if (!range) return;
@@ -438,24 +437,40 @@ export default function NewTemplatePage() {
     const textNode = range.startContainer;
     if (textNode.nodeType !== Node.TEXT_NODE) return;
     
-    const fullText = textNode.textContent || '';
+    // 获取完整的父元素文本内容
+    const parentElement = textNode.parentElement;
+    const fullText = parentElement?.textContent || textNode.textContent || '';
+    const nodeText = textNode.textContent || '';
     const offset = range.startOffset;
     
-    // 获取点击位置前后的文字作为定位锚点
-    const beforeText = fullText.substring(Math.max(0, offset - 20), offset);
-    const afterText = fullText.substring(offset, Math.min(fullText.length, offset + 20));
+    // 计算在父元素中的总偏移量
+    let totalOffset = offset;
+    if (parentElement && parentElement !== textNode) {
+      // 遍历找到该文本节点在父元素中的位置
+      const walker = document.createTreeWalker(parentElement, NodeFilter.SHOW_TEXT);
+      let node: Node | null;
+      while ((node = walker.nextNode()) && node !== textNode) {
+        totalOffset += node.textContent?.length || 0;
+      }
+    }
     
-    // 在原文中找到全局偏移量（用于更精确定位）
-    const textOffset = offset;
+    // 获取更长的上下文（前后各 50 字符）作为定位锚点
+    const contextLength = 50;
+    const contextStart = Math.max(0, totalOffset - contextLength);
+    const contextEnd = Math.min(fullText.length, totalOffset + contextLength);
+    
+    // 获取锚点文本：包含更多上下文以确唯一性
+    const anchorText = fullText.substring(contextStart, contextEnd);
+    const insertOffset = totalOffset - contextStart; // 在锚点中的插入位置
     
     // 创建新标记
     const newMarker: Marker = {
       id: `marker-${Date.now()}`,
       status: 'pending',
       position: {
-        beforeText,
-        afterText,
-        textOffset,
+        beforeText: anchorText,
+        afterText: '', // 不再使用 afterText
+        textOffset: insertOffset,
       },
     };
     
@@ -542,13 +557,18 @@ export default function NewTemplatePage() {
     
     let result = baseHtml;
     
+    // 清理所有现有的标记元素，避免重复
+    result = result.replace(/<span class="variable-marker[^"]*"[^>]*>.*?<\/span>/g, '');
+    
     // 为每个标记在对应位置渲染
-    // 按照偏移量倒序排列，从后往前插入，避免位置偏移
+    // 按照在锚点中的位置倒序排列，从后往前插入，避免位置偏移
     const sortedMarkers = [...markers].sort((a, b) => {
-      // 简单排序：根据 beforeText 在原文中的位置
+      // 根据 anchorText 在原文中的位置倒序
       const aIndex = result.indexOf(a.position.beforeText);
       const bIndex = result.indexOf(b.position.beforeText);
-      return bIndex - aIndex; // 倒序
+      if (aIndex !== bIndex) return bIndex - aIndex;
+      // 如果锚点位置相同，按偏移量倒序
+      return b.position.textOffset - a.position.textOffset;
     });
     
     sortedMarkers.forEach((marker) => {
@@ -556,15 +576,14 @@ export default function NewTemplatePage() {
         ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
         : null;
       
-      // 查找标记位置：在 beforeText 和 afterText 之间插入
-      const { beforeText, afterText } = marker.position;
+      const { beforeText, textOffset } = marker.position;
       
-      // 尝试找到精确位置（beforeText 结尾 + afterText 开头）
-      const searchText = beforeText + afterText;
-      const pos = result.indexOf(searchText);
+      // 找到锚点文本在 HTML 中的位置
+      const anchorPos = result.indexOf(beforeText);
       
-      if (pos !== -1) {
-        const insertPos = pos + beforeText.length;
+      if (anchorPos !== -1) {
+        // 计算实际插入位置
+        const insertPos = anchorPos + textOffset;
         
         let markerHtml: string;
         if (marker.status === 'bound' && variable) {
