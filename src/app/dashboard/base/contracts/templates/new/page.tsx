@@ -14,6 +14,9 @@ import {
   Trash2,
   Plus,
   Edit2,
+  X,
+  File,
+  Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +43,7 @@ import type {
 
 // 步骤定义
 const STEPS = [
-  { id: 1, title: "上传文档", description: "上传 Word 合同文档" },
+  { id: 1, title: "上传文档", description: "上传合同和附件" },
   { id: 2, title: "基本信息", description: "填写模板基本信息" },
   { id: 3, title: "字段设置", description: "设置可填充字段" },
   { id: 4, title: "完成", description: "保存模板" },
@@ -55,22 +58,41 @@ const fieldTypeOptions = [
   { value: "textarea", label: "多行文本" },
 ];
 
+// 附件文件类型
+interface AttachmentFile {
+  id: string;
+  file: File;
+  name: string;
+  type: string;
+  size: number;
+}
+
 export default function NewTemplatePage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mainFileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   
   // 当前步骤
   const [currentStep, setCurrentStep] = useState(1);
   
   // 步骤1: 上传文档
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [mainFile, setMainFile] = useState<File | null>(null);
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
-  const [fileUrl, setFileUrl] = useState<string>("");
   
   // 解析结果
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  
+  // 已上传的附件
+  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{
+    id: string;
+    name: string;
+    url: string;
+    fileType: string;
+    size: number;
+  }>>([]);
   
   // 步骤2: 基本信息
   const [name, setName] = useState("");
@@ -87,30 +109,86 @@ export default function NewTemplatePage() {
   
   // ========== 步骤1: 上传文档 ==========
   
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 验证文件类型 - 仅支持 Word
       const allowedTypes = [
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword"
       ];
       if (!allowedTypes.includes(file.type)) {
-        toast.error("仅支持 Word 文档（.doc 或 .docx 格式）");
+        toast.error("合同文档仅支持 Word 格式（.doc 或 .docx）");
         return;
       }
-      setUploadFile(file);
+      setMainFile(file);
     }
   };
   
+  const handleAttachmentsSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'image/jpeg',
+      'image/png',
+    ];
+    
+    const validFiles: AttachmentFile[] = [];
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`文件"${file.name}"格式不支持`);
+        continue;
+      }
+      validFiles.push({
+        id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+    }
+    
+    if (validFiles.length > 0) {
+      setAttachments(prev => [...prev, ...validFiles]);
+    }
+    
+    // 重置 input
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
+  };
+  
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+  
+  const getFileTypeIcon = (type: string) => {
+    if (type.includes('pdf')) return <FileText className="h-4 w-4 text-red-500" />;
+    if (type.includes('word')) return <FileText className="h-4 w-4 text-blue-500" />;
+    if (type.includes('image')) return <Image className="h-4 w-4 text-green-500" />;
+    return <File className="h-4 w-4 text-gray-500" />;
+  };
+  
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  };
+  
   const handleUploadAndParse = async () => {
-    if (!uploadFile) return;
+    if (!mainFile) return;
     
     setUploading(true);
     try {
-      // 1. 上传文件
+      // 1. 上传主文件和附件
       const formData = new FormData();
-      formData.append("file", uploadFile);
+      formData.append("file", mainFile);
+      
+      // 添加附件
+      for (const att of attachments) {
+        formData.append("attachments", att.file);
+      }
       
       const uploadRes = await fetch("/api/contract-templates/upload", {
         method: "POST",
@@ -123,7 +201,7 @@ export default function NewTemplatePage() {
       }
       
       setTemplateId(uploadData.data.templateId);
-      setFileUrl(uploadData.data.fileUrl);
+      setUploadedAttachments(uploadData.data.attachments || []);
       setUploading(false);
       
       // 2. 解析文档
@@ -149,7 +227,7 @@ export default function NewTemplatePage() {
       
       // 自动填充模板名称
       if (!name) {
-        setName(uploadFile.name.replace(/\.[^/.]+$/, ""));
+        setName(mainFile.name.replace(/\.[^/.]+$/, ""));
       }
       
       toast.success("文档解析成功");
@@ -258,74 +336,150 @@ export default function NewTemplatePage() {
   // 步骤1: 上传文档
   const renderUploadStep = () => (
     <div className="space-y-6">
+      {/* 主合同文档上传 */}
       <Card>
         <CardHeader>
           <CardTitle>上传合同文档</CardTitle>
           <CardDescription>
-            仅支持 Word 文档（.doc 或 .docx 格式），系统将自动识别可填充字段
+            仅支持 Word 文档（.doc 或 .docx 格式）
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* 上传区域 */}
+        <CardContent>
           <div
             className={cn(
               "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-              uploadFile 
+              mainFile 
                 ? "border-green-500 bg-green-50" 
                 : "border-muted-foreground/25 hover:border-amber-500 hover:bg-amber-50/50"
             )}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => mainFileInputRef.current?.click()}
           >
             <input
-              ref={fileInputRef}
+              ref={mainFileInputRef}
               type="file"
               accept=".doc,.docx"
-              onChange={handleFileSelect}
+              onChange={handleMainFileSelect}
               className="hidden"
             />
-            {uploadFile ? (
+            {mainFile ? (
               <div className="flex items-center justify-center gap-3">
                 <FileText className="h-8 w-8 text-green-600" />
                 <div className="text-left">
-                  <p className="font-medium">{uploadFile.name}</p>
+                  <p className="font-medium">{mainFile.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                    {formatFileSize(mainFile.size)}
                   </p>
                 </div>
               </div>
             ) : (
               <>
                 <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">点击上传 Word 文档</p>
+                <p className="text-lg font-medium mb-2">点击上传合同文档</p>
                 <p className="text-sm text-muted-foreground">
-                  支持 .doc、.docx 格式，单个文件最大 50MB
+                  支持 .doc、.docx 格式
                 </p>
               </>
             )}
           </div>
-          
-          {/* 解析进度 */}
-          {(uploading || parsing) && (
+        </CardContent>
+      </Card>
+      
+      {/* 附件上传 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>合同附件</CardTitle>
+              <CardDescription>
+                上传合同相关的附件文件（可选）
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => attachmentInputRef.current?.click()}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              添加附件
+            </Button>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              multiple
+              onChange={handleAttachmentsSelect}
+              className="hidden"
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {attachments.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
+              <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">点击"添加附件"上传附件文件</p>
+              <p className="text-xs mt-1">支持 PDF、Word、图片格式</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {attachments.map((att) => (
+                <div
+                  key={att.id}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    {getFileTypeIcon(att.type)}
+                    <div>
+                      <p className="font-medium text-sm">{att.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeAttachment(att.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* 解析进度 */}
+      {(uploading || parsing) && (
+        <Card>
+          <CardContent className="pt-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{uploading ? "上传中..." : "正在解析文档..."}</span>
+                <span>{uploading ? "上传文件中..." : "正在解析文档..."}</span>
               </div>
               <Progress value={uploading ? 30 : 70} className="h-2" />
             </div>
-          )}
-          
-          {/* 解析结果预览 */}
-          {parseResult && (
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* 解析结果预览 */}
+      {parseResult && (
+        <Card>
+          <CardContent className="pt-6">
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <h4 className="font-medium flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-600" />
                 解析完成
               </h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">识别字段：</span>
                   <Badge variant="outline">{parseResult.detectedFields.length} 个</Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">上传附件：</span>
+                  <Badge variant="outline">{uploadedAttachments.length} 个</Badge>
                 </div>
                 <div>
                   <span className="text-muted-foreground">文档字数：</span>
@@ -333,19 +487,19 @@ export default function NewTemplatePage() {
                 </div>
               </div>
             </div>
-          )}
-          
-          {/* 提示信息 */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h5 className="font-medium text-blue-800 mb-2">使用提示</h5>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• 文档中使用 <code className="bg-blue-100 px-1 rounded">____</code> 下划线标记的位置将被识别为可填充字段</li>
-              <li>• 例如：<code className="bg-blue-100 px-1 rounded">企业名称：______</code> 会自动识别为"企业名称"字段</li>
-              <li>• 合同附件请在模板创建后单独上传</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* 提示信息 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h5 className="font-medium text-blue-800 mb-2">使用提示</h5>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• 文档中使用 <code className="bg-blue-100 px-1 rounded">____</code> 下划线标记的位置将被识别为可填充字段</li>
+          <li>• 例如：<code className="bg-blue-100 px-1 rounded">企业名称：______</code> 会自动识别为"企业名称"字段</li>
+          <li>• 附件支持 PDF、Word、图片格式，可上传多个</li>
+        </ul>
+      </div>
     </div>
   );
   
@@ -411,7 +565,7 @@ export default function NewTemplatePage() {
             <div>
               <CardTitle>可填充字段设置</CardTitle>
               <CardDescription>
-                设置合同中需要动态填充的字段，用户使用模板时可填写这些字段
+                设置合同中需要动态填充的字段
               </CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={handleAddField}>
@@ -568,10 +722,26 @@ export default function NewTemplatePage() {
               <p className="font-medium">{fields.length} 个</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-muted-foreground">源文件</Label>
-              <p className="font-medium">{parseResult?.fileName || "未上传"}</p>
+              <Label className="text-muted-foreground">合同附件</Label>
+              <p className="font-medium">{uploadedAttachments.length} 个</p>
             </div>
           </div>
+          
+          {uploadedAttachments.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">附件列表</Label>
+                <div className="flex flex-wrap gap-2">
+                  {uploadedAttachments.map((att, idx) => (
+                    <Badge key={att.id} variant="outline">
+                      {idx + 1}. {att.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
           
           {fields.length > 0 && (
             <>
@@ -589,12 +759,6 @@ export default function NewTemplatePage() {
               </div>
             </>
           )}
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-sm text-amber-800">
-              模板保存后，您可以在模板详情页上传合同附件（如服务标准清单、安全责任承诺书等）。
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

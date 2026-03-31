@@ -4,113 +4,105 @@ import { randomUUID } from 'crypto';
 
 /**
  * POST /api/contract-templates/upload
- * 上传合同文档（仅支持 Word 文档）
+ * 上传合同文档和附件
+ * 
+ * 请求格式：multipart/form-data
+ * - file: 主合同文档（Word）
+ * - attachments[]: 附件文件数组（可选）
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
     const formData = await request.formData();
     
-    const file = formData.get('file') as File;
-    const templateId = formData.get('templateId') as string | null;
+    const mainFile = formData.get('file') as File;
+    const attachments = formData.getAll('attachments') as File[];
     
-    if (!file) {
+    if (!mainFile) {
       return NextResponse.json(
-        { success: false, error: '请选择要上传的文件' },
+        { success: false, error: '请选择要上传的合同文档' },
         { status: 400 }
       );
     }
 
-    // 验证文件类型 - 仅支持 Word 文档
+    // 验证主文件类型 - 仅支持 Word 文档
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
       'application/msword' // .doc
     ];
     
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(mainFile.type)) {
       return NextResponse.json(
-        { success: false, error: '仅支持 Word 文档（.doc 或 .docx 格式）' },
+        { success: false, error: '合同文档仅支持 Word 格式（.doc 或 .docx）' },
         { status: 400 }
       );
     }
 
-    // 确定文件类型
-    const fileType = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+    // 验证附件类型
+    const allowedAttachmentTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'image/jpeg',
+      'image/png',
+    ];
+    
+    for (const att of attachments) {
+      if (att && !allowedAttachmentTypes.includes(att.type)) {
+        return NextResponse.json(
+          { success: false, error: `附件"${att.name}"格式不支持，支持 PDF、Word、图片格式` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 确定主文件类型
+    const fileType = mainFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
       ? 'docx' 
       : 'doc';
-
-    // 生成文件存储路径 - 使用安全的文件名
-    const fileId = randomUUID();
-    const ext = file.name.split('.').pop() || fileType;
-    const storagePath = `${fileId}.${ext}`;
-    
-    // 读取文件内容
-    const fileBuffer = await file.arrayBuffer();
-    
-    // 上传文件到Supabase存储
-    const { error: uploadError } = await supabase.storage
-      .from('contract-templates')
-      .upload(storagePath, fileBuffer, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('上传文件失败:', uploadError);
-      return NextResponse.json(
-        { success: false, error: `上传文件失败: ${uploadError.message}` },
-        { status: 500 }
-      );
-    }
-
-    // 获取文件公开URL
-    const { data: urlData } = supabase.storage
-      .from('contract-templates')
-      .getPublicUrl(storagePath);
-
-    const fileUrl = urlData.publicUrl;
-
-    // 如果提供了模板ID，更新现有模板
-    if (templateId) {
-      const { error: updateError } = await supabase
-        .from('contract_templates')
-        .update({
-          source_file_url: fileUrl,
-          source_file_name: file.name,
-          source_file_type: fileType,
-          parse_status: 'pending',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', templateId);
-
-      if (updateError) {
-        console.error('更新模板失败:', updateError);
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          templateId,
-          fileUrl,
-          fileName: file.name,
-          fileType,
-        },
-      });
-    }
 
     // 创建新的模板记录
     const newTemplateId = randomUUID();
     const now = new Date().toISOString();
-    const templateName = file.name.replace(/\.[^/.]+$/, '');
+    const templateName = mainFile.name.replace(/\.[^/.]+$/, '');
 
+    // 上传主文件
+    const mainFileId = randomUUID();
+    const mainFileExt = mainFile.name.split('.').pop() || fileType;
+    const mainStoragePath = `${newTemplateId}/main.${mainFileExt}`;
+    
+    const mainFileBuffer = await mainFile.arrayBuffer();
+    const { error: mainUploadError } = await supabase.storage
+      .from('contract-templates')
+      .upload(mainStoragePath, mainFileBuffer, {
+        contentType: mainFile.type,
+        upsert: false,
+      });
+
+    if (mainUploadError) {
+      console.error('上传主文件失败:', mainUploadError);
+      return NextResponse.json(
+        { success: false, error: `上传合同文档失败: ${mainUploadError.message}` },
+        { status: 500 }
+      );
+    }
+
+    // 获取主文件公开URL
+    const { data: mainUrlData } = supabase.storage
+      .from('contract-templates')
+      .getPublicUrl(mainStoragePath);
+
+    const mainFileUrl = mainUrlData.publicUrl;
+
+    // 创建模板记录
     const { data: templateData, error: templateError } = await supabase
       .from('contract_templates')
       .insert({
         id: newTemplateId,
         name: templateName,
         type: 'tenant',
-        source_file_url: fileUrl,
-        source_file_name: file.name,
+        source_file_url: mainFileUrl,
+        source_file_name: mainFile.name,
         source_file_type: fileType,
         parse_status: 'pending',
         is_active: true,
@@ -124,21 +116,91 @@ export async function POST(request: NextRequest) {
     if (templateError) {
       console.error('创建模板失败:', templateError);
       // 删除已上传的文件
-      await supabase.storage.from('contract-templates').remove([storagePath]);
+      await supabase.storage.from('contract-templates').remove([mainStoragePath]);
       return NextResponse.json(
         { success: false, error: '创建模板失败' },
         { status: 500 }
       );
     }
 
+    // 上传附件并创建记录
+    const uploadedAttachments: Array<{
+      id: string;
+      name: string;
+      url: string;
+      fileType: string;
+      size: number;
+    }> = [];
+
+    for (let i = 0; i < attachments.length; i++) {
+      const att = attachments[i];
+      if (!att || att.size === 0) continue;
+
+      const attId = randomUUID();
+      const attExt = att.name.split('.').pop() || 'bin';
+      const attStoragePath = `${newTemplateId}/attachments/${attId}.${attExt}`;
+      
+      const attBuffer = await att.arrayBuffer();
+      const { error: attUploadError } = await supabase.storage
+        .from('contract-templates')
+        .upload(attStoragePath, attBuffer, {
+          contentType: att.type,
+          upsert: false,
+        });
+
+      if (attUploadError) {
+        console.error(`上传附件 ${att.name} 失败:`, attUploadError);
+        continue;
+      }
+
+      // 获取附件公开URL
+      const { data: attUrlData } = supabase.storage
+        .from('contract-templates')
+        .getPublicUrl(attStoragePath);
+
+      // 确定附件文件类型
+      let attFileType = 'other';
+      if (att.type === 'application/pdf') attFileType = 'pdf';
+      else if (att.type.includes('word')) attFileType = 'word';
+      else if (att.type.includes('image')) attFileType = 'image';
+
+      // 创建附件记录
+      const { data: attRecord, error: attDbError } = await supabase
+        .from('contract_attachments')
+        .insert({
+          id: attId,
+          template_id: newTemplateId,
+          name: att.name.replace(/\.[^/.]+$/, ''), // 去除扩展名
+          source_file_url: attUrlData.publicUrl,
+          source_file_name: att.name,
+          required: false,
+          order: i + 1,
+        })
+        .select()
+        .single();
+
+      if (attDbError) {
+        console.error('创建附件记录失败:', attDbError);
+      } else {
+        uploadedAttachments.push({
+          id: attId,
+          name: att.name,
+          url: attUrlData.publicUrl,
+          fileType: attFileType,
+          size: att.size,
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         templateId: newTemplateId,
-        fileUrl,
-        fileName: file.name,
+        fileUrl: mainFileUrl,
+        fileName: mainFile.name,
         fileType,
         template: templateData,
+        attachments: uploadedAttachments,
       },
     });
   } catch (error) {
