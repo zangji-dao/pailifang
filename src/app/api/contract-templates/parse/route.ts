@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ParseResult, ContractFieldDefinition, ParsedPage } from '@/types/contract-template';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
+import path from 'path';
+
+const execAsync = promisify(exec);
 
 // 强制使用Node.js运行时
 export const runtime = 'nodejs';
@@ -11,6 +17,118 @@ interface AttachmentInfo {
   name: string;
   url: string;
   fileType: string;
+}
+
+/**
+ * 使用LibreOffice将Word文档转换为HTML
+ * 比mammoth保留更多的格式信息
+ */
+async function convertWordToHtmlWithLibreOffice(
+  buffer: Buffer,
+  fileName: string
+): Promise<{ html: string; fullText: string }> {
+  const tmpDir = '/tmp/contract-convert';
+  const timestamp = Date.now();
+  const inputPath = path.join(tmpDir, `${timestamp}_${fileName}`);
+  const outputDir = path.join(tmpDir, `output_${timestamp}`);
+  
+  try {
+    // 创建临时目录
+    await fs.mkdir(tmpDir, { recursive: true });
+    await fs.mkdir(outputDir, { recursive: true });
+    
+    // 写入临时Word文件
+    await fs.writeFile(inputPath, buffer);
+    
+    // 使用LibreOffice转换为HTML
+    const { stdout, stderr } = await execAsync(
+      `libreoffice --headless --convert-to html --outdir "${outputDir}" "${inputPath}"`,
+      { timeout: 30000 }
+    );
+    
+    if (stderr && !stderr.includes('Warning')) {
+      console.log('LibreOffice stderr:', stderr);
+    }
+    
+    // 读取生成的HTML文件
+    const baseName = fileName.replace(/\.[^/.]+$/, '');
+    const htmlPath = path.join(outputDir, `${baseName}.html`);
+    
+    let html = '';
+    try {
+      html = await fs.readFile(htmlPath, 'utf-8');
+    } catch (readError) {
+      console.error('读取HTML文件失败:', readError);
+      // 如果LibreOffice转换失败，回退到mammoth
+      return await convertWordToHtmlWithMammoth(buffer, fileName);
+    }
+    
+    // 后处理HTML
+    html = postProcessLibreOfficeHtml(html);
+    
+    // 提取纯文本
+    const fullText = html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    return { html, fullText };
+  } catch (error) {
+    console.error('LibreOffice转换失败，回退到mammoth:', error);
+    return await convertWordToHtmlWithMammoth(buffer, fileName);
+  } finally {
+    // 清理临时文件
+    try {
+      await fs.rm(inputPath, { force: true });
+      await fs.rm(outputDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      // 忽略清理错误
+    }
+  }
+}
+
+/**
+ * 使用mammoth转换Word文档（备用方案）
+ */
+async function convertWordToHtmlWithMammoth(
+  buffer: Buffer,
+  fileName: string
+): Promise<{ html: string; fullText: string }> {
+  const mammoth = await import('mammoth');
+  
+  const textResult = await mammoth.extractRawText({ buffer });
+  const fullText = textResult.value;
+  
+  const htmlResult = await mammoth.convertToHtml({ buffer });
+  let html = htmlResult.value;
+  
+  html = postProcessLibreOfficeHtml(html);
+  
+  return { html, fullText };
+}
+
+/**
+ * 后处理LibreOffice生成的HTML
+ */
+function postProcessLibreOfficeHtml(html: string): string {
+  return html
+    // 移除内联的字体样式（使用CSS代替）
+    .replace(/font-family:[^;"]*;?/gi, '')
+    // 保留颜色
+    // 移除过长的style属性
+    .replace(/ style="[^"]{500,}"/g, '')
+    // 确保表格有边框
+    .replace(/<table/gi, '<table style="border-collapse: collapse; width: 100%;"')
+    .replace(/<td/gi, '<td style="border: 1px solid #333; padding: 4px 8px; vertical-align: top;"')
+    .replace(/<th/gi, '<th style="border: 1px solid #333; padding: 4px 8px; background: #f5f5f5;"')
+    // 清理空段落
+    .replace(/<p[^>]*>\s*<\/p>/gi, '')
+    .replace(/<p[^>]*>&nbsp;<\/p>/gi, '<p style="margin: 0.5em 0;">&nbsp;</p>');
 }
 
 /**
@@ -51,7 +169,7 @@ export async function POST(request: NextRequest) {
       .eq('id', templateId);
 
     try {
-      // 1. 解析主文档
+      // 1. 解析主文档（使用LibreOffice）
       const mainResponse = await fetch(fileUrl);
       if (!mainResponse.ok) {
         throw new Error('下载主文档失败');
@@ -59,7 +177,7 @@ export async function POST(request: NextRequest) {
       
       const mainArrayBuffer = await mainResponse.arrayBuffer();
       const mainBuffer = Buffer.from(mainArrayBuffer);
-      const mainParseResult = await parseWord(mainBuffer, fileName, fileType, '主合同');
+      const mainParseResult = await convertWordToHtmlWithLibreOffice(mainBuffer, fileName);
 
       // 2. 解析所有附件
       const attachmentResults: { name: string; html: string; text: string }[] = [];
@@ -71,7 +189,7 @@ export async function POST(request: NextRequest) {
           
           const attArrayBuffer = await attResponse.arrayBuffer();
           const attBuffer = Buffer.from(attArrayBuffer);
-          const attParseResult = await parseWord(attBuffer, attachment.name, attachment.fileType, attachment.name);
+          const attParseResult = await convertWordToHtmlWithLibreOffice(attBuffer, attachment.name);
           
           attachmentResults.push({
             name: attachment.name,
@@ -186,66 +304,6 @@ function mergeDocuments(mainHtml: string, attachments: { name: string; html: str
   }
   
   return result;
-}
-
-/**
- * 解析Word文档 - 同时返回文本和HTML，尽量保留原始格式
- */
-async function parseWord(buffer: Buffer, fileName: string, fileType: string, docTitle?: string): Promise<{ 
-  html: string; 
-  fullText: string;
-}> {
-  // 动态导入mammoth
-  const mammoth = await import('mammoth');
-  
-  // 提取纯文本
-  const textResult = await mammoth.extractRawText({ buffer });
-  const fullText = textResult.value;
-  
-  // 提取HTML（保留格式）- 使用默认样式映射
-  const htmlResult = await mammoth.convertToHtml(
-    { buffer },
-    {
-      includeDefaultStyleMap: true,
-      convertImage: mammoth.images.imgElement(function(image: any) {
-        return image.readAsBase64String().then(function(imageBuffer: string) {
-          return {
-            src: "data:" + image.contentType + ";base64," + imageBuffer
-          };
-        });
-      })
-    }
-  );
-  
-  let html = htmlResult.value;
-  
-  // 后处理：保留原始段落格式
-  html = postProcessHtml(html);
-  
-  // 输出警告信息（用于调试）
-  if (htmlResult.messages.length > 0) {
-    console.log('Mammoth转换警告:', htmlResult.messages);
-  }
-
-  return {
-    html,
-    fullText,
-  };
-}
-
-/**
- * 后处理HTML，保留原始格式
- */
-function postProcessHtml(html: string): string {
-  // 不额外处理，让HTML保持mammoth输出的原样
-  // 只处理一些必要的清理
-  return html
-    // 清理多余的空行（但保留有意义的空行）
-    .replace(/(<p[^>]*>\s*<\/p>\s*){3,}/g, '<p class="f-empty-line">&nbsp;</p>')
-    // 确保表格边框可见
-    .replace(/<table/g, '<table style="border-collapse: collapse; width: 100%;"')
-    .replace(/<td/g, '<td style="border: 1px solid #333; padding: 6px 10px; vertical-align: top;"')
-    .replace(/<th/g, '<th style="border: 1px solid #333; padding: 6px 10px; background: #f5f5f5; font-weight: bold; text-align: center;"');
 }
 
 /**

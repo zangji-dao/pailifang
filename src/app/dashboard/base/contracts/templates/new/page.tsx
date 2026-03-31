@@ -1271,50 +1271,76 @@ export default function NewTemplatePage() {
                   min-height: 297mm;
                   max-width: 210mm;
                   /* 页边距 - 保持与Word一致 */
-                  padding: 2.54cm 3.17cm; /* Word默认边距：上下2.54cm，左右3.17cm */
+                  padding: 2.54cm 3.17cm; /* Word默认边距 */
                   background: white;
                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                   color: #000;
-                  /* 让Word的内联样式生效 */
                   box-sizing: border-box;
                   word-wrap: break-word;
-                  /* 默认字体 - 与Word一致 */
-                  font-family: "Times New Roman", "宋体", serif;
+                  /* 默认字体 */
+                  font-family: "Times New Roman", "宋体", SimSun, serif;
                   font-size: 12pt;
-                  line-height: 1.3;
+                  line-height: 1.5;
                 }
                 
-                /* 重置Tailwind prose样式的影响 */
+                /* 重置Tailwind prose样式的影响 - 完全清除 */
                 .a4-paper.prose {
                   max-width: none;
                 }
-                .a4-paper.prose p {
-                  margin: 0;
-                  text-indent: 0;
-                }
+                .a4-paper.prose *,
+                .a4-paper.prose p,
                 .a4-paper.prose h1,
                 .a4-paper.prose h2,
-                .a4-paper.prose h3 {
+                .a4-paper.prose h3,
+                .a4-paper.prose h4,
+                .a4-paper.prose table,
+                .a4-paper.prose td,
+                .a4-paper.prose th {
                   margin: 0;
+                  padding: 0;
+                  text-indent: 0;
                   font-size: inherit;
+                  line-height: inherit;
+                  border: none;
+                  background: transparent;
                 }
                 
-                /* 仅在没有内联样式时应用默认样式 */
-                .a4-paper p:not([style*="font-size"]):not([style*="line-height"]) {
-                  font-size: 12pt;
-                  line-height: 1.3;
+                /* LibreOffice生成的HTML样式支持 */
+                .a4-paper p,
+                .a4-paper div,
+                .a4-paper span {
+                  /* 保持原始样式，不做覆盖 */
                 }
                 
-                /* 表格默认样式 - 仅当表格没有内联样式时 */
-                .a4-paper table:not([style*="border"]) { 
-                  border-collapse: collapse; 
+                .a4-paper h1 { font-size: 22pt; font-weight: bold; text-align: center; margin: 12pt 0; }
+                .a4-paper h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0; }
+                .a4-paper h3 { font-size: 14pt; font-weight: bold; margin: 8pt 0; }
+                
+                /* 表格样式 - LibreOffice输出 */
+                .a4-paper table {
+                  border-collapse: collapse;
                   width: 100%;
+                  margin: 6pt 0;
                 }
-                .a4-paper table td:not([style*="border"]),
-                .a4-paper table th:not([style*="border"]) { 
-                  border: 1px solid #000; 
-                  padding: 0 5.4pt; /* Word默认单元格边距 */
-                  vertical-align: top; 
+                .a4-paper table td,
+                .a4-paper table th {
+                  border: 1px solid #000;
+                  padding: 4pt 6pt;
+                  vertical-align: top;
+                }
+                .a4-paper table th {
+                  background: #f0f0f0;
+                  font-weight: bold;
+                }
+                
+                /* 列表样式 */
+                .a4-paper ul,
+                .a4-paper ol {
+                  margin: 6pt 0;
+                  padding-left: 24pt;
+                }
+                .a4-paper li {
+                  margin: 3pt 0;
                 }
                 
                 /* 绑定模式样式 */
