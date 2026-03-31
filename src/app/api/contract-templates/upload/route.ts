@@ -34,14 +34,19 @@ export async function POST(request: NextRequest) {
     const fileType = file.type === 'application/pdf' ? 'pdf' : 
                      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'doc';
 
-    // 生成文件存储路径
+    // 生成文件存储路径 - 使用安全的文件名
     const fileId = randomUUID();
-    const fileName = `${fileId}/${file.name}`;
+    const ext = file.name.split('.').pop() || fileType;
+    // 使用安全的存储路径：只包含 UUID 和扩展名
+    const storagePath = `${fileId}.${ext}`;
+    
+    // 读取文件内容
+    const fileBuffer = await file.arrayBuffer();
     
     // 上传文件到Supabase存储
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('contract-templates')
-      .upload(fileName, file, {
+      .upload(storagePath, fileBuffer, {
         contentType: file.type,
         upsert: false,
       });
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (uploadError) {
       console.error('上传文件失败:', uploadError);
       return NextResponse.json(
-        { success: false, error: '上传文件失败' },
+        { success: false, error: `上传文件失败: ${uploadError.message}` },
         { status: 500 }
       );
     }
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
     // 获取文件公开URL
     const { data: urlData } = supabase.storage
       .from('contract-templates')
-      .getPublicUrl(fileName);
+      .getPublicUrl(storagePath);
 
     const fileUrl = urlData.publicUrl;
 
@@ -93,11 +98,14 @@ export async function POST(request: NextRequest) {
     const newTemplateId = randomUUID();
     const now = new Date().toISOString();
 
+    // 从文件名提取模板名称（去除扩展名）
+    const templateName = file.name.replace(/\.[^/.]+$/, '');
+
     const { data: templateData, error: templateError } = await supabase
       .from('contract_templates')
       .insert({
         id: newTemplateId,
-        name: file.name.replace(/\.[^/.]+$/, ''), // 使用文件名作为模板名
+        name: templateName,
         type: 'tenant',
         source_file_url: fileUrl,
         source_file_name: file.name,
@@ -114,7 +122,7 @@ export async function POST(request: NextRequest) {
     if (templateError) {
       console.error('创建模板失败:', templateError);
       // 删除已上传的文件
-      await supabase.storage.from('contract-templates').remove([fileName]);
+      await supabase.storage.from('contract-templates').remove([storagePath]);
       return NextResponse.json(
         { success: false, error: '创建模板失败' },
         { status: 500 }

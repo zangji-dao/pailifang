@@ -105,8 +105,16 @@ async function parsePDF(buffer: Buffer, fileName: string): Promise<ParseResult> 
   let fullText = '';
   
   try {
-    // 使用 eval 动态加载 pdf-parse，避免 webpack 编译问题
-    const pdfParse = require('pdf-parse');
+    // 动态加载 pdf-parse
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfParseModule = require('pdf-parse');
+    // 处理 CommonJS 模块导出
+    const pdfParse = pdfParseModule.default || pdfParseModule;
+    
+    if (typeof pdfParse !== 'function') {
+      throw new Error('pdf-parse is not a function');
+    }
+    
     const data = await pdfParse(buffer, {
       max: 0,
     });
