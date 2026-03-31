@@ -20,6 +20,17 @@ import {
   Type,
   Minus,
   RotateCcw,
+  Bold,
+  Italic,
+  Strikethrough,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  List,
+  ListOrdered,
+  IndentIncrease,
+  IndentDecrease,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -438,6 +449,91 @@ export default function NewTemplatePage() {
     document.execCommand('removeFormat', false);
     syncEditedContent();
     toast.success("已移除格式");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：加粗
+  const handleBold = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要加粗的文字");
+      return;
+    }
+    document.execCommand('bold', false);
+    syncEditedContent();
+    toast.success("已加粗");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：斜体
+  const handleItalic = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要斜体的文字");
+      return;
+    }
+    document.execCommand('italic', false);
+    syncEditedContent();
+    toast.success("已设置斜体");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：删除线
+  const handleStrikethrough = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要添加删除线的文字");
+      return;
+    }
+    document.execCommand('strikeThrough', false);
+    syncEditedContent();
+    toast.success("已添加删除线");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：文本对齐
+  const handleAlign = useCallback((alignment: 'left' | 'center' | 'right' | 'justify') => {
+    const command = {
+      left: 'justifyLeft',
+      center: 'justifyCenter',
+      right: 'justifyRight',
+      justify: 'justifyFull',
+    }[alignment];
+    document.execCommand(command, false);
+    syncEditedContent();
+    toast.success(`已${alignment === 'left' ? '左对齐' : alignment === 'center' ? '居中对齐' : alignment === 'right' ? '右对齐' : '两端对齐'}`);
+  }, [syncEditedContent]);
+  
+  // 编辑功能：缩进
+  const handleIndent = useCallback((increase: boolean) => {
+    document.execCommand(increase ? 'indent' : 'outdent', false);
+    syncEditedContent();
+    toast.success(increase ? "已增加缩进" : "已减少缩进");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：列表
+  const handleList = useCallback((ordered: boolean) => {
+    document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false);
+    syncEditedContent();
+    toast.success(ordered ? "已插入有序列表" : "已插入无序列表");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：字体大小
+  const handleFontSize = useCallback((size: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要调整的文字");
+      return;
+    }
+    // fontSize command accepts 1-7 (7 is largest)
+    const sizeMap: Record<string, string> = {
+      '12px': '1',
+      '14px': '2',
+      '16px': '3',
+      '18px': '4',
+      '24px': '5',
+      '32px': '6',
+      '48px': '7',
+    };
+    document.execCommand('fontSize', false, sizeMap[size] || '3');
+    syncEditedContent();
+    toast.success(`字体大小已调整为 ${size}`);
   }, [syncEditedContent]);
   
   // 处理文档点击 - 用户自定义绑定位置（仅在非编辑模式下）
@@ -924,29 +1020,154 @@ export default function NewTemplatePage() {
             
             {/* 编辑模式工具栏 */}
             {editMode && (
-              <div className="flex items-center gap-3 pt-2 border-t mt-2">
-                <span className="text-xs text-muted-foreground">选中文字后：</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7"
-                  onClick={handleAddUnderline}
-                >
-                  <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
-                    <line x1="4" y1="21" x2="20" y2="21" />
-                  </svg>
-                  下划线
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7"
-                  onClick={handleRemoveUnderline}
-                >
-                  <Minus className="h-3.5 w-3.5 mr-1" />
-                  清除格式
-                </Button>
+              <div className="space-y-2 pt-2 border-t mt-2">
+                {/* 格式化按钮组 */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-xs text-muted-foreground mr-2">格式：</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleBold}
+                    title="加粗 (Ctrl+B)"
+                  >
+                    <Bold className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleItalic}
+                    title="斜体 (Ctrl+I)"
+                  >
+                    <Italic className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleAddUnderline}
+                    title="下划线 (Ctrl+U)"
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
+                      <line x1="4" y1="21" x2="20" y2="21" />
+                    </svg>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleStrikethrough}
+                    title="删除线"
+                  >
+                    <Strikethrough className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  <Select onValueChange={handleFontSize}>
+                    <SelectTrigger className="h-7 w-20 text-xs">
+                      <SelectValue placeholder="字号" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="12px" className="text-xs">12px</SelectItem>
+                      <SelectItem value="14px" className="text-sm">14px</SelectItem>
+                      <SelectItem value="16px" className="text-base">16px</SelectItem>
+                      <SelectItem value="18px" className="text-lg">18px</SelectItem>
+                      <SelectItem value="24px" className="text-xl">24px</SelectItem>
+                      <SelectItem value="32px" className="text-2xl">32px</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* 对齐和列表按钮组 */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-xs text-muted-foreground mr-2">段落：</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleAlign('left')}
+                    title="左对齐"
+                  >
+                    <AlignLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleAlign('center')}
+                    title="居中对齐"
+                  >
+                    <AlignCenter className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleAlign('right')}
+                    title="右对齐"
+                  >
+                    <AlignRight className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleAlign('justify')}
+                    title="两端对齐"
+                  >
+                    <AlignJustify className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleIndent(false)}
+                    title="减少缩进"
+                  >
+                    <IndentDecrease className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleIndent(true)}
+                    title="增加缩进"
+                  >
+                    <IndentIncrease className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleList(false)}
+                    title="无序列表"
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleList(true)}
+                    title="有序列表"
+                  >
+                    <ListOrdered className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={handleRemoveUnderline}
+                    title="清除格式"
+                  >
+                    <Minus className="h-3.5 w-3.5 mr-1" />
+                    清除格式
+                  </Button>
+                </div>
               </div>
             )}
           </CardHeader>
@@ -986,6 +1207,25 @@ export default function NewTemplatePage() {
                 suppressContentEditableWarning
                 onClick={handleContentClick}
                 onBlur={editMode ? syncEditedContent : undefined}
+                onKeyDown={editMode ? (e) => {
+                  // 处理快捷键
+                  if (e.ctrlKey || e.metaKey) {
+                    switch (e.key.toLowerCase()) {
+                      case 'b':
+                        e.preventDefault();
+                        handleBold();
+                        break;
+                      case 'i':
+                        e.preventDefault();
+                        handleItalic();
+                        break;
+                      case 'u':
+                        e.preventDefault();
+                        handleAddUnderline();
+                        break;
+                    }
+                  }
+                } : undefined}
                 dangerouslySetInnerHTML={{ __html: processedHtml }}
               />
             </div>
@@ -1014,17 +1254,20 @@ export default function NewTemplatePage() {
                   <ul className="text-xs text-blue-700 space-y-1.5">
                     <li>• 直接在文档中点击即可编辑文字</li>
                     <li>• 可以删除、修改、添加内容</li>
-                    <li>• 选中文字后点击"下划线"添加下划线</li>
+                    <li>• 选中文字后使用工具栏设置格式</li>
+                    <li>• 支持加粗、斜体、下划线、删除线</li>
+                    <li>• 支持调整字体大小和对齐方式</li>
                     <li>• 编辑完成后切换到"绑定模式"继续</li>
                   </ul>
                 </div>
                 <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                   <p className="text-sm font-medium text-amber-800 mb-2">快捷键</p>
                   <ul className="text-xs text-amber-700 space-y-1">
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Delete</kbd> 删除选中内容</li>
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Enter</kbd> 换行</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+B</kbd> 加粗</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+I</kbd> 斜体</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+U</kbd> 下划线</li>
                     <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+Z</kbd> 撤销</li>
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+U</kbd> 添加/移除下划线</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Delete</kbd> 删除选中内容</li>
                   </ul>
                 </div>
                 <Button 
