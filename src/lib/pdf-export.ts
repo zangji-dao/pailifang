@@ -629,7 +629,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="paragraph">2) 保洁费：¥7,200/年（可选）需书面确认启用，每日专属区域保洁</div>
           <div class="paragraph">3) 对赌管理费（仅税收未达标时触发）：乙方承诺年度全口径税收≥¥500万元（以税务完税凭证为准），若未完成按照下表标准缴纳对赌管理费：</div>
         </div>
-        <div class="subsection">
+        <div class="subsection force-break-before">
           <div class="paragraph" style="text-align: center; font-weight: bold;">税收完成额补偿金计算规则表</div>
           <table class="simple-table">
             <tr><th>税收完成额（T）</th><th>对赌管理费计算方式</th></tr>
@@ -669,7 +669,7 @@ function getAttachmentContent(attachmentId: string): string {
       </div>
     `,
     'att-4': `
-      <div class="section">
+      <div class="section force-break-before">
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件五：Π立方企业服务中心安全责任承诺书</div>
         <div class="subsection">
           <div class="subsection-title">一、乙方承诺事项</div>
@@ -703,7 +703,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="subsection-title">三、承诺效力</div>
           <div class="paragraph">本承诺书作为《场地租赁与服务合同》附件，具有同等法律效力。违约方需承担守约方维权产生的律师费、鉴定费、差旅费。</div>
         </div>
-        <div style="margin-top: 30px;">
+        <div style="margin-top: 15px;">
           <div class="paragraph">企业法定代表人（或授权代表）：__________</div>
           <div class="paragraph">签字日期：______年______月______日</div>
         </div>
