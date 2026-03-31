@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Toaster } from '@/components/ui/sonner';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { GlobalErrorHandler } from '@/components/global-error-handler';
@@ -77,10 +78,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <head suppressHydrationWarning>
-        <script dangerouslySetInnerHTML={{ __html: errorSuppressScript }} />
-      </head>
+      <head />
       <body className="antialiased" suppressHydrationWarning>
+        <Script
+          id="error-suppress"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: errorSuppressScript }}
+        />
         <GlobalErrorHandler />
         <ConfirmProvider>
           {children}
