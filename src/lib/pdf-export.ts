@@ -706,7 +706,6 @@ function getAttachmentContent(attachmentId: string): string {
         <div style="margin-top: 15px;">
           <div class="paragraph">企业法定代表人（或授权代表）：__________</div>
           <div class="paragraph">签字日期：______年______月______日</div>
-          <div class="paragraph" style="text-align: center; margin-top: 30px; font-weight: bold;">（文档已完毕）</div>
         </div>
       </div>
     `
@@ -1585,15 +1584,36 @@ export async function exportContractTemplateToPdf(
     
     console.log('All break points:', breakPoints);
     
-    // 根据分页点生成PDF页面
-    for (let i = 0; i < breakPoints.length - 1; i++) {
-      if (i > 0) {
-        pdf.addPage();
+    // 如果最后两个分页点之间的内容高度太小，合并到前一页
+    if (breakPoints.length >= 2) {
+      const lastContentHeight = canvas.height - breakPoints[breakPoints.length - 2];
+      const minContentHeight = pageContentHeightPx * 0.15; // 至少要有15%页面高度
+      if (lastContentHeight < minContentHeight) {
+        console.log('Last page content too small, merging with previous page');
+        breakPoints.pop();
       }
-
+    }
+    
+    console.log('Final break points:', breakPoints);
+    
+    // 根据分页点生成PDF页面
+    let addedPages = 0;
+    for (let i = 0; i < breakPoints.length - 1; i++) {
       const startY = breakPoints[i];
       const endY = breakPoints[i + 1];
       const sourceHeight = endY - startY;
+      
+      // 跳过高度太小的页面（可能是空白页）
+      const minPageHeight = pageContentHeightPx * 0.05; // 最小5%页面高度
+      if (sourceHeight < minPageHeight) {
+        console.log('Skipping page with height:', sourceHeight);
+        continue;
+      }
+      
+      if (addedPages > 0) {
+        pdf.addPage();
+      }
+      addedPages++;
 
       // 裁剪图片
       const pageCanvas = document.createElement("canvas");
