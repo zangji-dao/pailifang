@@ -224,36 +224,12 @@ function markFieldsInHtml(html: string, rawText: string): string {
       if (spaces.length < 3) return match;
       
       const fieldId = `field-${fieldIndex++}`;
-      return `<span class="field-placeholder" data-field-id="${fieldId}" data-field-key="field_${fieldIndex}" data-field-label="填充字段" data-selected="false"><u style="background: rgba(234, 179, 8, 0.3); padding: 2px 4px; border-radius: 2px;">${spaces}</u></span>`;
+      return `<span class="field-placeholder" data-field-id="${fieldId}" data-field-key="field_${fieldIndex}" data-field-label="填充字段" data-selected="false"><u>${spaces}</u></span>`;
     }
   );
   
-  // 添加样式
-  const styleTag = `
-    <style>
-      .field-label { font-weight: 500; }
-      .field-placeholder {
-        cursor: pointer;
-        padding: 2px 4px;
-        border-radius: 2px;
-        transition: all 0.2s;
-        border-bottom: 1px solid currentColor;
-      }
-      .field-placeholder:hover {
-        background: rgba(234, 179, 8, 0.3);
-      }
-      .field-placeholder[data-selected="true"] {
-        background: rgba(34, 197, 94, 0.3);
-        color: #16a34a;
-        font-weight: 500;
-      }
-      .field-placeholder .field-placeholder {
-        border-bottom: none;
-      }
-    </style>
-  `;
-  
-  return styleTag + html;
+  // 不再添加内联样式，由前端组件统一处理
+  return html;
 }
 
 /**

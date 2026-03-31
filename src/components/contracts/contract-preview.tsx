@@ -115,8 +115,8 @@ export function ContractPreview({
 
   // 处理HTML，更新选中状态
   const processedHtml = useMemo(() => {
-    // 移除内联 style 标签（我们用自己的样式）
-    let processed = html.replace(/<style>[\s\S]*?<\/style>/gi, '');
+    // 保留原始style，只更新字段的选中状态
+    let processed = html;
     
     // 更新字段的选中状态
     selectedFieldIds.forEach(id => {
@@ -233,6 +233,28 @@ export function ContractPreview({
                 text-indent: 2em;
                 margin-bottom: 12px;
               }
+              /* 表格样式 */
+              .contract-content table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 16px 0;
+                font-size: 13px;
+              }
+              .contract-content table th,
+              .contract-content table td {
+                border: 1px solid #d1d5db;
+                padding: 8px 12px;
+                text-align: left;
+                vertical-align: top;
+              }
+              .contract-content table th {
+                background: #f3f4f6;
+                font-weight: 600;
+                text-align: center;
+              }
+              .contract-content table tr:hover {
+                background: #f9fafb;
+              }
               .field-label {
                 font-weight: 500;
               }
@@ -260,6 +282,15 @@ export function ContractPreview({
               }
               .field-placeholder u {
                 text-decoration: none;
+              }
+              /* 列表样式 */
+              .contract-content ul,
+              .contract-content ol {
+                padding-left: 2em;
+                margin: 8px 0;
+              }
+              .contract-content li {
+                margin: 4px 0;
               }
             `}</style>
             <div 
