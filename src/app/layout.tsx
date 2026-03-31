@@ -78,7 +78,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <head />
+      <head suppressHydrationWarning />
       <body className="antialiased" suppressHydrationWarning>
         <Script
           id="error-suppress"
