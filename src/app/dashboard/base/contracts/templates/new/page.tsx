@@ -33,11 +33,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ParseResult } from "@/types/contract-template";
-import type { TemplateVariable, VariableBinding, VariableType, VariableCategory, VariableTypeLabels as VTLabels, VariableCategoryLabels as VTCatLabels } from "@/types/template-variable";
+import type { TemplateVariable, VariableType, VariableCategory } from "@/types/template-variable";
 import { PresetVariables, VariableTypeLabels, VariableCategoryLabels } from "@/types/template-variable";
 
 // 步骤定义
@@ -96,17 +95,37 @@ export default function NewTemplatePage() {
   const [bases, setBases] = useState<Base[]>([]);
   const [loadingBases, setLoadingBases] = useState(false);
   
-  // 步骤2: 变量绑定（合并选择和绑定）
-  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
-  const [bindings, setBindings] = useState<VariableBinding[]>([]);
-  const [insertMode, setInsertMode] = useState(false);
+  // 步骤2: 变量绑定
+  // 使用统一的标记系统，支持待绑定和已绑定状态
+  interface Marker {
+    id: string;
+    status: 'pending' | 'bound';
+    variableKey?: string;
+    position: {
+      anchorText: string;
+      offset: number;
+    };
+  }
+  
+  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
   const [showVariablePicker, setShowVariablePicker] = useState(false);
-  const [selectedPosition, setSelectedPosition] = useState<{
-    anchorText: string;
-    offset: number;
-  } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
+  
+  // 已选变量（用于保存）
+  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
+  
+  // 兼容旧数据结构的 bindings（用于保存到后端）
+  const bindings = useMemo(() => {
+    return markers
+      .filter(m => m.status === 'bound' && m.variableKey)
+      .map(m => ({
+        id: m.id,
+        variableKey: m.variableKey!,
+        position: m.position,
+      }));
+  }, [markers]);
   
   // 自定义变量弹窗
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -352,29 +371,24 @@ export default function NewTemplatePage() {
   
   // 检查变量是否已绑定
   const isVariableBound = (key: string) => {
-    return bindings.some(b => b.variableKey === key);
+    return markers.some(m => m.status === 'bound' && m.variableKey === key);
   };
   
-  // 处理文档点击
+  // 处理文档点击 - 添加待绑定标记
   const handleContentClick = useCallback((e: React.MouseEvent) => {
-    if (!insertMode) return;
-    
     const target = e.target as HTMLElement;
     
-    // 如果点击的是已绑定的变量，删除绑定
-    if (target.classList.contains('variable-binding')) {
-      const bindingId = target.dataset.bindingId;
-      if (bindingId) {
-        setBindings(prev => prev.filter(b => b.id !== bindingId));
-        toast.success("已删除绑定");
+    // 如果点击的是标记，打开变量选择器
+    if (target.classList.contains('variable-marker')) {
+      const markerId = target.dataset.markerId;
+      if (markerId) {
+        setActiveMarkerId(markerId);
+        setShowVariablePicker(true);
       }
       return;
     }
     
-    // 获取点击位置
-    const selection = window.getSelection();
-    if (!selection) return;
-    
+    // 否则，在点击位置添加一个待绑定标记
     const range = document.caretRangeFromPoint(e.clientX, e.clientY);
     if (!range) return;
     
@@ -392,37 +406,48 @@ export default function NewTemplatePage() {
       ? beforeText.substring(bestIndex) 
       : beforeText.slice(-15);
     
-    setSelectedPosition({ anchorText, offset: 0 });
-    setShowVariablePicker(true);
-  }, [insertMode]);
-  
-  // 插入变量
-  const handleInsertVariable = (variable: TemplateVariable) => {
-    if (!selectedPosition) return;
-    
-    const newBinding: VariableBinding = {
-      id: `binding-${Date.now()}`,
-      variableKey: variable.key,
-      position: {
-        anchorText: selectedPosition.anchorText,
-        offset: selectedPosition.offset,
-      },
+    // 创建待绑定标记
+    const newMarker: Marker = {
+      id: `marker-${Date.now()}`,
+      status: 'pending',
+      position: { anchorText, offset: 0 },
     };
     
-    // 如果变量未在选择列表中，添加它
+    setMarkers(prev => [...prev, newMarker]);
+    setActiveMarkerId(newMarker.id);
+    setShowVariablePicker(true);
+  }, []);
+  
+  // 为标记绑定变量
+  const handleBindVariable = (variable: TemplateVariable) => {
+    if (!activeMarkerId) return;
+    
+    setMarkers(prev => prev.map(m => 
+      m.id === activeMarkerId 
+        ? { ...m, status: 'bound', variableKey: variable.key }
+        : m
+    ));
+    
+    // 添加到已选变量
     if (!selectedVariables.find(v => v.key === variable.key)) {
       setSelectedVariables(prev => [...prev, variable]);
     }
     
-    setBindings(prev => [...prev, newBinding]);
     setShowVariablePicker(false);
-    setSelectedPosition(null);
-    toast.success(`已绑定变量: ${variable.name}`);
+    setActiveMarkerId(null);
+    toast.success(`已绑定: ${variable.name}`);
   };
   
-  // 删除绑定
-  const handleRemoveBinding = (bindingId: string) => {
-    setBindings(prev => prev.filter(b => b.id !== bindingId));
+  // 删除标记
+  const handleRemoveMarker = (markerId: string) => {
+    setMarkers(prev => prev.filter(m => m.id !== markerId));
+    toast.success("已删除标记");
+  };
+  
+  // 更换变量（重新绑定）
+  const handleChangeVariable = (markerId: string) => {
+    setActiveMarkerId(markerId);
+    setShowVariablePicker(true);
   };
   
   // 添加自定义变量
@@ -441,9 +466,16 @@ export default function NewTemplatePage() {
     // 添加到已选变量
     setSelectedVariables(prev => [...prev, customVar]);
     
-    // 如果有选中位置，直接绑定
-    if (selectedPosition) {
-      handleInsertVariable(customVar);
+    // 如果有活动的标记，直接绑定
+    if (activeMarkerId) {
+      setMarkers(prev => prev.map(m => 
+        m.id === activeMarkerId 
+          ? { ...m, status: 'bound', variableKey: customVar.key }
+          : m
+      ));
+      setShowVariablePicker(false);
+      setActiveMarkerId(null);
+      toast.success(`已绑定: ${customVar.name}`);
     }
     
     setShowAddDialog(false);
@@ -462,22 +494,26 @@ export default function NewTemplatePage() {
     
     let result = parseResult.html;
     
-    // 标记已绑定变量
-    bindings.forEach((binding) => {
-      const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === binding.variableKey);
-      if (variable && binding.position.anchorText) {
-        const marker = `<span class="variable-binding" data-binding-id="${binding.id}" data-variable-key="${binding.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
-        
-        // 简单替换：在锚点文本后添加标记
-        result = result.replace(
-          binding.position.anchorText,
-          binding.position.anchorText + marker
-        );
+    // 渲染所有标记
+    markers.forEach((marker) => {
+      if (marker.status === 'bound' && marker.variableKey) {
+        // 已绑定标记 - 绿色实线
+        const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey);
+        if (variable && marker.position.anchorText) {
+          const html = `<span class="variable-marker bound" data-marker-id="${marker.id}" data-variable-key="${marker.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
+          result = result.replace(marker.position.anchorText, marker.position.anchorText + html);
+        }
+      } else {
+        // 待绑定标记 - 橙色虚线
+        if (marker.position.anchorText) {
+          const html = `<span class="variable-marker pending" data-marker-id="${marker.id}" style="background: rgba(251, 191, 36, 0.2); color: #d97706; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #f59e0b; font-weight: 500;">【点击选择变量】</span>`;
+          result = result.replace(marker.position.anchorText, marker.position.anchorText + html);
+        }
       }
     });
     
     return result;
-  }, [parseResult?.html, bindings, selectedVariables]);
+  }, [parseResult?.html, markers, selectedVariables]);
   
   // ========== 保存模板 ==========
   
@@ -698,7 +734,7 @@ export default function NewTemplatePage() {
     </div>
   );
   
-  // 步骤2: 变量绑定（合并选择和绑定）
+  // 步骤2: 变量绑定
   const renderBindingStep = () => {
     if (!parseResult?.html) {
       return (
@@ -710,6 +746,9 @@ export default function NewTemplatePage() {
       );
     }
     
+    const pendingCount = markers.filter(m => m.status === 'pending').length;
+    const boundCount = markers.filter(m => m.status === 'bound').length;
+    
     return (
       <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 左侧：合同预览 */}
@@ -718,17 +757,20 @@ export default function NewTemplatePage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">合同预览</CardTitle>
               <div className="flex items-center gap-2">
-                <Button
-                  variant={insertMode ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setInsertMode(!insertMode)}
-                  className={insertMode ? 'bg-green-600 hover:bg-green-700' : ''}
-                >
-                  <MousePointer className="h-4 w-4 mr-1" />
-                  {insertMode ? '插入模式已开启' : '开启插入模式'}
-                </Button>
-                {bindings.length > 0 && (
-                  <Badge variant="secondary">{bindings.length} 处绑定</Badge>
+                <span className="text-sm text-muted-foreground">
+                  点击文档位置插入标记
+                </span>
+                {markers.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    {pendingCount > 0 && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-300">
+                        {pendingCount} 待绑定
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                      {boundCount} 已绑定
+                    </Badge>
+                  </div>
                 )}
               </div>
             </div>
@@ -736,22 +778,25 @@ export default function NewTemplatePage() {
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
             <div className="p-6 bg-muted/30 min-h-full">
               <style jsx global>{`
-                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; }
+                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; cursor: crosshair; }
                 .contract-content h1 { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 24px; }
                 .contract-content h2 { font-size: 16px; font-weight: bold; margin: 20px 0 12px; }
                 .contract-content p { text-indent: 2em; margin-bottom: 12px; }
                 .contract-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
                 .contract-content table th, .contract-content table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
                 .contract-content table th { background: #f3f4f6; font-weight: 600; }
-                .variable-binding { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #22c55e; font-weight: 500; }
-                .variable-binding:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #dc2626; }
+                .variable-marker { cursor: pointer; transition: all 0.15s ease; }
+                .variable-marker.pending { background: rgba(251, 191, 36, 0.25); color: #d97706; padding: 2px 8px; border-radius: 4px; border: 1px dashed #f59e0b; font-weight: 500; }
+                .variable-marker.pending:hover { background: rgba(251, 191, 36, 0.4); }
+                .variable-marker.bound { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; border: 1px solid #22c55e; font-weight: 500; }
+                .variable-marker.bound:hover { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #dc2626; }
                 .contract-content u { background: rgba(251, 191, 36, 0.2); padding: 0 4px; border-radius: 2px; }
                 .document-separator { margin: 40px 0; padding: 20px 0; border-top: 2px dashed #d1d5db; }
                 .document-separator h2 { text-align: center; color: #374151; font-size: 18px; margin-bottom: 20px; padding: 10px; background: #f3f4f6; border-radius: 4px; }
               `}</style>
               <div
                 ref={contentRef}
-                className={`contract-content prose prose-sm max-w-none ${insertMode ? 'cursor-crosshair' : ''}`}
+                className="contract-content prose prose-sm max-w-none"
                 onClick={handleContentClick}
                 dangerouslySetInnerHTML={{ __html: processedHtml }}
               />
@@ -759,69 +804,83 @@ export default function NewTemplatePage() {
           </CardContent>
         </Card>
 
-        {/* 右侧：变量面板 */}
+        {/* 右侧：标记面板 */}
         <Card className="overflow-hidden">
           <CardHeader className="py-3 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">变量列表</CardTitle>
+              <CardTitle className="text-sm">标记管理</CardTitle>
               <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
                 <Plus className="h-3 w-3 mr-1" />
-                自定义
+                自定义变量
               </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
-            {/* 搜索和分类 */}
-            <div className="p-3 space-y-2 border-b">
-              <Input
-                placeholder="搜索变量..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-8"
-              />
-              <div className="flex gap-1 flex-wrap">
-                <Button variant={activeCategory === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setActiveCategory('all')} className="text-xs h-6 px-2">全部</Button>
-                {(['enterprise', 'contract', 'location', 'date'] as VariableCategory[]).map((cat) => (
-                  <Button key={cat} variant={activeCategory === cat ? 'default' : 'outline'} size="sm" onClick={() => setActiveCategory(cat)} className="text-xs h-6 px-2">
-                    {VariableCategoryLabels[cat]}
-                  </Button>
-                ))}
+            {markers.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground">
+                <MousePointer className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                <p className="text-sm font-medium">暂无标记</p>
+                <p className="text-xs mt-1">点击合同文档中的位置添加标记</p>
               </div>
-            </div>
-            
-            {/* 变量列表 */}
-            <ScrollArea className="h-[calc(100%-120px)]">
-              <div className="p-2 space-y-1">
-                {filteredVariables.map((variable) => {
-                  const bound = isVariableBound(variable.key);
+            ) : (
+              <div className="p-3 space-y-2">
+                {markers.map((marker) => {
+                  const variable = marker.variableKey 
+                    ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
+                    : null;
+                  
                   return (
                     <div
-                      key={variable.id}
-                      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                        bound ? 'bg-green-50 border border-green-200' : 'hover:bg-muted'
-                      }`}
-                      onClick={() => {
-                        if (insertMode) {
-                          setSelectedPosition({ anchorText: '', offset: 0 });
-                          handleInsertVariable(variable);
-                        } else {
-                          toast.info('请先开启插入模式');
-                        }
-                      }}
+                      key={marker.id}
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-lg border transition-colors",
+                        marker.status === 'pending' 
+                          ? "bg-amber-50 border-amber-200" 
+                          : "bg-green-50 border-green-200"
+                      )}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium text-sm">{variable.name}</span>
-                          {bound && <Check className="h-3 w-3 text-green-600" />}
+                        <div className="flex items-center gap-2">
+                          {marker.status === 'pending' ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                              待绑定
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
+                              已绑定
+                            </Badge>
+                          )}
+                          <span className="font-medium text-sm truncate">
+                            {variable ? variable.name : '未选择变量'}
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{variable.key}</p>
+                        {variable && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{variable.key}</p>
+                        )}
                       </div>
-                      <Badge variant="outline" className="text-xs">{VariableTypeLabels[variable.type]}</Badge>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => handleChangeVariable(marker.id)}
+                        >
+                          {marker.status === 'pending' ? '绑定' : '更换'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveMarker(marker.id)}
+                        >
+                          删除
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            </ScrollArea>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1105,30 +1164,101 @@ export default function NewTemplatePage() {
       {/* 变量选择弹窗 */}
       {showVariablePicker && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-[500px] max-h-[80vh] overflow-hidden">
-            <CardHeader>
-              <CardTitle>选择要插入的变量</CardTitle>
+          <Card className="w-[600px] max-h-[80vh] overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle>选择变量</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                选择要绑定的变量，或点击取消删除此标记
+              </p>
             </CardHeader>
-            <CardContent className="p-0 overflow-auto max-h-[60vh]">
-              <div className="grid grid-cols-2 gap-2 p-4">
-                {filteredVariables.map((variable) => (
-                  <Button
-                    key={variable.id}
-                    variant="outline"
-                    className="justify-start h-auto py-3"
-                    onClick={() => handleInsertVariable(variable)}
+            <CardContent className="p-0 overflow-hidden">
+              {/* 搜索和分类 */}
+              <div className="p-4 border-b space-y-3">
+                <Input
+                  placeholder="搜索变量..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <div className="flex gap-2 flex-wrap">
+                  <Button 
+                    variant={activeCategory === 'all' ? 'default' : 'outline'} 
+                    size="sm" 
+                    onClick={() => setActiveCategory('all')}
                   >
-                    <Plus className="h-4 w-4 mr-2 shrink-0" />
-                    <div className="text-left">
-                      <div className="font-medium">{variable.name}</div>
-                      <div className="text-xs text-muted-foreground">{VariableTypeLabels[variable.type]}</div>
-                    </div>
+                    全部
                   </Button>
-                ))}
+                  {(['enterprise', 'contract', 'location', 'date'] as VariableCategory[]).map((cat) => (
+                    <Button 
+                      key={cat} 
+                      variant={activeCategory === cat ? 'default' : 'outline'} 
+                      size="sm" 
+                      onClick={() => setActiveCategory(cat)}
+                    >
+                      {VariableCategoryLabels[cat]}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 变量列表 */}
+              <div className="overflow-auto max-h-[400px]">
+                <div className="grid grid-cols-2 gap-2 p-4">
+                  {filteredVariables.map((variable) => {
+                    const bound = isVariableBound(variable.key);
+                    return (
+                      <Button
+                        key={variable.id}
+                        variant={bound ? "secondary" : "outline"}
+                        className={cn(
+                          "justify-start h-auto py-3",
+                          bound && "bg-green-50 border-green-200"
+                        )}
+                        onClick={() => handleBindVariable(variable)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {bound ? (
+                            <Check className="h-4 w-4 text-green-600 shrink-0" />
+                          ) : (
+                            <Plus className="h-4 w-4 shrink-0" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <div className="font-medium">{variable.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {VariableTypeLabels[variable.type]}
+                            {bound && " · 已绑定"}
+                          </div>
+                        </div>
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
-            <div className="flex justify-end p-4 border-t">
-              <Button variant="outline" onClick={() => { setShowVariablePicker(false); setSelectedPosition(null); }}>取消</Button>
+            <div className="flex justify-between p-4 border-t">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowAddDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                自定义变量
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowVariablePicker(false);
+                  // 如果是待绑定状态，删除标记
+                  if (activeMarkerId) {
+                    const marker = markers.find(m => m.id === activeMarkerId);
+                    if (marker?.status === 'pending') {
+                      handleRemoveMarker(activeMarkerId);
+                    }
+                  }
+                  setActiveMarkerId(null);
+                }}
+              >
+                取消
+              </Button>
             </div>
           </Card>
         </div>
