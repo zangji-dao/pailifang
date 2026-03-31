@@ -94,18 +94,27 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 解析Word文档
+ * 解析Word文档 - 同时返回文本和HTML
  */
 async function parseWord(buffer: Buffer, fileName: string, fileType: string): Promise<ParseResult> {
   // 动态导入mammoth
   const mammoth = await import('mammoth');
   
-  const result = await mammoth.extractRawText({ buffer });
-  const fullText = result.value;
+  // 提取纯文本
+  const textResult = await mammoth.extractRawText({ buffer });
+  const fullText = textResult.value;
+  
+  // 提取HTML（保留格式）
+  const htmlResult = await mammoth.convertToHtml({ buffer });
+  let html = htmlResult.value;
+  
+  // 处理HTML，标记下划线区域为可点击的字段
+  html = markFieldsInHtml(html);
 
   const pages: ParsedPage[] = [{
     pageNumber: 1,
     text: fullText,
+    html: html,
     hasTables: detectTables(fullText),
     hasImages: false,
   }];
@@ -120,7 +129,8 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string): Pr
     fileType: fileType as 'docx' | 'doc',
     pages,
     fullText,
-    detectedAttachments: [], // 不再自动检测附件
+    html: html,
+    detectedAttachments: [],
     detectedFields,
     mainContract: {
       startPage: 1,
@@ -132,13 +142,47 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string): Pr
 }
 
 /**
+ * 标记HTML中的下划线字段为可点击区域
+ */
+function markFieldsInHtml(html: string): string {
+  // 匹配下划线模式：标签 + 冒号 + 下划线
+  // 例如：企业名称：______
+  const fieldPattern = /([^\n：:>]+?)[：:]\s*([_＿]{2,})/g;
+  
+  let fieldIndex = 0;
+  html = html.replace(fieldPattern, (match, label, underlines) => {
+    const trimmedLabel = label.trim();
+    if (trimmedLabel.length < 2) return match;
+    
+    const fieldId = `field-${fieldIndex++}`;
+    const key = trimmedLabel
+      .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
+      .toLowerCase()
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    
+    // 将下划线区域替换为可点击的标记
+    return `<span class="field-label">${trimmedLabel}：</span><span class="field-placeholder" data-field-id="${fieldId}" data-field-key="${key}" data-field-label="${trimmedLabel}" data-selected="false">${underlines}</span>`;
+  });
+  
+  // 处理日期格式：____年____月____日
+  const datePattern = /([_＿]{2,})年([_＿]{2,})月([_＿]{2,})日/g;
+  html = html.replace(datePattern, (match) => {
+    const fieldId = `field-${fieldIndex++}`;
+    return `<span class="field-placeholder field-date" data-field-id="${fieldId}" data-field-key="date" data-field-label="日期" data-selected="false">${match}</span>`;
+  });
+  
+  return html;
+}
+
+/**
  * 检测表格
  */
 function detectTables(text: string): boolean {
   const tablePatterns = [
-    /\|.*\|.*\|/,  // 管道分隔
-    /\t.*\t.*\t/,  // 制表符分隔
-    /─{3,}/,       // 水平线
+    /\|.*\|.*\|/,
+    /\t.*\t.*\t/,
+    /─{3,}/,
   ];
   
   return tablePatterns.some(pattern => pattern.test(text));
@@ -146,23 +190,20 @@ function detectTables(text: string): boolean {
 
 /**
  * 检测可填充字段
- * 查找下划线占位符
  */
 function detectFillableFields(text: string): ContractFieldDefinition[] {
   const fields: ContractFieldDefinition[] = [];
   const seen = new Set<string>();
   
-  // 下划线占位符模式：标签后跟下划线
+  // 下划线占位符模式
   const underlinePattern = /([^\n：:_]+?)[:：]\s*([_＿]{3,})/g;
   
   let match;
   while ((match = underlinePattern.exec(text)) !== null) {
     const label = match[1].trim();
     
-    // 跳过太短的标签
     if (label.length < 2) continue;
     
-    // 生成字段key
     const key = label
       .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_')
       .toLowerCase()

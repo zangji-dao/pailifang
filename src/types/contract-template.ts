@@ -204,6 +204,7 @@ export interface ParseResult {
   // 解析内容
   pages: ParsedPage[];
   fullText: string;
+  html?: string;  // HTML格式内容（用于预览）
   
   // 识别结果
   detectedAttachments: DetectedAttachment[];

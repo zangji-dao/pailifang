@@ -41,6 +41,7 @@ import type {
   ParseResult, 
   ContractFieldDefinition 
 } from "@/types/contract-template";
+import { ContractPreview } from "@/components/contracts/contract-preview";
 
 // 步骤定义
 const STEPS = [
@@ -619,141 +620,44 @@ export default function NewTemplatePage() {
   );
   
   // 步骤3: 字段设置
-  const renderFieldsStep = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>可填充字段设置</CardTitle>
-              <CardDescription>
-                设置合同中需要动态填充的字段
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleAddField}>
-              <Plus className="h-4 w-4 mr-1" />
-              添加字段
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {fields.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+  const [selectedFieldIds, setSelectedFieldIds] = useState<Set<string>>(new Set());
+  
+  const renderFieldsStep = () => {
+    if (!parseResult?.html) {
+      return (
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
               <Edit2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>未检测到可填充字段</p>
-              <p className="text-sm">您可以手动添加字段或跳过此步骤</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {fields.map((field, index) => (
-                <div
-                  key={field.key}
-                  className="border rounded-lg p-4 hover:border-amber-300 transition-colors"
-                >
-                  {editingField === field.key ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label>字段标签</Label>
-                          <Input
-                            value={field.label}
-                            onChange={(e) => handleUpdateField(field.key, { label: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>字段标识</Label>
-                          <Input
-                            value={field.key}
-                            onChange={(e) => handleUpdateField(field.key, { key: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>字段类型</Label>
-                          <Select
-                            value={field.type}
-                            onValueChange={(v) => handleUpdateField(field.key, { type: v as any })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {fieldTypeOptions.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>占位符</Label>
-                          <Input
-                            value={field.placeholder || ""}
-                            onChange={(e) => handleUpdateField(field.key, { placeholder: e.target.value })}
-                            placeholder="输入提示文字"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={field.required}
-                            onCheckedChange={(v) => handleUpdateField(field.key, { required: v })}
-                          />
-                          <Label className="font-normal">必填字段</Label>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingField(null)}
-                        >
-                          完成
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{index + 1}</Badge>
-                        <div>
-                          <p className="font-medium flex items-center gap-2">
-                            {field.label}
-                            {field.required && (
-                              <span className="text-red-500">*</span>
-                            )}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {field.key} · {fieldTypeOptions.find(o => o.value === field.type)?.label}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingField(field.key)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteField(field.key)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+              <p>未检测到合同内容</p>
+              <p className="text-sm">请重新上传文档</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="space-y-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <h5 className="font-medium text-amber-800 mb-2">字段设置说明</h5>
+          <ul className="text-sm text-amber-700 space-y-1">
+            <li>• 点击左侧合同预览中的 <span className="bg-amber-100 px-1 rounded font-mono">____</span> 下划线区域即可添加字段</li>
+            <li>• 在右侧字段列表中可以设置字段类型、是否必填等属性</li>
+            <li>• 点击"添加字段"按钮可以手动添加自定义字段</li>
+          </ul>
+        </div>
+        
+        <ContractPreview
+          html={parseResult.html}
+          fields={fields}
+          onFieldsChange={setFields}
+          selectedFieldIds={selectedFieldIds}
+          onSelectedFieldIdsChange={setSelectedFieldIds}
+        />
+      </div>
+    );
+  };
   
   // 步骤4: 完成
   const renderCompleteStep = () => {
