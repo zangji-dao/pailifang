@@ -76,11 +76,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
-      <head>
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: errorSuppressScript }} />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <GlobalErrorHandler />
         <ConfirmProvider>
           {children}
