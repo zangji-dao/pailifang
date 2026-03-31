@@ -196,7 +196,8 @@ export interface ParsedAttachment {
   id: string;
   name: string;           // 文件名
   displayName: string;    // 显示名称（不含扩展名）
-  html: string;           // HTML内容
+  url: string;            // 文件URL（用于docx-preview渲染）
+  html: string;           // HTML内容（备用）
   text: string;           // 纯文本内容
   order: number;          // 排序
 }
@@ -211,10 +212,13 @@ export interface ParseResult {
   fileName: string;
   fileType: DocumentType;
   
+  // 文件URL（用于docx-preview渲染）
+  fileUrl?: string;
+  
   // 解析内容 - 主文档
   pages: ParsedPage[];
   fullText: string;
-  html?: string;  // 主文档HTML格式内容（用于预览）
+  html?: string;  // 主文档HTML格式内容（备用）
   
   // 附件文档 - 分开展示
   attachments: ParsedAttachment[];

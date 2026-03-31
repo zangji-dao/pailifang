@@ -1,12 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { ParseResult, ContractFieldDefinition, ParsedPage } from '@/types/contract-template';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
-
-const execAsync = promisify(exec);
+import { ParseResult, ParsedPage } from '@/types/contract-template';
+import { LLMClient, Config } from 'coze-coding-dev-sdk';
 
 // 强制使用Node.js运行时
 export const runtime = 'nodejs';
@@ -20,115 +15,84 @@ interface AttachmentInfo {
 }
 
 /**
- * 使用LibreOffice将Word文档转换为HTML
- * 比mammoth保留更多的格式信息
+ * 使用LLM分析文档结构并生成格式化HTML
  */
-async function convertWordToHtmlWithLibreOffice(
-  buffer: Buffer,
-  fileName: string
-): Promise<{ html: string; fullText: string }> {
-  const tmpDir = '/tmp/contract-convert';
-  const timestamp = Date.now();
-  const inputPath = path.join(tmpDir, `${timestamp}_${fileName}`);
-  const outputDir = path.join(tmpDir, `output_${timestamp}`);
+async function convertWithLLM(
+  text: string,
+  docTitle: string
+): Promise<{ html: string }> {
+  const config = new Config();
+  const client = new LLMClient(config);
+  
+  const systemPrompt = `你是一个专业的文档排版专家。你的任务是将原始文档文本转换为格式优美的HTML。
+
+## 输出要求：
+1. 保持原文档的段落结构，不要合并或拆分段落
+2. 正确识别并标记标题（h1/h2/h3）
+3. 表格使用table标签，保持原有结构
+4. 重要条款或关键词用<strong>加粗
+5. 数字编号列表用<ol>，符号列表用<ul>
+6. 每个段落用<p>包裹
+7. 保持合理的间距，段落之间不要有多余空行
+
+## 样式要求：
+- 不要添加任何CSS样式或内联style
+- 只输出纯净的HTML结构
+- 不要输出任何解释或说明文字
+- 直接从第一个HTML标签开始输出`;
+
+  const userPrompt = `请将以下文档内容转换为格式化的HTML：
+
+【文档标题】：${docTitle}
+
+【文档内容】：
+${text}
+
+请直接输出HTML代码，不要有任何其他文字。`;
+
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
+    { role: 'user' as const, content: userPrompt }
+  ];
   
   try {
-    // 创建临时目录
-    await fs.mkdir(tmpDir, { recursive: true });
-    await fs.mkdir(outputDir, { recursive: true });
+    const response = await client.invoke(messages, {
+      model: 'doubao-seed-2-0-lite-260215', // 使用轻量模型，速度快成本低
+      temperature: 0.3, // 低温度保证输出稳定
+    });
     
-    // 写入临时Word文件
-    await fs.writeFile(inputPath, buffer);
+    let html = response.content;
     
-    // 使用LibreOffice转换为HTML
-    const { stdout, stderr } = await execAsync(
-      `libreoffice --headless --convert-to html --outdir "${outputDir}" "${inputPath}"`,
-      { timeout: 30000 }
-    );
+    // 清理可能的markdown代码块标记
+    html = html.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
     
-    if (stderr && !stderr.includes('Warning')) {
-      console.log('LibreOffice stderr:', stderr);
-    }
-    
-    // 读取生成的HTML文件
-    const baseName = fileName.replace(/\.[^/.]+$/, '');
-    const htmlPath = path.join(outputDir, `${baseName}.html`);
-    
-    let html = '';
-    try {
-      html = await fs.readFile(htmlPath, 'utf-8');
-    } catch (readError) {
-      console.error('读取HTML文件失败:', readError);
-      // 如果LibreOffice转换失败，回退到mammoth
-      return await convertWordToHtmlWithMammoth(buffer, fileName);
-    }
-    
-    // 后处理HTML
-    html = postProcessLibreOfficeHtml(html);
-    
-    // 提取纯文本
-    const fullText = html
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    return { html, fullText };
+    return { html };
   } catch (error) {
-    console.error('LibreOffice转换失败，回退到mammoth:', error);
-    return await convertWordToHtmlWithMammoth(buffer, fileName);
-  } finally {
-    // 清理临时文件
-    try {
-      await fs.rm(inputPath, { force: true });
-      await fs.rm(outputDir, { recursive: true, force: true });
-    } catch (cleanupError) {
-      // 忽略清理错误
-    }
+    console.error('LLM转换失败:', error);
+    // 回退到简单转换
+    return { html: simpleTextToHtml(text, docTitle) };
   }
 }
 
 /**
- * 使用mammoth转换Word文档（备用方案）
+ * 简单文本转HTML（备用方案）
  */
-async function convertWordToHtmlWithMammoth(
-  buffer: Buffer,
-  fileName: string
-): Promise<{ html: string; fullText: string }> {
-  const mammoth = await import('mammoth');
+function simpleTextToHtml(text: string, title: string): string {
+  const paragraphs = text.split(/\n\n+/);
+  const htmlParts = paragraphs.map(p => {
+    const trimmed = p.trim();
+    if (!trimmed) return '';
+    
+    // 检测标题（通常较短且可能是数字编号开头）
+    if (trimmed.length < 50 && /^[\d一二三四五六七八九十]+[、.]/.test(trimmed)) {
+      return `<h2>${trimmed}</h2>`;
+    }
+    
+    // 普通段落
+    return `<p>${trimmed.replace(/\n/g, '<br/>')}</p>`;
+  }).filter(Boolean);
   
-  const textResult = await mammoth.extractRawText({ buffer });
-  const fullText = textResult.value;
-  
-  const htmlResult = await mammoth.convertToHtml({ buffer });
-  let html = htmlResult.value;
-  
-  html = postProcessLibreOfficeHtml(html);
-  
-  return { html, fullText };
-}
-
-/**
- * 后处理LibreOffice生成的HTML
- */
-function postProcessLibreOfficeHtml(html: string): string {
-  return html
-    // 移除内联的字体样式（使用CSS代替）
-    .replace(/font-family:[^;"]*;?/gi, '')
-    // 保留颜色
-    // 移除过长的style属性
-    .replace(/ style="[^"]{500,}"/g, '')
-    // 确保表格有边框
-    .replace(/<table/gi, '<table style="border-collapse: collapse; width: 100%;"')
-    .replace(/<td/gi, '<td style="border: 1px solid #333; padding: 4px 8px; vertical-align: top;"')
-    .replace(/<th/gi, '<th style="border: 1px solid #333; padding: 4px 8px; background: #f5f5f5;"')
-    // 清理空段落
-    .replace(/<p[^>]*>\s*<\/p>/gi, '')
-    .replace(/<p[^>]*>&nbsp;<\/p>/gi, '<p style="margin: 0.5em 0;">&nbsp;</p>');
+  return `<h1>${title}</h1>\n${htmlParts.join('\n')}`;
 }
 
 /**
@@ -169,7 +133,7 @@ export async function POST(request: NextRequest) {
       .eq('id', templateId);
 
     try {
-      // 1. 解析主文档（使用LibreOffice）
+      // 1. 下载主文档
       const mainResponse = await fetch(fileUrl);
       if (!mainResponse.ok) {
         throw new Error('下载主文档失败');
@@ -177,61 +141,71 @@ export async function POST(request: NextRequest) {
       
       const mainArrayBuffer = await mainResponse.arrayBuffer();
       const mainBuffer = Buffer.from(mainArrayBuffer);
-      const mainParseResult = await convertWordToHtmlWithLibreOffice(mainBuffer, fileName);
-
-      // 2. 解析所有附件
-      const attachmentResults: { name: string; html: string; text: string }[] = [];
       
-      for (const attachment of attachments) {
+      // 2. 提取纯文本（使用mammoth）
+      const mammoth = await import('mammoth');
+      const textResult = await mammoth.extractRawText({ buffer: mainBuffer });
+      const fullText = textResult.value;
+      
+      // 3. 使用LLM生成格式化HTML
+      console.log('正在使用LLM转换文档...');
+      const llmResult = await convertWithLLM(fullText, fileName.replace(/\.[^/.]+$/, ''));
+      
+      // 4. 处理附件
+      const attachmentResults: { id: string; name: string; url: string; html: string; text: string }[] = [];
+      
+      for (let i = 0; i < attachments.length; i++) {
+        const attachment = attachments[i];
         try {
           const attResponse = await fetch(attachment.url);
           if (!attResponse.ok) continue;
           
           const attArrayBuffer = await attResponse.arrayBuffer();
           const attBuffer = Buffer.from(attArrayBuffer);
-          const attParseResult = await convertWordToHtmlWithLibreOffice(attBuffer, attachment.name);
+          const attTextResult = await mammoth.extractRawText({ buffer: attBuffer });
+          
+          // 附件也用LLM转换
+          const attHtmlResult = await convertWithLLM(attTextResult.value, attachment.name.replace(/\.[^/.]+$/, ''));
           
           attachmentResults.push({
+            id: `att-${i}`,
             name: attachment.name,
-            html: attParseResult.html || '',
-            text: attParseResult.fullText,
+            url: attachment.url,
+            html: attHtmlResult.html,
+            text: attTextResult.value,
           });
         } catch (attError) {
           console.error(`解析附件 ${attachment.name} 失败:`, attError);
         }
       }
 
-      // 3. 构建附件数据（不合并到主文档）
+      // 5. 构建附件数据
       const parsedAttachments = attachmentResults.map((att, index) => ({
-        id: `att-${index}`,
+        id: att.id,
         name: att.name,
         displayName: att.name.replace(/\.[^/.]+$/, ''),
+        url: att.url,
         html: att.html,
         text: att.text,
         order: index,
       }));
 
-      // 4. 合并文本（用于搜索等场景）
-      let fullText = mainParseResult.fullText;
-      for (const att of attachmentResults) {
-        fullText += `\n\n【${att.name}】\n${att.text}`;
-      }
-
-      // 5. 更新解析结果
+      // 6. 更新解析结果
       const parseResult: ParseResult = {
         success: true,
         totalPages: 1,
         fileName,
         fileType: fileType as 'docx' | 'doc',
+        fileUrl, // 保留原始文件URL
         pages: [{
           pageNumber: 1,
-          text: mainParseResult.fullText,
-          html: mainParseResult.html || '',
-          hasTables: detectTables(mainParseResult.fullText),
+          text: fullText,
+          html: llmResult.html,
+          hasTables: detectTables(fullText),
           hasImages: false,
         }],
         fullText,
-        html: mainParseResult.html || '',
+        html: llmResult.html,
         attachments: parsedAttachments,
         detectedAttachments: [],
         detectedFields: [],
@@ -239,7 +213,7 @@ export async function POST(request: NextRequest) {
           startPage: 1,
           endPage: 1,
           pageRange: '1',
-          content: mainParseResult.fullText,
+          content: fullText,
         },
       };
 
@@ -281,29 +255,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * 合并主文档和附件 HTML
- */
-function mergeDocuments(mainHtml: string, attachments: { name: string; html: string; text: string }[]): string {
-  let result = mainHtml;
-  
-  // 为每个附件添加分隔和标题
-  for (const att of attachments) {
-    if (att.html) {
-      result += `
-        <div class="document-separator" style="margin: 40px 0; padding: 20px 0; border-top: 2px dashed #d1d5db; page-break-before: always;">
-          <h2 style="text-align: center; color: #374151; font-size: 18px; margin-bottom: 20px; padding: 10px; background: #f3f4f6; border-radius: 4px;">
-            📎 ${att.name.replace(/\.[^/.]+$/, '')}
-          </h2>
-          ${att.html}
-        </div>
-      `;
-    }
-  }
-  
-  return result;
 }
 
 /**
