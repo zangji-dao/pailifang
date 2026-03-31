@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // 插入新的附件记录
     const attachmentsData = attachments.map((att: any, index: number) => ({
-      id: att.id || randomUUID(),
+      id: randomUUID(), // 始终生成新的UUID
       template_id: templateId,
       name: att.name,
       description: att.description || null,
@@ -40,12 +40,13 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('contract_attachments')
       .insert(attachmentsData)
-      .select();
+      .select('id, template_id, name, description, page_range, auto_detected, required, order, created_at');
 
     if (error) {
-      console.error('保存附件失败:', error);
+      console.error('保存附件失败:', JSON.stringify(error, null, 2));
+      console.error('尝试插入的数据:', JSON.stringify(attachmentsData, null, 2));
       return NextResponse.json(
-        { success: false, error: '保存附件失败' },
+        { success: false, error: `保存附件失败: ${error.message || JSON.stringify(error)}` },
         { status: 500 }
       );
     }
