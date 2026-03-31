@@ -412,6 +412,34 @@ export default function NewTemplatePage() {
     toast.success("文档已重置为原始内容");
   };
   
+  // 编辑功能：给选中文字添加下划线
+  const handleAddUnderline = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要添加下划线的文字");
+      return;
+    }
+    
+    // 使用 execCommand 添加下划线
+    document.execCommand('underline', false);
+    syncEditedContent();
+    toast.success("已添加下划线");
+  }, [syncEditedContent]);
+  
+  // 编辑功能：移除下划线
+  const handleRemoveUnderline = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要移除下划线的文字");
+      return;
+    }
+    
+    // 使用 execCommand 移除下划线
+    document.execCommand('removeFormat', false);
+    syncEditedContent();
+    toast.success("已移除格式");
+  }, [syncEditedContent]);
+  
   // 处理文档点击 - 用户自定义绑定位置（仅在非编辑模式下）
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     // 编辑模式下不处理点击
@@ -896,8 +924,29 @@ export default function NewTemplatePage() {
             
             {/* 编辑模式工具栏 */}
             {editMode && (
-              <div className="flex items-center gap-2 pt-2 border-t mt-2">
-                <span className="text-xs text-muted-foreground">编辑后点击"绑定模式"继续绑定变量</span>
+              <div className="flex items-center gap-3 pt-2 border-t mt-2">
+                <span className="text-xs text-muted-foreground">选中文字后：</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7"
+                  onClick={handleAddUnderline}
+                >
+                  <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
+                    <line x1="4" y1="21" x2="20" y2="21" />
+                  </svg>
+                  下划线
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7"
+                  onClick={handleRemoveUnderline}
+                >
+                  <Minus className="h-3.5 w-3.5 mr-1" />
+                  清除格式
+                </Button>
               </div>
             )}
           </CardHeader>
@@ -965,8 +1014,8 @@ export default function NewTemplatePage() {
                   <ul className="text-xs text-blue-700 space-y-1.5">
                     <li>• 直接在文档中点击即可编辑文字</li>
                     <li>• 可以删除、修改、添加内容</li>
+                    <li>• 选中文字后点击"下划线"添加下划线</li>
                     <li>• 编辑完成后切换到"绑定模式"继续</li>
-                    <li>• 编辑会清除已有的标记</li>
                   </ul>
                 </div>
                 <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
@@ -975,6 +1024,7 @@ export default function NewTemplatePage() {
                     <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Delete</kbd> 删除选中内容</li>
                     <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Enter</kbd> 换行</li>
                     <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+Z</kbd> 撤销</li>
+                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+U</kbd> 添加/移除下划线</li>
                   </ul>
                 </div>
                 <Button 
