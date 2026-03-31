@@ -1,17 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { ParseResult, DetectedAttachment, ContractFieldDefinition, ParsedPage } from '@/types/contract-template';
-import { randomUUID } from 'crypto';
+import { ParseResult, ContractFieldDefinition, ParsedPage } from '@/types/contract-template';
 
 // 强制使用Node.js运行时
 export const runtime = 'nodejs';
-
-// 动态导入配置
 export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/contract-templates/parse
- * 解析已上传的合同文档
+ * 解析已上传的合同文档（仅 Word 文档）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +19,14 @@ export async function POST(request: NextRequest) {
     if (!templateId || !fileUrl) {
       return NextResponse.json(
         { success: false, error: '缺少必要参数' },
+        { status: 400 }
+      );
+    }
+
+    // 验证文件类型
+    if (fileType !== 'docx' && fileType !== 'doc') {
+      return NextResponse.json(
+        { success: false, error: '仅支持 Word 文档解析' },
         { status: 400 }
       );
     }
@@ -42,17 +47,11 @@ export async function POST(request: NextRequest) {
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // 根据文件类型解析
-      let parseResult: ParseResult;
-      
-      if (fileType === 'pdf') {
-        parseResult = await parsePDF(buffer, fileName);
-      } else {
-        parseResult = await parseWord(buffer, fileName, fileType);
-      }
+      // 解析 Word 文档
+      const parseResult = await parseWord(buffer, fileName, fileType);
 
-      // 保存解析结果到数据库
-      await saveParseResult(supabase, templateId, parseResult);
+      // 保存识别出的字段到数据库
+      await saveFields(supabase, templateId, parseResult.detectedFields);
 
       // 更新解析状态为完成
       await supabase
@@ -95,133 +94,6 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 解析PDF文档 - 使用简化的文本提取
- */
-async function parsePDF(buffer: Buffer, fileName: string): Promise<ParseResult> {
-  // 使用 pdf-parse 进行文本提取
-  // 注意：pdf-parse 在 Next.js 中可能有兼容性问题
-  // 这里使用 try-catch 处理
-  
-  let fullText = '';
-  
-  try {
-    // 动态加载 pdf-parse
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pdfParseModule = require('pdf-parse');
-    // 处理 CommonJS 模块导出
-    const pdfParse = pdfParseModule.default || pdfParseModule;
-    
-    if (typeof pdfParse !== 'function') {
-      throw new Error('pdf-parse is not a function');
-    }
-    
-    const data = await pdfParse(buffer, {
-      max: 0,
-    });
-    fullText = data.text || '';
-  } catch (err) {
-    console.error('PDF解析库加载失败，尝试备用方案:', err);
-    // 如果 pdf-parse 失败，尝试提取 PDF 中的文本流
-    fullText = await extractPDFTextFallback(buffer);
-  }
-
-  const pages: ParsedPage[] = [{
-    pageNumber: 1,
-    text: fullText,
-    hasTables: detectTables(fullText),
-    hasImages: false,
-  }];
-
-  // 检测附件
-  const detectedAttachments = detectAttachments(fullText, 1, 1);
-  
-  // 检测可填充字段
-  const detectedFields = detectFillableFields(fullText);
-
-  return {
-    success: true,
-    totalPages: 1,
-    fileName,
-    fileType: 'pdf',
-    pages,
-    fullText,
-    detectedAttachments,
-    detectedFields,
-    mainContract: {
-      startPage: 1,
-      endPage: detectedAttachments.length > 0 ? detectedAttachments[0].startPage : 1,
-      pageRange: detectedAttachments.length > 0 ? `1-${detectedAttachments[0].startPage - 1}` : '1',
-      content: fullText,
-    },
-  };
-}
-
-/**
- * PDF 解析备用方案 - 从 PDF 流中提取文本
- */
-async function extractPDFTextFallback(buffer: Buffer): Promise<string> {
-  // 简单的 PDF 文本提取：查找 PDF 流中的文本对象
-  const content = buffer.toString('binary');
-  
-  // 提取 BT...ET 之间的文本
-  const textMatches: string[] = [];
-  const btEtPattern = /BT\s*([\s\S]*?)\s*ET/g;
-  
-  let match;
-  while ((match = btEtPattern.exec(content)) !== null) {
-    const textContent = match[1];
-    // 提取 Tj 和 TJ 操作符中的文本
-    const tjPattern = /\(([^)]+)\)\s*Tj/g;
-    const tjArrayPattern = /\[([^\]]+)\]\s*TJ/g;
-    
-    let tjMatch;
-    while ((tjMatch = tjPattern.exec(textContent)) !== null) {
-      // 解码 PDF 字符串
-      let text = tjMatch[1];
-      // 处理转义字符
-      text = text.replace(/\\n/g, '\n')
-                 .replace(/\\r/g, '\r')
-                 .replace(/\\t/g, '\t')
-                 .replace(/\\\(/g, '(')
-                 .replace(/\\\)/g, ')')
-                 .replace(/\\\\/g, '\\');
-      textMatches.push(text);
-    }
-    
-    let tjArrayMatch;
-    while ((tjArrayMatch = tjArrayPattern.exec(textContent)) !== null) {
-      // TJ 数组中的文本
-      const arrayContent = tjArrayMatch[1];
-      const stringPattern = /\(([^)]+)\)/g;
-      let strMatch;
-      while ((strMatch = stringPattern.exec(arrayContent)) !== null) {
-        let text = strMatch[1];
-        text = text.replace(/\\n/g, '\n')
-                   .replace(/\\r/g, '\r')
-                   .replace(/\\t/g, '\t')
-                   .replace(/\\\(/g, '(')
-                   .replace(/\\\)/g, ')')
-                   .replace(/\\\\/g, '\\');
-        textMatches.push(text);
-      }
-    }
-  }
-  
-  // 合并文本并处理
-  let extractedText = textMatches.join('');
-  
-  // 尝试解码 UTF-8
-  try {
-    // 处理常见的中文编码
-    extractedText = decodeURIComponent(escape(extractedText));
-  } catch {
-    // 如果解码失败，保留原文
-  }
-  
-  return extractedText || '[PDF文本提取失败，建议上传Word文档]';
-}
-
-/**
  * 解析Word文档
  */
 async function parseWord(buffer: Buffer, fileName: string, fileType: string): Promise<ParseResult> {
@@ -238,9 +110,6 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string): Pr
     hasImages: false,
   }];
 
-  // 检测附件
-  const detectedAttachments = detectAttachments(fullText, 1, 1);
-  
   // 检测可填充字段
   const detectedFields = detectFillableFields(fullText);
 
@@ -251,7 +120,7 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string): Pr
     fileType: fileType as 'docx' | 'doc',
     pages,
     fullText,
-    detectedAttachments,
+    detectedAttachments: [], // 不再自动检测附件
     detectedFields,
     mainContract: {
       startPage: 1,
@@ -266,7 +135,6 @@ async function parseWord(buffer: Buffer, fileName: string, fileType: string): Pr
  * 检测表格
  */
 function detectTables(text: string): boolean {
-  // 简单的表格检测：查找连续的分隔符模式
   const tablePatterns = [
     /\|.*\|.*\|/,  // 管道分隔
     /\t.*\t.*\t/,  // 制表符分隔
@@ -277,35 +145,6 @@ function detectTables(text: string): boolean {
 }
 
 /**
- * 检测附件分隔
- * 查找"附件一"、"附件二"等关键词
- */
-function detectAttachments(text: string, startPage: number, endPage: number): DetectedAttachment[] {
-  const attachments: DetectedAttachment[] = [];
-  
-  // 附件识别正则
-  const attachmentPattern = /附件([一二三四五六七八九十\d]+)[：:]\s*(.+?)(?=\n|$)/g;
-  
-  let match;
-  while ((match = attachmentPattern.exec(text)) !== null) {
-    const attachmentNum = match[1];
-    const attachmentName = match[2].trim();
-    
-    attachments.push({
-      id: `att-${attachmentNum}`,
-      name: `附件${attachmentNum}：${attachmentName}`,
-      startPage: 1, // 简化处理，实际需要更精确的页码
-      endPage: 1,
-      pageRange: '1',
-      confidence: 0.9,
-      content: '', // 需要进一步提取内容
-    });
-  }
-
-  return attachments;
-}
-
-/**
  * 检测可填充字段
  * 查找下划线占位符
  */
@@ -313,7 +152,7 @@ function detectFillableFields(text: string): ContractFieldDefinition[] {
   const fields: ContractFieldDefinition[] = [];
   const seen = new Set<string>();
   
-  // 下划线占位符模式
+  // 下划线占位符模式：标签后跟下划线
   const underlinePattern = /([^\n：:_]+?)[:：]\s*([_＿]{3,})/g;
   
   let match;
@@ -372,52 +211,30 @@ function inferFieldType(label: string): 'text' | 'date' | 'number' | 'select' {
 }
 
 /**
- * 保存解析结果到数据库
+ * 保存字段到数据库
  */
-async function saveParseResult(
+async function saveFields(
   supabase: ReturnType<typeof createClient>,
   templateId: string,
-  result: ParseResult
+  fields: ContractFieldDefinition[]
 ) {
-  // 保存识别出的附件
-  if (result.detectedAttachments.length > 0) {
-    const attachmentsData = result.detectedAttachments.map((att, index) => ({
-      id: randomUUID(),
-      template_id: templateId,
-      name: att.name,
-      page_range: att.pageRange,
-      auto_detected: true,
-      required: false,
-      order: index + 1,
-    }));
+  if (fields.length === 0) return;
 
-    const { error: attError } = await supabase
-      .from('contract_attachments')
-      .insert(attachmentsData);
-    
-    if (attError) {
-      console.error('保存附件失败:', attError);
-    }
-  }
+  const fieldsData = fields.map((field, index) => ({
+    template_id: templateId,
+    field_key: field.key,
+    field_label: field.label,
+    field_type: field.type,
+    default_value: field.defaultValue || null,
+    required: field.required || false,
+    sort_order: index,
+  }));
 
-  // 保存识别出的字段
-  if (result.detectedFields.length > 0) {
-    const fieldsData = result.detectedFields.map((field, index) => ({
-      template_id: templateId,
-      field_key: field.key,
-      field_label: field.label,
-      field_type: field.type,
-      default_value: field.defaultValue || null,
-      required: field.required || false,
-      sort_order: index,
-    }));
-
-    const { error: fieldError } = await supabase
-      .from('contract_fields')
-      .insert(fieldsData);
-    
-    if (fieldError) {
-      console.error('保存字段失败:', fieldError);
-    }
+  const { error } = await supabase
+    .from('contract_fields')
+    .insert(fieldsData);
+  
+  if (error) {
+    console.error('保存字段失败:', error);
   }
 }

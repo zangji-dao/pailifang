@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save,
   ArrowLeft,
   Loader2,
-  Eye,
   Upload,
   FileText,
   Check,
@@ -14,11 +13,6 @@ import {
   ChevronLeft,
   Trash2,
   Plus,
-  GripVertical,
-  AlertCircle,
-  FileDown,
-  RefreshCw,
-  X,
   Edit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,32 +31,19 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { 
   ParseResult, 
-  DetectedAttachment, 
   ContractFieldDefinition 
 } from "@/types/contract-template";
 
 // 步骤定义
 const STEPS = [
-  { id: 1, title: "上传文档", description: "上传合同PDF或Word文档" },
-  { id: 2, title: "确认附件", description: "确认自动识别的附件拆分" },
-  { id: 3, title: "基本信息", description: "填写模板基本信息" },
-  { id: 4, title: "字段设置", description: "设置可填充字段" },
-  { id: 5, title: "完成", description: "保存模板" },
+  { id: 1, title: "上传文档", description: "上传 Word 合同文档" },
+  { id: 2, title: "基本信息", description: "填写模板基本信息" },
+  { id: 3, title: "字段设置", description: "设置可填充字段" },
+  { id: 4, title: "完成", description: "保存模板" },
 ];
 
 // 字段类型选项
@@ -88,18 +69,16 @@ export default function NewTemplatePage() {
   const [templateId, setTemplateId] = useState<string>("");
   const [fileUrl, setFileUrl] = useState<string>("");
   
-  // 步骤2: 解析结果和附件
+  // 解析结果
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
-  const [attachments, setAttachments] = useState<DetectedAttachment[]>([]);
-  const [editingAttachment, setEditingAttachment] = useState<string | null>(null);
   
-  // 步骤3: 基本信息
+  // 步骤2: 基本信息
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("tenant");
   const [isDefault, setIsDefault] = useState(false);
   
-  // 步骤4: 字段设置
+  // 步骤3: 字段设置
   const [fields, setFields] = useState<ContractFieldDefinition[]>([]);
   const [editingField, setEditingField] = useState<string | null>(null);
   
@@ -111,13 +90,13 @@ export default function NewTemplatePage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // 验证文件类型 - 仅支持 Word
       const allowedTypes = [
-        "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword"
       ];
       if (!allowedTypes.includes(file.type)) {
-        toast.error("请上传 PDF 或 Word 文档");
+        toast.error("仅支持 Word 文档（.doc 或 .docx 格式）");
         return;
       }
       setUploadFile(file);
@@ -166,7 +145,6 @@ export default function NewTemplatePage() {
       }
       
       setParseResult(parseData.data);
-      setAttachments(parseData.data.detectedAttachments || []);
       setFields(parseData.data.detectedFields || []);
       
       // 自动填充模板名称
@@ -185,32 +163,7 @@ export default function NewTemplatePage() {
     }
   };
   
-  // ========== 步骤2: 确认附件 ==========
-  
-  const handleUpdateAttachment = (id: string, updates: Partial<DetectedAttachment>) => {
-    setAttachments(prev => prev.map(att => 
-      att.id === id ? { ...att, ...updates } : att
-    ));
-  };
-  
-  const handleDeleteAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(att => att.id !== id));
-  };
-  
-  const handleAddAttachment = () => {
-    const newAtt: DetectedAttachment = {
-      id: `att-new-${Date.now()}`,
-      name: `新附件`,
-      startPage: 1,
-      endPage: 1,
-      pageRange: "1",
-      confidence: 1,
-      content: "",
-    };
-    setAttachments(prev => [...prev, newAtt]);
-  };
-  
-  // ========== 步骤4: 字段设置 ==========
+  // ========== 步骤3: 字段设置 ==========
   
   const handleUpdateField = (key: string, updates: Partial<ContractFieldDefinition>) => {
     setFields(prev => prev.map(f => 
@@ -242,7 +195,7 @@ export default function NewTemplatePage() {
     
     if (!name.trim()) {
       toast.error("请输入模板名称");
-      setCurrentStep(3);
+      setCurrentStep(2);
       return;
     }
     
@@ -263,24 +216,7 @@ export default function NewTemplatePage() {
       
       if (!updateRes.ok) throw new Error("更新基本信息失败");
       
-      // 2. 保存附件
-      if (attachments.length > 0) {
-        await fetch("/api/contract-templates/confirm-attachments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            templateId,
-            attachments: attachments.map((att, idx) => ({
-              id: att.id,
-              name: att.name,
-              pageRange: att.pageRange,
-              order: idx + 1,
-            })),
-          }),
-        });
-      }
-      
-      // 3. 保存字段
+      // 2. 保存字段
       if (fields.length > 0) {
         await fetch("/api/contract-templates/fields", {
           method: "POST",
@@ -309,12 +245,10 @@ export default function NewTemplatePage() {
       case 1:
         return renderUploadStep();
       case 2:
-        return renderAttachmentsStep();
-      case 3:
         return renderBasicInfoStep();
-      case 4:
+      case 3:
         return renderFieldsStep();
-      case 5:
+      case 4:
         return renderCompleteStep();
       default:
         return null;
@@ -328,7 +262,7 @@ export default function NewTemplatePage() {
         <CardHeader>
           <CardTitle>上传合同文档</CardTitle>
           <CardDescription>
-            支持 PDF、Word（.doc/.docx）格式，系统将自动解析文档结构和附件
+            仅支持 Word 文档（.doc 或 .docx 格式），系统将自动识别可填充字段
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -345,7 +279,7 @@ export default function NewTemplatePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".doc,.docx"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -358,23 +292,13 @@ export default function NewTemplatePage() {
                     {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUploadFile(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
             ) : (
               <>
                 <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">点击或拖拽上传文档</p>
+                <p className="text-lg font-medium mb-2">点击上传 Word 文档</p>
                 <p className="text-sm text-muted-foreground">
-                  支持 PDF、Word 文档，单个文件最大 50MB
+                  支持 .doc、.docx 格式，单个文件最大 50MB
                 </p>
               </>
             )}
@@ -398,133 +322,34 @@ export default function NewTemplatePage() {
                 <Check className="h-4 w-4 text-green-600" />
                 解析完成
               </h4>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">文件类型：</span>
-                  <Badge variant="outline">{parseResult.fileType.toUpperCase()}</Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">识别附件：</span>
-                  <Badge variant="outline">{parseResult.detectedAttachments.length} 个</Badge>
-                </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">识别字段：</span>
                   <Badge variant="outline">{parseResult.detectedFields.length} 个</Badge>
                 </div>
+                <div>
+                  <span className="text-muted-foreground">文档字数：</span>
+                  <Badge variant="outline">{parseResult.fullText.length} 字</Badge>
+                </div>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-  
-  // 步骤2: 确认附件
-  const renderAttachmentsStep = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>确认附件拆分</CardTitle>
-              <CardDescription>
-                系统已自动识别文档中的附件，请确认或调整拆分结果
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleAddAttachment}>
-              <Plus className="h-4 w-4 mr-1" />
-              添加附件
-            </Button>
+          
+          {/* 提示信息 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h5 className="font-medium text-blue-800 mb-2">使用提示</h5>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• 文档中使用 <code className="bg-blue-100 px-1 rounded">____</code> 下划线标记的位置将被识别为可填充字段</li>
+              <li>• 例如：<code className="bg-blue-100 px-1 rounded">企业名称：______</code> 会自动识别为"企业名称"字段</li>
+              <li>• 合同附件请在模板创建后单独上传</li>
+            </ul>
           </div>
-        </CardHeader>
-        <CardContent>
-          {attachments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>未检测到附件</p>
-              <p className="text-sm">您可以手动添加附件或跳过此步骤</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {attachments.map((att, index) => (
-                <div
-                  key={att.id}
-                  className="border rounded-lg p-4 hover:border-amber-300 transition-colors"
-                >
-                  {editingAttachment === att.id ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>附件名称</Label>
-                          <Input
-                            value={att.name}
-                            onChange={(e) => handleUpdateAttachment(att.id, { name: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>页码范围</Label>
-                          <Input
-                            value={att.pageRange}
-                            onChange={(e) => handleUpdateAttachment(att.id, { pageRange: e.target.value })}
-                            placeholder="如: 6-10"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingAttachment(null)}
-                        >
-                          完成
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{index + 1}</Badge>
-                        <div>
-                          <p className="font-medium">{att.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            页码: {att.pageRange}
-                            {att.confidence < 0.9 && (
-                              <span className="ml-2 text-amber-600">
-                                (置信度: {Math.round(att.confidence * 100)}%)
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingAttachment(att.id)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteAttachment(att.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
   );
   
-  // 步骤3: 基本信息
+  // 步骤2: 基本信息
   const renderBasicInfoStep = () => (
     <div className="space-y-6">
       <Card>
@@ -577,7 +402,7 @@ export default function NewTemplatePage() {
     </div>
   );
   
-  // 步骤4: 字段设置
+  // 步骤3: 字段设置
   const renderFieldsStep = () => (
     <div className="space-y-6">
       <Card>
@@ -714,7 +539,7 @@ export default function NewTemplatePage() {
     </div>
   );
   
-  // 步骤5: 完成
+  // 步骤4: 完成
   const renderCompleteStep = () => (
     <div className="space-y-6">
       <Card>
@@ -739,30 +564,14 @@ export default function NewTemplatePage() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="text-muted-foreground">附件数量</Label>
-              <p className="font-medium">{attachments.length} 个</p>
-            </div>
-            <div className="space-y-2">
               <Label className="text-muted-foreground">可填充字段</Label>
               <p className="font-medium">{fields.length} 个</p>
             </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">源文件</Label>
+              <p className="font-medium">{parseResult?.fileName || "未上传"}</p>
+            </div>
           </div>
-          
-          {attachments.length > 0 && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">附件列表</Label>
-                <div className="flex flex-wrap gap-2">
-                  {attachments.map((att, idx) => (
-                    <Badge key={att.id} variant="outline">
-                      {idx + 1}. {att.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
           
           {fields.length > 0 && (
             <>
@@ -780,6 +589,12 @@ export default function NewTemplatePage() {
               </div>
             </>
           )}
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-sm text-amber-800">
+              模板保存后，您可以在模板详情页上传合同附件（如服务标准清单、安全责任承诺书等）。
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -793,9 +608,8 @@ export default function NewTemplatePage() {
         return parseResult !== null;
       case 2:
       case 3:
-      case 4:
         return true;
-      case 5:
+      case 4:
         return false;
       default:
         return false;
@@ -807,7 +621,7 @@ export default function NewTemplatePage() {
       handleUploadAndParse();
       return;
     }
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -891,7 +705,7 @@ export default function NewTemplatePage() {
         </Button>
         
         <div className="flex items-center gap-2">
-          {currentStep === 5 ? (
+          {currentStep === 4 ? (
             <Button
               onClick={handleSave}
               disabled={saving}

@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 
 /**
  * POST /api/contract-templates/upload
- * 上传合同文档并解析
+ * 上传合同文档（仅支持 Word 文档）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -21,30 +21,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证文件类型
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+    // 验证文件类型 - 仅支持 Word 文档
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword' // .doc
+    ];
+    
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { success: false, error: '不支持的文件类型，请上传 PDF 或 Word 文档' },
+        { success: false, error: '仅支持 Word 文档（.doc 或 .docx 格式）' },
         { status: 400 }
       );
     }
 
     // 确定文件类型
-    const fileType = file.type === 'application/pdf' ? 'pdf' : 
-                     file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'doc';
+    const fileType = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      ? 'docx' 
+      : 'doc';
 
     // 生成文件存储路径 - 使用安全的文件名
     const fileId = randomUUID();
     const ext = file.name.split('.').pop() || fileType;
-    // 使用安全的存储路径：只包含 UUID 和扩展名
     const storagePath = `${fileId}.${ext}`;
     
     // 读取文件内容
     const fileBuffer = await file.arrayBuffer();
     
     // 上传文件到Supabase存储
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('contract-templates')
       .upload(storagePath, fileBuffer, {
         contentType: file.type,
@@ -97,8 +101,6 @@ export async function POST(request: NextRequest) {
     // 创建新的模板记录
     const newTemplateId = randomUUID();
     const now = new Date().toISOString();
-
-    // 从文件名提取模板名称（去除扩展名）
     const templateName = file.name.replace(/\.[^/.]+$/, '');
 
     const { data: templateData, error: templateError } = await supabase
