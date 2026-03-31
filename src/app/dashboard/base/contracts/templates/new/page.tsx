@@ -34,6 +34,7 @@ import {
   Printer,
   ZoomIn,
   ZoomOut,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,6 +148,9 @@ export default function NewTemplatePage() {
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
+  
+  // 优化排版状态
+  const [optimizing, setOptimizing] = useState(false);
   
   // 缩放功能
   const handleZoomIn = useCallback(() => {
@@ -767,6 +771,43 @@ export default function NewTemplatePage() {
     return result;
   }, [activeDocumentId, currentDocumentHtml, editedHtml, markers, selectedVariables]);
   
+  // 优化排版功能
+  const handleOptimizeLayout = useCallback(async () => {
+    if (!processedHtml) {
+      toast.error("没有可优化的内容");
+      return;
+    }
+    
+    setOptimizing(true);
+    try {
+      const response = await fetch("/api/contract-templates/optimize-layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          html: processedHtml,
+          variables: markers.map(m => ({
+            key: m.variableKey,
+            name: m.variableKey || '未绑定'
+          }))
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setEditedHtml(data.data.html);
+        toast.success("排版优化完成");
+      } else {
+        throw new Error(data.error || "优化失败");
+      }
+    } catch (error) {
+      console.error("优化排版失败:", error);
+      toast.error(error instanceof Error ? error.message : "优化排版失败");
+    } finally {
+      setOptimizing(false);
+    }
+  }, [processedHtml, markers]);
+  
   // ========== 保存模板 ==========
   
   const handleSave = async () => {
@@ -1102,6 +1143,17 @@ export default function NewTemplatePage() {
               >
                 <Printer className="h-3.5 w-3.5 mr-1" />
                 打印
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={handleOptimizeLayout}
+                disabled={optimizing || !processedHtml}
+                title="使用AI优化文档排版"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1" />
+                {optimizing ? "优化中..." : "优化排版"}
               </Button>
             </div>
             
