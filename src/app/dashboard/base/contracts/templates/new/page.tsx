@@ -95,38 +95,6 @@ export default function NewTemplatePage() {
   const [bases, setBases] = useState<Base[]>([]);
   const [loadingBases, setLoadingBases] = useState(false);
   
-  // 步骤2: 变量绑定
-  // 使用统一的标记系统，支持待绑定和已绑定状态
-  interface Marker {
-    id: string;
-    status: 'pending' | 'bound';
-    variableKey?: string;
-    position: {
-      anchorText: string;
-      offset: number;
-    };
-  }
-  
-  const [markers, setMarkers] = useState<Marker[]>([]);
-  const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
-  const [showVariablePicker, setShowVariablePicker] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
-  
-  // 已选变量（用于保存）
-  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
-  
-  // 兼容旧数据结构的 bindings（用于保存到后端）
-  const bindings = useMemo(() => {
-    return markers
-      .filter(m => m.status === 'bound' && m.variableKey)
-      .map(m => ({
-        id: m.id,
-        variableKey: m.variableKey!,
-        position: m.position,
-      }));
-  }, [markers]);
-  
   // 自定义变量弹窗
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newVariable, setNewVariable] = useState<Partial<TemplateVariable>>({
@@ -350,6 +318,40 @@ export default function NewTemplatePage() {
   
   // ========== 步骤2: 变量绑定 ==========
   
+  // 标记类型：基于行位置定位
+  interface Marker {
+    id: string;
+    status: 'pending' | 'bound';
+    variableKey?: string;
+    lineId: string;        // 行标识
+    insertPosition: 'after-label' | 'end';  // 插入位置：标签后或行末
+    label?: string;        // 如果是标签后，记录标签文字（如"甲方："）
+  }
+  
+  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
+  const [showVariablePicker, setShowVariablePicker] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
+  
+  // 已选变量（用于保存）
+  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
+  
+  // 兼容旧数据结构的 bindings（用于保存到后端）
+  const bindings = useMemo(() => {
+    return markers
+      .filter(m => m.status === 'bound' && m.variableKey)
+      .map(m => ({
+        id: m.id,
+        variableKey: m.variableKey!,
+        position: {
+          lineId: m.lineId,
+          label: m.label || '',
+          offset: 0,
+        },
+      }));
+  }, [markers]);
+  
   // 过滤变量
   const filteredVariables = useMemo(() => {
     let vars = PresetVariables;
@@ -374,7 +376,7 @@ export default function NewTemplatePage() {
     return markers.some(m => m.status === 'bound' && m.variableKey === key);
   };
   
-  // 处理文档点击 - 添加待绑定标记
+  // 处理文档点击 - 基于行定位
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     
@@ -388,35 +390,36 @@ export default function NewTemplatePage() {
       return;
     }
     
-    // 否则，在点击位置添加一个待绑定标记
-    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-    if (!range) return;
-    
-    const textNode = range.startContainer;
-    const textContent = textNode.textContent || '';
-    const offset = range.startOffset;
-    const beforeText = textContent.substring(Math.max(0, offset - 30), offset);
-    
-    // 查找最近的"："作为锚点
-    const colonIndex = beforeText.lastIndexOf('：');
-    const colonIndex2 = beforeText.lastIndexOf(':');
-    const bestIndex = Math.max(colonIndex, colonIndex2);
-    
-    const anchorText = bestIndex >= 0 
-      ? beforeText.substring(bestIndex) 
-      : beforeText.slice(-15);
-    
-    // 创建待绑定标记
-    const newMarker: Marker = {
-      id: `marker-${Date.now()}`,
-      status: 'pending',
-      position: { anchorText, offset: 0 },
-    };
-    
-    setMarkers(prev => [...prev, newMarker]);
-    setActiveMarkerId(newMarker.id);
-    setShowVariablePicker(true);
-  }, []);
+    // 如果点击的是可绑定区域（有 data-bindable 属性）
+    const bindable = target.closest('[data-bindable]');
+    if (bindable) {
+      const lineId = bindable.getAttribute('data-line-id') || '';
+      const label = bindable.getAttribute('data-label') || '';
+      
+      // 检查该行是否已有标记
+      const existingMarker = markers.find(m => m.lineId === lineId);
+      if (existingMarker) {
+        // 已有标记，打开编辑
+        setActiveMarkerId(existingMarker.id);
+        setShowVariablePicker(true);
+        return;
+      }
+      
+      // 创建新标记
+      const newMarker: Marker = {
+        id: `marker-${Date.now()}`,
+        status: 'pending',
+        lineId,
+        insertPosition: 'after-label',
+        label,
+      };
+      
+      setMarkers(prev => [...prev, newMarker]);
+      setActiveMarkerId(newMarker.id);
+      setShowVariablePicker(true);
+      return;
+    }
+  }, [markers]);
   
   // 为标记绑定变量
   const handleBindVariable = (variable: TemplateVariable) => {
@@ -488,27 +491,58 @@ export default function NewTemplatePage() {
     });
   };
   
-  // 生成处理后的HTML
+  // 生成处理后的HTML - 为每行添加ID，并在正确位置渲染标记
   const processedHtml = useMemo(() => {
     if (!parseResult?.html) return '';
     
     let result = parseResult.html;
+    let lineCounter = 0;
     
-    // 渲染所有标记
+    // 1. 为每个段落和表格行添加 line-id
+    // 处理 <p> 标签
+    result = result.replace(/<p([^>]*)>/g, (match, attrs) => {
+      const lineId = `line-${lineCounter++}`;
+      return `<p${attrs} data-line-id="${lineId}">`;
+    });
+    
+    // 处理 <tr> 标签
+    result = result.replace(/<tr([^>]*)>/g, (match, attrs) => {
+      const lineId = `line-${lineCounter++}`;
+      return `<tr${attrs} data-line-id="${lineId}">`;
+    });
+    
+    // 2. 识别包含"："的标签（如"甲方："），在其后添加可绑定区域
+    // 匹配格式：文字内容以"："或":"结尾
+    result = result.replace(/([^<]+)([：:])/g, (match, before, colon) => {
+      const lineId = `bindable-${lineCounter++}`;
+      const label = before.trim();
+      // 如果前面的文字是标签（如"甲方"、"乙方名称"），添加可绑定区域
+      if (label.length > 0 && label.length < 20) {
+        return `${before}${colon}<span class="bindable-area" data-bindable="true" data-line-id="${lineId}" data-label="${label}${colon}" style="display: inline-block; min-width: 60px; min-height: 1.2em; border-bottom: 1px solid #9ca3af; margin: 0 4px;"></span>`;
+      }
+      return match;
+    });
+    
+    // 3. 为每个标记在对应位置渲染
     markers.forEach((marker) => {
-      if (marker.status === 'bound' && marker.variableKey) {
-        // 已绑定标记 - 绿色实线
-        const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey);
-        if (variable && marker.position.anchorText) {
-          const html = `<span class="variable-marker bound" data-marker-id="${marker.id}" data-variable-key="${marker.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
-          result = result.replace(marker.position.anchorText, marker.position.anchorText + html);
-        }
+      const variable = marker.variableKey 
+        ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
+        : null;
+      
+      if (marker.status === 'bound' && variable) {
+        // 已绑定标记 - 替换可绑定区域
+        const markerHtml = `<span class="variable-marker bound" data-marker-id="${marker.id}" data-variable-key="${marker.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
+        result = result.replace(
+          new RegExp(`<span class="bindable-area"[^>]*data-line-id="${marker.lineId}"[^>]*></span>`),
+          markerHtml
+        );
       } else {
-        // 待绑定标记 - 橙色虚线
-        if (marker.position.anchorText) {
-          const html = `<span class="variable-marker pending" data-marker-id="${marker.id}" style="background: rgba(251, 191, 36, 0.2); color: #d97706; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #f59e0b; font-weight: 500;">【点击选择变量】</span>`;
-          result = result.replace(marker.position.anchorText, marker.position.anchorText + html);
-        }
+        // 待绑定标记 - 在可绑定区域显示提示
+        const markerHtml = `<span class="variable-marker pending" data-marker-id="${marker.id}" style="background: rgba(251, 191, 36, 0.25); color: #d97706; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px;">点击选择变量</span>`;
+        result = result.replace(
+          new RegExp(`<span class="bindable-area"[^>]*data-line-id="${marker.lineId}"[^>]*></span>`),
+          markerHtml
+        );
       }
     });
     
@@ -758,7 +792,7 @@ export default function NewTemplatePage() {
               <CardTitle className="text-sm">合同预览</CardTitle>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  点击文档位置插入标记
+                  点击 <span className="inline-block w-8 h-4 border-b border-gray-400 align-middle mx-0.5"></span> 区域绑定变量
                 </span>
                 {markers.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -778,13 +812,24 @@ export default function NewTemplatePage() {
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
             <div className="p-6 bg-muted/30 min-h-full">
               <style jsx global>{`
-                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; cursor: crosshair; }
+                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; }
                 .contract-content h1 { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 24px; }
                 .contract-content h2 { font-size: 16px; font-weight: bold; margin: 20px 0 12px; }
                 .contract-content p { text-indent: 2em; margin-bottom: 12px; }
                 .contract-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
-                .contract-content table th, .contract-content table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+                .contract-content table th, .contract-content table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; vertical-align: top; }
                 .contract-content table th { background: #f3f4f6; font-weight: 600; }
+                /* 可绑定区域样式 */
+                .bindable-area { 
+                  cursor: pointer; 
+                  transition: all 0.15s ease;
+                  background: rgba(251, 191, 36, 0.08);
+                }
+                .bindable-area:hover { 
+                  background: rgba(251, 191, 36, 0.25); 
+                  border-color: #f59e0b;
+                }
+                /* 变量标记样式 */
                 .variable-marker { cursor: pointer; transition: all 0.15s ease; }
                 .variable-marker.pending { background: rgba(251, 191, 36, 0.25); color: #d97706; padding: 2px 8px; border-radius: 4px; border: 1px dashed #f59e0b; font-weight: 500; }
                 .variable-marker.pending:hover { background: rgba(251, 191, 36, 0.4); }
@@ -851,12 +896,12 @@ export default function NewTemplatePage() {
                             </Badge>
                           )}
                           <span className="font-medium text-sm truncate">
-                            {variable ? variable.name : '未选择变量'}
+                            {variable ? variable.name : marker.label || '未选择变量'}
                           </span>
                         </div>
-                        {variable && (
-                          <p className="text-xs text-muted-foreground mt-0.5">{variable.key}</p>
-                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {variable ? `${marker.label || ''} ${variable.key}` : `位置: ${marker.lineId}`}
+                        </p>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
