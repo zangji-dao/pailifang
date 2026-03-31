@@ -629,7 +629,7 @@ function getAttachmentContent(attachmentId: string): string {
           <div class="paragraph">2) 保洁费：¥7,200/年（可选）需书面确认启用，每日专属区域保洁</div>
           <div class="paragraph">3) 对赌管理费（仅税收未达标时触发）：乙方承诺年度全口径税收≥¥500万元（以税务完税凭证为准），若未完成按照下表标准缴纳对赌管理费：</div>
         </div>
-        <div class="subsection force-break-before">
+        <div class="subsection">
           <div class="paragraph" style="text-align: center; font-weight: bold;">税收完成额补偿金计算规则表</div>
           <table class="simple-table">
             <tr><th>税收完成额（T）</th><th>对赌管理费计算方式</th></tr>
@@ -669,7 +669,7 @@ function getAttachmentContent(attachmentId: string): string {
       </div>
     `,
     'att-4': `
-      <div class="section force-break-before">
+      <div class="section">
         <div class="section-title" style="text-align: center; font-size: 16pt;">附件五：Π立方企业服务中心安全责任承诺书</div>
         <div class="subsection">
           <div class="subsection-title">一、乙方承诺事项</div>
