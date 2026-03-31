@@ -1,9 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ParseResult, DetectedAttachment, ContractFieldDefinition, ParsedPage } from '@/types/contract-template';
+import { randomUUID } from 'crypto';
 
 // 强制使用Node.js运行时
 export const runtime = 'nodejs';
+
+// 动态导入配置
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/contract-templates/parse
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
         .eq('id', templateId);
 
       return NextResponse.json(
-        { success: false, error: '解析文档失败' },
+        { success: false, error: parseError instanceof Error ? parseError.message : '解析文档失败' },
         { status: 500 }
       );
     }
@@ -91,29 +95,34 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 解析PDF文档
+ * 解析PDF文档 - 使用简化的文本提取
  */
 async function parsePDF(buffer: Buffer, fileName: string): Promise<ParseResult> {
-  // 动态导入pdf-parse（避免在Edge Runtime中加载）
-  const pdfParse = await import('pdf-parse');
+  // 使用 pdf-parse 进行文本提取
+  // 注意：pdf-parse 在 Next.js 中可能有兼容性问题
+  // 这里使用 try-catch 处理
   
-  // @ts-expect-error - pdf-parse 动态导入
-  const data = await (pdfParse.default || pdfParse)(buffer, {
-    max: 0, // 不限制页数
-  });
+  let fullText = '';
+  
+  try {
+    // 使用 eval 动态加载 pdf-parse，避免 webpack 编译问题
+    const pdfParse = require('pdf-parse');
+    const data = await pdfParse(buffer, {
+      max: 0,
+    });
+    fullText = data.text || '';
+  } catch (err) {
+    console.error('PDF解析库加载失败，尝试备用方案:', err);
+    // 如果 pdf-parse 失败，尝试提取 PDF 中的文本流
+    fullText = await extractPDFTextFallback(buffer);
+  }
 
-  const pages: ParsedPage[] = [];
-  const fullText = data.text;
-  
-  // pdf-parse不直接提供分页信息，我们需要通过文本推断
-  // 这里使用简化处理，将整个文本作为一个页面
-  // 后续可以集成pdf-lib获取更精确的分页信息
-  pages.push({
+  const pages: ParsedPage[] = [{
     pageNumber: 1,
     text: fullText,
     hasTables: detectTables(fullText),
     hasImages: false,
-  });
+  }];
 
   // 检测附件
   const detectedAttachments = detectAttachments(fullText, 1, 1);
@@ -137,6 +146,71 @@ async function parsePDF(buffer: Buffer, fileName: string): Promise<ParseResult> 
       content: fullText,
     },
   };
+}
+
+/**
+ * PDF 解析备用方案 - 从 PDF 流中提取文本
+ */
+async function extractPDFTextFallback(buffer: Buffer): Promise<string> {
+  // 简单的 PDF 文本提取：查找 PDF 流中的文本对象
+  const content = buffer.toString('binary');
+  
+  // 提取 BT...ET 之间的文本
+  const textMatches: string[] = [];
+  const btEtPattern = /BT\s*([\s\S]*?)\s*ET/g;
+  
+  let match;
+  while ((match = btEtPattern.exec(content)) !== null) {
+    const textContent = match[1];
+    // 提取 Tj 和 TJ 操作符中的文本
+    const tjPattern = /\(([^)]+)\)\s*Tj/g;
+    const tjArrayPattern = /\[([^\]]+)\]\s*TJ/g;
+    
+    let tjMatch;
+    while ((tjMatch = tjPattern.exec(textContent)) !== null) {
+      // 解码 PDF 字符串
+      let text = tjMatch[1];
+      // 处理转义字符
+      text = text.replace(/\\n/g, '\n')
+                 .replace(/\\r/g, '\r')
+                 .replace(/\\t/g, '\t')
+                 .replace(/\\\(/g, '(')
+                 .replace(/\\\)/g, ')')
+                 .replace(/\\\\/g, '\\');
+      textMatches.push(text);
+    }
+    
+    let tjArrayMatch;
+    while ((tjArrayMatch = tjArrayPattern.exec(textContent)) !== null) {
+      // TJ 数组中的文本
+      const arrayContent = tjArrayMatch[1];
+      const stringPattern = /\(([^)]+)\)/g;
+      let strMatch;
+      while ((strMatch = stringPattern.exec(arrayContent)) !== null) {
+        let text = strMatch[1];
+        text = text.replace(/\\n/g, '\n')
+                   .replace(/\\r/g, '\r')
+                   .replace(/\\t/g, '\t')
+                   .replace(/\\\(/g, '(')
+                   .replace(/\\\)/g, ')')
+                   .replace(/\\\\/g, '\\');
+        textMatches.push(text);
+      }
+    }
+  }
+  
+  // 合并文本并处理
+  let extractedText = textMatches.join('');
+  
+  // 尝试解码 UTF-8
+  try {
+    // 处理常见的中文编码
+    extractedText = decodeURIComponent(escape(extractedText));
+  } catch {
+    // 如果解码失败，保留原文
+  }
+  
+  return extractedText || '[PDF文本提取失败，建议上传Word文档]';
 }
 
 /**
@@ -300,7 +374,7 @@ async function saveParseResult(
   // 保存识别出的附件
   if (result.detectedAttachments.length > 0) {
     const attachmentsData = result.detectedAttachments.map((att, index) => ({
-      id: att.id,
+      id: randomUUID(),
       template_id: templateId,
       name: att.name,
       page_range: att.pageRange,
@@ -309,9 +383,13 @@ async function saveParseResult(
       order: index + 1,
     }));
 
-    await supabase
+    const { error: attError } = await supabase
       .from('contract_attachments')
       .insert(attachmentsData);
+    
+    if (attError) {
+      console.error('保存附件失败:', attError);
+    }
   }
 
   // 保存识别出的字段
@@ -321,13 +399,17 @@ async function saveParseResult(
       field_key: field.key,
       field_label: field.label,
       field_type: field.type,
-      default_value: field.defaultValue,
+      default_value: field.defaultValue || null,
       required: field.required || false,
       sort_order: index,
     }));
 
-    await supabase
+    const { error: fieldError } = await supabase
       .from('contract_fields')
       .insert(fieldsData);
+    
+    if (fieldError) {
+      console.error('保存字段失败:', fieldError);
+    }
   }
 }
