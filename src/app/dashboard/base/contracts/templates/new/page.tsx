@@ -31,6 +31,9 @@ import {
   ListOrdered,
   IndentIncrease,
   IndentDecrease,
+  Printer,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,9 +133,30 @@ export default function NewTemplatePage() {
   // 保存状态
   const [saving, setSaving] = useState(false);
   
+  // 缩放比例
+  const [zoom, setZoom] = useState(100);
+  
   // 拖拽状态
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  
+  // 打印功能
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+  
+  // 缩放功能
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => Math.min(prev + 10, 150));
+  }, []);
+  
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => Math.max(prev - 10, 50));
+  }, []);
+  
+  const handleZoomReset = useCallback(() => {
+    setZoom(100);
+  }, []);
   
   // 获取基地列表
   useEffect(() => {
@@ -1018,6 +1042,51 @@ export default function NewTemplatePage() {
               </div>
             </div>
             
+            {/* 缩放和打印控制 */}
+            <div className="flex items-center gap-2 pt-2 border-t mt-2">
+              <span className="text-xs text-muted-foreground">缩放：</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleZoomOut}
+                disabled={zoom <= 50}
+                title="缩小"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs font-medium w-12 text-center">{zoom}%</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleZoomIn}
+                disabled={zoom >= 150}
+                title="放大"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleZoomReset}
+              >
+                重置
+              </Button>
+              <div className="flex-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={handlePrint}
+                title="打印文档"
+              >
+                <Printer className="h-3.5 w-3.5 mr-1" />
+                打印
+              </Button>
+            </div>
+            
             {/* 编辑模式工具栏 */}
             {editMode && (
               <div className="space-y-2 pt-2 border-t mt-2">
@@ -1172,37 +1241,139 @@ export default function NewTemplatePage() {
             )}
           </CardHeader>
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
-            <div className="p-6 bg-muted/30 min-h-full">
+            <div className="p-6 bg-muted/30 min-h-full flex justify-center">
               <style jsx global>{`
-                .contract-content { max-width: 800px; margin: 0 auto; padding: 40px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; font-size: 14px; line-height: 2; }
-                .contract-content h1 { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 24px; }
-                .contract-content h2 { font-size: 16px; font-weight: bold; margin: 20px 0 12px; }
-                .contract-content p { text-indent: 2em; margin-bottom: 12px; }
-                .contract-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
-                .contract-content table th, .contract-content table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; vertical-align: top; }
-                .contract-content table th { background: #f3f4f6; font-weight: 600; }
+                /* A4纸张模拟样式 */
+                .a4-paper {
+                  /* A4尺寸: 210mm x 297mm, 按96 DPI计算约为794px x 1123px */
+                  width: 210mm;
+                  min-height: 297mm;
+                  max-width: 210mm;
+                  /* 页边距：上下25mm，左右28mm（符合标准公文格式） */
+                  padding: 25mm 28mm;
+                  background: white;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                  font-size: 14pt;
+                  line-height: 1.8;
+                  color: #000;
+                  /* 确保内容不会溢出 */
+                  box-sizing: border-box;
+                  word-wrap: break-word;
+                }
+                
+                /* 标题样式 */
+                .a4-paper h1 { 
+                  font-size: 22pt; 
+                  font-weight: bold; 
+                  text-align: center; 
+                  margin-bottom: 20px; 
+                }
+                .a4-paper h2 { 
+                  font-size: 16pt; 
+                  font-weight: bold; 
+                  margin: 20px 0 12px; 
+                }
+                .a4-paper h3 { 
+                  font-size: 14pt; 
+                  font-weight: bold; 
+                  margin: 16px 0 10px; 
+                }
+                
+                /* 段落样式 */
+                .a4-paper p { 
+                  text-indent: 2em; 
+                  margin-bottom: 12px; 
+                  text-align: justify;
+                }
+                
+                /* 表格样式 */
+                .a4-paper table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+                  margin: 16px 0; 
+                  font-size: 12pt; 
+                }
+                .a4-paper table th, .a4-paper table td { 
+                  border: 1px solid #000; 
+                  padding: 8px 12px; 
+                  text-align: left; 
+                  vertical-align: top; 
+                }
+                .a4-paper table th { 
+                  background: #f5f5f5; 
+                  font-weight: 600; 
+                  text-align: center;
+                }
+                
+                /* 列表样式 */
+                .a4-paper ul, .a4-paper ol {
+                  margin: 12px 0;
+                  padding-left: 2em;
+                }
+                .a4-paper li {
+                  margin-bottom: 6px;
+                }
+                
                 /* 绑定模式样式 */
-                .contract-content.bind-mode { cursor: crosshair; }
-                .contract-content.bind-mode:hover { outline: 1px dashed #d1d5db; outline-offset: -1px; }
+                .a4-paper.bind-mode { cursor: crosshair; }
+                .a4-paper.bind-mode:hover { outline: 1px dashed #d1d5db; outline-offset: -1px; }
+                
                 /* 编辑模式样式 */
-                .contract-content.edit-mode { outline: 2px solid #3b82f6; outline-offset: -2px; }
-                .contract-content.edit-mode:focus { outline-color: #2563eb; }
+                .a4-paper.edit-mode { outline: 2px solid #3b82f6; outline-offset: 4px; }
+                .a4-paper.edit-mode:focus { outline-color: #2563eb; }
+                
                 /* 变量标记样式 */
                 .variable-marker { cursor: pointer; transition: all 0.15s ease; }
                 .variable-marker.pending { background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px; }
                 .variable-marker.pending:hover { background: rgba(251, 191, 36, 0.5); }
                 .variable-marker.bound { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; border: 1px solid #22c55e; font-weight: 500; }
                 .variable-marker.bound:hover { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #dc2626; }
-                .contract-content u { background: rgba(251, 191, 36, 0.2); padding: 0 4px; border-radius: 2px; }
-                .document-separator { margin: 40px 0; padding: 20px 0; border-top: 2px dashed #d1d5db; }
-                .document-separator h2 { text-align: center; color: #374151; font-size: 18px; margin-bottom: 20px; padding: 10px; background: #f3f4f6; border-radius: 4px; }
+                
+                /* 下划线高亮 */
+                .a4-paper u { background: rgba(251, 191, 36, 0.2); padding: 0 2px; }
+                
+                /* 文档分隔符 */
+                .document-separator { 
+                  margin: 30px 0; 
+                  padding: 20px 0; 
+                  border-top: 2px dashed #d1d5db; 
+                }
+                .document-separator h2 { 
+                  text-align: center; 
+                  color: #374151; 
+                  font-size: 16pt; 
+                  margin-bottom: 20px; 
+                  padding: 10px; 
+                  background: #f3f4f6; 
+                  border-radius: 4px; 
+                }
+                
+                /* 打印样式 */
+                @media print {
+                  body {
+                    background: white !important;
+                  }
+                  .a4-paper {
+                    box-shadow: none !important;
+                    margin: 0 !important;
+                    padding: 20mm 25mm !important;
+                  }
+                  @page {
+                    size: A4;
+                    margin: 0;
+                  }
+                }
               `}</style>
               <div
                 ref={contentRef}
                 className={cn(
-                  "contract-content prose prose-sm max-w-none",
+                  "a4-paper prose prose-sm max-w-none",
                   editMode ? "edit-mode" : "bind-mode"
                 )}
+                style={{
+                  transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
+                  transformOrigin: 'top center',
+                }}
                 contentEditable={editMode}
                 suppressContentEditableWarning
                 onClick={handleContentClick}
