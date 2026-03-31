@@ -191,6 +191,16 @@ export interface DetectedAttachment {
   content: string;        // 提取的文本内容
 }
 
+/** 解析后的附件文档 */
+export interface ParsedAttachment {
+  id: string;
+  name: string;           // 文件名
+  displayName: string;    // 显示名称（不含扩展名）
+  html: string;           // HTML内容
+  text: string;           // 纯文本内容
+  order: number;          // 排序
+}
+
 /** 解析结果 */
 export interface ParseResult {
   success: boolean;
@@ -201,10 +211,13 @@ export interface ParseResult {
   fileName: string;
   fileType: DocumentType;
   
-  // 解析内容
+  // 解析内容 - 主文档
   pages: ParsedPage[];
   fullText: string;
-  html?: string;  // HTML格式内容（用于预览）
+  html?: string;  // 主文档HTML格式内容（用于预览）
+  
+  // 附件文档 - 分开展示
+  attachments: ParsedAttachment[];
   
   // 识别结果
   detectedAttachments: DetectedAttachment[];

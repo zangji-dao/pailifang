@@ -136,6 +136,9 @@ export default function NewTemplatePage() {
   // 缩放比例
   const [zoom, setZoom] = useState(100);
   
+  // 当前选中的文档标签（主文档为 'main'，附件为附件id）
+  const [activeDocumentId, setActiveDocumentId] = useState<string>('main');
+  
   // 拖拽状态
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -697,10 +700,25 @@ export default function NewTemplatePage() {
     });
   };
   
-  // 生成处理后的HTML - 在用户点击位置渲染标记
+  // 获取当前文档的基础HTML（根据选中的标签）
+  const currentDocumentHtml = useMemo(() => {
+    if (activeDocumentId === 'main') {
+      return parseResult?.html || '';
+    }
+    // 查找对应的附件
+    const attachment = parseResult?.attachments?.find(a => a.id === activeDocumentId);
+    return attachment?.html || '';
+  }, [activeDocumentId, parseResult]);
+  
+  // 生成处理后的HTML - 在用户点击位置渲染标记（仅主文档）
   const processedHtml = useMemo(() => {
-    // 优先使用编辑后的HTML，否则使用原始HTML
-    const baseHtml = editedHtml || parseResult?.html || '';
+    // 非主文档直接返回原HTML
+    if (activeDocumentId !== 'main') {
+      return currentDocumentHtml;
+    }
+    
+    // 主文档：优先使用编辑后的HTML，否则使用原始HTML
+    const baseHtml = editedHtml || currentDocumentHtml;
     if (!baseHtml) return '';
     
     let result = baseHtml;
@@ -747,7 +765,7 @@ export default function NewTemplatePage() {
     });
     
     return result;
-  }, [editedHtml, parseResult?.html, markers, selectedVariables]);
+  }, [activeDocumentId, currentDocumentHtml, editedHtml, markers, selectedVariables]);
   
   // ========== 保存模板 ==========
   
@@ -1240,21 +1258,24 @@ export default function NewTemplatePage() {
               </div>
             )}
           </CardHeader>
-          <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
-            <div className="p-6 bg-muted/30 min-h-full flex justify-center">
+          <CardContent className={cn(
+            "p-0 overflow-auto relative",
+            parseResult?.attachments?.length ? "h-[calc(100%-52px-36px)]" : "h-[calc(100%-52px)]"
+          )}>
+            <div className="p-6 bg-muted/30 min-h-full flex justify-center overflow-auto">
               <style jsx global>{`
                 /* A4纸张模拟样式 */
                 .a4-paper {
-                  /* A4尺寸: 210mm x 297mm, 按96 DPI计算约为794px x 1123px */
+                  /* A4尺寸: 210mm x 297mm */
                   width: 210mm;
                   min-height: 297mm;
                   max-width: 210mm;
-                  /* 页边距：上下25mm，左右28mm（符合标准公文格式） */
-                  padding: 25mm 28mm;
+                  /* 页边距：上下2.5cm，左右2.8cm（符合标准公文格式） */
+                  padding: 2.5cm 2.8cm;
                   background: white;
                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                  font-size: 14pt;
-                  line-height: 1.8;
+                  font-size: 12pt;
+                  line-height: 1.5;
                   color: #000;
                   /* 确保内容不会溢出 */
                   box-sizing: border-box;
@@ -1263,26 +1284,25 @@ export default function NewTemplatePage() {
                 
                 /* 标题样式 */
                 .a4-paper h1 { 
-                  font-size: 22pt; 
+                  font-size: 18pt; 
                   font-weight: bold; 
                   text-align: center; 
-                  margin-bottom: 20px; 
+                  margin: 0.5em 0;
                 }
                 .a4-paper h2 { 
-                  font-size: 16pt; 
-                  font-weight: bold; 
-                  margin: 20px 0 12px; 
-                }
-                .a4-paper h3 { 
                   font-size: 14pt; 
                   font-weight: bold; 
-                  margin: 16px 0 10px; 
+                  margin: 0.8em 0 0.4em;
+                }
+                .a4-paper h3 { 
+                  font-size: 12pt; 
+                  font-weight: bold; 
+                  margin: 0.6em 0 0.3em;
                 }
                 
-                /* 段落样式 */
+                /* 段落样式 - 减少间距 */
                 .a4-paper p { 
-                  text-indent: 2em; 
-                  margin-bottom: 12px; 
+                  margin: 0.5em 0;
                   text-align: justify;
                 }
                 
@@ -1290,12 +1310,12 @@ export default function NewTemplatePage() {
                 .a4-paper table { 
                   width: 100%; 
                   border-collapse: collapse; 
-                  margin: 16px 0; 
-                  font-size: 12pt; 
+                  margin: 0.5em 0; 
+                  font-size: 10.5pt; 
                 }
                 .a4-paper table th, .a4-paper table td { 
                   border: 1px solid #000; 
-                  padding: 8px 12px; 
+                  padding: 4px 8px; 
                   text-align: left; 
                   vertical-align: top; 
                 }
@@ -1307,11 +1327,11 @@ export default function NewTemplatePage() {
                 
                 /* 列表样式 */
                 .a4-paper ul, .a4-paper ol {
-                  margin: 12px 0;
-                  padding-left: 2em;
+                  margin: 0.5em 0;
+                  padding-left: 1.5em;
                 }
                 .a4-paper li {
-                  margin-bottom: 6px;
+                  margin: 0.2em 0;
                 }
                 
                 /* 绑定模式样式 */
@@ -1332,22 +1352,6 @@ export default function NewTemplatePage() {
                 /* 下划线高亮 */
                 .a4-paper u { background: rgba(251, 191, 36, 0.2); padding: 0 2px; }
                 
-                /* 文档分隔符 */
-                .document-separator { 
-                  margin: 30px 0; 
-                  padding: 20px 0; 
-                  border-top: 2px dashed #d1d5db; 
-                }
-                .document-separator h2 { 
-                  text-align: center; 
-                  color: #374151; 
-                  font-size: 16pt; 
-                  margin-bottom: 20px; 
-                  padding: 10px; 
-                  background: #f3f4f6; 
-                  border-radius: 4px; 
-                }
-                
                 /* 打印样式 */
                 @media print {
                   body {
@@ -1356,7 +1360,7 @@ export default function NewTemplatePage() {
                   .a4-paper {
                     box-shadow: none !important;
                     margin: 0 !important;
-                    padding: 20mm 25mm !important;
+                    padding: 2.5cm 2.8cm !important;
                   }
                   @page {
                     size: A4;
@@ -1400,6 +1404,40 @@ export default function NewTemplatePage() {
                 dangerouslySetInnerHTML={{ __html: processedHtml }}
               />
             </div>
+            
+            {/* 文档标签页 - 类似Excel的Sheet标签 */}
+            {parseResult && (parseResult.attachments?.length > 0) && (
+              <div className="absolute bottom-0 left-0 right-0 bg-white border-t flex items-center px-2 py-1 gap-1">
+                <button
+                  onClick={() => setActiveDocumentId('main')}
+                  className={cn(
+                    "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors",
+                    activeDocumentId === 'main'
+                      ? "bg-background border-primary text-primary font-medium"
+                      : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <FileText className="h-3 w-3 inline-block mr-1" />
+                  主合同
+                </button>
+                {parseResult.attachments?.map((att) => (
+                  <button
+                    key={att.id}
+                    onClick={() => setActiveDocumentId(att.id)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors max-w-32 truncate",
+                      activeDocumentId === att.id
+                        ? "bg-background border-primary text-primary font-medium"
+                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                    )}
+                    title={att.displayName}
+                  >
+                    <FileText className="h-3 w-3 inline-block mr-1" />
+                    {att.displayName}
+                  </button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

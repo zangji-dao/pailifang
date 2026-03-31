@@ -83,10 +83,17 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. 合并 HTML
-      const mergedHtml = mergeDocuments(mainParseResult.html || '', attachmentResults);
+      // 3. 构建附件数据（不合并到主文档）
+      const parsedAttachments = attachmentResults.map((att, index) => ({
+        id: `att-${index}`,
+        name: att.name,
+        displayName: att.name.replace(/\.[^/.]+$/, ''),
+        html: att.html,
+        text: att.text,
+        order: index,
+      }));
 
-      // 4. 合并文本
+      // 4. 合并文本（用于搜索等场景）
       let fullText = mainParseResult.fullText;
       for (const att of attachmentResults) {
         fullText += `\n\n【${att.name}】\n${att.text}`;
@@ -100,20 +107,21 @@ export async function POST(request: NextRequest) {
         fileType: fileType as 'docx' | 'doc',
         pages: [{
           pageNumber: 1,
-          text: fullText,
-          html: mergedHtml,
-          hasTables: detectTables(fullText),
+          text: mainParseResult.fullText,
+          html: mainParseResult.html || '',
+          hasTables: detectTables(mainParseResult.fullText),
           hasImages: false,
         }],
         fullText,
-        html: mergedHtml,
+        html: mainParseResult.html || '',
+        attachments: parsedAttachments,
         detectedAttachments: [],
         detectedFields: [],
         mainContract: {
           startPage: 1,
           endPage: 1,
           pageRange: '1',
-          content: fullText,
+          content: mainParseResult.fullText,
         },
       };
 
