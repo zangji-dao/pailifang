@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save,
@@ -17,6 +17,7 @@ import {
   X,
   File,
   Image,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,13 @@ interface AttachmentFile {
   size: number;
 }
 
+// 基地类型
+interface Base {
+  id: string;
+  name: string;
+  address: string | null;
+}
+
 export default function NewTemplatePage() {
   const router = useRouter();
   const mainFileInputRef = useRef<HTMLInputElement>(null);
@@ -94,10 +102,15 @@ export default function NewTemplatePage() {
     size: number;
   }>>([]);
   
+  // 基地列表
+  const [bases, setBases] = useState<Base[]>([]);
+  const [loadingBases, setLoadingBases] = useState(false);
+  
   // 步骤2: 基本信息
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("tenant");
+  const [baseId, setBaseId] = useState<string>("");
   const [isDefault, setIsDefault] = useState(false);
   
   // 步骤3: 字段设置
@@ -106,6 +119,26 @@ export default function NewTemplatePage() {
   
   // 保存状态
   const [saving, setSaving] = useState(false);
+  
+  // 获取基地列表
+  useEffect(() => {
+    const fetchBases = async () => {
+      setLoadingBases(true);
+      try {
+        const res = await fetch("/api/bases");
+        const data = await res.json();
+        if (data.success) {
+          setBases(data.data || []);
+        }
+      } catch (err) {
+        console.error("获取基地列表失败:", err);
+      } finally {
+        setLoadingBases(false);
+      }
+    };
+    
+    fetchBases();
+  }, []);
   
   // ========== 步骤1: 上传文档 ==========
   
@@ -277,6 +310,12 @@ export default function NewTemplatePage() {
       return;
     }
     
+    if (!baseId) {
+      toast.error("请选择所属基地");
+      setCurrentStep(2);
+      return;
+    }
+    
     setSaving(true);
     try {
       // 1. 更新基本信息
@@ -288,6 +327,7 @@ export default function NewTemplatePage() {
           name,
           description,
           type,
+          base_id: baseId || null,
           is_default: isDefault,
         }),
       });
@@ -524,6 +564,26 @@ export default function NewTemplatePage() {
               />
             </div>
             <div className="space-y-2">
+              <Label>所属基地 *</Label>
+              <Select value={baseId} onValueChange={setBaseId} disabled={loadingBases}>
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingBases ? "加载中..." : "选择基地"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {bases.map((base) => (
+                    <SelectItem key={base.id} value={base.id}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        <span>{base.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label>模板类型</Label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger>
@@ -537,6 +597,12 @@ export default function NewTemplatePage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2 flex items-end">
+              <div className="flex items-center gap-2">
+                <Switch checked={isDefault} onCheckedChange={setIsDefault} />
+                <Label className="font-normal">设为默认模板</Label>
+              </div>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>模板描述</Label>
@@ -546,10 +612,6 @@ export default function NewTemplatePage() {
               placeholder="描述该模板的用途和特点"
               rows={3}
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={isDefault} onCheckedChange={setIsDefault} />
-            <Label className="font-normal">设为默认模板</Label>
           </div>
         </CardContent>
       </Card>
@@ -694,38 +756,48 @@ export default function NewTemplatePage() {
   );
   
   // 步骤4: 完成
-  const renderCompleteStep = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>确认并保存</CardTitle>
-          <CardDescription>
-            请检查以下信息，确认无误后保存模板
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">模板名称</Label>
-              <p className="font-medium">{name || "未填写"}</p>
+  const renderCompleteStep = () => {
+    const selectedBase = bases.find(b => b.id === baseId);
+    
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>确认并保存</CardTitle>
+            <CardDescription>
+              请检查以下信息，确认无误后保存模板
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">模板名称</Label>
+                <p className="font-medium">{name || "未填写"}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">所属基地</Label>
+                <p className="font-medium flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  {selectedBase?.name || "未选择"}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">模板类型</Label>
+                <p className="font-medium">
+                  {type === "tenant" ? "入驻合同" : 
+                   type === "service" ? "服务合同" :
+                   type === "lease" ? "租赁合同" : "其他合同"}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">可填充字段</Label>
+                <p className="font-medium">{fields.length} 个</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">合同附件</Label>
+                <p className="font-medium">{uploadedAttachments.length} 个</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">模板类型</Label>
-              <p className="font-medium">
-                {type === "tenant" ? "入驻合同" : 
-                 type === "service" ? "服务合同" :
-                 type === "lease" ? "租赁合同" : "其他合同"}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">可填充字段</Label>
-              <p className="font-medium">{fields.length} 个</p>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">合同附件</Label>
-              <p className="font-medium">{uploadedAttachments.length} 个</p>
-            </div>
-          </div>
           
           {uploadedAttachments.length > 0 && (
             <>
@@ -762,7 +834,8 @@ export default function NewTemplatePage() {
         </CardContent>
       </Card>
     </div>
-  );
+    );
+  };
   
   // ========== 导航按钮 ==========
   
