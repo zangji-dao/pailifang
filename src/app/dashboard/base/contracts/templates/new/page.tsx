@@ -11,13 +11,11 @@ import {
   Check,
   ChevronRight,
   ChevronLeft,
-  Trash2,
-  Plus,
-  Edit2,
   X,
   File,
   Image,
   Building2,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,27 +35,18 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { 
-  ParseResult, 
-  ContractFieldDefinition 
-} from "@/types/contract-template";
-import { ContractPreview } from "@/components/contracts/contract-preview";
+import type { ParseResult } from "@/types/contract-template";
+import type { TemplateVariable, VariableBinding } from "@/types/template-variable";
+import { VariablePool } from "@/components/contracts/variable-pool";
+import { ContractBindingEditor } from "@/components/contracts/contract-binding-editor";
 
 // 步骤定义
 const STEPS = [
-  { id: 1, title: "上传文档", description: "上传合同和附件" },
-  { id: 2, title: "基本信息", description: "填写模板基本信息" },
-  { id: 3, title: "字段设置", description: "设置可填充字段" },
-  { id: 4, title: "完成", description: "保存模板" },
-];
-
-// 字段类型选项
-const fieldTypeOptions = [
-  { value: "text", label: "文本" },
-  { value: "date", label: "日期" },
-  { value: "number", label: "数字" },
-  { value: "select", label: "下拉选择" },
-  { value: "textarea", label: "多行文本" },
+  { id: 1, title: "上传文档", description: "上传合同文件" },
+  { id: 2, title: "选择变量", description: "从变量库选择或添加" },
+  { id: 3, title: "绑定位置", description: "将变量绑定到文档位置" },
+  { id: 4, title: "基本信息", description: "填写模板信息" },
+  { id: 5, title: "完成", description: "预览并保存" },
 ];
 
 // 附件文件类型
@@ -107,16 +96,18 @@ export default function NewTemplatePage() {
   const [bases, setBases] = useState<Base[]>([]);
   const [loadingBases, setLoadingBases] = useState(false);
   
-  // 步骤2: 基本信息
+  // 步骤2: 选择变量
+  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
+  
+  // 步骤3: 绑定位置
+  const [bindings, setBindings] = useState<VariableBinding[]>([]);
+  
+  // 步骤4: 基本信息
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("tenant");
   const [baseId, setBaseId] = useState<string>("");
   const [isDefault, setIsDefault] = useState(false);
-  
-  // 步骤3: 字段设置
-  const [fields, setFields] = useState<ContractFieldDefinition[]>([]);
-  const [editingField, setEditingField] = useState<string | null>(null);
   
   // 保存状态
   const [saving, setSaving] = useState(false);
@@ -187,7 +178,6 @@ export default function NewTemplatePage() {
       setAttachments(prev => [...prev, ...validFiles]);
     }
     
-    // 重置 input
     if (attachmentInputRef.current) {
       attachmentInputRef.current.value = "";
     }
@@ -215,11 +205,9 @@ export default function NewTemplatePage() {
     
     setUploading(true);
     try {
-      // 1. 上传主文件和附件
       const formData = new FormData();
       formData.append("file", mainFile);
       
-      // 添加附件
       for (const att of attachments) {
         formData.append("attachments", att.file);
       }
@@ -238,7 +226,6 @@ export default function NewTemplatePage() {
       setUploadedAttachments(uploadData.data.attachments || []);
       setUploading(false);
       
-      // 2. 解析文档
       setParsing(true);
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
@@ -257,9 +244,7 @@ export default function NewTemplatePage() {
       }
       
       setParseResult(parseData.data);
-      setFields(parseData.data.detectedFields || []);
       
-      // 自动填充模板名称
       if (!name) {
         setName(mainFile.name.replace(/\.[^/.]+$/, ""));
       }
@@ -275,28 +260,6 @@ export default function NewTemplatePage() {
     }
   };
   
-  // ========== 步骤3: 字段设置 ==========
-  
-  const handleUpdateField = (key: string, updates: Partial<ContractFieldDefinition>) => {
-    setFields(prev => prev.map(f => 
-      f.key === key ? { ...f, ...updates } : f
-    ));
-  };
-  
-  const handleDeleteField = (key: string) => {
-    setFields(prev => prev.filter(f => f.key !== key));
-  };
-  
-  const handleAddField = () => {
-    const newField: ContractFieldDefinition = {
-      key: `field_${Date.now()}`,
-      label: "新字段",
-      type: "text",
-      required: false,
-    };
-    setFields(prev => [...prev, newField]);
-  };
-  
   // ========== 保存模板 ==========
   
   const handleSave = async () => {
@@ -307,13 +270,13 @@ export default function NewTemplatePage() {
     
     if (!name.trim()) {
       toast.error("请输入模板名称");
-      setCurrentStep(2);
+      setCurrentStep(4);
       return;
     }
     
     if (!baseId) {
       toast.error("请选择所属基地");
-      setCurrentStep(2);
+      setCurrentStep(4);
       return;
     }
     
@@ -335,14 +298,15 @@ export default function NewTemplatePage() {
       
       if (!updateRes.ok) throw new Error("更新基本信息失败");
       
-      // 2. 保存字段
-      if (fields.length > 0) {
-        await fetch("/api/contract-templates/fields", {
+      // 2. 保存变量绑定
+      if (selectedVariables.length > 0) {
+        await fetch("/api/contract-templates/variables", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             templateId,
-            fields,
+            variables: selectedVariables,
+            bindings,
           }),
         });
       }
@@ -364,10 +328,12 @@ export default function NewTemplatePage() {
       case 1:
         return renderUploadStep();
       case 2:
-        return renderBasicInfoStep();
+        return renderVariablePoolStep();
       case 3:
-        return renderFieldsStep();
+        return renderBindingStep();
       case 4:
+        return renderBasicInfoStep();
+      case 5:
         return renderCompleteStep();
       default:
         return null;
@@ -377,7 +343,6 @@ export default function NewTemplatePage() {
   // 步骤1: 上传文档
   const renderUploadStep = () => (
     <div className="space-y-6">
-      {/* 主合同文档上传 */}
       <Card>
         <CardHeader>
           <CardTitle>上传合同文档</CardTitle>
@@ -425,15 +390,12 @@ export default function NewTemplatePage() {
         </CardContent>
       </Card>
       
-      {/* 附件上传 */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>合同附件</CardTitle>
-              <CardDescription>
-                上传合同相关的附件文件（可选）
-              </CardDescription>
+              <CardDescription>上传合同相关的附件文件（可选）</CardDescription>
             </div>
             <Button
               variant="outline"
@@ -489,7 +451,6 @@ export default function NewTemplatePage() {
         </CardContent>
       </Card>
       
-      {/* 解析进度 */}
       {(uploading || parsing) && (
         <Card>
           <CardContent className="pt-6">
@@ -503,56 +464,88 @@ export default function NewTemplatePage() {
           </CardContent>
         </Card>
       )}
-      
-      {/* 解析结果预览 */}
-      {parseResult && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <h4 className="font-medium flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-600" />
-                解析完成
-              </h4>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">识别字段：</span>
-                  <Badge variant="outline">{parseResult.detectedFields.length} 个</Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">上传附件：</span>
-                  <Badge variant="outline">{uploadedAttachments.length} 个</Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">文档字数：</span>
-                  <Badge variant="outline">{parseResult.fullText.length} 字</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* 提示信息 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h5 className="font-medium text-blue-800 mb-2">使用提示</h5>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• 文档中使用 <code className="bg-blue-100 px-1 rounded">____</code> 下划线标记的位置将被识别为可填充字段</li>
-          <li>• 例如：<code className="bg-blue-100 px-1 rounded">企业名称：______</code> 会自动识别为"企业名称"字段</li>
-          <li>• 附件支持 PDF、Word、图片格式，可上传多个</li>
-        </ul>
-      </div>
     </div>
   );
   
-  // 步骤2: 基本信息
+  // 步骤2: 选择变量
+  const renderVariablePoolStep = () => (
+    <div className="h-[calc(100vh-280px)] min-h-[500px]">
+      <Card className="h-full">
+        <CardHeader className="py-3 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">选择需要填充的变量</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                从预设变量库中选择，或添加自定义变量
+              </p>
+            </div>
+            <Badge variant="secondary">
+              已选 {selectedVariables.length} 个变量
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 h-[calc(100%-80px)]">
+          <VariablePool
+            selectedVariables={selectedVariables}
+            onSelectionChange={setSelectedVariables}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+  
+  // 步骤3: 绑定位置
+  const renderBindingStep = () => {
+    if (!parseResult?.html) {
+      return (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <p>未检测到合同内容，请返回步骤1重新上传</p>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    if (selectedVariables.length === 0) {
+      return (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <p>请先在步骤2中选择要填充的变量</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => setCurrentStep(2)}
+            >
+              返回选择变量
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    return (
+      <div className="h-[calc(100vh-280px)] min-h-[500px]">
+        <Card className="h-full">
+          <CardContent className="p-0 h-full">
+            <ContractBindingEditor
+              html={parseResult.html}
+              variables={selectedVariables}
+              bindings={bindings}
+              onBindingsChange={setBindings}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+  
+  // 步骤4: 基本信息
   const renderBasicInfoStep = () => (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>模板基本信息</CardTitle>
-          <CardDescription>
-            设置模板的名称、类型和描述
-          </CardDescription>
+          <CardDescription>设置模板的名称、类型和描述</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -619,47 +612,7 @@ export default function NewTemplatePage() {
     </div>
   );
   
-  // 步骤3: 字段设置
-  const [selectedFieldIds, setSelectedFieldIds] = useState<Set<string>>(new Set());
-  
-  const renderFieldsStep = () => {
-    if (!parseResult?.html) {
-      return (
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              <Edit2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>未检测到合同内容</p>
-              <p className="text-sm">请重新上传文档</p>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="space-y-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-          <h5 className="font-medium text-amber-800 mb-2">字段设置说明</h5>
-          <ul className="text-sm text-amber-700 space-y-1">
-            <li>• 点击左侧合同预览中的 <span className="bg-amber-100 px-1 rounded font-mono">____</span> 下划线区域即可添加字段</li>
-            <li>• 在右侧字段列表中可以设置字段类型、是否必填等属性</li>
-            <li>• 点击"添加字段"按钮可以手动添加自定义字段</li>
-          </ul>
-        </div>
-        
-        <ContractPreview
-          html={parseResult.html}
-          fields={fields}
-          onFieldsChange={setFields}
-          selectedFieldIds={selectedFieldIds}
-          onSelectedFieldIdsChange={setSelectedFieldIds}
-        />
-      </div>
-    );
-  };
-  
-  // 步骤4: 完成
+  // 步骤5: 完成
   const renderCompleteStep = () => {
     const selectedBase = bases.find(b => b.id === baseId);
     
@@ -668,9 +621,7 @@ export default function NewTemplatePage() {
         <Card>
           <CardHeader>
             <CardTitle>确认并保存</CardTitle>
-            <CardDescription>
-              请检查以下信息，确认无误后保存模板
-            </CardDescription>
+            <CardDescription>请检查以下信息，确认无误后保存模板</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
@@ -694,8 +645,12 @@ export default function NewTemplatePage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">可填充字段</Label>
-                <p className="font-medium">{fields.length} 个</p>
+                <Label className="text-muted-foreground">已选变量</Label>
+                <p className="font-medium">{selectedVariables.length} 个</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">变量绑定</Label>
+                <p className="font-medium">{bindings.length} 处</p>
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground">合同附件</Label>
@@ -703,41 +658,30 @@ export default function NewTemplatePage() {
               </div>
             </div>
           
-          {uploadedAttachments.length > 0 && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">附件列表</Label>
-                <div className="flex flex-wrap gap-2">
-                  {uploadedAttachments.map((att, idx) => (
-                    <Badge key={att.id} variant="outline">
-                      {idx + 1}. {att.name}
-                    </Badge>
-                  ))}
+            {selectedVariables.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">变量列表</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedVariables.map((variable) => {
+                      const bindCount = bindings.filter(b => b.variableKey === variable.key).length;
+                      return (
+                        <Badge key={variable.key} variant="outline">
+                          {variable.name}
+                          {bindCount > 0 && (
+                            <span className="ml-1 text-green-600">({bindCount}处绑定)</span>
+                          )}
+                        </Badge>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-          
-          {fields.length > 0 && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">字段列表</Label>
-                <div className="flex flex-wrap gap-2">
-                  {fields.map((field, idx) => (
-                    <Badge key={field.key} variant="outline">
-                      {idx + 1}. {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   };
   
@@ -748,9 +692,11 @@ export default function NewTemplatePage() {
       case 1:
         return parseResult !== null;
       case 2:
+        return selectedVariables.length > 0;
       case 3:
-        return true;
       case 4:
+        return true;
+      case 5:
         return false;
       default:
         return false;
@@ -762,7 +708,7 @@ export default function NewTemplatePage() {
       handleUploadAndParse();
       return;
     }
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -775,7 +721,6 @@ export default function NewTemplatePage() {
   
   return (
     <div className="space-y-6">
-      {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button
@@ -846,7 +791,7 @@ export default function NewTemplatePage() {
         </Button>
         
         <div className="flex items-center gap-2">
-          {currentStep === 4 ? (
+          {currentStep === 5 ? (
             <Button
               onClick={handleSave}
               disabled={saving}
