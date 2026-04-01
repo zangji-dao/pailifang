@@ -14,6 +14,14 @@ function countChineseChars(str: string): number {
 }
 
 /**
+ * 提取所有变量标记 {{xxx}}
+ */
+function extractVariableMarkers(str: string): string[] {
+  const matches = str.match(/\{\{[^}]+\}\}/g);
+  return matches ? matches : [];
+}
+
+/**
  * POST /api/contract-templates/optimize-layout
  * 使用LLM优化合同文档排版（统一优化主合同和所有附件）
  * 注意：只优化排版样式，不修改文字内容
@@ -169,12 +177,16 @@ ${chunk}
               let result = response.content;
               result = result.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
               
-              // 用汉字数量检查内容完整性
+              // 检查内容完整性：汉字数量 + 变量标记
               const resultChineseCount = countChineseChars(result);
               const chineseRatio = resultChineseCount / chunkChineseCount;
               
-              if (chineseRatio < 0.95) {
-                console.warn(`文档 ${doc.name} 第 ${chunkIndex + 1}/${chunks.length} 块汉字数量不匹配，使用原内容。原汉字: ${chunkChineseCount}, 新汉字: ${resultChineseCount}`);
+              const originalVars = extractVariableMarkers(chunk);
+              const resultVars = extractVariableMarkers(result);
+              const varsMissing = originalVars.filter(v => !resultVars.includes(v));
+              
+              if (chineseRatio < 0.95 || varsMissing.length > 0) {
+                console.warn(`文档 ${doc.name} 第 ${chunkIndex + 1}/${chunks.length} 块内容不完整，使用原内容。原汉字: ${chunkChineseCount}, 新汉字: ${resultChineseCount}${varsMissing.length > 0 ? `, 缺失变量: ${varsMissing.join(', ')}` : ''}`);
                 optimizedHtml += chunk; // 使用原内容
               } else {
                 optimizedHtml += result;
@@ -186,12 +198,16 @@ ${chunk}
             }
           }
 
-          // 最终汉字数量检查
+          // 最终完整性检查：汉字数量 + 变量标记
           const resultChineseCount = countChineseChars(optimizedHtml);
           const finalRatio = resultChineseCount / originalChineseCount;
           
-          if (finalRatio < 0.95) {
-            console.warn(`文档 ${doc.name} 最终汉字数量不匹配，保留原内容。原汉字: ${originalChineseCount}, 新汉字: ${resultChineseCount}`);
+          const finalOriginalVars = extractVariableMarkers(doc.html);
+          const finalResultVars = extractVariableMarkers(optimizedHtml);
+          const finalVarsMissing = finalOriginalVars.filter(v => !finalResultVars.includes(v));
+          
+          if (finalRatio < 0.95 || finalVarsMissing.length > 0) {
+            console.warn(`文档 ${doc.name} 最终内容不完整，保留原内容。原汉字: ${originalChineseCount}, 新汉字: ${resultChineseCount}${finalVarsMissing.length > 0 ? `, 缺失变量: ${finalVarsMissing.join(', ')}` : ''}`);
             results.push({
               id: doc.id,
               name: doc.name,
@@ -206,7 +222,7 @@ ${chunk}
               html: optimizedHtml,
             });
             sendEvent('complete', { documentName: doc.name });
-            console.log(`文档 ${doc.name} 优化完成。原汉字: ${originalChineseCount}, 新汉字: ${resultChineseCount}`);
+            console.log(`文档 ${doc.name} 优化完成。汉字: ${originalChineseCount}→${resultChineseCount}, 变量: ${finalOriginalVars.length}→${finalResultVars.length}`);
           }
         }
 
