@@ -15,16 +15,16 @@ interface AttachmentInfo {
 }
 
 /**
- * 简单HTML后处理
+ * 简单HTML后处理 - 保留原始样式
  */
 function postProcessHtml(html: string): string {
   return html
-    // 确保表格有边框
-    .replace(/<table/gi, '<table style="border-collapse: collapse; width: 100%;"')
-    .replace(/<td/gi, '<td style="border: 1px solid #333; padding: 4px 8px; vertical-align: top;"')
-    .replace(/<th/gi, '<th style="border: 1px solid #333; padding: 4px 8px; background: #f5f5f5; font-weight: bold;"')
     // 清理空段落
-    .replace(/<p[^>]*>\s*<\/p>/gi, '');
+    .replace(/<p[^>]*>\s*<\/p>/gi, '')
+    // 确保表格有基本样式（但不覆盖原有边框）
+    .replace(/<table/gi, '<table style="border-collapse: collapse; width: 100%; margin: 8pt 0;"')
+    .replace(/<td/gi, '<td style="padding: 4pt 6pt; vertical-align: top;"')
+    .replace(/<th/gi, '<th style="padding: 4pt 6pt; font-weight: bold;"');
 }
 
 /**

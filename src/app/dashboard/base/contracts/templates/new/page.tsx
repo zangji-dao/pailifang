@@ -1517,6 +1517,81 @@ export default function NewTemplatePage() {
                   font-family: "Times New Roman", "宋体", SimSun, serif;
                   font-size: 12pt;
                   line-height: 1.5;
+                  /* 确保整个内容区域都有白色背景 */
+                  display: block;
+                  overflow: visible;
+                }
+                
+                /* 重置Tailwind prose样式的影响 - 完全清除 */
+                .a4-paper.prose {
+                  max-width: none;
+                }
+                .a4-paper.prose *,
+                .a4-paper.prose p,
+                .a4-paper.prose h1,
+                .a4-paper.prose h2,
+                .a4-paper.prose h3,
+                .a4-paper.prose h4 {
+                  margin: 0;
+                  padding: 0;
+                  text-indent: 0;
+                  font-size: inherit;
+                  line-height: inherit;
+                  background: transparent;
+                }
+                
+                /* LibreOffice生成的HTML样式支持 */
+                .a4-paper p,
+                .a4-paper div,
+                .a4-paper span {
+                  /* 保持原始样式，不做覆盖 */
+                }
+                
+                .a4-paper h1 { font-size: 22pt; font-weight: bold; text-align: center; margin: 12pt 0; }
+                .a4-paper h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0; }
+                .a4-paper h3 { font-size: 14pt; font-weight: bold; margin: 8pt 0; }
+                
+                /* 表格样式 - 三线表和其他表格 */
+                .a4-paper table {
+                  border-collapse: collapse;
+                  width: 100%;
+                  margin: 6pt 0;
+                  border-top: 2px solid #000;
+                  border-bottom: 2px solid #000;
+                }
+                .a4-paper table thead {
+                  border-bottom: 1px solid #000;
+                }
+                .a4-paper table td,
+                .a4-paper table th {
+                  padding: 6pt 8pt;
+                  vertical-align: top;
+                  border: none;
+                }
+                .a4-paper table th {
+                  font-weight: bold;
+                  text-align: center;
+                }
+                /* 普通网格表格 */
+                .a4-paper table.grid-table,
+                .a4-paper table.bordered-table {
+                  border: 1px solid #000;
+                }
+                .a4-paper table.grid-table td,
+                .a4-paper table.grid-table th,
+                .a4-paper table.bordered-table td,
+                .a4-paper table.bordered-table th {
+                  border: 1px solid #000;
+                }
+                  background: white;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                  color: #000;
+                  box-sizing: border-box;
+                  word-wrap: break-word;
+                  /* 默认字体 */
+                  font-family: "Times New Roman", "宋体", SimSun, serif;
+                  font-size: 12pt;
+                  line-height: 1.5;
                 }
                 
                 /* 重置Tailwind prose样式的影响 - 完全清除 */
