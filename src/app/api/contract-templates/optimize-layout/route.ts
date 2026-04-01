@@ -31,95 +31,59 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config);
 
-    const systemPrompt = `你是一个专业的合同文档排版专家，精通中文合同格式规范。
+    const systemPrompt = `你是一个专业的合同文档排版专家。你的任务是为HTML添加内联样式，优化排版效果。
 
-## 核心原则
-【绝对重要】必须100%保留所有变量标记 {{变量名}}，包括其所在的span标签，不能删除、修改、移动或改变其任何属性！
+## 【最重要规则】
+1. **绝对不能删除、修改或遗漏任何原始内容**
+2. **只添加内联style属性，不改变HTML结构和内容**
+3. **必须保留所有文本内容和HTML标签**
 
-## 签字盖章区域优化（最重要！）
+## 排版样式规则
 
-### 标准签章区域布局
-签章区域必须使用表格实现左右并排布局，参考以下标准格式：
+### 行间距
+- 正文段落：line-height: 2（双倍行距）
+- 段落间距：margin: 1em 0
+- 首行缩进：text-indent: 2em
 
-甲方乙方左右并排示例：
+### 标题
+- h1：text-align: center; font-size: 24px; margin: 30px 0; line-height: 1.5
+- h2：font-weight: bold; margin: 20px 0 10px; line-height: 1.6
+
+### 签章区域
+如果文档末尾有甲方、乙方签章区域，使用表格布局：
 <table style="width: 100%; border-collapse: collapse; margin-top: 40px; page-break-inside: avoid;">
   <tr>
     <td style="width: 50%; padding: 20px; vertical-align: top;">
-      <p style="font-weight: bold; margin-bottom: 15px;">甲方（签章）：</p>
-      <p style="min-height: 80px;">&nbsp;</p>
-      <p style="margin-top: 20px;">法定代表人/授权代表：</p>
-      <p style="min-height: 40px;">&nbsp;</p>
-      <p>日期：______年______月______日</p>
+      <!-- 甲方内容 -->
     </td>
     <td style="width: 50%; padding: 20px; vertical-align: top;">
-      <p style="font-weight: bold; margin-bottom: 15px;">乙方（签章）：</p>
-      <p style="min-height: 80px;">&nbsp;</p>
-      <p style="margin-top: 20px;">法定代表人/授权代表：</p>
-      <p style="min-height: 40px;">&nbsp;</p>
-      <p>日期：______年______月______日</p>
+      <!-- 乙方内容 -->
     </td>
   </tr>
 </table>
 
-### 签章区域排版要点
-1. 必须使用无边框表格（border-collapse: collapse）实现左右并排
-2. 每个签章方占50%宽度，垂直顶部对齐（vertical-align: top）
-3. 盖章区域至少80px高度，签字区域至少40px
-4. 签章区域与正文之间至少40px间距（margin-top: 40px）
-5. 添加 page-break-inside: avoid 防止签章区域被分页
-6. 如果有变量标记，保留在对应位置
-
-### 多方签章处理
-- 三方合同：第一行两个，第二行一个居中
-- 四方合同：两行两列对称排列
-- 每个签章方格式保持一致
-
-## 行间距优化
-
-### 正文行间距标准
-- 正文段落：line-height: 2（双倍行距）
-- 条款编号：line-height: 1.8
-- 标题：line-height: 1.5
-- 段落间距：margin: 1em 0
-- 首行缩进：text-indent: 2em
-
-### 行间距示例
-<p style="line-height: 2; text-indent: 2em; margin: 1em 0;">条款内容...</p>
-
-## 标题层级规范
-- h1：合同标题，居中，字号最大
-- h2：章节标题（第一条、第二条），加粗
-- h3：小节标题，加粗
-
-## 段落与条款
-- 每个条款独立成段
-- 重要内容用 <strong> 加粗
-- 金额、日期等关键信息加粗
+### 变量标记
+必须完整保留所有 {{变量名}} 格式的变量标记及其所在标签。
 
 ## 输出要求
-1. 只输出优化后的HTML代码
-2. 必须使用内联style属性控制样式
-3. 签章区域必须使用表格布局，左右并排
-4. 变量标记完整保留
-5. 确保签章区域整齐美观、间距合理`;
+只输出优化后的HTML代码，不要任何解释或说明。`;
 
     // 处理单个文档的函数
     const processDocument = async (doc: { id: string; name: string; html: string }) => {
-      const userPrompt = `请优化以下合同文档的排版。
+      const userPrompt = `请为以下HTML添加内联样式，优化排版效果。
 
-【特别要求】
-1. 签字盖章区域必须使用表格实现左右并排布局，确保整齐美观
-2. 签章区域要有足够的空白空间（盖章处至少80px高）
-3. 正文使用双倍行距（line-height: 2）
-4. 段落首行缩进2字符
+【文档名称】${doc.name}
 
-【文档名称】：${doc.name}
-【变量列表（必须保留）】：${variables.map(v => `{{${v.name}}}`).join(', ')}
+【变量标记（必须保留）】
+${variables.map(v => `{{${v.name}}}`).join(', ')}
 
-【HTML内容】：
+【原始HTML】
 ${doc.html}
 
-请输出优化后的HTML（变量标记必须原样保留）：`;
+【输出要求】
+1. 保留所有原始内容，一个字都不能少
+2. 只添加内联style属性
+3. 变量标记完整保留`;
 
       const messages = [
         { role: 'system' as const, content: systemPrompt },
@@ -127,15 +91,30 @@ ${doc.html}
       ];
 
       try {
+        // 使用更强大的模型（pro版本更适合处理大量内容）
         const response = await client.invoke(messages, {
-          model: 'doubao-seed-2-0-lite-260215',
-          temperature: 0.2,
+          model: 'doubao-seed-2-0-pro-260215',  // 使用pro版本，更适合处理大量内容
+          temperature: 0.1,  // 降低随机性
         });
 
         let result = response.content;
         
         // 清理可能的markdown代码块标记
         result = result.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // 内容长度检查：如果优化后内容少于原来的70%，认为优化失败，返回原内容
+        const originalLength = doc.html.length;
+        const resultLength = result.length;
+        
+        if (resultLength < originalLength * 0.7) {
+          console.warn(`文档 ${doc.name} 优化后内容过少，保留原内容。原长度: ${originalLength}, 新长度: ${resultLength}`);
+          return {
+            id: doc.id,
+            name: doc.name,
+            html: doc.html,
+            warning: '优化后内容不完整，已保留原内容',
+          };
+        }
 
         return {
           id: doc.id,
@@ -154,8 +133,12 @@ ${doc.html}
       }
     };
 
-    // 并行处理所有文档
-    const results = await Promise.all(docsToProcess.map(processDocument));
+    // 串行处理每个文档，避免并行问题
+    const results = [];
+    for (const doc of docsToProcess) {
+      const result = await processDocument(doc);
+      results.push(result);
+    }
 
     return NextResponse.json({
       success: true,
