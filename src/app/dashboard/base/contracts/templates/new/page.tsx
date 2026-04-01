@@ -496,45 +496,46 @@ export default function NewTemplatePage() {
       let fileType = parseResult?.fileType;
       let templateIdToUse = templateId;
       
-      // 如果有附件需要上传
-      if (attachments.length > 0) {
+      // 检查是否有未上传的附件（file 不为 null）
+      const pendingAttachments = attachments.filter(att => att.file !== null);
+      const newlyUploaded: UploadedAttachment[] = [];
+      
+      // 如果有未上传的附件需要上传
+      if (pendingAttachments.length > 0) {
         setUploading(true);
-        const formData = new FormData();
         
-        for (const att of attachments) {
-          formData.append("attachments", att.file);
+        // 逐个上传未上传的附件
+        for (const att of pendingAttachments) {
+          if (!att.file) continue;
+          
+          try {
+            const formData = new FormData();
+            formData.append("file", att.file);
+            
+            const uploadRes = await fetch("/api/contract-templates/upload-attachment", {
+              method: "POST",
+              body: formData,
+            });
+            
+            const uploadData = await uploadRes.json();
+            if (uploadData.success) {
+              newlyUploaded.push(uploadData.data);
+            }
+          } catch (err) {
+            console.error(`上传附件 ${att.name} 失败:`, err);
+          }
         }
         
-        // 如果需要同时上传主文件（还没上传的情况）
-        if (!fileUrl && mainFile) {
-          formData.append("file", mainFile);
-        }
-        
-        const uploadRes = await fetch("/api/contract-templates/upload", {
-          method: "POST",
-          body: formData,
-        });
-        
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success) {
-          throw new Error(uploadData.error || "上传附件失败");
-        }
-        
-        setUploadedAttachments(uploadData.data.attachments || []);
-        
-        // 如果上传了主文件，更新信息
-        if (uploadData.data.fileUrl) {
-          fileUrl = uploadData.data.fileUrl;
-          fileName = uploadData.data.fileName;
-          fileType = uploadData.data.fileType;
-          templateIdToUse = uploadData.data.templateId;
-          setTemplateId(uploadData.data.templateId);
+        // 合并新上传的附件
+        if (newlyUploaded.length > 0) {
+          setUploadedAttachments(prev => [...prev, ...newlyUploaded]);
         }
         
         setUploading(false);
       }
       
-      // 执行解析
+      // 执行解析 - 使用合并后的附件列表
+      const allAttachments = [...uploadedAttachments, ...newlyUploaded];
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -543,7 +544,7 @@ export default function NewTemplatePage() {
           fileUrl,
           fileName,
           fileType,
-          attachments: uploadedAttachments.map(att => ({
+          attachments: allAttachments.map(att => ({
             id: att.id,
             name: att.name,
             url: att.url,
