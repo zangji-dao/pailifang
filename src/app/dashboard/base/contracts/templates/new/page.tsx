@@ -1521,6 +1521,16 @@ export default function NewTemplatePage() {
                   outline: none;
                 }
                 
+                /* 表格基础样式 - 仅在 LibreOffice 未定义时生效 */
+                .a4-paper table {
+                  border-collapse: collapse;
+                  width: 100%;
+                }
+                .a4-paper table td,
+                .a4-paper table th {
+                  vertical-align: top;
+                }
+                
                 /* 变量标记样式 */
                 .variable-marker {
                   cursor: pointer;
