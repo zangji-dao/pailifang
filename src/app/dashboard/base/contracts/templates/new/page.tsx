@@ -276,7 +276,7 @@ export default function NewTemplatePage() {
   
   // ========== 步骤1: 上传文档 ==========
   
-  const handleMainFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const allowedTypes = [
@@ -288,6 +288,48 @@ export default function NewTemplatePage() {
         return;
       }
       setMainFile(file);
+      
+      // 自动上传文件（但不解析）
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const uploadRes = await fetch("/api/contract-templates/upload", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          throw new Error(uploadData.error || "上传失败");
+        }
+        
+        // 保存上传结果，但不解析
+        setParseResult({
+          success: true,
+          totalPages: 1,
+          fileName: uploadData.data.fileName,
+          fileType: uploadData.data.fileType,
+          fileUrl: uploadData.data.fileUrl,
+          pages: [],
+          fullText: '',
+          html: '',
+          styles: '',
+          attachments: [],
+          detectedAttachments: [],
+          detectedFields: [],
+          mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+        });
+        
+        setTemplateId(uploadData.data.templateId);
+        toast.success("文件已上传，可以保存草稿或继续解析");
+      } catch (err) {
+        console.error("上传失败:", err);
+        toast.error(err instanceof Error ? err.message : "上传失败");
+      } finally {
+        setUploading(false);
+      }
     }
   };
   
@@ -382,50 +424,72 @@ export default function NewTemplatePage() {
   };
   
   const handleUploadAndParse = async () => {
-    if (!mainFile) return;
+    // 检查是否已有文件URL（已上传过）
+    if (!parseResult?.fileUrl && !mainFile) {
+      toast.error("请先上传文档");
+      return;
+    }
     
-    setUploading(true);
+    setParsing(true);
     try {
-      const formData = new FormData();
-      formData.append("file", mainFile);
+      let fileUrl = parseResult?.fileUrl;
+      let fileName = parseResult?.fileName;
+      let fileType = parseResult?.fileType;
+      let templateIdToUse = templateId;
       
-      for (const att of attachments) {
-        formData.append("attachments", att.file);
+      // 如果有附件需要上传
+      if (attachments.length > 0) {
+        setUploading(true);
+        const formData = new FormData();
+        
+        for (const att of attachments) {
+          formData.append("attachments", att.file);
+        }
+        
+        // 如果需要同时上传主文件（还没上传的情况）
+        if (!fileUrl && mainFile) {
+          formData.append("file", mainFile);
+        }
+        
+        const uploadRes = await fetch("/api/contract-templates/upload", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          throw new Error(uploadData.error || "上传附件失败");
+        }
+        
+        setUploadedAttachments(uploadData.data.attachments || []);
+        
+        // 如果上传了主文件，更新信息
+        if (uploadData.data.fileUrl) {
+          fileUrl = uploadData.data.fileUrl;
+          fileName = uploadData.data.fileName;
+          fileType = uploadData.data.fileType;
+          templateIdToUse = uploadData.data.templateId;
+          setTemplateId(uploadData.data.templateId);
+        }
+        
+        setUploading(false);
       }
       
-      const uploadRes = await fetch("/api/contract-templates/upload", {
-        method: "POST",
-        body: formData,
-      });
-      
-      const uploadData = await uploadRes.json();
-      if (!uploadData.success) {
-        throw new Error(uploadData.error || "上传失败");
-      }
-      
-      setTemplateId(uploadData.data.templateId);
-      setUploadedAttachments(uploadData.data.attachments || []);
-      setUploading(false);
-      
-      setParsing(true);
-      
-      // 构建附件信息
-      const attachmentInfos = (uploadData.data.attachments || []).map((att: any) => ({
-        id: att.id,
-        name: att.name,
-        url: att.url,
-        fileType: att.fileType,
-      }));
-      
+      // 执行解析
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          templateId: uploadData.data.templateId,
-          fileUrl: uploadData.data.fileUrl,
-          fileName: uploadData.data.fileName,
-          fileType: uploadData.data.fileType,
-          attachments: attachmentInfos,
+          templateId: templateIdToUse,
+          fileUrl,
+          fileName,
+          fileType,
+          attachments: uploadedAttachments.map(att => ({
+            id: att.id,
+            name: att.name,
+            url: att.url,
+            fileType: att.fileType,
+          })),
         }),
       });
       
@@ -436,8 +500,8 @@ export default function NewTemplatePage() {
       
       setParseResult(parseData.data);
       
-      if (!name) {
-        setName(mainFile.name.replace(/\.[^/.]+$/, ""));
+      if (!name && fileName) {
+        setName(fileName.replace(/\.[^/.]+$/, ""));
       }
       
       toast.success("文档解析成功");
