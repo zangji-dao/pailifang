@@ -1780,6 +1780,23 @@ export default function NewTemplatePage() {
     
     setSaving(true);
     try {
+      // 构建附件列表
+      const attachmentsList = parseResult?.attachments?.length 
+        ? parseResult.attachments.map(a => ({
+            id: a.id,
+            name: a.displayName || a.name,
+            description: '',
+            required: false,
+            order: a.order || 0,
+          }))
+        : uploadedAttachments.map(att => ({
+            id: att.id,
+            name: att.name.replace(/\.[^/.]+$/, ''),
+            description: '',
+            required: false,
+            order: 0,
+          }));
+      
       // 1. 更新基本信息并设置为已发布状态
       const updateRes = await fetch("/api/contract-templates", {
         method: "PUT",
@@ -1792,6 +1809,7 @@ export default function NewTemplatePage() {
           base_id: baseId || null,
           is_default: isDefault,
           status: 'published', // 发布时设置为已发布状态
+          attachments: attachmentsList, // 保存附件列表
         }),
       });
       
