@@ -2219,52 +2219,6 @@ export default function NewTemplatePage() {
           <CardContent className="p-0 flex flex-col flex-1 min-h-0">
             {/* 文档内容区域 - 可滚动 */}
             <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center min-h-0 relative">
-              {/* 优化进度弹窗 */}
-              {optimizeProgress && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-                  <div className="bg-card rounded-xl shadow-2xl p-6 w-80 border animate-in fade-in zoom-in duration-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="relative">
-                        <Sparkles className="h-6 w-6 text-primary animate-pulse" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">正在优化排版</h3>
-                        <p className="text-sm text-muted-foreground">
-                          请稍候，正在处理文档...
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* 进度条 */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">进度</span>
-                        <span className="font-medium text-primary">
-                          {optimizeProgress.current} / {optimizeProgress.total}
-                        </span>
-                      </div>
-                      
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-                          style={{ 
-                            width: `${(optimizeProgress.current / optimizeProgress.total) * 100}%` 
-                          }}
-                        />
-                      </div>
-                      
-                      {optimizeProgress.documentName && (
-                        <div className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-3">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <span className="text-muted-foreground">正在优化：</span>
-                          <span className="font-medium truncate">{optimizeProgress.documentName}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               {/* 注入 LibreOffice 生成的样式 */}
               {parseResult?.styles && (
                 <style dangerouslySetInnerHTML={{ __html: parseResult.styles }} />
@@ -3047,6 +3001,52 @@ export default function NewTemplatePage() {
               </Button>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* 优化进度弹窗 - 固定在视口中央，阻止所有操作 */}
+      {optimizeProgress && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div className="bg-card rounded-xl shadow-2xl p-6 w-96 border">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">正在优化排版</h3>
+                <p className="text-sm text-muted-foreground">
+                  请稍候，正在处理文档...
+                </p>
+              </div>
+            </div>
+            
+            {/* 进度条 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">处理进度</span>
+                <span className="font-medium text-primary">
+                  {optimizeProgress.current} / {optimizeProgress.total}
+                </span>
+              </div>
+              
+              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                  style={{ 
+                    width: `${(optimizeProgress.current / optimizeProgress.total) * 100}%` 
+                  }}
+                />
+              </div>
+              
+              {optimizeProgress.documentName && (
+                <div className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-3 mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                  <span className="text-muted-foreground">正在优化：</span>
+                  <span className="font-medium truncate">{optimizeProgress.documentName}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
