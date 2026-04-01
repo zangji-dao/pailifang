@@ -78,6 +78,15 @@ interface AttachmentFile {
   size: number;
 }
 
+// 已上传的附件类型
+interface UploadedAttachment {
+  id: string;
+  name: string;
+  url: string;
+  fileType: string;
+  size: number;
+}
+
 // 基地类型
 interface Base {
   id: string;
@@ -109,13 +118,7 @@ export default function NewTemplatePage() {
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   
   // 已上传的附件
-  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{
-    id: string;
-    name: string;
-    url: string;
-    fileType: string;
-    size: number;
-  }>>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
   
   // 基地列表
   const [bases, setBases] = useState<Base[]>([]);
@@ -372,37 +375,46 @@ export default function NewTemplatePage() {
     if (validFiles.length > 0) {
       setAttachments(prev => [...prev, ...validFiles]);
       
-      // 自动上传附件到服务器
+      // 自动上传附件到服务器（逐个上传）
       setUploading(true);
-      try {
-        const formData = new FormData();
-        validFiles.forEach(f => {
-          formData.append("attachments", f.file);
-        });
-        
-        const uploadRes = await fetch("/api/contract-templates/upload", {
-          method: "POST",
-          body: formData,
-        });
-        
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success) {
-          throw new Error(uploadData.error || "上传附件失败");
+      const uploadedList: UploadedAttachment[] = [];
+      const failedFiles: string[] = [];
+      
+      for (const validFile of validFiles) {
+        try {
+          const formData = new FormData();
+          formData.append("file", validFile.file);
+          
+          const uploadRes = await fetch("/api/contract-templates/upload-attachment", {
+            method: "POST",
+            body: formData,
+          });
+          
+          const uploadData = await uploadRes.json();
+          if (!uploadData.success) {
+            throw new Error(uploadData.error || "上传附件失败");
+          }
+          
+          uploadedList.push(uploadData.data);
+        } catch (err) {
+          console.error(`上传附件 ${validFile.name} 失败:`, err);
+          failedFiles.push(validFile.name);
+          // 从列表中移除上传失败的文件
+          setAttachments(prev => prev.filter(a => a.id !== validFile.id));
         }
-        
-        // 添加到已上传列表
-        if (uploadData.data.attachments) {
-          setUploadedAttachments(prev => [...prev, ...uploadData.data.attachments]);
-          toast.success(`已上传 ${validFiles.length} 个附件`);
-        }
-      } catch (err) {
-        console.error("上传附件失败:", err);
-        toast.error(err instanceof Error ? err.message : "上传附件失败");
-        // 上传失败，从列表中移除
-        setAttachments(prev => prev.filter(a => !validFiles.find(v => v.id === a.id)));
-      } finally {
-        setUploading(false);
       }
+      
+      // 添加成功上传的附件到列表
+      if (uploadedList.length > 0) {
+        setUploadedAttachments(prev => [...prev, ...uploadedList]);
+        toast.success(`已上传 ${uploadedList.length} 个附件`);
+      }
+      
+      if (failedFiles.length > 0) {
+        toast.error(`${failedFiles.join("、")} 上传失败`);
+      }
+      
+      setUploading(false);
     }
     
     if (attachmentInputRef.current) {
