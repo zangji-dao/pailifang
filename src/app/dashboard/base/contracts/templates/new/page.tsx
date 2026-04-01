@@ -791,9 +791,10 @@ export default function NewTemplatePage() {
     }
     
     // 更新 DOM 中标记的显示
-    const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`);
+    const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`) as HTMLElement;
     if (markerEl) {
       markerEl.className = 'variable-marker bound';
+      markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; border: 2px solid #22c55e; font-weight: 500; display: inline-block; margin: 0 2px;';
       markerEl.textContent = `{{${variable.name}}}`;
       syncEditedContent();
     }
@@ -847,9 +848,10 @@ export default function NewTemplatePage() {
       ));
       
       // 更新 DOM 中标记的显示
-      const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`);
+      const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`) as HTMLElement;
       if (markerEl) {
         markerEl.className = 'variable-marker bound';
+        markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; border: 2px solid #22c55e; font-weight: 500; display: inline-block; margin: 0 2px;';
         markerEl.textContent = `{{${customVar.name}}}`;
         syncEditedContent();
       }
@@ -1798,7 +1800,7 @@ export default function NewTemplatePage() {
                   const markerSpan = document.createElement('span');
                   markerSpan.className = 'variable-marker pending';
                   markerSpan.dataset.markerId = markerId;
-                  markerSpan.style.cssText = 'background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; border: 1px dashed #f59e0b;';
+                  markerSpan.style.cssText = 'background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; border: 2px dashed #f59e0b; font-weight: 500; display: inline-block; margin: 0 2px;';
                   markerSpan.textContent = '【待绑定】';
                   
                   try {
