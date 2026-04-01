@@ -321,6 +321,24 @@ export default function ContractTemplatesPage() {
     );
   };
 
+  // Tab 状态
+  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'published'>('all');
+  
+  // 根据Tab过滤模板
+  const filteredTemplatesByTab = templates.filter((t) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'draft') return t.status === 'draft';
+    if (activeTab === 'published') return t.status !== 'draft';
+    return true;
+  });
+  
+  // 统计数量
+  const stats = {
+    all: templates.length,
+    draft: templates.filter(t => t.status === 'draft').length,
+    published: templates.filter(t => t.status !== 'draft').length,
+  };
+
   // 加载状态
   if (loading) {
     return (
@@ -344,16 +362,16 @@ export default function ContractTemplatesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-0">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between">
+      <div className="py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
             <Palette className="h-5 w-5 text-amber-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">合同模板配置</h1>
-            <p className="text-sm text-muted-foreground">自定义合同模板的样式和条款内容</p>
+            <h1 className="text-2xl font-semibold">合同模板</h1>
+            <p className="text-sm text-muted-foreground">管理合同模板，配置样式和变量绑定</p>
           </div>
         </div>
         <Button onClick={handleCreate} className="bg-amber-600 hover:bg-amber-700">
@@ -362,25 +380,61 @@ export default function ContractTemplatesPage() {
         </Button>
       </div>
 
-      {/* 功能说明 */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Settings className="h-5 w-5 text-amber-600 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-medium text-amber-800">模板配置功能</p>
-            <p className="text-amber-700 mt-1">
-              配置合同模板的页面布局、字体样式、颜色方案等视觉元素，以及合同的条款内容。
-              设为默认的模板将在创建合同时优先使用。
-            </p>
-          </div>
+      {/* 分割线 */}
+      <div className="border-b" />
+
+      {/* Tab 切换 */}
+      <div className="py-4">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
+              activeTab === 'all'
+                ? "border-amber-400 bg-amber-50 text-amber-600"
+                : "border-slate-200 text-slate-600 hover:border-amber-200 hover:bg-amber-50/50"
+            )}
+          >
+            <FileText className="h-4 w-4" />
+            <span className="font-medium">全部</span>
+            <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700 hover:bg-amber-100">{stats.all}</Badge>
+          </button>
+          <button
+            onClick={() => setActiveTab('draft')}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
+              activeTab === 'draft'
+                ? "border-gray-400 bg-gray-50 text-gray-600"
+                : "border-slate-200 text-slate-600 hover:border-gray-200 hover:bg-gray-50/50"
+            )}
+          >
+            <Pencil className="h-4 w-4" />
+            <span className="font-medium">草稿</span>
+            <Badge variant="secondary" className="ml-1 bg-gray-100 text-gray-700 hover:bg-gray-100">{stats.draft}</Badge>
+          </button>
+          <button
+            onClick={() => setActiveTab('published')}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2.5 transition-all",
+              activeTab === 'published'
+                ? "border-green-400 bg-green-50 text-green-600"
+                : "border-slate-200 text-slate-600 hover:border-green-200 hover:bg-green-50/50"
+            )}
+          >
+            <FileCheck className="h-4 w-4" />
+            <span className="font-medium">已完成</span>
+            <Badge variant="secondary" className="ml-1 bg-green-100 text-green-700 hover:bg-green-100">{stats.published}</Badge>
+          </button>
         </div>
       </div>
 
       {/* 模板列表 */}
-      {templates.length === 0 ? (
+      {filteredTemplatesByTab.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <FileText className="h-16 w-16 mb-4 opacity-50" />
-          <p className="text-lg font-medium">暂无合同模板</p>
+          <p className="text-lg font-medium">
+            {activeTab === 'draft' ? '暂无草稿' : activeTab === 'published' ? '暂无已完成的模板' : '暂无合同模板'}
+          </p>
           <p className="text-sm mt-1">点击上方"新建模板"创建您的第一个合同模板</p>
           <Button variant="outline" className="mt-4" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
@@ -388,260 +442,205 @@ export default function ContractTemplatesPage() {
           </Button>
         </div>
       ) : (
-        <>
-          {/* 草稿模板区域 */}
-          {templates.filter(t => t.status === 'draft').length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <Pencil className="h-5 w-5 text-gray-500" />
-                <h2 className="text-lg font-medium text-gray-700">草稿</h2>
-                <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                  {templates.filter(t => t.status === 'draft').length}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates.filter(t => t.status === 'draft').map((template) => {
-                  const typeInfo = templateTypes[template.type] || templateTypes.other;
-                  return (
-                    <Card
-                      key={template.id}
-                      className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 border-dashed border-gray-300 bg-gray-50/50 hover:border-amber-300 hover:bg-amber-50/30"
-                      onClick={() => handleEdit(template)}
-                    >
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", typeInfo.bgColor)}>
-                              <FileText className={cn("h-5 w-5", typeInfo.color)} />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-700">{template.name}</span>
-                                <Badge className="bg-gray-200 text-gray-600 hover:bg-gray-200 border-0 text-xs">
-                                  草稿
-                                </Badge>
-                              </div>
-                              <Badge variant="outline" className={cn("text-xs mt-1", typeInfo.color, typeInfo.bgColor)}>
-                                {typeInfo.label}
-                              </Badge>
-                            </div>
-                          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
+          {filteredTemplatesByTab.map((template) => {
+            const typeInfo = templateTypes[template.type] || templateTypes.other;
+            const isDraft = template.status === 'draft';
+            
+            return (
+              <Card
+                key={template.id}
+                className={cn(
+                  "group hover:shadow-lg transition-all duration-200 cursor-pointer border-2",
+                  isDraft 
+                    ? "border-dashed border-gray-300 bg-gray-50/50 hover:border-amber-300 hover:bg-amber-50/30"
+                    : template.isDefault
+                      ? "border-amber-400 bg-gradient-to-br from-amber-50/50 to-orange-50/50"
+                      : "border-transparent hover:border-amber-200"
+                )}
+                onClick={() => handleEdit(template)}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", typeInfo.bgColor)}>
+                        <FileText className={cn("h-5 w-5", typeInfo.color)} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{template.name}</span>
+                          {isDraft && (
+                            <Badge className="bg-gray-200 text-gray-600 hover:bg-gray-200 border-0 text-xs">
+                              草稿
+                            </Badge>
+                          )}
+                          {template.isDefault && !isDraft && (
+                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0 text-xs">
+                              <Star className="h-3 w-3 mr-1" />
+                              默认
+                            </Badge>
+                          )}
                         </div>
+                        <Badge variant="outline" className={cn("text-xs mt-1", typeInfo.color, typeInfo.bgColor)}>
+                          {typeInfo.label}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
 
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                            {template.description}
-                          </p>
-                        )}
+                  {template.description && (
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      {template.description}
+                    </p>
+                  )}
 
-                        {/* 草稿提示 */}
-                        <div className="flex items-center gap-2 text-xs text-amber-600 mb-4 bg-amber-50 p-2 rounded">
-                          <AlertCircle className="h-4 w-4" />
-                          <span>模板尚未完成，点击继续编辑</span>
-                        </div>
+                  {/* 草稿提示 */}
+                  {isDraft && (
+                    <div className="flex items-center gap-2 text-xs text-amber-600 mb-4 bg-amber-50 p-2 rounded">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>模板尚未完成，点击继续编辑</span>
+                    </div>
+                  )}
 
-                        {/* 操作按钮 */}
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                          <div className="text-xs text-muted-foreground">
-                            {template.updatedAt
-                              ? `更新于 ${new Date(template.updatedAt).toLocaleDateString()}`
-                              : `创建于 ${new Date(template.createdAt).toLocaleDateString()}`}
-                          </div>
+                  {/* 模板配置概览 - 仅已完成的模板显示 */}
+                  {!isDraft && (
+                    <>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                        <span>纸张: {template.styleConfig?.pageSize || 'A4'}</span>
+                        <span>字体: {template.styleConfig?.font?.family || 'SimSun'}</span>
+                        <span>条款: {template.clauses?.length || 0}条</span>
+                      </div>
+
+                      {/* 颜色预览 */}
+                      {template.styleConfig?.colors && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-xs text-muted-foreground">配色:</span>
                           <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              className="h-8 bg-amber-500 hover:bg-amber-600 text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(template);
-                              }}
-                            >
-                              <Edit3 className="h-4 w-4 mr-1" />
-                              继续编辑
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(template);
-                              }}
-                              title="删除"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div
+                              className="w-5 h-5 rounded border"
+                              style={{ backgroundColor: template.styleConfig.colors.primary }}
+                              title="主色"
+                            />
+                            <div
+                              className="w-5 h-5 rounded border"
+                              style={{ backgroundColor: template.styleConfig.colors.secondary }}
+                              title="辅助色"
+                            />
+                            <div
+                              className="w-5 h-5 rounded border"
+                              style={{ backgroundColor: template.styleConfig.colors.headerBg }}
+                              title="背景色"
+                            />
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 已完成模板区域 */}
-          {templates.filter(t => t.status !== 'draft').length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <FileCheck className="h-5 w-5 text-green-500" />
-                <h2 className="text-lg font-medium">已完成</h2>
-                <Badge variant="secondary" className="bg-green-100 text-green-600">
-                  {templates.filter(t => t.status !== 'draft').length}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates.filter(t => t.status !== 'draft').map((template) => {
-                  const typeInfo = templateTypes[template.type] || templateTypes.other;
-                  return (
-                    <Card
-                      key={template.id}
-                      className={cn(
-                        "group hover:shadow-lg transition-all duration-200 cursor-pointer border-2",
-                        template.isDefault
-                          ? "border-amber-400 bg-gradient-to-br from-amber-50/50 to-orange-50/50"
-                          : "border-transparent hover:border-amber-200"
                       )}
-                      onClick={() => handleEdit(template)}
-                    >
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", typeInfo.bgColor)}>
-                              <FileText className={cn("h-5 w-5", typeInfo.color)} />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{template.name}</span>
-                                {template.isDefault && (
-                                  <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0 text-xs">
-                                    <Star className="h-3 w-3 mr-1" />
-                                    默认
-                                  </Badge>
-                                )}
-                              </div>
-                              <Badge variant="outline" className={cn("text-xs mt-1", typeInfo.color, typeInfo.bgColor)}>
-                                {typeInfo.label}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
+                    </>
+                  )}
 
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                            {template.description}
-                          </p>
-                        )}
-
-                        {/* 模板配置概览 */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
-                          <span>纸张: {template.styleConfig?.pageSize || 'A4'}</span>
-                          <span>字体: {template.styleConfig?.font?.family || 'SimSun'}</span>
-                          <span>条款: {template.clauses?.length || 0}条</span>
-                        </div>
-
-                        {/* 颜色预览 */}
-                        {template.styleConfig?.colors && (
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="text-xs text-muted-foreground">配色:</span>
-                            <div className="flex items-center gap-1">
-                              <div
-                                className="w-5 h-5 rounded border"
-                                style={{ backgroundColor: template.styleConfig.colors.primary }}
-                                title="主色"
-                              />
-                              <div
-                                className="w-5 h-5 rounded border"
-                                style={{ backgroundColor: template.styleConfig.colors.secondary }}
-                                title="辅助色"
-                              />
-                              <div
-                                className="w-5 h-5 rounded border"
-                                style={{ backgroundColor: template.styleConfig.colors.headerBg }}
-                                title="背景色"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 操作按钮 */}
-                        <div className="flex items-center justify-between pt-3 border-t">
-                          <div className="text-xs text-muted-foreground">
-                            {template.updatedAt
-                              ? `更新于 ${new Date(template.updatedAt).toLocaleDateString()}`
-                              : `创建于 ${new Date(template.createdAt).toLocaleDateString()}`}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {!template.isDefault && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSetDefault(template);
-                                }}
-                                title="设为默认"
-                              >
-                                <Star className="h-4 w-4" />
-                              </Button>
-                            )}
+                  {/* 操作按钮 */}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="text-xs text-muted-foreground">
+                      {template.updatedAt
+                        ? `更新于 ${new Date(template.updatedAt).toLocaleDateString()}`
+                        : `创建于 ${new Date(template.createdAt).toLocaleDateString()}`}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {isDraft ? (
+                        <>
+                          <Button
+                            size="sm"
+                            className="h-8 bg-amber-500 hover:bg-amber-600 text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(template);
+                            }}
+                          >
+                            <Edit3 className="h-4 w-4 mr-1" />
+                            继续编辑
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(template);
+                            }}
+                            title="删除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {!template.isDefault && (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCopy(template);
+                                handleSetDefault(template);
                               }}
-                              title="复制"
+                              title="设为默认"
                             >
-                              <Copy className="h-4 w-4" />
+                              <Star className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
-                              onClick={(e) => openAttachmentDialog(template, e)}
-                              title="导出PDF"
-                            >
-                              <FileDown className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(template);
-                              }}
-                              title="编辑"
-                            >
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(template);
-                              }}
-                              title="删除"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopy(template);
+                            }}
+                            title="复制"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                            onClick={(e) => openAttachmentDialog(template, e)}
+                            title="导出PDF"
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(template);
+                            }}
+                            title="编辑"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(template);
+                            }}
+                            title="删除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       {/* 删除确认对话框 */}
