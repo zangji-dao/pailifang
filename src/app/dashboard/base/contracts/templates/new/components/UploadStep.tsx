@@ -204,15 +204,6 @@ export function UploadStep({
         </Card>
       )}
 
-      {/* 下一步按钮 */}
-      <div className="flex justify-end">
-        <Button
-          onClick={onNext}
-          disabled={!mainFile && !mainFileUrl}
-        >
-          下一步
-        </Button>
-      </div>
     </div>
   );
 }
