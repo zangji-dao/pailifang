@@ -36,6 +36,9 @@ import {
   ZoomOut,
   Table,
   Trash2,
+  Download,
+  Paperclip,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +57,14 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ParseResult } from "@/types/contract-template";
@@ -151,6 +162,12 @@ export default function NewTemplatePage() {
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [isDraft, setIsDraft] = useState(false);
+  
+  // 导出PDF相关状态
+  const [exporting, setExporting] = useState(false);
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
+  const [selectedExportAttachments, setSelectedExportAttachments] = useState<string[]>([]);
+  const [previewZoom, setPreviewZoom] = useState(100);
   
   // 缩放比例
   const [zoom, setZoom] = useState(100);
@@ -1803,6 +1820,133 @@ export default function NewTemplatePage() {
     }
   };
   
+  // ========== 导出PDF功能 ==========
+  
+  // 打开附件选择对话框
+  const openAttachmentDialog = () => {
+    // 默认选中所有附件
+    const allAttachmentIds = (parseResult?.attachments || []).map(a => a.id);
+    setSelectedExportAttachments(allAttachmentIds);
+    setAttachmentDialogOpen(true);
+  };
+  
+  // 切换附件选择
+  const toggleExportAttachment = (attachmentId: string) => {
+    setSelectedExportAttachments(prev => 
+      prev.includes(attachmentId)
+        ? prev.filter(id => id !== attachmentId)
+        : [...prev, attachmentId]
+    );
+  };
+  
+  // 构建导出用的模板数据
+  const buildExportTemplateData = useCallback(() => {
+    const currentHtml = activeDocumentId === 'main' 
+      ? (editedHtml || parseResult?.html || '')
+      : parseResult?.attachments?.find(a => a.id === activeDocumentId)?.html || '';
+    
+    // 构建附件列表
+    const attachments = (parseResult?.attachments || [])
+      .filter(att => selectedExportAttachments.includes(att.id))
+      .map(att => ({
+        id: att.id,
+        name: att.displayName || att.name,
+        description: '',
+        required: false,
+        order: att.order || 0,
+      }));
+    
+    return {
+      id: templateId || 'preview',
+      name: name || '未命名模板',
+      description: description,
+      type: type,
+      html: currentHtml,
+      styles: parseResult?.styles || '',
+      attachments: attachments,
+      styleConfig: {
+        pageSize: 'A4' as const,
+        orientation: 'portrait' as const,
+        margins: { top: 20, right: 25, bottom: 20, left: 25 },
+        font: { family: 'SimSun', size: 12, lineHeight: 1.5 },
+        titleFont: { family: 'SimHei', size: 18, weight: 'bold' },
+        colors: {
+          primary: '#000000',
+          secondary: '#666666',
+          text: '#333333',
+          border: '#cccccc',
+          headerBg: '#f5f5f5',
+        },
+        layout: {
+          showLogo: false,
+          logoPosition: 'left',
+          showPageNumber: true,
+          pageNumberPosition: 'center',
+          headerHeight: 0,
+          footerHeight: 0,
+        },
+        clauseStyle: {
+          numberingStyle: 'decimal',
+          indent: 20,
+          spacing: 10,
+        },
+      },
+      clauses: [],
+      isDefault: false,
+      isActive: true,
+    };
+  }, [templateId, name, description, type, activeDocumentId, editedHtml, parseResult, selectedExportAttachments]);
+  
+  // 导出PDF（带附件选择）
+  const handleExportPDF = async () => {
+    setAttachmentDialogOpen(false);
+    setExporting(true);
+    
+    try {
+      toast.info('正在生成PDF...');
+      
+      // 使用统一的PDF导出库
+      const { exportContractTemplateToPdf } = await import('@/lib/pdf-export');
+      const templateData = buildExportTemplateData();
+      
+      await exportContractTemplateToPdf(templateData, {
+        includeAttachments: selectedExportAttachments.length > 0,
+        selectedAttachments: selectedExportAttachments,
+      });
+      
+      toast.success('PDF导出成功');
+    } catch (err) {
+      console.error('导出PDF失败:', err);
+      toast.error('导出失败');
+    } finally {
+      setExporting(false);
+    }
+  };
+  
+  // 快速导出（不含附件选择）
+  const handleQuickExport = async () => {
+    setExporting(true);
+    
+    try {
+      toast.info('正在生成PDF...');
+      
+      const { exportContractTemplateToPdf } = await import('@/lib/pdf-export');
+      const templateData = buildExportTemplateData();
+      
+      await exportContractTemplateToPdf(templateData, {
+        includeAttachments: false,
+        selectedAttachments: [],
+      });
+      
+      toast.success('PDF导出成功');
+    } catch (err) {
+      console.error('导出PDF失败:', err);
+      toast.error('导出失败');
+    } finally {
+      setExporting(false);
+    }
+  };
+  
   // ========== 渲染步骤内容 ==========
   
   const renderStepContent = () => {
@@ -2813,9 +2957,93 @@ export default function NewTemplatePage() {
   // 步骤4: 完成
   const renderCompleteStep = () => {
     const selectedBase = bases.find(b => b.id === baseId);
+    const allAttachments = parseResult?.attachments || [];
     
     return (
       <div className="space-y-6">
+        {/* 操作按钮区 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleQuickExport}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              快速导出PDF
+            </Button>
+            
+            {allAttachments.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={openAttachmentDialog}
+                disabled={exporting}
+              >
+                <Paperclip className="h-4 w-4 mr-2" />
+                导出（含附件）
+              </Button>
+            )}
+          </div>
+          
+          {/* 缩放控制 */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(Math.max(50, previewZoom - 10))}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground w-12 text-center">{previewZoom}%</span>
+            <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(Math.min(150, previewZoom + 10))}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(100)}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* 文档预览区域 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  文档预览
+                </CardTitle>
+                <CardDescription>预览模板效果，导出PDF查看最终效果</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div 
+              className="overflow-auto border rounded-lg bg-muted/30 p-4"
+              style={{ maxHeight: '500px' }}
+            >
+              <div 
+                className="mx-auto bg-white shadow-lg"
+                style={{
+                  transform: previewZoom !== 100 ? `scale(${previewZoom / 100})` : undefined,
+                  transformOrigin: 'top center',
+                  width: '210mm',
+                  minHeight: '297mm',
+                  padding: '2.5cm 2.8cm',
+                }}
+              >
+                <div 
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ 
+                    __html: processedHtml || editedHtml || parseResult?.html || '<p class="text-muted-foreground">暂无内容</p>' 
+                  }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* 确认信息 */}
         <Card>
           <CardHeader>
             <CardTitle>确认并保存</CardTitle>
@@ -2893,8 +3121,105 @@ export default function NewTemplatePage() {
                 </div>
               </>
             )}
+            
+            {/* 附件信息 */}
+            {allAttachments.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    附件 ({allAttachments.length} 个)
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {allAttachments.map((att) => (
+                      <Badge key={att.id} variant="outline" className="bg-muted/50">
+                        {att.displayName || att.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
+        
+        {/* 附件选择弹窗 */}
+        <Dialog open={attachmentDialogOpen} onOpenChange={setAttachmentDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5" />
+                选择导出附件
+              </DialogTitle>
+              <DialogDescription>
+                选择需要包含在PDF中的附件，导出时将作为合同附件列表
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {allAttachments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Paperclip className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>该合同模板暂无附件</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {allAttachments.map((attachment) => {
+                      const isSelected = selectedExportAttachments.includes(attachment.id);
+                      return (
+                        <div
+                          key={attachment.id}
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                            isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                          )}
+                          onClick={() => toggleExportAttachment(attachment.id)}
+                        >
+                          <Checkbox
+                            id={attachment.id}
+                            checked={isSelected}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <label
+                              htmlFor={attachment.id}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              {attachment.displayName || attachment.name}
+                            </label>
+                          </div>
+                          {isSelected && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4">
+                    已选择 {selectedExportAttachments.length} / {allAttachments.length} 个附件
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setAttachmentDialogOpen(false)}
+              >
+                取消
+              </Button>
+              <Button onClick={handleExportPDF} disabled={exporting}>
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                导出PDF
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   };
