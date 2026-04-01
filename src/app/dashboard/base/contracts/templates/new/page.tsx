@@ -1528,16 +1528,12 @@ export default function NewTemplatePage() {
                 .a4-paper.prose h1,
                 .a4-paper.prose h2,
                 .a4-paper.prose h3,
-                .a4-paper.prose h4,
-                .a4-paper.prose table,
-                .a4-paper.prose td,
-                .a4-paper.prose th {
+                .a4-paper.prose h4 {
                   margin: 0;
                   padding: 0;
                   text-indent: 0;
                   font-size: inherit;
                   line-height: inherit;
-                  border: none;
                   background: transparent;
                 }
                 
@@ -1552,7 +1548,7 @@ export default function NewTemplatePage() {
                 .a4-paper h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0; }
                 .a4-paper h3 { font-size: 14pt; font-weight: bold; margin: 8pt 0; }
                 
-                /* 表格样式 - LibreOffice输出 */
+                /* 表格样式 - 保留Word/LibreOffice的原始边框 */
                 .a4-paper table {
                   border-collapse: collapse;
                   width: 100%;
@@ -1560,12 +1556,11 @@ export default function NewTemplatePage() {
                 }
                 .a4-paper table td,
                 .a4-paper table th {
-                  border: 1px solid #000;
                   padding: 4pt 6pt;
                   vertical-align: top;
+                  /* 不覆盖边框样式，保留原始样式 */
                 }
                 .a4-paper table th {
-                  background: #f0f0f0;
                   font-weight: bold;
                 }
                 
@@ -1578,10 +1573,6 @@ export default function NewTemplatePage() {
                 .a4-paper li {
                   margin: 3pt 0;
                 }
-                
-                /* 编辑模式样式 */
-                .a4-paper.edit-mode { outline: 2px solid #3b82f6; outline-offset: 4px; }
-                .a4-paper.edit-mode:focus { outline-color: #2563eb; }
                 
                 /* 变量标记样式 - 保留原文字样式 */
                 .variable-marker {
@@ -1625,7 +1616,7 @@ export default function NewTemplatePage() {
               `}</style>
               <div
                 ref={contentRef}
-                className="a4-paper prose prose-sm max-w-none edit-mode"
+                className="a4-paper prose prose-sm max-w-none"
                 style={{
                   transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
                   transformOrigin: 'top center',
