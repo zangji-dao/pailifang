@@ -252,6 +252,7 @@ export default function NewTemplatePage() {
                 pages: [],
                 fullText: '',
                 html: draftData.editedHtml || '',
+                styles: draftData.styles || '', // 恢复样式
                 attachments: draftData.attachments || [],
                 detectedAttachments: [],
                 detectedFields: [],
@@ -541,6 +542,7 @@ export default function NewTemplatePage() {
         source_file_url: parseResult?.fileUrl,
         source_file_name: parseResult?.fileName,
         source_file_type: parseResult?.fileType,
+        styles: parseResult?.styles, // 保存样式
         attachments: parseResult?.attachments?.map(a => ({
           id: a.id,
           name: a.name,

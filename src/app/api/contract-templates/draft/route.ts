@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       source_file_url,
       source_file_name,
       source_file_type,
+      styles,
       attachments,
     } = body;
 
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest) {
           type: type || 'tenant',
           base_id,
           status: 'draft',
+          source_file_url: source_file_url || undefined,
+          source_file_name: source_file_name || undefined,
+          source_file_type: source_file_type || undefined,
           draft_data: {
             currentStep,
             editedHtml,
@@ -50,6 +54,7 @@ export async function POST(request: NextRequest) {
             selectedVariables,
             bindings,
             attachments,
+            styles,
           },
           updated_at: now,
         })
@@ -94,6 +99,7 @@ export async function POST(request: NextRequest) {
           selectedVariables,
           bindings,
           attachments,
+          styles,
         },
         is_default: false,
         is_active: true,
