@@ -17,7 +17,6 @@ import {
   Plus,
   MousePointer,
   GripVertical,
-  Edit3,
   Type,
   Minus,
   RotateCcw,
@@ -450,8 +449,7 @@ export default function NewTemplatePage() {
   
   // ========== 步骤2: 变量绑定 ==========
   
-  // 编辑模式：true 时可编辑文档，false 时可插入标记
-  const [editMode, setEditMode] = useState(false);
+  // 文档编辑状态：始终可编辑
   const [editedHtml, setEditedHtml] = useState<string>(""); // 编辑后的HTML
   
   // 标记类型：基于用户点击位置
@@ -592,20 +590,6 @@ export default function NewTemplatePage() {
     }
   }, []);
   
-  // 处理编辑模式切换
-  const handleEditModeToggle = () => {
-    if (editMode) {
-      // 退出编辑模式，同步内容
-      syncEditedContent();
-      // 不再自动清除标记，保留用户的绑定工作
-      // 如果编辑后标记位置不准确，用户可以手动调整
-      if (markers.length > 0) {
-        toast.info("编辑完成，如标记位置有变化请重新调整");
-      }
-    }
-    setEditMode(!editMode);
-  };
-  
   // 重置文档到原始状态
   const handleResetDocument = () => {
     setEditedHtml("");
@@ -726,11 +710,8 @@ export default function NewTemplatePage() {
     toast.success(`字体大小已调整为 ${size}`);
   }, [syncEditedContent]);
   
-  // 处理文档点击 - 用户自定义绑定位置（仅在非编辑模式下）
+  // 处理文档点击 - 用户自定义绑定位置
   const handleContentClick = useCallback((e: React.MouseEvent) => {
-    // 编辑模式下不处理点击
-    if (editMode) return;
-    
     const target = e.target as HTMLElement;
     
     // 如果点击的是标记，打开变量选择器
@@ -868,7 +849,7 @@ export default function NewTemplatePage() {
     setMarkers(prev => [...prev, newMarker]);
     setActiveMarkerId(newMarker.id);
     setShowVariablePicker(true);
-  }, [editMode]);
+  }, []);
   
   // 辅助函数：查找最近的有ID的父元素
   const findNearestId = (element: HTMLElement | null): string => {
@@ -1379,7 +1360,7 @@ export default function NewTemplatePage() {
     </div>
   );
   
-  // 步骤2: 变量绑定
+  // 步骤2: 变量绑定（简化为单一编辑模式）
   const renderBindingStep = () => {
     if (!parseResult?.html) {
       return (
@@ -1400,32 +1381,10 @@ export default function NewTemplatePage() {
         <Card className="lg:col-span-2 overflow-hidden">
           <CardHeader className="py-3 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">合同预览</CardTitle>
+              <CardTitle className="text-sm">合同编辑</CardTitle>
               <div className="flex items-center gap-3">
-                {/* 模式切换 */}
-                <div className="flex items-center border rounded-lg p-0.5">
-                  <Button
-                    variant={editMode ? "ghost" : "secondary"}
-                    size="sm"
-                    className="h-7 px-3 rounded-md"
-                    onClick={() => editMode && handleEditModeToggle()}
-                  >
-                    <MousePointer className="h-3.5 w-3.5 mr-1" />
-                    绑定模式
-                  </Button>
-                  <Button
-                    variant={editMode ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-7 px-3 rounded-md"
-                    onClick={() => !editMode && handleEditModeToggle()}
-                  >
-                    <Edit3 className="h-3.5 w-3.5 mr-1" />
-                    编辑模式
-                  </Button>
-                </div>
-                
                 {/* 状态显示 */}
-                {!editMode && markers.length > 0 && (
+                {markers.length > 0 && (
                   <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
                       <Badge variant="outline" className="text-amber-600 border-amber-300">
@@ -1509,65 +1468,64 @@ export default function NewTemplatePage() {
               </Button>
             </div>
             
-            {/* 编辑模式工具栏 */}
-            {editMode && (
-              <div className="space-y-2 pt-2 border-t mt-2">
-                {/* 格式化按钮组 */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-xs text-muted-foreground mr-2">格式：</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleBold}
-                    title="加粗 (Ctrl+B)"
-                  >
-                    <Bold className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleItalic}
-                    title="斜体 (Ctrl+I)"
-                  >
-                    <Italic className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleAddUnderline}
-                    title="下划线 (Ctrl+U)"
-                  >
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
-                      <line x1="4" y1="21" x2="20" y2="21" />
-                    </svg>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleStrikethrough}
-                    title="删除线"
-                  >
-                    <Strikethrough className="h-3.5 w-3.5" />
-                  </Button>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  <Select onValueChange={handleFontSize}>
-                    <SelectTrigger className="h-7 w-20 text-xs">
-                      <SelectValue placeholder="字号" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="12px" className="text-xs">12px</SelectItem>
-                      <SelectItem value="14px" className="text-sm">14px</SelectItem>
-                      <SelectItem value="16px" className="text-base">16px</SelectItem>
-                      <SelectItem value="18px" className="text-lg">18px</SelectItem>
-                      <SelectItem value="24px" className="text-xl">24px</SelectItem>
-                      <SelectItem value="32px" className="text-2xl">32px</SelectItem>
-                    </SelectContent>
-                  </Select>
+            {/* 编辑工具栏 */}
+            <div className="space-y-2 pt-2 border-t mt-2">
+              {/* 格式化按钮组 */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-xs text-muted-foreground mr-2">格式：</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleBold}
+                  title="加粗 (Ctrl+B)"
+                >
+                  <Bold className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleItalic}
+                  title="斜体 (Ctrl+I)"
+                >
+                  <Italic className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleAddUnderline}
+                  title="下划线 (Ctrl+U)"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
+                    <line x1="4" y1="21" x2="20" y2="21" />
+                  </svg>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleStrikethrough}
+                  title="删除线"
+                >
+                  <Strikethrough className="h-3.5 w-3.5" />
+                </Button>
+                <div className="w-px h-5 bg-border mx-1" />
+                <Select onValueChange={handleFontSize}>
+                  <SelectTrigger className="h-7 w-20 text-xs">
+                    <SelectValue placeholder="字号" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12px" className="text-xs">12px</SelectItem>
+                    <SelectItem value="14px" className="text-sm">14px</SelectItem>
+                    <SelectItem value="16px" className="text-base">16px</SelectItem>
+                    <SelectItem value="18px" className="text-lg">18px</SelectItem>
+                    <SelectItem value="24px" className="text-xl">24px</SelectItem>
+                    <SelectItem value="32px" className="text-2xl">32px</SelectItem>
+                  </SelectContent>
+                </Select>
                 </div>
                 
                 {/* 对齐和列表按钮组 */}
@@ -1660,8 +1618,7 @@ export default function NewTemplatePage() {
                   </Button>
                 </div>
               </div>
-            )}
-          </CardHeader>
+            </CardHeader>
           <CardContent className={cn(
             "p-0 flex flex-col",
             parseResult?.attachments?.length ? "h-[calc(100%-52px)]" : "h-[calc(100%-52px)]"
@@ -1781,19 +1738,16 @@ export default function NewTemplatePage() {
               `}</style>
               <div
                 ref={contentRef}
-                className={cn(
-                  "a4-paper prose prose-sm max-w-none",
-                  editMode ? "edit-mode" : "bind-mode"
-                )}
+                className="a4-paper prose prose-sm max-w-none edit-mode"
                 style={{
                   transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
                   transformOrigin: 'top center',
                 }}
-                contentEditable={editMode}
+                contentEditable={true}
                 suppressContentEditableWarning
                 onClick={handleContentClick}
-                onBlur={editMode ? syncEditedContent : undefined}
-                onKeyDown={editMode ? (e) => {
+                onBlur={syncEditedContent}
+                onKeyDown={(e) => {
                   // 处理快捷键
                   if (e.ctrlKey || e.metaKey) {
                     switch (e.key.toLowerCase()) {
@@ -1811,7 +1765,7 @@ export default function NewTemplatePage() {
                         break;
                     }
                   }
-                } : undefined}
+                }}
                 dangerouslySetInnerHTML={{ __html: processedHtml }}
               />
             </div>
@@ -1856,58 +1810,88 @@ export default function NewTemplatePage() {
         <Card className="overflow-hidden">
           <CardHeader className="py-3 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">
-                {editMode ? "编辑提示" : "标记管理"}
-              </CardTitle>
-              <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
-                <Plus className="h-3 w-3 mr-1" />
-                自定义变量
-              </Button>
+              <CardTitle className="text-sm">标记管理</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  自定义变量
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
-            {editMode ? (
-              /* 编辑模式提示 */
-              <div className="p-6 space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm font-medium text-blue-800 mb-2">编辑模式已开启</p>
-                  <ul className="text-xs text-blue-700 space-y-1.5">
-                    <li>• 直接在文档中点击即可编辑文字</li>
-                    <li>• 可以删除、修改、添加内容</li>
-                    <li>• 选中文字后使用工具栏设置格式</li>
-                    <li>• 支持加粗、斜体、下划线、删除线</li>
-                    <li>• 支持调整字体大小和对齐方式</li>
-                    <li>• 编辑完成后切换到"绑定模式"继续</li>
-                  </ul>
-                </div>
-                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                  <p className="text-sm font-medium text-amber-800 mb-2">快捷键</p>
-                  <ul className="text-xs text-amber-700 space-y-1">
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+B</kbd> 加粗</li>
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+I</kbd> 斜体</li>
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+U</kbd> 下划线</li>
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Ctrl+Z</kbd> 撤销</li>
-                    <li><kbd className="px-1.5 py-0.5 bg-white rounded border text-xs">Delete</kbd> 删除选中内容</li>
-                  </ul>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={handleEditModeToggle}
-                >
-                  <MousePointer className="h-4 w-4 mr-2" />
-                  完成编辑，切换到绑定模式
-                </Button>
-              </div>
-            ) : markers.length === 0 ? (
-              /* 绑定模式 - 无标记 */
+            {/* 提示信息 */}
+            <div className="p-4 bg-muted/50 border-b">
+              <p className="text-xs text-muted-foreground">
+                <MousePointer className="h-3 w-3 inline-block mr-1" />
+                在文档中点击位置或选中文本，然后点击下方"插入变量"按钮
+              </p>
+            </div>
+            
+            {/* 插入变量按钮 */}
+            <div className="p-3 border-b">
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  // 检查是否有选中文字
+                  const selection = window.getSelection();
+                  if (selection && !selection.isCollapsed) {
+                    // 有选中文字，记录选中信息后插入标记
+                    const range = selection.getRangeAt(0);
+                    const selectedText = range.toString().trim();
+                    if (selectedText) {
+                      // 在选中位置插入变量标记
+                      const markerId = `marker-${Date.now()}`;
+                      const markerSpan = document.createElement('span');
+                      markerSpan.className = 'variable-marker pending';
+                      markerSpan.dataset.markerId = markerId;
+                      markerSpan.contentEditable = 'false';
+                      markerSpan.textContent = '待绑定';
+                      
+                      try {
+                        range.deleteContents();
+                        range.insertNode(markerSpan);
+                        syncEditedContent();
+                        
+                        // 添加标记
+                        const newMarker: Marker = {
+                          id: markerId,
+                          status: 'pending',
+                          position: {
+                            beforeText: '',
+                            afterText: '',
+                            textOffset: 0,
+                          },
+                          displayText: selectedText,
+                        };
+                        setMarkers(prev => [...prev, newMarker]);
+                        setActiveMarkerId(markerId);
+                        setShowVariablePicker(true);
+                        toast.success("已插入变量标记，请选择变量");
+                      } catch {
+                        toast.error("插入标记失败，请重试");
+                      }
+                      return;
+                    }
+                  }
+                  // 没有选中文字，提示用户
+                  toast.info("请先在文档中选中要绑定为变量的文字");
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                插入变量标记
+              </Button>
+            </div>
+            
+            {markers.length === 0 ? (
+              /* 无标记 */
               <div className="p-6 text-center text-muted-foreground">
                 <MousePointer className="h-8 w-8 mx-auto mb-3 opacity-50" />
                 <p className="text-sm font-medium">暂无标记</p>
-                <p className="text-xs mt-1">点击合同文档中任意位置添加标记</p>
+                <p className="text-xs mt-1">选中文字后点击"插入变量标记"</p>
               </div>
             ) : (
-              /* 绑定模式 - 有标记 */
+              /* 有标记 */
               <div className="p-3 space-y-2">
                 {markers.map((marker, index) => {
                   const variable = marker.variableKey 
