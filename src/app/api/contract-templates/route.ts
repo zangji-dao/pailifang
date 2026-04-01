@@ -78,6 +78,7 @@ interface TemplateClause {
 interface ContractAttachment {
   id: string;
   name: string;
+  url?: string; // 附件文件URL
   description?: string;
   required: boolean;
   order: number;

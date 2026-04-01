@@ -307,7 +307,7 @@ export default function NewTemplatePage() {
                 id: a.id,
                 name: a.name,
                 displayName: a.name,
-                url: '',
+                url: a.url || '', // 保留URL
                 html: '',
                 styles: '',
                 text: '',
@@ -1766,11 +1766,12 @@ export default function NewTemplatePage() {
     
     setSaving(true);
     try {
-      // 构建附件列表
+      // 构建附件列表（包含URL）
       const attachmentsList = parseResult?.attachments?.length 
         ? parseResult.attachments.map(a => ({
             id: a.id,
             name: a.displayName || a.name,
+            url: a.url,
             description: '',
             required: false,
             order: a.order || 0,
@@ -1778,6 +1779,7 @@ export default function NewTemplatePage() {
         : uploadedAttachments.map(att => ({
             id: att.id,
             name: att.name.replace(/\.[^/.]+$/, ''),
+            url: att.url,
             description: '',
             required: false,
             order: 0,
