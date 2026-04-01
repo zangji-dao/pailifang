@@ -270,12 +270,11 @@ export default function NewTemplatePage() {
             }
           }
           
-          // 恢复附件
-          loadAttachmentsFromTemplate(template);
-          
-          // 草稿附件
-          if (isDraftTemplate && template.draft_data?.uploadedAttachments) {
+          // 恢复附件：草稿附件优先，否则从模板加载
+          if (isDraftTemplate && template.draft_data?.uploadedAttachments?.length) {
             loadAttachmentsFromDraft(template.draft_data);
+          } else {
+            loadAttachmentsFromTemplate(template);
           }
           
           toast.success(isDraftTemplate ? "草稿已加载" : "模板已加载");
@@ -413,6 +412,28 @@ export default function NewTemplatePage() {
       
       setParseProgress(100);
       toast.success("文档解析成功");
+      
+      // 解析成功后自动保存草稿（保存附件数据）
+      const draftId = await saveDraft({
+        templateId: templateIdToUse,
+        mainFile,
+        name: name || (fileName ? fileName.replace(/\.[^/.]+$/, "") : ''),
+        description,
+        type,
+        baseId,
+        currentStep: 2,
+        editedHtml: parseData.data.html || '',
+        markers: [],
+        selectedVariables: [],
+        bindings: [],
+        parseResult: parseData.data,
+        uploadedAttachments: allAttachments,
+      }, { silent: true });
+      
+      if (draftId && !templateId) {
+        setTemplateId(draftId);
+      }
+      
       setCurrentStep(2);
     } catch (err) {
       console.error("上传解析失败:", err);
