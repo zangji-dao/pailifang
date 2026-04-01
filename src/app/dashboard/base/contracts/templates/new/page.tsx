@@ -100,6 +100,7 @@ export default function NewTemplatePage() {
   const mainFileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const draftLoadedRef = useRef(false); // 防止草稿重复加载
   
   // 当前步骤
   const [currentStep, setCurrentStep] = useState(1);
@@ -208,6 +209,10 @@ export default function NewTemplatePage() {
     const loadDraft = async () => {
       const draftId = searchParams.get('draftId');
       if (!draftId) return;
+      
+      // 防止重复加载
+      if (draftLoadedRef.current) return;
+      draftLoadedRef.current = true;
       
       setLoadingDraft(true);
       try {
@@ -1479,8 +1484,36 @@ export default function NewTemplatePage() {
       return;
     }
     
+    // 收集所有文档内容
+    const documents = [];
+    
+    // 主合同
+    if (hasMainContent) {
+      documents.push({
+        id: 'main',
+        name: '主合同',
+        html: editedHtml || parseResult?.html || '',
+      });
+    }
+    
+    // 附件
+    if (hasAttachments) {
+      for (const att of parseResult!.attachments!) {
+        documents.push({
+          id: att.id,
+          name: att.displayName || att.name,
+          html: att.html || '',
+        });
+      }
+    }
+    
+    // 立即显示进度卡片
+    setOptimizeProgress({
+      current: 0,
+      total: documents.length,
+      documentName: '准备中...',
+    });
     setOptimizing(true);
-    setOptimizeProgress(null);
     
     try {
       // 收集所有变量
@@ -1488,29 +1521,6 @@ export default function NewTemplatePage() {
         key: m.variableKey,
         name: m.variableKey || '未绑定'
       }));
-      
-      // 收集所有文档内容
-      const documents = [];
-      
-      // 主合同
-      if (hasMainContent) {
-        documents.push({
-          id: 'main',
-          name: '主合同',
-          html: editedHtml || parseResult?.html || '',
-        });
-      }
-      
-      // 附件
-      if (hasAttachments) {
-        for (const att of parseResult!.attachments!) {
-          documents.push({
-            id: att.id,
-            name: att.displayName || att.name,
-            html: att.html || '',
-          });
-        }
-      }
       
       // 使用 fetch 处理 SSE 流
       const response = await fetch("/api/contract-templates/optimize-layout", {
