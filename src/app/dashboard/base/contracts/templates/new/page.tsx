@@ -36,6 +36,7 @@ import {
   ZoomOut,
   Sparkles,
   Table,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -737,6 +738,147 @@ export default function NewTemplatePage() {
     setShowTablePopover(false);
     toast.success(`已插入 ${rows} 行 ${cols} 列的表格`);
   }, [syncEditedContent]);
+  
+  // 获取当前光标所在的表格单元格
+  const getCurrentTableCell = useCallback((): { cell: HTMLTableCellElement; row: HTMLTableRowElement; table: HTMLTableElement } | null => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    
+    let node = selection.anchorNode;
+    while (node && node !== contentRef.current) {
+      if (node instanceof HTMLTableCellElement) {
+        const cell = node;
+        const row = cell.closest('tr');
+        const table = cell.closest('table');
+        if (row && table) {
+          return { cell, row, table };
+        }
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }, []);
+  
+  // 删除当前行
+  const handleDeleteRow = useCallback(() => {
+    const cellInfo = getCurrentTableCell();
+    if (!cellInfo) {
+      toast.error('请先在表格中选择要删除的行');
+      return;
+    }
+    
+    const { row, table } = cellInfo;
+    const rows = table.querySelectorAll('tr');
+    
+    if (rows.length <= 1) {
+      // 如果只有一行，删除整个表格
+      table.remove();
+      toast.success('已删除表格');
+    } else {
+      row.remove();
+      toast.success('已删除当前行');
+    }
+    
+    syncEditedContent();
+  }, [getCurrentTableCell, syncEditedContent]);
+  
+  // 删除当前列
+  const handleDeleteColumn = useCallback(() => {
+    const cellInfo = getCurrentTableCell();
+    if (!cellInfo) {
+      toast.error('请先在表格中选择要删除的列');
+      return;
+    }
+    
+    const { cell, table } = cellInfo;
+    const cellIndex = cell.cellIndex;
+    const rows = table.querySelectorAll('tr');
+    
+    // 检查是否只有一列
+    const firstRow = rows[0];
+    if (firstRow && firstRow.querySelectorAll('td, th').length <= 1) {
+      // 如果只有一列，删除整个表格
+      table.remove();
+      toast.success('已删除表格');
+    } else {
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td, th');
+        if (cells[cellIndex]) {
+          cells[cellIndex].remove();
+        }
+      });
+      toast.success('已删除当前列');
+    }
+    
+    syncEditedContent();
+  }, [getCurrentTableCell, syncEditedContent]);
+  
+  // 在当前行上方插入行
+  const handleInsertRowAbove = useCallback(() => {
+    const cellInfo = getCurrentTableCell();
+    if (!cellInfo) {
+      toast.error('请先在表格中选择位置');
+      return;
+    }
+    
+    const { row, table } = cellInfo;
+    const colCount = row.querySelectorAll('td, th').length;
+    
+    const newRow = document.createElement('tr');
+    for (let i = 0; i < colCount; i++) {
+      const newCell = document.createElement('td');
+      newCell.style.cssText = 'border: 1px solid #000; padding: 4pt 6pt; vertical-align: top;';
+      newCell.innerHTML = '&nbsp;';
+      newRow.appendChild(newCell);
+    }
+    
+    row.parentNode?.insertBefore(newRow, row);
+    toast.success('已在当前行上方插入新行');
+    syncEditedContent();
+  }, [getCurrentTableCell, syncEditedContent]);
+  
+  // 在当前行下方插入行
+  const handleInsertRowBelow = useCallback(() => {
+    const cellInfo = getCurrentTableCell();
+    if (!cellInfo) {
+      toast.error('请先在表格中选择位置');
+      return;
+    }
+    
+    const { row, table } = cellInfo;
+    const colCount = row.querySelectorAll('td, th').length;
+    
+    const newRow = document.createElement('tr');
+    for (let i = 0; i < colCount; i++) {
+      const newCell = document.createElement('td');
+      newCell.style.cssText = 'border: 1px solid #000; padding: 4pt 6pt; vertical-align: top;';
+      newCell.innerHTML = '&nbsp;';
+      newRow.appendChild(newCell);
+    }
+    
+    if (row.nextSibling) {
+      row.parentNode?.insertBefore(newRow, row.nextSibling);
+    } else {
+      row.parentNode?.appendChild(newRow);
+    }
+    
+    toast.success('已在当前行下方插入新行');
+    syncEditedContent();
+  }, [getCurrentTableCell, syncEditedContent]);
+  
+  // 删除整个表格
+  const handleDeleteTable = useCallback(() => {
+    const cellInfo = getCurrentTableCell();
+    if (!cellInfo) {
+      toast.error('请先在表格中选择要删除的表格');
+      return;
+    }
+    
+    const { table } = cellInfo;
+    table.remove();
+    toast.success('已删除表格');
+    syncEditedContent();
+  }, [getCurrentTableCell, syncEditedContent]);
   
   // 处理文档点击 - 处理点击变量标记
   const handleContentClick = useCallback((e: React.MouseEvent) => {
@@ -1540,46 +1682,103 @@ export default function NewTemplatePage() {
                         variant="outline"
                         size="sm"
                         className="h-7"
-                        title="插入表格"
+                        title="表格操作"
                       >
                         <Table className="h-3.5 w-3.5 mr-1" />
                         表格
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-64" align="start">
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium">插入表格</div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <Label className="text-xs text-muted-foreground">行数</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={10}
-                              value={tableRows}
-                              onChange={(e) => setTableRows(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                              className="h-8 mt-1"
-                            />
+                    <PopoverContent className="w-72" align="start">
+                      <div className="space-y-4">
+                        {/* 插入新表格 */}
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">插入新表格</div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <Label className="text-xs text-muted-foreground">行数</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={tableRows}
+                                onChange={(e) => setTableRows(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                                className="h-8 mt-1"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Label className="text-xs text-muted-foreground">列数</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={tableCols}
+                                onChange={(e) => setTableCols(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                                className="h-8 mt-1"
+                              />
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <Label className="text-xs text-muted-foreground">列数</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={10}
-                              value={tableCols}
-                              onChange={(e) => setTableCols(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                              className="h-8 mt-1"
-                            />
-                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleInsertTable(tableRows, tableCols)}
+                          >
+                            插入 {tableRows} 行 {tableCols} 列表格
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          onClick={() => handleInsertTable(tableRows, tableCols)}
-                        >
-                          插入 {tableRows} 行 {tableCols} 列表格
-                        </Button>
+                        
+                        <Separator />
+                        
+                        {/* 编辑表格 */}
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">编辑表格</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleInsertRowAbove}
+                              className="justify-start"
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              上方插入行
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleInsertRowBelow}
+                              className="justify-start"
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              下方插入行
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleDeleteRow}
+                              className="justify-start text-amber-600 hover:text-amber-700"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              删除当前行
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleDeleteColumn}
+                              className="justify-start text-amber-600 hover:text-amber-700"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              删除当前列
+                            </Button>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDeleteTable}
+                            className="w-full text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                            删除整个表格
+                          </Button>
+                        </div>
                       </div>
                     </PopoverContent>
                   </Popover>
