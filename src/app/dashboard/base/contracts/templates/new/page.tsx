@@ -935,6 +935,28 @@ export default function NewTemplatePage() {
     toast.success("已添加删除线");
   }, [syncEditedContent]);
   
+  // 编辑功能：添加下划线填充（变量居中）
+  const handleAddUnderlineFill = useCallback((width: string) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+    
+    // 获取选中的内容
+    const selectedText = selection.toString();
+    
+    // 如果没有选中内容，插入一个空的带下划线的占位符
+    const content = selectedText || '______';
+    
+    // 创建带下划线填充的HTML
+    // 使用 inline-block + border-bottom + text-align: center
+    const underlineHtml = `<span style="display: inline-block; min-width: ${width}; border-bottom: 1px solid #000; text-align: center; padding: 0 8px;">${content}</span>`;
+    
+    // 使用 insertHTML 命令插入
+    document.execCommand('insertHTML', false, underlineHtml);
+    
+    syncEditedContent();
+    toast.success(`已添加下划线填充（${width}）`);
+  }, [syncEditedContent]);
+  
   // 编辑功能：文本对齐
   const handleAlign = useCallback((alignment: 'left' | 'center' | 'right' | 'justify') => {
     const command = {
@@ -2065,6 +2087,18 @@ export default function NewTemplatePage() {
                     <line x1="4" y1="21" x2="20" y2="21" />
                   </svg>
                 </Button>
+                <Select onValueChange={handleAddUnderlineFill}>
+                  <SelectTrigger className="h-7 w-24 text-xs" title="下划线填充（选中变量后使用）">
+                    <SelectValue placeholder="下划线" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="100px">短 (100px)</SelectItem>
+                    <SelectItem value="150px">中 (150px)</SelectItem>
+                    <SelectItem value="200px">长 (200px)</SelectItem>
+                    <SelectItem value="250px">较长 (250px)</SelectItem>
+                    <SelectItem value="300px">超长 (300px)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   variant="outline"
                   size="sm"
