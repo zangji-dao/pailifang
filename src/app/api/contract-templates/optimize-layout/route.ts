@@ -92,7 +92,7 @@ ${html}
     ];
 
     const response = await client.invoke(messages, {
-      model: 'doubao-seed-2-0-250115',
+      model: 'doubao-seed-2-0-lite-260215',
       temperature: 0.2,
     });
 
