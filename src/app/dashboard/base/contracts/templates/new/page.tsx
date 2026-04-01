@@ -1030,6 +1030,53 @@ export default function NewTemplatePage() {
     toast.success(`字体大小已调整为 ${size}`);
   }, [syncEditedContent]);
   
+  // 编辑功能：行间距
+  const handleLineHeight = useCallback((lineHeight: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      toast.info("请先选中要调整的文字");
+      return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    let container: Node | null = range.commonAncestorContainer;
+    
+    // 找到包含选中内容的块级元素
+    while (container && container.nodeType !== Node.ELEMENT_NODE) {
+      container = container.parentNode;
+    }
+    
+    if (!container) {
+      toast.error("无法找到目标元素");
+      return;
+    }
+    
+    const element = container as HTMLElement;
+    
+    // 如果是行内元素，向上查找块级元素
+    const blockElements = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH'];
+    let blockElement: HTMLElement | null = element;
+    while (blockElement && !blockElements.includes(blockElement.tagName)) {
+      blockElement = blockElement.parentElement;
+    }
+    
+    if (blockElement) {
+      blockElement.style.lineHeight = lineHeight;
+      syncEditedContent();
+      const labels: Record<string, string> = {
+        '1': '单倍行距',
+        '1.5': '1.5倍行距',
+        '1.8': '1.8倍行距',
+        '2': '双倍行距',
+        '2.5': '2.5倍行距',
+        '3': '三倍行距',
+      };
+      toast.success(`已应用${labels[lineHeight] || lineHeight}`);
+    } else {
+      toast.error("请在段落中使用此功能");
+    }
+  }, [syncEditedContent]);
+  
   // 编辑功能：插入表格
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
@@ -1905,6 +1952,20 @@ export default function NewTemplatePage() {
                     <SelectItem value="18px" className="text-lg">18px</SelectItem>
                     <SelectItem value="24px" className="text-xl">24px</SelectItem>
                     <SelectItem value="32px" className="text-2xl">32px</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* 行间距选择 */}
+                <Select onValueChange={handleLineHeight}>
+                  <SelectTrigger className="h-7 w-22 text-xs">
+                    <SelectValue placeholder="行距" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">单倍</SelectItem>
+                    <SelectItem value="1.5">1.5倍</SelectItem>
+                    <SelectItem value="1.8">1.8倍</SelectItem>
+                    <SelectItem value="2">双倍</SelectItem>
+                    <SelectItem value="2.5">2.5倍</SelectItem>
+                    <SelectItem value="3">三倍</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="w-px h-5 bg-border mx-1" />
