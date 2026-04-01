@@ -254,13 +254,16 @@ export default function NewTemplatePage() {
             if (draft.source_file_url) {
               console.log('[草稿恢复] draftData.attachments:', draftData.attachments);
               console.log('[草稿恢复] draftData.uploadedAttachments:', draftData.uploadedAttachments);
+              console.log('[草稿恢复] draftData.currentStep:', draftData.currentStep);
               
               // 如果有上传的附件但没有解析后的附件数据，需要重新解析
               const hasUploadedAttachments = draftData.uploadedAttachments && draftData.uploadedAttachments.length > 0;
               const hasParsedAttachments = draftData.attachments && draftData.attachments.length > 0;
               
-              if (hasUploadedAttachments && !hasParsedAttachments && draftData.currentStep >= 2) {
-                // 需要重新解析附件
+              console.log('[草稿恢复] hasUploadedAttachments:', hasUploadedAttachments, 'hasParsedAttachments:', hasParsedAttachments);
+              
+              if (hasUploadedAttachments && !hasParsedAttachments) {
+                // 需要重新解析附件（移除 currentStep >= 2 的限制）
                 console.log('[草稿恢复] 需要重新解析附件');
                 try {
                   const parseRes = await fetch("/api/contract-templates/parse", {
