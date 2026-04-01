@@ -1461,6 +1461,13 @@ export default function NewTemplatePage() {
     return result;
   }, [activeDocumentId, currentDocumentHtml, editedHtml, currentDocumentMarkers, selectedVariables]);
   
+  // 优化排版进度状态
+  const [optimizeProgress, setOptimizeProgress] = useState<{
+    current: number;
+    total: number;
+    documentName: string;
+  } | null>(null);
+
   // 优化排版功能（统一优化主合同和所有附件）
   const handleOptimizeLayout = useCallback(async () => {
     // 检查是否有内容可优化
@@ -1473,10 +1480,7 @@ export default function NewTemplatePage() {
     }
     
     setOptimizing(true);
-    
-    // 计算文档数量
-    const docCount = (hasMainContent ? 1 : 0) + (hasAttachments ? parseResult!.attachments!.length : 0);
-    toast.info(`正在优化 ${docCount} 个文档，请稍候...`);
+    setOptimizeProgress(null);
     
     try {
       // 收集所有变量
@@ -1508,6 +1512,7 @@ export default function NewTemplatePage() {
         }
       }
       
+      // 使用 fetch 处理 SSE 流
       const response = await fetch("/api/contract-templates/optimize-layout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1517,13 +1522,76 @@ export default function NewTemplatePage() {
         })
       });
       
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("优化请求失败");
+      }
       
-      if (data.success) {
-        // 处理优化结果
-        const results = data.data.results || [];
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResults: Array<{ id: string; name: string; html: string }> = [];
+      
+      if (!reader) {
+        throw new Error("无法读取响应流");
+      }
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
         
-        for (const result of results) {
+        buffer += decoder.decode(value, { stream: true });
+        
+        // 解析 SSE 事件
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+        
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          
+          // 解析事件
+          const eventMatch = line.match(/^event:\s*(.+)$/m);
+          const dataMatch = line.match(/^data:\s*(.+)$/m);
+          
+          if (eventMatch && dataMatch) {
+            const event = eventMatch[1];
+            const data = JSON.parse(dataMatch[1]);
+            
+            switch (event) {
+              case "start":
+                setOptimizeProgress({ current: 0, total: data.total, documentName: "" });
+                break;
+                
+              case "progress":
+                setOptimizeProgress({
+                  current: data.current,
+                  total: data.total,
+                  documentName: data.documentName,
+                });
+                break;
+                
+              case "complete":
+                toast.success(`${data.documentName} 优化完成`);
+                break;
+                
+              case "warning":
+                toast.warning(`${data.documentName}: ${data.message}`);
+                break;
+                
+              case "error":
+                toast.error(`${data.documentName}: ${data.message}`);
+                break;
+                
+              case "done":
+                finalResults = data.results || [];
+                break;
+            }
+          }
+        }
+      }
+      
+      // 处理优化结果
+      if (finalResults.length > 0) {
+        for (const result of finalResults) {
           if (result.id === 'main') {
             setEditedHtml(result.html);
           } else {
@@ -1542,15 +1610,14 @@ export default function NewTemplatePage() {
           }
         }
         
-        toast.success(`排版优化完成（共${results.length}个文档）`);
-      } else {
-        throw new Error(data.error || "优化失败");
+        toast.success(`全部优化完成（共${finalResults.length}个文档）`);
       }
     } catch (error) {
       console.error("优化排版失败:", error);
       toast.error(error instanceof Error ? error.message : "优化排版失败");
     } finally {
       setOptimizing(false);
+      setOptimizeProgress(null);
     }
   }, [editedHtml, parseResult, markers]);
   
@@ -1877,17 +1944,27 @@ export default function NewTemplatePage() {
                 <Printer className="h-3.5 w-3.5 mr-1" />
                 打印
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7"
-                onClick={handleOptimizeLayout}
-                disabled={optimizing || (!editedHtml && !parseResult?.html && (!parseResult?.attachments || parseResult.attachments.length === 0))}
-                title="统一优化主合同和所有附件的排版"
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1" />
-                {optimizing ? "优化中..." : "优化排版"}
-              </Button>
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7"
+                  onClick={handleOptimizeLayout}
+                  disabled={optimizing || (!editedHtml && !parseResult?.html && (!parseResult?.attachments || parseResult.attachments.length === 0))}
+                  title="统一优化主合同和所有附件的排版"
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1" />
+                  {optimizing ? "优化中..." : "优化排版"}
+                </Button>
+                {optimizeProgress && (
+                  <div className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="text-primary font-medium">
+                      [{optimizeProgress.current}/{optimizeProgress.total}]
+                    </span>
+                    {" "}正在优化: {optimizeProgress.documentName}
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* 编辑工具栏 */}
