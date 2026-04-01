@@ -252,26 +252,105 @@ export default function NewTemplatePage() {
             
             // 恢复解析结果
             if (draft.source_file_url) {
-              setParseResult({
-                success: true,
-                totalPages: 1,
-                fileName: draft.source_file_name || '草稿文档',
-                fileType: draft.source_file_type || 'docx',
-                fileUrl: draft.source_file_url,
-                pages: [],
-                fullText: '',
-                html: draftData.editedHtml || '',
-                styles: draftData.styles || '', // 恢复样式
-                attachments: draftData.attachments || [],
-                detectedAttachments: [],
-                detectedFields: [],
-                mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-              });
+              console.log('[草稿恢复] draftData.attachments:', draftData.attachments);
+              console.log('[草稿恢复] draftData.uploadedAttachments:', draftData.uploadedAttachments);
+              
+              // 如果有上传的附件但没有解析后的附件数据，需要重新解析
+              const hasUploadedAttachments = draftData.uploadedAttachments && draftData.uploadedAttachments.length > 0;
+              const hasParsedAttachments = draftData.attachments && draftData.attachments.length > 0;
+              
+              if (hasUploadedAttachments && !hasParsedAttachments && draftData.currentStep >= 2) {
+                // 需要重新解析附件
+                console.log('[草稿恢复] 需要重新解析附件');
+                try {
+                  const parseRes = await fetch("/api/contract-templates/parse", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      templateId: draft.id,
+                      fileUrl: draft.source_file_url,
+                      fileName: draft.source_file_name,
+                      fileType: draft.source_file_type,
+                      attachments: draftData.uploadedAttachments.map((att: any) => ({
+                        id: att.id,
+                        name: att.name,
+                        url: att.url,
+                        fileType: att.fileType,
+                      })),
+                    }),
+                  });
+                  
+                  const parseData = await parseRes.json();
+                  console.log('[草稿恢复] 重新解析结果:', parseData);
+                  
+                  if (parseData.success && parseData.data) {
+                    setParseResult(parseData.data);
+                    // 更新草稿数据
+                    draftData.attachments = parseData.data.attachments;
+                    draftData.styles = parseData.data.styles;
+                  } else {
+                    // 解析失败，设置空的解析结果
+                    setParseResult({
+                      success: true,
+                      totalPages: 1,
+                      fileName: draft.source_file_name || '草稿文档',
+                      fileType: draft.source_file_type || 'docx',
+                      fileUrl: draft.source_file_url,
+                      pages: [],
+                      fullText: '',
+                      html: draftData.editedHtml || '',
+                      styles: draftData.styles || '',
+                      attachments: [],
+                      detectedAttachments: [],
+                      detectedFields: [],
+                      mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+                    });
+                  }
+                } catch (parseError) {
+                  console.error('[草稿恢复] 重新解析附件失败:', parseError);
+                  // 解析失败，设置空的解析结果
+                  setParseResult({
+                    success: true,
+                    totalPages: 1,
+                    fileName: draft.source_file_name || '草稿文档',
+                    fileType: draft.source_file_type || 'docx',
+                    fileUrl: draft.source_file_url,
+                    pages: [],
+                    fullText: '',
+                    html: draftData.editedHtml || '',
+                    styles: draftData.styles || '',
+                    attachments: [],
+                    detectedAttachments: [],
+                    detectedFields: [],
+                    mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+                  });
+                }
+              } else {
+                // 使用已有的解析结果
+                setParseResult({
+                  success: true,
+                  totalPages: 1,
+                  fileName: draft.source_file_name || '草稿文档',
+                  fileType: draft.source_file_type || 'docx',
+                  fileUrl: draft.source_file_url,
+                  pages: [],
+                  fullText: '',
+                  html: draftData.editedHtml || '',
+                  styles: draftData.styles || '',
+                  attachments: draftData.attachments || [],
+                  detectedAttachments: [],
+                  detectedFields: [],
+                  mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+                });
+              }
             }
             
             // 恢复已上传的附件
             if (draftData.uploadedAttachments && Array.isArray(draftData.uploadedAttachments)) {
+              console.log('[草稿恢复] 恢复 uploadedAttachments:', draftData.uploadedAttachments);
               setUploadedAttachments(draftData.uploadedAttachments);
+              // 同步更新 ref
+              uploadedAttachmentsRef.current = draftData.uploadedAttachments;
               // 同时恢复本地附件列表（用于显示）
               setAttachments(draftData.uploadedAttachments.map((a: any) => ({
                 id: a.id,
@@ -410,9 +489,11 @@ export default function NewTemplatePage() {
         }
       }
       
-      // 添加成功上传的附件到列表
+      // 添加成功上传的附件到列表，同时更新 ref
       if (uploadedList.length > 0) {
         setUploadedAttachments(prev => [...prev, ...uploadedList]);
+        // 直接更新 ref，避免等待 useEffect 同步
+        uploadedAttachmentsRef.current = [...uploadedAttachmentsRef.current, ...uploadedList];
         toast.success(`已上传 ${uploadedList.length} 个附件`);
       }
       
@@ -478,6 +559,8 @@ export default function NewTemplatePage() {
         const newUploaded = newAttachments
           .map(att => prevUploaded.find(u => u.id === att.id))
           .filter((u): u is UploadedAttachment => u !== undefined);
+        // 同步更新 ref
+        uploadedAttachmentsRef.current = newUploaded;
         return newUploaded;
       });
       
@@ -552,6 +635,8 @@ export default function NewTemplatePage() {
       
       // 执行解析 - 使用 ref 获取最新值，合并新上传的附件
       const allAttachments = [...uploadedAttachmentsRef.current, ...newlyUploaded];
+      console.log('[前端] 解析时传递的附件:', allAttachments);
+      
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -570,9 +655,13 @@ export default function NewTemplatePage() {
       });
       
       const parseData = await parseRes.json();
+      console.log('[前端] 解析返回结果:', parseData);
+      
       if (!parseData.success) {
         throw new Error(parseData.error || "解析失败");
       }
+      
+      console.log('[前端] 解析返回的附件:', parseData.data?.attachments);
       
       setParseResult(parseData.data);
       
@@ -657,6 +746,9 @@ export default function NewTemplatePage() {
     
     setSavingDraft(true);
     try {
+      console.log('[保存草稿] parseResult?.attachments:', parseResult?.attachments);
+      console.log('[保存草稿] uploadedAttachments:', uploadedAttachments);
+      
       const draftData = {
         id: templateId || undefined,
         name,
