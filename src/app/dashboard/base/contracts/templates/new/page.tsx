@@ -332,7 +332,10 @@ export default function NewTemplatePage() {
                   fullText: '',
                   html: draftData.editedHtml || '',
                   styles: draftData.styles || '',
-                  attachments: draftData.attachments || [],
+                  attachments: (draftData.attachments || []).map((a: any) => ({
+                    ...a,
+                    displayName: a.displayName || a.name.replace(/\.[^/.]+$/, ''),
+                  })),
                   detectedAttachments: [],
                   detectedFields: [],
                   mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
@@ -400,8 +403,8 @@ export default function NewTemplatePage() {
           throw new Error(uploadData.error || "上传失败");
         }
         
-        // 保存上传结果，但不解析
-        setParseResult({
+        // 保存上传结果，但不解析（保留已有的附件数据）
+        setParseResult(prev => ({
           success: true,
           totalPages: 1,
           fileName: uploadData.data.fileName,
@@ -410,12 +413,12 @@ export default function NewTemplatePage() {
           pages: [],
           fullText: '',
           html: '',
-          styles: '',
-          attachments: [],
+          styles: prev?.styles || '',
+          attachments: prev?.attachments || [], // 保留已有的附件
           detectedAttachments: [],
           detectedFields: [],
           mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-        });
+        }));
         
         setTemplateId(uploadData.data.templateId);
         toast.success("文件已上传，点击「下一步」解析文档");
@@ -766,6 +769,7 @@ export default function NewTemplatePage() {
         attachments: parseResult?.attachments?.map(a => ({
           id: a.id,
           name: a.name,
+          displayName: a.displayName,
           url: a.url,
           html: a.html,
         })),
@@ -2193,22 +2197,25 @@ export default function NewTemplatePage() {
                   <FileText className="h-3 w-3 inline-block mr-1" />
                   主合同
                 </button>
-                {parseResult.attachments?.map((att) => (
-                  <button
-                    key={att.id}
-                    onClick={() => setActiveDocumentId(att.id)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors max-w-32 truncate",
-                      activeDocumentId === att.id
-                        ? "bg-background border-primary text-primary font-medium"
-                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
-                    )}
-                    title={att.displayName}
-                  >
-                    <FileText className="h-3 w-3 inline-block mr-1" />
-                    {att.displayName}
-                  </button>
-                ))}
+                {parseResult.attachments?.map((att) => {
+                  const displayName = att.displayName || att.name?.replace(/\.[^/.]+$/, '') || '未命名附件';
+                  return (
+                    <button
+                      key={att.id}
+                      onClick={() => setActiveDocumentId(att.id)}
+                      className={cn(
+                        "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors max-w-32 truncate",
+                        activeDocumentId === att.id
+                          ? "bg-background border-primary text-primary font-medium"
+                          : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                      )}
+                      title={displayName}
+                    >
+                      <FileText className="h-3 w-3 inline-block mr-1" />
+                      {displayName}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </CardContent>
