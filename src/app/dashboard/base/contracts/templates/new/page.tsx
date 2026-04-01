@@ -703,22 +703,26 @@ export default function NewTemplatePage() {
   }
   
   return (
-    <div className="space-y-6 pb-20">
-      {/* 步骤指示器 */}
-      <StepIndicator currentStep={currentStep} />
-      
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {isDraft ? "编辑模板" : "新建合同模板"}
-          </h1>
-          <p className="text-muted-foreground">
-            创建可重复使用的合同模板，支持变量绑定
-          </p>
-        </div>
+    <div className="pb-20">
+      {/* 步骤指示器 - 固定在顶部 */}
+      <div className="sticky top-0 z-40 bg-background">
+        <StepIndicator currentStep={currentStep} />
       </div>
       
-      {renderStep()}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">
+              {isDraft ? "编辑模板" : "新建合同模板"}
+            </h1>
+            <p className="text-muted-foreground">
+              创建可重复使用的合同模板，支持变量绑定
+            </p>
+          </div>
+        </div>
+        
+        {renderStep()}
+      </div>
       
       {/* 底部导航 */}
       <div className="fixed bottom-0 right-0 left-0 lg:left-56 z-50">
