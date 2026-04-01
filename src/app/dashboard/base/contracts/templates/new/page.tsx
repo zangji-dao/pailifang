@@ -938,17 +938,32 @@ export default function NewTemplatePage() {
   // 编辑功能：添加下划线填充（变量居中）
   const handleAddUnderlineFill = useCallback((width: string) => {
     const selection = window.getSelection();
-    if (!selection) return;
+    if (!selection || selection.rangeCount === 0) return;
     
-    // 获取选中的内容
-    const selectedText = selection.toString() || '&nbsp;';
+    const range = selection.getRangeAt(0);
     
-    // 使用 inline-block 实现：下划线和文字在同一行
-    // 内容居中，底线对齐文字底部
-    const underlineHtml = `<span style="display: inline-block; width: ${width}; border-bottom: 1px solid #000; text-align: center; vertical-align: bottom; white-space: nowrap;">${selectedText}</span>`;
+    // 获取选中的内容（包含HTML）
+    const fragment = range.extractContents();
+    const div = document.createElement('div');
+    div.appendChild(fragment);
+    const selectedHtml = div.innerHTML || '&nbsp;';
     
-    // 使用 insertHTML 命令插入
-    document.execCommand('insertHTML', false, underlineHtml);
+    // 创建下划线容器 - 内容居中，下划线在底部
+    const underlineSpan = document.createElement('span');
+    underlineSpan.className = 'underline-fill-container';
+    underlineSpan.style.cssText = `display: inline-block; width: ${width}; border-bottom: 1px solid #000; text-align: center; vertical-align: baseline; line-height: inherit;`;
+    underlineSpan.innerHTML = selectedHtml;
+    
+    // 移除容器内变量标记的 border-bottom，避免与下划线冲突
+    underlineSpan.querySelectorAll('.variable-marker').forEach(marker => {
+      (marker as HTMLElement).style.borderBottom = 'none';
+    });
+    
+    // 插入
+    range.insertNode(underlineSpan);
+    
+    // 清除选中
+    selection.removeAllRanges();
     
     syncEditedContent();
     const widthLabels: Record<string, string> = {
