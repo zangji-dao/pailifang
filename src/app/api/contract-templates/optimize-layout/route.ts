@@ -6,20 +6,116 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * 从HTML中提取纯文本（保留换行结构）
+ * 统计汉字数量
+ */
+function countChinese(text: string): number {
+  return (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+}
+
+/**
+ * 保护变量标记：{{xxx}} → __VAR_N__
+ * 返回替换后的文本和映射表
+ */
+function protectVariables(text: string): { text: string; varMap: Map<string, string> } {
+  const varMap = new Map<string, string>();
+  let counter = 0;
+  
+  // 匹配 {{变量名}} 格式
+  const protectedText = text.replace(/\{\{[^}]+\}\}/g, (match) => {
+    const placeholder = `__VAR_${counter}__`;
+    varMap.set(placeholder, match);
+    counter++;
+    return placeholder;
+  });
+  
+  return { text: protectedText, varMap };
+}
+
+/**
+ * 还原变量标记：__VAR_N__ → {{xxx}}
+ */
+function restoreVariables(text: string, varMap: Map<string, string>): string {
+  let result = text;
+  for (const [placeholder, original] of varMap) {
+    result = result.replace(new RegExp(placeholder, 'g'), original);
+  }
+  return result;
+}
+
+/**
+ * 提取表格并替换为占位符
+ * 返回：替换后的HTML、表格映射表
+ */
+function extractTables(html: string): { html: string; tables: Map<string, string> } {
+  const tables = new Map<string, string>();
+  let counter = 0;
+  
+  // 替换所有表格为占位符
+  const processedHtml = html.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, (match) => {
+    const placeholder = `__TABLE_${counter}__`;
+    tables.set(placeholder, match);
+    counter++;
+    return placeholder;
+  });
+  
+  return { html: processedHtml, tables };
+}
+
+/**
+ * 还原表格占位符
+ */
+function restoreTables(html: string, tables: Map<string, string>): string {
+  let result = html;
+  for (const [placeholder, tableHtml] of tables) {
+    // 对表格应用样式
+    const styledTable = styleTable(tableHtml);
+    result = result.replace(placeholder, styledTable);
+  }
+  return result;
+}
+
+/**
+ * 为表格添加样式
+ */
+function styleTable(tableHtml: string): string {
+  let result = tableHtml;
+  
+  // 添加表格样式
+  if (!/<table[^>]*style/i.test(result)) {
+    result = result.replace(/<table/gi, '<table style="width:100%;border-collapse:collapse;margin:16px 0"');
+  }
+  
+  // 添加单元格样式
+  result = result.replace(/<td([^>]*)>/gi, (match, attrs) => {
+    if (/style\s*=/i.test(attrs)) return match;
+    return `<td style="border:1px solid #333;padding:8px;vertical-align:top;white-space:nowrap"${attrs}>`;
+  });
+  
+  // 添加表头样式
+  result = result.replace(/<th([^>]*)>/gi, (match, attrs) => {
+    if (/style\s*=/i.test(attrs)) return match;
+    return `<th style="border:1px solid #333;padding:8px;font-weight:bold;background:#f9f9f9;white-space:nowrap"${attrs}>`;
+  });
+  
+  return result;
+}
+
+/**
+ * 从HTML中提取纯文本（不含表格）
  */
 function extractTextFromHtml(html: string): string {
-  // 先把块级元素换成换行
-  let text = html
+  let text = html;
+  
+  // 先移除表格（表格单独处理）
+  text = text.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '');
+  
+  // 块级元素换行
+  text = text
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/h[1-6]>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/tr>/gi, '\n')
-    .replace(/<\/td>/gi, ' | ')
-    .replace(/<table[^>]*>/gi, '\n[表格]\n')
-    .replace(/<\/table>/gi, '\n[/表格]\n');
+    .replace(/<\/li>/gi, '\n');
   
   // 移除所有HTML标签
   text = text.replace(/<[^>]+>/g, '');
@@ -40,90 +136,55 @@ function extractTextFromHtml(html: string): string {
 }
 
 /**
- * 将LLM返回的样式应用到原HTML
- * 通过文本匹配，找到对应位置添加样式
+ * LLM系统提示词
  */
-function applyStylesToHtml(html: string, styledText: string): string {
-  // 解析styledText中的样式标记
-  // 格式：【章】第一章 总则 / 【节】第一节 xxx / 【条】第一条 xxx
-  const styledLines = styledText.split('\n');
-  const styleMap = new Map<string, string>();
-  
-  for (const line of styledLines) {
-    // 匹配样式标记
-    const match = line.match(/^【(章|节|条|款|标题|签章)】(.+)$/);
-    if (match) {
-      const type = match[1];
-      const content = match[2].trim();
-      styleMap.set(content, type);
-    }
-  }
-  
-  console.log(`解析到 ${styleMap.size} 条样式标记`);
-  
-  let result = html;
-  
-  // 应用基础样式
-  const addStyle = (html: string, tag: string, style: string): string => {
-    const regex = new RegExp(`<${tag}([^>]*)>`, 'gi');
-    return html.replace(regex, (match, attrs) => {
-      if (/style\s*=/i.test(attrs)) return match;
-      return `<${tag} style="${style}"${attrs}>`;
-    });
-  };
-  
-  result = addStyle(result, 'h1', 'font-size:22px;font-weight:bold;text-align:center;margin:20px 0');
-  result = addStyle(result, 'h2', 'font-size:18px;font-weight:bold;margin:18px 0 10px 0');
-  result = addStyle(result, 'h3', 'font-size:16px;font-weight:bold;margin:15px 0 10px 0');
-  result = addStyle(result, 'p', 'font-size:14px;line-height:2;margin:12px 0;text-indent:2em;text-align:justify');
-  result = addStyle(result, 'table', 'width:100%;border-collapse:collapse;margin:16px 0');
-  result = addStyle(result, 'td', 'border:1px solid #333;padding:8px;vertical-align:top');
-  result = addStyle(result, 'th', 'border:1px solid #333;padding:8px;font-weight:bold;background:#f5f5f5');
-  result = addStyle(result, 'ul', 'margin:12px 0;padding-left:2em');
-  result = addStyle(result, 'ol', 'margin:12px 0;padding-left:2em');
-  result = addStyle(result, 'li', 'margin:6px 0;line-height:1.8');
-  
-  // 根据样式标记为特定段落添加特殊样式
-  for (const [content, type] of styleMap) {
-    const escapedContent = content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pRegex = new RegExp(`(<p[^>]*>)([^<]*${escapedContent.substring(0, 30)}[^<]*)(</p>)`, 'gi');
-    
-    switch (type) {
-      case '章':
-      case '标题':
-        result = result.replace(pRegex, (match, openTag, text, closeTag) => {
-          return `<p style="font-size:16px;font-weight:bold;margin:20px 0 10px 0;text-indent:0">${text}</p>`;
-        });
-        break;
-      case '节':
-        result = result.replace(pRegex, (match, openTag, text, closeTag) => {
-          return `<p style="font-size:14px;font-weight:bold;margin:15px 0 8px 0;text-indent:0">${text}</p>`;
-        });
-        break;
-      case '条':
-      case '款':
-        // 条款编号加粗
-        const clauseMatch = content.match(/^(\d+\.\d+|\d+\.|第[一二三四五六七八九十]+条)/);
-        if (clauseMatch) {
-          const clauseNum = clauseMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const numRegex = new RegExp(`(${clauseNum})`, 'g');
-          result = result.replace(numRegex, '<strong>$1</strong>');
-        }
-        break;
-      case '签章':
-        result = result.replace(pRegex, (match, openTag, text, closeTag) => {
-          return `<p style="font-size:14px;margin:12px 0;text-align:left">${text}</p>`;
-        });
-        break;
-    }
-  }
-  
-  return result;
-}
+const SYSTEM_PROMPT = `你是专业的中文合同排版专家。
+
+你的任务是将纯文本合同转换为格式规范的HTML文档，用于打印PDF。
+
+## 排版规则
+
+### 1. 标题识别与样式
+- 合同标题（如"企业入驻协议"）：用 <h1> 标签，居中显示
+- 章标题（如"第一章 总则"）：用 <h2> 标签，居中显示
+- 节标题（如"第一节 入驻流程"）：用 <h3> 标签，居中显示
+
+### 2. 条款样式
+- 条款段落（如"第一条"、"1.1"开头）：用 <p> 标签，条款编号用 <strong> 加粗
+- 普通段落：用 <p> 标签，首行缩进2字符
+
+### 3. 表格处理
+- 【表格开始】【表格结束】之间的内容用 <table> 标签
+- 【行】标记转换为 <tr>
+- 【单元格】标记转换为 <td>，设置 white-space: nowrap 防止换行
+- 【表头】标记转换为 <th>
+- 表格样式：边框1px黑色实线，单元格内边距8px
+
+### 4. 签章区域
+- 甲方、乙方签章相关内容：用 <div class="signature"> 包裹，右对齐
+
+## 重要约束
+- **绝对不能增加或删除任何汉字**
+- 保持 __VAR_N__ 格式的占位符不变
+- 只添加HTML标签和内联样式，不修改文本内容
+
+## 输出格式
+直接输出HTML内容，不需要 <!DOCTYPE>、<html>、<head>、<body> 等外层标签。
+
+## 样式示例
+<h1 style="text-align:center;font-size:22px;font-weight:bold;margin:24px 0;">企业入驻协议</h1>
+<h2 style="text-align:center;font-size:18px;font-weight:bold;margin:20px 0;">第一章 总则</h2>
+<p style="text-indent:2em;line-height:2;margin:12px 0;"><strong>第一条</strong> 为规范...</p>
+<table style="width:100%;border-collapse:collapse;margin:16px 0;">
+  <tr>
+    <td style="border:1px solid #333;padding:8px;white-space:nowrap;">姓名</td>
+    <td style="border:1px solid #333;padding:8px;white-space:nowrap;">__VAR_0__</td>
+  </tr>
+</table>`;
 
 /**
  * POST /api/contract-templates/optimize-layout
- * 发送纯文本给LLM，让LLM标注结构，然后应用到HTML
+ * LLM直接返回带样式的HTML，校验汉字数量
  */
 export async function POST(request: NextRequest) {
   try {
@@ -141,19 +202,6 @@ export async function POST(request: NextRequest) {
 
     const config = new Config();
     const client = new LLMClient(config);
-
-    const systemPrompt = `你是专业的中文合同排版专家。
-
-我会发给你合同的纯文本内容，请你识别结构并标注。
-
-标注规则：
-- 章标题（如"第一章 总则"）前面加【章】
-- 节标题（如"第一节 入驻流程"）前面加【节】
-- 条款（如"第一条 xxx"、"1.1 xxx"）前面加【条】
-- 签章区域（甲方、乙方签章相关）前面加【签章】
-- 其他普通内容不需要标注
-
-直接输出标注后的文本，不要解释。`;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -180,30 +228,62 @@ export async function POST(request: NextRequest) {
             // 1. 提取纯文本
             const plainText = extractTextFromHtml(doc.html);
             
-            console.log(`文档 ${doc.name} 提取文本 ${plainText.length} 字符`);
+            // 2. 保护变量标记
+            const { text: protectedText, varMap } = protectVariables(plainText);
             
-            // 2. 发送给LLM标注结构
+            // 3. 统计汉字数量
+            const originalChineseCount = countChinese(protectedText);
+            
+            console.log(`文档 ${doc.name}: 提取文本 ${plainText.length} 字符，汉字 ${originalChineseCount} 个，变量 ${varMap.size} 个`);
+            
+            // 4. 构建用户提示词
+            const userPrompt = `请将以下合同文本转换为格式规范的HTML。
+
+原文共 ${originalChineseCount} 个汉字。
+要求：返回结果的汉字数量必须完全等于 ${originalChineseCount}，不能多也不能少。
+
+合同文本：
+${protectedText}`;
+
+            // 5. 发送给LLM
             const llmResponse = await client.invoke([
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: plainText }
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: userPrompt }
             ], {
               model: 'doubao-seed-2-0-lite-260215',
               temperature: 0.1,
             });
             
-            console.log(`文档 ${doc.name} LLM返回 ${llmResponse.content.length} 字符`);
+            const llmResult = llmResponse.content;
             
-            // 3. 将标注应用到原HTML
-            const optimizedHtml = applyStylesToHtml(doc.html, llmResponse.content);
+            // 6. 校验汉字数量
+            const resultChineseCount = countChinese(llmResult);
             
-            results.push({ id: doc.id, name: doc.name, html: optimizedHtml });
+            if (resultChineseCount !== originalChineseCount) {
+              console.error(`汉字数量不匹配: 原文 ${originalChineseCount}，返回 ${resultChineseCount}`);
+              sendEvent('error', { 
+                documentName: doc.name, 
+                message: `内容校验失败：原文${originalChineseCount}字，返回${resultChineseCount}字，请重试` 
+              });
+              // 使用原文，应用基础样式
+              const fallbackHtml = applyFallbackStyles(doc.html);
+              results.push({ id: doc.id, name: doc.name, html: fallbackHtml });
+              continue;
+            }
+            
+            console.log(`文档 ${doc.name}: LLM返回 ${llmResult.length} 字符，汉字 ${resultChineseCount} 个，校验通过`);
+            
+            // 7. 还原变量标记
+            const finalHtml = restoreVariables(llmResult, varMap);
+            
+            results.push({ id: doc.id, name: doc.name, html: finalHtml });
             sendEvent('complete', { documentName: doc.name });
             console.log(`文档 ${doc.name} 排版优化完成`);
             
           } catch (error) {
             console.error(`处理文档 ${doc.name} 失败:`, error);
             // 失败时应用基础样式
-            const fallbackHtml = applyStylesToHtml(doc.html, '');
+            const fallbackHtml = applyFallbackStyles(doc.html);
             results.push({ id: doc.id, name: doc.name, html: fallbackHtml });
             sendEvent('warning', { documentName: doc.name, message: '智能分析失败，已应用基础样式' });
           }
@@ -228,4 +308,30 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * 兜底样式：当LLM失败时应用基础样式
+ */
+function applyFallbackStyles(html: string): string {
+  let result = html;
+  
+  // 为各种标签添加基础样式
+  const addStyle = (html: string, tag: string, style: string): string => {
+    const regex = new RegExp(`<${tag}([^>]*)>`, 'gi');
+    return html.replace(regex, (match, attrs) => {
+      if (/style\s*=/i.test(attrs)) return match;
+      return `<${tag} style="${style}"${attrs}>`;
+    });
+  };
+  
+  result = addStyle(result, 'h1', 'text-align:center;font-size:22px;font-weight:bold;margin:24px 0');
+  result = addStyle(result, 'h2', 'text-align:center;font-size:18px;font-weight:bold;margin:20px 0');
+  result = addStyle(result, 'h3', 'text-align:center;font-size:16px;font-weight:bold;margin:16px 0');
+  result = addStyle(result, 'p', 'text-indent:2em;line-height:2;margin:12px 0');
+  result = addStyle(result, 'table', 'width:100%;border-collapse:collapse;margin:16px 0');
+  result = addStyle(result, 'td', 'border:1px solid #333;padding:8px;vertical-align:top;white-space:nowrap');
+  result = addStyle(result, 'th', 'border:1px solid #333;padding:8px;font-weight:bold;background:#f5f5f5;white-space:nowrap');
+  
+  return result;
 }
