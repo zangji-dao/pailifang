@@ -497,10 +497,20 @@ export default function NewTemplatePage() {
   }, [markers]);
   
   // 草稿保存功能
-  const handleSaveDraft = useCallback(async () => {
-    // 如果没有上传文档，至少需要有基本信息才能保存草稿
-    if (!mainFile && !templateId && !name.trim()) {
+  const handleSaveDraft = useCallback(async (silent = false) => {
+    // 静默模式下，如果没有必要的数据，直接返回不报错
+    if (silent && !mainFile && !templateId && !name.trim()) {
+      return;
+    }
+    
+    // 非静默模式下，需要检查必要数据
+    if (!silent && !mainFile && !templateId && !name.trim()) {
       toast.error("请至少填写模板名称或上传文档");
+      return;
+    }
+    
+    // 如果没有任何需要保存的内容，直接返回
+    if (!mainFile && !templateId && !name.trim() && !editedHtml) {
       return;
     }
     
@@ -550,13 +560,17 @@ export default function NewTemplatePage() {
       if (result.success) {
         setTemplateId(result.data.id);
         setIsDraft(true);
-        toast.success("草稿已保存");
+        if (!silent) {
+          toast.success("草稿已保存");
+        }
       } else {
         throw new Error(result.error || "保存草稿失败");
       }
     } catch (error) {
       console.error("保存草稿失败:", error);
-      toast.error(error instanceof Error ? error.message : "保存草稿失败");
+      if (!silent) {
+        toast.error(error instanceof Error ? error.message : "保存草稿失败");
+      }
     } finally {
       setSavingDraft(false);
     }
@@ -2307,18 +2321,23 @@ export default function NewTemplatePage() {
     }
   };
   
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1 && !parseResult) {
       handleUploadAndParse();
       return;
     }
+    
+    // 自动保存草稿后再切换步骤
     if (currentStep < 4) {
+      await handleSaveDraft(true); // true 表示静默保存（不显示成功提示）
       setCurrentStep(currentStep + 1);
     }
   };
   
-  const handlePrev = () => {
+  const handlePrev = async () => {
+    // 自动保存草稿后再切换步骤
     if (currentStep > 1) {
+      await handleSaveDraft(true); // true 表示静默保存（不显示成功提示）
       setCurrentStep(currentStep - 1);
     }
   };
@@ -2374,21 +2393,19 @@ export default function NewTemplatePage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* 保存草稿按钮 - 在第2步及之后显示 */}
-          {currentStep >= 2 && (
-            <Button 
-              variant="outline" 
-              onClick={handleSaveDraft} 
-              disabled={savingDraft}
-              className="text-amber-600 border-amber-300 hover:bg-amber-50"
-            >
-              {savingDraft ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
-              ) : (
-                <><SaveAll className="h-4 w-4 mr-2" />保存草稿</>
-              )}
-            </Button>
-          )}
+          {/* 保存草稿按钮 - 所有步骤都显示 */}
+          <Button 
+            variant="outline" 
+            onClick={() => handleSaveDraft(false)} 
+            disabled={savingDraft}
+            className="text-amber-600 border-amber-300 hover:bg-amber-50"
+          >
+            {savingDraft ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
+            ) : (
+              <><SaveAll className="h-4 w-4 mr-2" />保存草稿</>
+            )}
+          </Button>
           {currentStep === 4 ? (
             <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
               {saving ? (
