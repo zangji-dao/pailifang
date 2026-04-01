@@ -35,48 +35,107 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // 如果有id，更新现有草稿
+    // 如果有id，检查是否为草稿状态
     if (id) {
-      const { data, error } = await supabase
+      const { data: existingTemplate, error: fetchError } = await supabase
         .from('contract_templates')
-        .update({
-          name: name || '未命名草稿',
-          description,
-          type: type || 'tenant',
-          base_id,
-          status: 'draft',
-          source_file_url: source_file_url || undefined,
-          source_file_name: source_file_name || undefined,
-          source_file_type: source_file_type || undefined,
-          draft_data: {
-            currentStep,
-            editedHtml,
-            markers,
-            selectedVariables,
-            bindings,
-            attachments,
-            styles,
-            uploadedAttachments,
-          },
-          updated_at: now,
-        })
+        .select('id, status')
         .eq('id', id)
-        .select()
         .single();
 
-      if (error) {
-        console.error('更新草稿失败:', error);
-        return NextResponse.json(
-          { success: false, error: `更新草稿失败: ${error.message}` },
-          { status: 500 }
-        );
+      // 如果是草稿状态，更新现有草稿
+      if (existingTemplate && existingTemplate.status === 'draft') {
+        const { data, error } = await supabase
+          .from('contract_templates')
+          .update({
+            name: name || '未命名草稿',
+            description,
+            type: type || 'tenant',
+            base_id,
+            status: 'draft',
+            source_file_url: source_file_url || undefined,
+            source_file_name: source_file_name || undefined,
+            source_file_type: source_file_type || undefined,
+            draft_data: {
+              currentStep,
+              editedHtml,
+              markers,
+              selectedVariables,
+              bindings,
+              attachments,
+              styles,
+              uploadedAttachments,
+            },
+            updated_at: now,
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('更新草稿失败:', error);
+          return NextResponse.json(
+            { success: false, error: `更新草稿失败: ${error.message}` },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          data: { id, ...data },
+          message: '草稿已保存',
+        });
       }
 
-      return NextResponse.json({
-        success: true,
-        data: { id, ...data },
-        message: '草稿已保存',
-      });
+      // 如果不是草稿状态（已发布模板），创建新草稿并记录原模板ID
+      if (existingTemplate && existingTemplate.status !== 'draft') {
+        const newDraftId = crypto.randomUUID();
+        
+        const { data, error } = await supabase
+          .from('contract_templates')
+          .insert({
+            id: newDraftId,
+            name: name || '未命名草稿',
+            description,
+            type: type || 'tenant',
+            base_id,
+            status: 'draft',
+            source_file_url,
+            source_file_name,
+            source_file_type,
+            draft_data: {
+              currentStep,
+              editedHtml,
+              markers,
+              selectedVariables,
+              bindings,
+              attachments,
+              styles,
+              uploadedAttachments,
+              original_template_id: id, // 记录原模板ID
+            },
+            is_default: false,
+            is_active: true,
+            created_at: now,
+            updated_at: now,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('创建草稿失败:', error);
+          return NextResponse.json(
+            { success: false, error: `创建草稿失败: ${error.message}` },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          data: { id: newDraftId, ...data },
+          message: '已创建编辑草稿',
+        });
+      }
     }
 
     // 创建新草稿

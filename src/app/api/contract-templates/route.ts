@@ -240,13 +240,47 @@ export async function PUT(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
-    const { id, ...updateData } = body;
+    const { id, original_template_id, delete_draft, ...updateData } = body;
 
     if (!id) {
       return NextResponse.json(
         { success: false, error: '缺少模板ID' },
         { status: 400 }
       );
+    }
+
+    // 如果是编辑已发布模板后完成，需要更新原模板并删除草稿
+    if (original_template_id) {
+      // 更新原模板
+      const { data, error } = await supabase
+        .from('contract_templates')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', original_template_id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('更新原模板失败:', error);
+        return NextResponse.json(
+          { success: false, error: `更新原模板失败: ${error.message}` },
+          { status: 500 }
+        );
+      }
+
+      // 删除草稿
+      await supabase
+        .from('contract_templates')
+        .delete()
+        .eq('id', id);
+
+      return NextResponse.json({
+        success: true,
+        data: formatTemplate(data),
+        message: '模板已更新',
+      });
     }
 
     const { data, error } = await supabase

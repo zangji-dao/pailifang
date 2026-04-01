@@ -32,6 +32,7 @@ export default function NewTemplatePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
+  const [originalTemplateId, setOriginalTemplateId] = useState<string>(""); // 编辑已发布模板时的原模板ID
   const [saving, setSaving] = useState(false);
   
   // 主文件状态
@@ -211,6 +212,11 @@ export default function NewTemplatePage() {
             const draftData = template.draft_data;
             setCurrentStep(draftData.currentStep || 1);
             setEditedHtml(draftData.editedHtml || '');
+            
+            // 恢复原模板ID（编辑已发布模板时）
+            if (draftData.original_template_id) {
+              setOriginalTemplateId(draftData.original_template_id);
+            }
             
             // 恢复标记
             if (draftData.markers && Array.isArray(draftData.markers)) {
@@ -517,6 +523,7 @@ export default function NewTemplatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: templateId,
+          original_template_id: originalTemplateId || undefined, // 如果是编辑已发布模板，传递原模板ID
           name,
           description,
           type,
@@ -529,20 +536,25 @@ export default function NewTemplatePage() {
       
       if (!updateRes.ok) throw new Error("更新基本信息失败");
       
-      // 保存变量绑定
+      // 保存字段定义
       if (selectedVariables.length > 0) {
-        await fetch("/api/contract-templates/variables", {
+        await fetch("/api/contract-templates/fields", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            templateId,
-            variables: selectedVariables,
-            bindings,
+            templateId: originalTemplateId || templateId,
+            fields: selectedVariables.map((v, index) => ({
+              key: v.key,
+              label: v.name,
+              type: v.type || 'text',
+              required: false,
+              sortOrder: index,
+            })),
           }),
         });
       }
       
-      toast.success("模板创建成功");
+      toast.success(originalTemplateId ? "模板更新成功" : "模板创建成功");
       router.push("/dashboard/base/contracts/templates");
     } catch (err) {
       console.error("保存失败:", err);
