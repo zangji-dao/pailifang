@@ -8,8 +8,7 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/contract-templates/optimize-layout
  * 使用LLM优化合同文档排版（统一优化主合同和所有附件）
- * 注意：只优化排版样式，不添加、删除或修改任何内容
- * 支持SSE流式返回进度
+ * 注意：只优化排版样式，不修改文字内容
  */
 export async function POST(request: NextRequest) {
   try {
@@ -33,30 +32,52 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config);
 
-    const systemPrompt = `你是一个HTML排版助手。你的唯一任务是为现有HTML标签添加内联style属性来优化排版。
+    const systemPrompt = `你是一个专业的中文文档排版专家。你的任务是对HTML进行全面的排版优化。
 
-## 绝对禁止事项
-1. 【禁止】添加任何新内容、新标签、新文本
-2. 【禁止】删除任何现有内容、标签、文本
-3. 【禁止】修改任何文本内容
-4. 【禁止】改变HTML结构（标签嵌套关系）
-5. 【禁止】添加签章区域表格等任何新元素
+## 核心原则
+【绝对禁止】修改、删除、增加任何文字内容！文字必须原封不动保留。
+【允许且必须】优化所有样式属性，让文档更专业、更美观。
 
-## 你只能做的事
-只给现有HTML标签添加style属性，例如：
-- <p>文字</p> → <p style="line-height: 2; margin: 1em 0; text-indent: 2em">文字</p>
-- <h1>标题</h1> → <h1 style="text-align: center; font-size: 24px; margin: 30px 0">标题</h1>
+## 输出格式要求
+- 只输出body内的HTML内容，不要输出<!DOCTYPE>、<html>、<head>、<body>等标签
+- 使用内联style属性（style="..."）来定义样式
+- 不要使用<style>标签或class属性
 
-## 排版样式规范
-- 正文段落：line-height: 2; margin: 1em 0; text-indent: 2em
-- 标题：text-align: center; font-size: 24px (h1); font-weight: bold (h2)
-- 表格：保持原有结构，只添加适当的padding和border样式
+## 你需要优化的样式（通过内联style属性）
 
-## 变量标记
-必须完整保留所有 {{变量名}} 格式的变量标记。
+### 1. 字体与字号
+- 合同标题（h1）：style="font-size: 22px; font-weight: bold; text-align: center; margin: 20px 0"
+- 章标题（如"第一章"）：style="font-size: 16px; font-weight: bold; margin: 20px 0 10px 0"
+- 节标题（如"第一节"）：style="font-size: 14px; font-weight: bold; margin: 15px 0 10px 0"
+- 正文段落：style="font-size: 14px; line-height: 2; margin: 12px 0; text-indent: 2em"
+- 条款编号（如"1.1"）：用<strong>包裹或加 font-weight: bold
 
-## 输出
-只输出处理后的HTML，不要任何解释。`;
+### 2. 行距与间距
+- 正文：line-height: 2（双倍行距）
+- 段落间距：margin: 12px 0
+- 标题上方间距：margin-top: 20px
+- 标题下方间距：margin-bottom: 10px
+
+### 3. 缩进
+- 正文首行缩进：text-indent: 2em
+
+### 4. 对齐
+- 合同标题：text-align: center
+- 正文：text-align: justify（两端对齐）
+
+### 5. 表格优化
+- 表格：style="width: 100%; border-collapse: collapse"
+- 单元格：style="border: 1px solid #000; padding: 8px"
+
+### 6. 特殊内容
+- 金额、日期等重要信息：加<strong>或 style="font-weight: bold"
+- 变量标记 {{xxx}}：保持原样
+
+## 变量标记处理
+必须完整保留所有 {{变量名}} 格式的变量标记及其所在的HTML标签。
+
+## 输出要求
+只输出优化后的HTML片段（body内容），使用内联style属性。`;
 
     // 创建一个 TransformStream 用于流式输出
     const stream = new ReadableStream({
@@ -86,12 +107,22 @@ export async function POST(request: NextRequest) {
             documentId: doc.id
           });
 
-          const userPrompt = `给以下HTML的所有标签添加内联style属性优化排版。不要改变任何内容。
+          const userPrompt = `请对以下HTML进行排版优化。
 
-变量标记（必须保留）：${variables.map(v => `{{${v.name}}}`).join(', ') || '无'}
+【文档名称】${doc.name}
 
-HTML：
-${doc.html}`;
+【变量标记（必须完整保留）】
+${variables.map(v => `{{${v.name}}}`).join(', ') || '无'}
+
+【原始HTML】
+${doc.html}
+
+【优化要求】
+1. 不修改任何文字内容
+2. 优化字体大小、粗细、行距、缩进、对齐等样式
+3. 让标题层级更清晰
+4. 让正文更易读
+5. 完整保留所有变量标记`;
 
           const messages = [
             { role: 'system' as const, content: systemPrompt },
@@ -113,7 +144,7 @@ ${doc.html}`;
             const originalLength = doc.html.length;
             const resultLength = result.length;
             
-            if (resultLength < originalLength * 0.8) {
+            if (resultLength < originalLength * 0.7) {
               console.warn(`文档 ${doc.name} 优化后内容过少，保留原内容。原长度: ${originalLength}, 新长度: ${resultLength}`);
               const warningResult = {
                 id: doc.id,
