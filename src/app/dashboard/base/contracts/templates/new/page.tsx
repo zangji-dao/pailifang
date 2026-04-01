@@ -1473,6 +1473,11 @@ export default function NewTemplatePage() {
     }
     
     setOptimizing(true);
+    
+    // 计算文档数量
+    const docCount = (hasMainContent ? 1 : 0) + (hasAttachments ? parseResult!.attachments!.length : 0);
+    toast.info(`正在优化 ${docCount} 个文档，请稍候...`);
+    
     try {
       // 收集所有变量
       const allVariables = markers.map(m => ({

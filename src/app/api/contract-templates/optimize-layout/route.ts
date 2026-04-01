@@ -103,10 +103,8 @@ export async function POST(request: NextRequest) {
 4. 变量标记完整保留
 5. 确保签章区域整齐美观、间距合理`;
 
-    const results = [];
-    
-    // 逐个处理文档
-    for (const doc of docsToProcess) {
+    // 处理单个文档的函数
+    const processDocument = async (doc: { id: string; name: string; html: string }) => {
       const userPrompt = `请优化以下合同文档的排版。
 
 【特别要求】
@@ -139,22 +137,25 @@ ${doc.html}
         // 清理可能的markdown代码块标记
         result = result.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
 
-        results.push({
+        return {
           id: doc.id,
           name: doc.name,
           html: result,
-        });
+        };
       } catch (docError) {
         console.error(`优化文档 ${doc.name} 失败:`, docError);
         // 如果某个文档优化失败，保留原内容
-        results.push({
+        return {
           id: doc.id,
           name: doc.name,
           html: doc.html,
           error: docError instanceof Error ? docError.message : '优化失败',
-        });
+        };
       }
-    }
+    };
+
+    // 并行处理所有文档
+    const results = await Promise.all(docsToProcess.map(processDocument));
 
     return NextResponse.json({
       success: true,
