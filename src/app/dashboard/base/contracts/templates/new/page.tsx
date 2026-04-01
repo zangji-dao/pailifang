@@ -259,6 +259,19 @@ export default function NewTemplatePage() {
                 mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
               });
             }
+            
+            // 恢复已上传的附件
+            if (draftData.uploadedAttachments && Array.isArray(draftData.uploadedAttachments)) {
+              setUploadedAttachments(draftData.uploadedAttachments);
+              // 同时恢复本地附件列表（用于显示）
+              setAttachments(draftData.uploadedAttachments.map((a: any) => ({
+                id: a.id,
+                name: a.name,
+                type: a.fileType,
+                size: a.size || 0,
+                file: null as any, // 文件对象无法恢复，但URL已保存
+              })));
+            }
           }
           
           toast.success("草稿已加载");
@@ -333,7 +346,7 @@ export default function NewTemplatePage() {
     }
   };
   
-  const handleAttachmentsSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentsSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     // 附件只支持 Word 格式
     const allowedTypes = [
@@ -358,6 +371,38 @@ export default function NewTemplatePage() {
     
     if (validFiles.length > 0) {
       setAttachments(prev => [...prev, ...validFiles]);
+      
+      // 自动上传附件到服务器
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        validFiles.forEach(f => {
+          formData.append("attachments", f.file);
+        });
+        
+        const uploadRes = await fetch("/api/contract-templates/upload", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          throw new Error(uploadData.error || "上传附件失败");
+        }
+        
+        // 添加到已上传列表
+        if (uploadData.data.attachments) {
+          setUploadedAttachments(prev => [...prev, ...uploadData.data.attachments]);
+          toast.success(`已上传 ${validFiles.length} 个附件`);
+        }
+      } catch (err) {
+        console.error("上传附件失败:", err);
+        toast.error(err instanceof Error ? err.message : "上传附件失败");
+        // 上传失败，从列表中移除
+        setAttachments(prev => prev.filter(a => !validFiles.find(v => v.id === a.id)));
+      } finally {
+        setUploading(false);
+      }
     }
     
     if (attachmentInputRef.current) {
@@ -367,6 +412,8 @@ export default function NewTemplatePage() {
   
   const removeAttachment = (id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
+    // 同时从已上传列表中删除
+    setUploadedAttachments(prev => prev.filter(a => a.id !== id));
   };
   
   // 拖拽排序
@@ -607,11 +654,20 @@ export default function NewTemplatePage() {
         source_file_name: parseResult?.fileName,
         source_file_type: parseResult?.fileType,
         styles: parseResult?.styles, // 保存样式
+        // 保存已解析的附件
         attachments: parseResult?.attachments?.map(a => ({
           id: a.id,
           name: a.name,
           url: a.url,
           html: a.html,
+        })),
+        // 保存已上传但未解析的附件
+        uploadedAttachments: uploadedAttachments.map(a => ({
+          id: a.id,
+          name: a.name,
+          url: a.url,
+          fileType: a.fileType,
+          size: a.size,
         })),
       };
       
@@ -640,7 +696,7 @@ export default function NewTemplatePage() {
     } finally {
       setSavingDraft(false);
     }
-  }, [templateId, mainFile, name, description, type, baseId, currentStep, editedHtml, markers, selectedVariables, bindings, parseResult]);
+  }, [templateId, mainFile, name, description, type, baseId, currentStep, editedHtml, markers, selectedVariables, bindings, parseResult, uploadedAttachments]);
   
   // 过滤变量（包含预设变量和自定义变量）
   const filteredVariables = useMemo(() => {

@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       source_file_type,
       styles,
       attachments,
+      uploadedAttachments,
     } = body;
 
     const now = new Date().toISOString();
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
             bindings,
             attachments,
             styles,
+            uploadedAttachments,
           },
           updated_at: now,
         })
@@ -100,6 +102,7 @@ export async function POST(request: NextRequest) {
           bindings,
           attachments,
           styles,
+          uploadedAttachments,
         },
         is_default: false,
         is_active: true,
