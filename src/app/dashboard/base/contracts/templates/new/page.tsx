@@ -119,6 +119,12 @@ export default function NewTemplatePage() {
   
   // 已上传的附件
   const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
+  const uploadedAttachmentsRef = useRef<UploadedAttachment[]>([]);
+  
+  // 同步 uploadedAttachments 到 ref
+  useEffect(() => {
+    uploadedAttachmentsRef.current = uploadedAttachments;
+  }, [uploadedAttachments]);
   
   // 基地列表
   const [bases, setBases] = useState<Base[]>([]);
@@ -534,8 +540,8 @@ export default function NewTemplatePage() {
         setUploading(false);
       }
       
-      // 执行解析 - 使用合并后的附件列表
-      const allAttachments = [...uploadedAttachments, ...newlyUploaded];
+      // 执行解析 - 使用 ref 获取最新值，合并新上传的附件
+      const allAttachments = [...uploadedAttachmentsRef.current, ...newlyUploaded];
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
