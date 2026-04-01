@@ -252,19 +252,12 @@ export default function NewTemplatePage() {
             
             // 恢复解析结果
             if (draft.source_file_url) {
-              console.log('[草稿恢复] draftData.attachments:', draftData.attachments);
-              console.log('[草稿恢复] draftData.uploadedAttachments:', draftData.uploadedAttachments);
-              console.log('[草稿恢复] draftData.currentStep:', draftData.currentStep);
-              
               // 如果有上传的附件但没有解析后的附件数据，需要重新解析
               const hasUploadedAttachments = draftData.uploadedAttachments && draftData.uploadedAttachments.length > 0;
               const hasParsedAttachments = draftData.attachments && draftData.attachments.length > 0;
               
-              console.log('[草稿恢复] hasUploadedAttachments:', hasUploadedAttachments, 'hasParsedAttachments:', hasParsedAttachments);
-              
               if (hasUploadedAttachments && !hasParsedAttachments) {
-                // 需要重新解析附件（移除 currentStep >= 2 的限制）
-                console.log('[草稿恢复] 需要重新解析附件');
+                // 需要重新解析附件
                 try {
                   const parseRes = await fetch("/api/contract-templates/parse", {
                     method: "POST",
@@ -284,7 +277,6 @@ export default function NewTemplatePage() {
                   });
                   
                   const parseData = await parseRes.json();
-                  console.log('[草稿恢复] 重新解析结果:', parseData);
                   
                   if (parseData.success && parseData.data) {
                     setParseResult(parseData.data);
@@ -350,7 +342,6 @@ export default function NewTemplatePage() {
             
             // 恢复已上传的附件
             if (draftData.uploadedAttachments && Array.isArray(draftData.uploadedAttachments)) {
-              console.log('[草稿恢复] 恢复 uploadedAttachments:', draftData.uploadedAttachments);
               setUploadedAttachments(draftData.uploadedAttachments);
               // 同步更新 ref
               uploadedAttachmentsRef.current = draftData.uploadedAttachments;
@@ -638,7 +629,6 @@ export default function NewTemplatePage() {
       
       // 执行解析 - 使用 ref 获取最新值，合并新上传的附件
       const allAttachments = [...uploadedAttachmentsRef.current, ...newlyUploaded];
-      console.log('[前端] 解析时传递的附件:', allAttachments);
       
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
@@ -658,13 +648,10 @@ export default function NewTemplatePage() {
       });
       
       const parseData = await parseRes.json();
-      console.log('[前端] 解析返回结果:', parseData);
       
       if (!parseData.success) {
         throw new Error(parseData.error || "解析失败");
       }
-      
-      console.log('[前端] 解析返回的附件:', parseData.data?.attachments);
       
       setParseResult(parseData.data);
       
@@ -749,9 +736,6 @@ export default function NewTemplatePage() {
     
     setSavingDraft(true);
     try {
-      console.log('[保存草稿] parseResult?.attachments:', parseResult?.attachments);
-      console.log('[保存草稿] uploadedAttachments:', uploadedAttachments);
-      
       const draftData = {
         id: templateId || undefined,
         name,
@@ -1717,11 +1701,6 @@ export default function NewTemplatePage() {
   
   // 步骤2: 变量绑定（简化为单一编辑模式）
   const renderBindingStep = () => {
-    // 调试信息
-    console.log('[渲染绑定页面] parseResult:', parseResult ? 'exists' : 'null');
-    console.log('[渲染绑定页面] parseResult.attachments:', parseResult?.attachments);
-    console.log('[渲染绑定页面] parseResult.attachments.length:', parseResult?.attachments?.length);
-    
     if (!parseResult?.html) {
       return (
         <Card>
@@ -1737,14 +1716,6 @@ export default function NewTemplatePage() {
     
     return (
       <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 调试信息 - 临时显示 */}
-        <div className="lg:col-span-3 p-2 bg-yellow-100 text-xs rounded">
-          调试: parseResult={parseResult ? 'exists' : 'null'}, 
-          attachments={parseResult?.attachments?.length || 0}个
-          {parseResult?.attachments && parseResult.attachments.length > 0 && (
-            <span> - {parseResult.attachments.map(a => a.displayName).join(', ')}</span>
-          )}
-        </div>
         {/* 左侧：合同预览 */}
         <Card className="lg:col-span-2 overflow-hidden flex flex-col">
           <CardHeader className="py-3 border-b shrink-0">
@@ -2208,7 +2179,6 @@ export default function NewTemplatePage() {
             </div>
             
             {/* 文档标签页 - 类似Excel的Sheet标签，固定在底部 */}
-            {/* 调试信息: parseResult={parseResult ? 'exists' : 'null'}, attachments={parseResult?.attachments?.length || 0} */}
             {parseResult && parseResult.attachments && parseResult.attachments.length > 0 && (
               <div className="shrink-0 bg-white border-t flex items-center px-2 py-1.5 gap-1 min-h-[36px]">
                 <button

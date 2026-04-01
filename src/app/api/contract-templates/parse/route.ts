@@ -211,28 +211,21 @@ export async function POST(request: NextRequest) {
       const fullText = extractTextFromHtml(rawHtml);
       
       // 3. 处理附件
-      console.log('[解析] 开始处理附件, 数量:', attachments.length);
       const attachmentResults: { id: string; name: string; url: string; html: string; styles: string; text: string }[] = [];
       
       for (let i = 0; i < attachments.length; i++) {
         const attachment = attachments[i];
-        console.log(`[解析] 处理附件 ${i + 1}:`, attachment.name, attachment.url);
         try {
           const attResponse = await fetch(attachment.url);
-          if (!attResponse.ok) {
-            console.error(`[解析] 下载附件失败: ${attachment.name}, status: ${attResponse.status}`);
-            continue;
-          }
+          if (!attResponse.ok) continue;
           
           const attArrayBuffer = await attResponse.arrayBuffer();
           const attBuffer = Buffer.from(attArrayBuffer);
-          console.log(`[解析] 附件下载成功, 大小: ${attBuffer.length} bytes`);
           
           // 使用 LibreOffice 转换附件
           const attRawHtml = convertWithLibreOffice(attBuffer, attachment.name);
           const attParsed = parseLibreOfficeHtml(attRawHtml);
           const attText = extractTextFromHtml(attRawHtml);
-          console.log(`[解析] 附件转换成功, HTML长度: ${attParsed.content.length}`);
           
           attachmentResults.push({
             id: attachment.id, // 使用前端传递的ID
@@ -246,8 +239,6 @@ export async function POST(request: NextRequest) {
           console.error(`解析附件 ${attachment.name} 失败:`, attError);
         }
       }
-      
-      console.log('[解析] 附件处理完成, 成功数量:', attachmentResults.length);
 
       // 4. 构建附件数据
       const parsedAttachments = attachmentResults.map((att, index) => ({
