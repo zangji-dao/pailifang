@@ -217,11 +217,13 @@ export default function NewTemplatePage() {
     fetchBases();
   }, []);
   
-  // 加载草稿
+  // 加载模板数据（草稿或已发布模板）
   useEffect(() => {
-    const loadDraft = async () => {
+    const loadTemplate = async () => {
       const draftId = searchParams.get('draftId');
-      if (!draftId) return;
+      const templateIdParam = searchParams.get('templateId');
+      
+      if (!draftId && !templateIdParam) return;
       
       // 防止重复加载
       if (draftLoadedRef.current) return;
@@ -229,21 +231,38 @@ export default function NewTemplatePage() {
       
       setLoadingDraft(true);
       try {
-        const response = await fetch(`/api/contract-templates/draft?id=${draftId}`);
-        const result = await response.json();
+        let template: any;
+        let isDraftTemplate = false;
         
-        if (result.success && result.data) {
-          const draft = result.data;
-          setTemplateId(draft.id);
-          setIsDraft(true);
-          setName(draft.name || '');
-          setDescription(draft.description || '');
-          setType(draft.type || 'tenant');
-          setBaseId(draft.base_id || '');
+        if (draftId) {
+          // 加载草稿
+          const response = await fetch(`/api/contract-templates/draft?id=${draftId}`);
+          const result = await response.json();
+          if (result.success && result.data) {
+            template = result.data;
+            isDraftTemplate = true;
+          }
+        } else if (templateIdParam) {
+          // 加载已发布模板
+          const response = await fetch(`/api/contract-templates?id=${templateIdParam}`);
+          const result = await response.json();
+          if (result.success && result.data) {
+            template = result.data;
+            isDraftTemplate = false;
+          }
+        }
+        
+        if (template) {
+          setTemplateId(template.id);
+          setIsDraft(isDraftTemplate);
+          setName(template.name || '');
+          setDescription(template.description || '');
+          setType(template.type || 'tenant');
+          setBaseId(template.base_id || '');
           
-          // 恢复草稿数据
-          if (draft.draft_data) {
-            const draftData = draft.draft_data;
+          // 如果是草稿，有 draft_data
+          if (isDraftTemplate && template.draft_data) {
+            const draftData = template.draft_data;
             setCurrentStep(draftData.currentStep || 1);
             setEditedHtml(draftData.editedHtml || '');
             
@@ -251,7 +270,7 @@ export default function NewTemplatePage() {
             if (draftData.markers && Array.isArray(draftData.markers)) {
               setMarkers(draftData.markers.map((m: any) => ({
                 id: m.id,
-                documentId: m.documentId || 'main', // 兼容旧数据，默认为主文档
+                documentId: m.documentId || 'main',
                 variableKey: m.variableKey,
                 status: m.status,
                 position: m.position,
@@ -261,7 +280,7 @@ export default function NewTemplatePage() {
             // 恢复选中的变量
             if (draftData.selectedVariables && Array.isArray(draftData.selectedVariables)) {
               setSelectedVariables(draftData.selectedVariables.map((v: any) => ({
-                id: v.id || `var_custom_${v.key}`, // 确保 id 存在，兼容旧数据
+                id: v.id || `var_custom_${v.key}`,
                 key: v.key,
                 name: v.name,
                 type: v.type || 'text',
@@ -269,127 +288,94 @@ export default function NewTemplatePage() {
                 placeholder: v.placeholder,
               })));
             }
-            
-            // 恢复解析结果
-            if (draft.source_file_url) {
-              // 如果有上传的附件但没有解析后的附件数据，需要重新解析
-              const hasUploadedAttachments = draftData.uploadedAttachments && draftData.uploadedAttachments.length > 0;
-              const hasParsedAttachments = draftData.attachments && draftData.attachments.length > 0;
-              
-              if (hasUploadedAttachments && !hasParsedAttachments) {
-                // 需要重新解析附件
-                try {
-                  const parseRes = await fetch("/api/contract-templates/parse", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      templateId: draft.id,
-                      fileUrl: draft.source_file_url,
-                      fileName: draft.source_file_name,
-                      fileType: draft.source_file_type,
-                      attachments: draftData.uploadedAttachments.map((att: any) => ({
-                        id: att.id,
-                        name: att.name,
-                        url: att.url,
-                        fileType: att.fileType,
-                      })),
-                    }),
-                  });
-                  
-                  const parseData = await parseRes.json();
-                  
-                  if (parseData.success && parseData.data) {
-                    setParseResult(parseData.data);
-                    // 更新草稿数据
-                    draftData.attachments = parseData.data.attachments;
-                    draftData.styles = parseData.data.styles;
-                  } else {
-                    // 解析失败，设置空的解析结果
-                    setParseResult({
-                      success: true,
-                      totalPages: 1,
-                      fileName: draft.source_file_name || '草稿文档',
-                      fileType: draft.source_file_type || 'docx',
-                      fileUrl: draft.source_file_url,
-                      pages: [],
-                      fullText: '',
-                      html: draftData.editedHtml || '',
-                      styles: draftData.styles || '',
-                      attachments: [],
-                      detectedAttachments: [],
-                      detectedFields: [],
-                      mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-                    });
-                  }
-                } catch (parseError) {
-                  console.error('[草稿恢复] 重新解析附件失败:', parseError);
-                  // 解析失败，设置空的解析结果
-                  setParseResult({
-                    success: true,
-                    totalPages: 1,
-                    fileName: draft.source_file_name || '草稿文档',
-                    fileType: draft.source_file_type || 'docx',
-                    fileUrl: draft.source_file_url,
-                    pages: [],
-                    fullText: '',
-                    html: draftData.editedHtml || '',
-                    styles: draftData.styles || '',
-                    attachments: [],
-                    detectedAttachments: [],
-                    detectedFields: [],
-                    mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-                  });
-                }
-              } else {
-                // 使用已有的解析结果
-                setParseResult({
-                  success: true,
-                  totalPages: 1,
-                  fileName: draft.source_file_name || '草稿文档',
-                  fileType: draft.source_file_type || 'docx',
-                  fileUrl: draft.source_file_url,
-                  pages: [],
-                  fullText: '',
-                  html: draftData.editedHtml || '',
-                  styles: draftData.styles || '',
-                  attachments: (draftData.attachments || []).map((a: any) => ({
-                    ...a,
-                    displayName: a.displayName || a.name.replace(/\.[^/.]+$/, ''),
-                  })),
-                  detectedAttachments: [],
-                  detectedFields: [],
-                  mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-                });
-              }
-            }
-            
-            // 恢复已上传的附件
-            if (draftData.uploadedAttachments && Array.isArray(draftData.uploadedAttachments)) {
-              setUploadedAttachments(draftData.uploadedAttachments);
-              // 同步更新 ref
-              uploadedAttachmentsRef.current = draftData.uploadedAttachments;
-              // 同时恢复本地附件列表（用于显示）
-              setAttachments(draftData.uploadedAttachments.map((a: any) => ({
+          }
+          
+          // 恢复解析结果（草稿和已发布模板都可能有）
+          if (template.source_file_url) {
+            // 构建解析结果
+            const parseData = {
+              success: true,
+              totalPages: 1,
+              fileName: template.source_file_name || '合同文档',
+              fileType: template.source_file_type || 'docx',
+              fileUrl: template.source_file_url,
+              pages: [],
+              fullText: '',
+              html: isDraftTemplate ? (template.draft_data?.editedHtml || '') : '',
+              styles: isDraftTemplate ? template.draft_data?.styles : '',
+              attachments: (template.attachments || []).map((a: any) => ({
                 id: a.id,
                 name: a.name,
-                type: a.fileType,
-                size: a.size || 0,
-                file: null as any, // 文件对象无法恢复，但URL已保存
-              })));
+                displayName: a.name,
+                url: '',
+                html: '',
+                styles: '',
+                text: '',
+                order: a.order || 0,
+              })),
+              detectedAttachments: [],
+              detectedFields: [],
+              mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+            };
+            setParseResult(parseData);
+            
+            // 设置编辑后的HTML
+            if (isDraftTemplate && template.draft_data?.editedHtml) {
+              setEditedHtml(template.draft_data.editedHtml);
             }
           }
           
-          toast.success("草稿已加载");
+          // 恢复附件
+          const attachmentsList = template.attachments || [];
+          if (attachmentsList.length > 0) {
+            setUploadedAttachments(attachmentsList.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              url: a.url || '',
+              fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              size: 0,
+            })));
+            uploadedAttachmentsRef.current = attachmentsList.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              url: a.url || '',
+              fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              size: 0,
+            }));
+            setAttachments(attachmentsList.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              size: 0,
+              file: null as any,
+            })));
+          }
+          
+          // 如果是草稿，恢复已上传的附件
+          if (isDraftTemplate && template.draft_data?.uploadedAttachments) {
+            const uploadedAtts = template.draft_data.uploadedAttachments;
+            setUploadedAttachments(uploadedAtts);
+            uploadedAttachmentsRef.current = uploadedAtts;
+            setAttachments(uploadedAtts.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              type: a.fileType,
+              size: a.size || 0,
+              file: null as any,
+            })));
+          }
+          
+          toast.success(isDraftTemplate ? "草稿已加载" : "模板已加载");
         }
       } catch (error) {
-        console.error("加载草稿失败:", error);
-        toast.error("加载草稿失败");
+        console.error("加载模板失败:", error);
+        toast.error("加载模板失败");
       } finally {
         setLoadingDraft(false);
       }
     };
     
-    loadDraft();
+    loadTemplate();
   }, [searchParams]);
   
   // ========== 步骤1: 上传文档 ==========
@@ -3335,7 +3321,7 @@ export default function NewTemplatePage() {
             <ArrowLeft className="h-4 w-4 mr-1" />
             返回
           </Button>
-          <h1 className="text-2xl font-semibold">新建合同模板</h1>
+          <h1 className="text-2xl font-semibold">{templateId ? '编辑合同模板' : '新建合同模板'}</h1>
         </div>
       </div>
       

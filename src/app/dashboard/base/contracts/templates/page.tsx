@@ -155,30 +155,17 @@ export default function ContractTemplatesPage() {
 
   // 打开模板编辑页面
   const handleEdit = (template: ContractTemplate) => {
-    // 如果是草稿，跳转到新建页面并带上draftId
-    if (template.status === 'draft') {
-      if (tabs) {
-        tabs.openTab({
-          id: `draft-${template.id}`,
-          label: `编辑: ${template.name}`,
-          path: `/dashboard/base/contracts/templates/new?draftId=${template.id}`,
-          icon: <Settings className="h-3.5 w-3.5" />,
-        });
-      } else {
-        router.push(`/dashboard/base/contracts/templates/new?draftId=${template.id}`);
-      }
-      return;
-    }
-    
+    // 所有模板（草稿和已发布）都跳转到新建页面进行编辑
+    // 已发布的模板会在新建页面中加载现有数据
     if (tabs) {
       tabs.openTab({
-        id: `template-${template.id}`,
-        label: template.name,
-        path: `/dashboard/base/contracts/templates/${template.id}`,
+        id: `edit-${template.id}`,
+        label: `编辑: ${template.name}`,
+        path: `/dashboard/base/contracts/templates/new?templateId=${template.id}`,
         icon: <Settings className="h-3.5 w-3.5" />,
       });
     } else {
-      router.push(`/dashboard/base/contracts/templates/${template.id}`);
+      router.push(`/dashboard/base/contracts/templates/new?templateId=${template.id}`);
     }
   };
 

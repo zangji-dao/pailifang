@@ -325,7 +325,12 @@ export async function DELETE(request: NextRequest) {
 /**
  * 格式化模板数据
  */
-function formatTemplate(item: any): ContractTemplate {
+function formatTemplate(item: any): ContractTemplate & {
+  source_file_url?: string;
+  source_file_name?: string;
+  source_file_type?: string;
+  base_id?: string;
+} {
   return {
     id: item.id,
     name: item.name,
@@ -339,5 +344,9 @@ function formatTemplate(item: any): ContractTemplate {
     is_active: item.is_active,
     created_at: item.created_at,
     updated_at: item.updated_at,
+    source_file_url: item.source_file_url,
+    source_file_name: item.source_file_name,
+    source_file_type: item.source_file_type,
+    base_id: item.base_id,
   };
 }
