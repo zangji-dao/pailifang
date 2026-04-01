@@ -609,16 +609,16 @@ export default function ContractTemplatesPage() {
                             <FileDown className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8 w-8 p-0"
+                            className="h-8"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEdit(template);
                             }}
-                            title="编辑"
                           >
-                            <Settings className="h-4 w-4" />
+                            <Edit3 className="h-4 w-4 mr-1" />
+                            编辑
                           </Button>
                           <Button
                             variant="ghost"
