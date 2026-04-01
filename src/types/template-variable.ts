@@ -5,7 +5,7 @@
 // ============ 变量类型 ============
 
 /** 变量数据类型 */
-export type VariableType = 'text' | 'number' | 'date' | 'money' | 'select';
+export type VariableType = 'text' | 'number' | 'date' | 'money' | 'select' | 'computed';
 
 /** 变量分类 */
 export type VariableCategory = 'enterprise' | 'contract' | 'location' | 'date' | 'custom';
@@ -26,6 +26,7 @@ export const VariableTypeLabels: Record<VariableType, string> = {
   date: '日期',
   money: '金额',
   select: '选择',
+  computed: '计算值',
 };
 
 // ============ 变量定义 ============
@@ -34,6 +35,24 @@ export const VariableTypeLabels: Record<VariableType, string> = {
 export interface SelectOption {
   value: string;
   label: string;
+}
+
+// ============ 计算型变量 ============
+
+/** 计算公式类型 */
+export type ComputedFormula = 
+  | 'years_between'    // 两个日期间的年数
+  | 'months_between'   // 两个日期间的月数
+  | 'days_between'     // 两个日期间的天数
+  | 'date_range_text'  // 日期范围文本（如：2024年1月1日至2025年12月31日）
+  | 'lease_term_text'; // 租赁期限文本（如：共计2年）
+
+/** 计算型变量配置 */
+export interface ComputedConfig {
+  formula: ComputedFormula;     // 计算公式
+  dependsOn: string[];          // 依赖的变量key
+  unit?: string;                // 单位（年、月、天）
+  format?: string;              // 格式化模板
 }
 
 /** 模板变量定义 */
@@ -47,6 +66,7 @@ export interface TemplateVariable {
   options?: SelectOption[];  // 选择型变量的选项
   placeholder?: string;      // 输入提示
   required?: boolean;        // 是否必填
+  computed?: ComputedConfig; // 计算型变量配置（仅 type=computed 时有效）
 }
 
 /** 变量绑定位置 */
@@ -338,6 +358,71 @@ export const PresetVariables: TemplateVariable[] = [
     category: 'date',
     placeholder: '如：每月5日前',
   },
+
+  // ===== 计算型变量 =====
+  {
+    id: 'var_lease_years',
+    name: '租赁年限',
+    key: 'lease_years',
+    type: 'computed',
+    category: 'date',
+    placeholder: '根据开始/结束日期自动计算',
+    computed: {
+      formula: 'years_between',
+      dependsOn: ['start_date', 'end_date'],
+      unit: '年',
+    },
+  },
+  {
+    id: 'var_lease_months',
+    name: '租赁月数',
+    key: 'lease_months',
+    type: 'computed',
+    category: 'date',
+    placeholder: '根据开始/结束日期自动计算',
+    computed: {
+      formula: 'months_between',
+      dependsOn: ['start_date', 'end_date'],
+      unit: '个月',
+    },
+  },
+  {
+    id: 'var_lease_days',
+    name: '租赁天数',
+    key: 'lease_days',
+    type: 'computed',
+    category: 'date',
+    placeholder: '根据开始/结束日期自动计算',
+    computed: {
+      formula: 'days_between',
+      dependsOn: ['start_date', 'end_date'],
+      unit: '天',
+    },
+  },
+  {
+    id: 'var_lease_term_auto',
+    name: '租赁期限（自动）',
+    key: 'lease_term_auto',
+    type: 'computed',
+    category: 'date',
+    placeholder: '自动生成：2024年1月1日至2025年12月31日',
+    computed: {
+      formula: 'date_range_text',
+      dependsOn: ['start_date', 'end_date'],
+    },
+  },
+  {
+    id: 'var_lease_summary',
+    name: '租赁期限摘要',
+    key: 'lease_summary',
+    type: 'computed',
+    category: 'date',
+    placeholder: '自动生成：共计2年',
+    computed: {
+      formula: 'lease_term_text',
+      dependsOn: ['start_date', 'end_date'],
+    },
+  },
 ];
 
 /** 按分类获取预设变量 */
@@ -348,4 +433,169 @@ export function getVariablesByCategory(category: VariableCategory): TemplateVari
 /** 根据key获取变量 */
 export function getVariableByKey(key: string): TemplateVariable | undefined {
   return PresetVariables.find(v => v.key === key);
+}
+
+// ============ 计算型变量工具函数 ============
+
+/**
+ * 计算两个日期之间的年数
+ */
+export function calculateYearsBetween(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 0;
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  
+  let years = end.getFullYear() - start.getFullYear();
+  
+  // 如果结束日期的月份小于开始日期的月份，或者月份相同但日期小于开始日期，则减去1年
+  if (
+    end.getMonth() < start.getMonth() || 
+    (end.getMonth() === start.getMonth() && end.getDate() < start.getDate())
+  ) {
+    years--;
+  }
+  
+  return Math.max(0, years);
+}
+
+/**
+ * 计算两个日期之间的月数
+ */
+export function calculateMonthsBetween(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 0;
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  
+  let months = (end.getFullYear() - start.getFullYear()) * 12;
+  months += end.getMonth() - start.getMonth();
+  
+  // 如果结束日期的日期小于开始日期的日期，则减去1个月
+  if (end.getDate() < start.getDate()) {
+    months--;
+  }
+  
+  return Math.max(0, months);
+}
+
+/**
+ * 计算两个日期之间的天数
+ */
+export function calculateDaysBetween(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 0;
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return Math.max(0, diffDays);
+}
+
+/**
+ * 格式化日期为中文格式
+ */
+function formatDateChinese(dateStr: string): string {
+  if (!dateStr) return '';
+  
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+/**
+ * 计算租赁期限文本（如：2024年1月1日至2025年12月31日）
+ */
+export function calculateDateRangeText(startDate: string, endDate: string): string {
+  if (!startDate || !endDate) return '';
+  
+  const start = formatDateChinese(startDate);
+  const end = formatDateChinese(endDate);
+  
+  if (!start || !end) return '';
+  
+  return `${start}至${end}`;
+}
+
+/**
+ * 计算租赁期限摘要（如：共计2年）
+ */
+export function calculateLeaseTermText(startDate: string, endDate: string): string {
+  if (!startDate || !endDate) return '';
+  
+  const years = calculateYearsBetween(startDate, endDate);
+  const months = calculateMonthsBetween(startDate, endDate);
+  
+  if (years > 0) {
+    const remainingMonths = months % 12;
+    if (remainingMonths > 0) {
+      return `共计${years}年${remainingMonths}个月`;
+    }
+    return `共计${years}年`;
+  }
+  
+  if (months > 0) {
+    return `共计${months}个月`;
+  }
+  
+  const days = calculateDaysBetween(startDate, endDate);
+  if (days > 0) {
+    return `共计${days}天`;
+  }
+  
+  return '';
+}
+
+/**
+ * 计算型变量的计算函数
+ * @param variable 变量定义
+ * @param values 所有变量的值（key-value 对象）
+ * @returns 计算结果
+ */
+export function computeVariableValue(
+  variable: TemplateVariable, 
+  values: Record<string, string>
+): string {
+  if (variable.type !== 'computed' || !variable.computed) {
+    return values[variable.key] || '';
+  }
+  
+  const { formula, dependsOn } = variable.computed;
+  
+  // 获取依赖变量的值
+  const depValues = dependsOn.map(key => values[key] || '');
+  
+  // 如果有任何依赖变量为空，返回空字符串
+  if (depValues.some(v => !v)) {
+    return '';
+  }
+  
+  switch (formula) {
+    case 'years_between':
+      return String(calculateYearsBetween(depValues[0], depValues[1]));
+    
+    case 'months_between':
+      return String(calculateMonthsBetween(depValues[0], depValues[1]));
+    
+    case 'days_between':
+      return String(calculateDaysBetween(depValues[0], depValues[1]));
+    
+    case 'date_range_text':
+      return calculateDateRangeText(depValues[0], depValues[1]);
+    
+    case 'lease_term_text':
+      return calculateLeaseTermText(depValues[0], depValues[1]);
+    
+    default:
+      return '';
+  }
 }

@@ -58,7 +58,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ParseResult } from "@/types/contract-template";
 import type { TemplateVariable, VariableType, VariableCategory } from "@/types/template-variable";
-import { PresetVariables, VariableTypeLabels, VariableCategoryLabels } from "@/types/template-variable";
+import { PresetVariables, VariableTypeLabels, VariableCategoryLabels, computeVariableValue } from "@/types/template-variable";
 
 // 步骤定义
 const STEPS = [
@@ -2029,13 +2029,42 @@ export default function NewTemplatePage() {
                   <div className="flex flex-wrap gap-2">
                     {bindings.map((binding) => {
                       const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === binding.variableKey);
-                      return variable ? (
-                        <Badge key={binding.id} variant="outline" className="bg-green-50">
+                      if (!variable) return null;
+                      
+                      const isComputed = variable.type === 'computed';
+                      
+                      return (
+                        <Badge 
+                          key={binding.id} 
+                          variant="outline" 
+                          className={cn(
+                            "flex items-center gap-1",
+                            isComputed ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-green-50"
+                          )}
+                        >
                           {variable.name}
+                          {isComputed && (
+                            <span className="text-[10px] bg-blue-100 px-1 rounded ml-1">
+                              自动计算
+                            </span>
+                          )}
                         </Badge>
-                      ) : null;
+                      );
                     })}
                   </div>
+                  
+                  {/* 计算型变量说明 */}
+                  {bindings.some(b => {
+                    const v = [...selectedVariables, ...PresetVariables].find(v => v.key === b.variableKey);
+                    return v?.type === 'computed';
+                  }) && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <p className="text-sm text-blue-700">
+                        <span className="font-medium">💡 计算型变量说明：</span>
+                        带有"自动计算"标记的变量会根据其依赖的变量值自动计算生成。例如"租赁年限"会根据"开始日期"和"结束日期"自动计算。
+                      </p>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -2263,13 +2292,15 @@ export default function NewTemplatePage() {
                 <div className="grid grid-cols-2 gap-2 p-4">
                   {filteredVariables.map((variable) => {
                     const bound = isVariableBound(variable.key);
+                    const isComputed = variable.type === 'computed';
                     return (
                       <Button
                         key={variable.id}
                         variant={bound ? "secondary" : "outline"}
                         className={cn(
                           "justify-start h-auto py-3",
-                          bound && "bg-green-50 border-green-200"
+                          bound && "bg-green-50 border-green-200",
+                          isComputed && "border-blue-200 bg-blue-50/30"
                         )}
                         onClick={() => handleBindVariable(variable)}
                       >
@@ -2280,10 +2311,26 @@ export default function NewTemplatePage() {
                             <Plus className="h-4 w-4 shrink-0" />
                           )}
                         </div>
-                        <div className="text-left">
-                          <div className="font-medium">{variable.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {VariableTypeLabels[variable.type]}
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="font-medium flex items-center gap-1">
+                            <span className="truncate">{variable.name}</span>
+                            {isComputed && (
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded shrink-0">
+                                自动
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {isComputed && variable.computed ? (
+                              <span className="text-blue-600">
+                                依赖: {variable.computed.dependsOn.map(k => {
+                                  const depVar = PresetVariables.find(v => v.key === k);
+                                  return depVar?.name || k;
+                                }).join('、')}
+                              </span>
+                            ) : (
+                              VariableTypeLabels[variable.type]
+                            )}
                             {bound && " · 已绑定"}
                           </div>
                         </div>
