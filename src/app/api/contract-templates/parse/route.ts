@@ -15,16 +15,36 @@ interface AttachmentInfo {
 }
 
 /**
- * 简单HTML后处理 - 保留原始样式
+ * 简单HTML后处理 - 保留原始样式，添加打印约束
  */
 function postProcessHtml(html: string): string {
+  // 添加打印样式，在打印时应用A4约束
+  const printStyles = `
+    <style>
+      @media print {
+        body {
+          background: white !important;
+        }
+        .contract-content {
+          width: 210mm !important;
+          padding: 2.54cm 3.17cm !important;
+          box-sizing: border-box !important;
+        }
+        @page {
+          size: A4;
+          margin: 0;
+        }
+      }
+    </style>
+  `;
+  
   return html
     // 清理空段落
     .replace(/<p[^>]*>\s*<\/p>/gi, '')
     // 确保表格有基本样式（但不覆盖原有边框）
     .replace(/<table/gi, '<table style="border-collapse: collapse; width: 100%; margin: 8pt 0;"')
     .replace(/<td/gi, '<td style="padding: 4pt 6pt; vertical-align: top;"')
-    .replace(/<th/gi, '<th style="padding: 4pt 6pt; font-weight: bold;"');
+    .replace(/<th/gi, '<th style="padding: 4pt 6pt; font-weight bold;"');
 }
 
 /**
