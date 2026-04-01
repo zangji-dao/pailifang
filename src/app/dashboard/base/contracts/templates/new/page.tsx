@@ -1067,6 +1067,7 @@ export default function NewTemplatePage() {
       syncEditedContent();
       
       const labels: Record<string, string> = {
+        '0.5': '0.5倍行距',
         '1': '单倍行距',
         '1.5': '1.5倍行距',
         '1.8': '1.8倍行距',
@@ -1968,6 +1969,7 @@ export default function NewTemplatePage() {
                     <SelectValue placeholder="行距" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="0.5">0.5倍</SelectItem>
                     <SelectItem value="1">单倍</SelectItem>
                     <SelectItem value="1.5">1.5倍</SelectItem>
                     <SelectItem value="1.8">1.8倍</SelectItem>
