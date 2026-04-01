@@ -1499,19 +1499,18 @@ export default function NewTemplatePage() {
           )}>
             {/* 文档内容区域 - 可滚动 */}
             <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center">
+              {/* 注入 LibreOffice 生成的样式 */}
+              {parseResult?.styles && (
+                <style dangerouslySetInnerHTML={{ __html: parseResult.styles }} />
+              )}
               <style jsx global>{`
-                /* 文档容器样式 - 不限制尺寸，让内容自然流动 */
+                /* 文档容器样式 - 只保留容器相关样式，不覆盖内容样式 */
                 .a4-paper {
                   padding: 2.54cm 3.17cm;
                   background: white;
                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                   color: #000;
                   box-sizing: border-box;
-                  word-wrap: break-word;
-                  font-family: "Times New Roman", "宋体", SimSun, serif;
-                  font-size: 12pt;
-                  line-height: 1.5;
-                  display: block;
                   max-width: 210mm;
                   width: 100%;
                 }
@@ -1520,36 +1519,6 @@ export default function NewTemplatePage() {
                 .a4-paper[contenteditable="true"],
                 .a4-paper[contenteditable="true"]:focus {
                   outline: none;
-                }
-                
-                /* 标题样式 */
-                .a4-paper h1 { font-size: 22pt; font-weight: bold; text-align: center; margin: 12pt 0; }
-                .a4-paper h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0; }
-                .a4-paper h3 { font-size: 14pt; font-weight: bold; margin: 8pt 0; }
-                
-                /* 表格样式 */
-                .a4-paper table {
-                  border-collapse: collapse;
-                  width: 100%;
-                  margin: 6pt 0;
-                }
-                .a4-paper table td,
-                .a4-paper table th {
-                  padding: 4pt 6pt;
-                  vertical-align: top;
-                }
-                .a4-paper table th {
-                  font-weight: bold;
-                }
-                
-                /* 列表样式 */
-                .a4-paper ul,
-                .a4-paper ol {
-                  margin: 6pt 0;
-                  padding-left: 24pt;
-                }
-                .a4-paper li {
-                  margin: 3pt 0;
                 }
                 
                 /* 变量标记样式 */

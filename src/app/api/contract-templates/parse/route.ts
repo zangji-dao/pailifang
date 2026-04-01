@@ -20,6 +20,15 @@ interface AttachmentInfo {
 const LIBREOFFICE_PROFILE = '/tmp/libreoffice-profile';
 
 /**
+ * 解析结果接口（包含分离的样式和内容）
+ */
+interface ParsedHtml {
+  styles: string;      // 提取的 CSS 样式
+  content: string;     // body 内容（不含 body 标签）
+  fullHtml: string;    // 完整 HTML（用于预览/打印）
+}
+
+/**
  * 使用 LibreOffice 转换 Word 文档为 HTML
  * 样式保留度比 mammoth 高很多
  */
@@ -67,6 +76,59 @@ function convertWithLibreOffice(buffer: Buffer, fileName: string): string {
 }
 
 /**
+ * 从完整 HTML 中提取样式和内容
+ * 返回分离的样式、内容，方便前端正确渲染
+ */
+function parseLibreOfficeHtml(html: string): ParsedHtml {
+  // 提取所有 <style> 标签内容
+  const styleMatches = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+  const styles = styleMatches
+    .map(s => s.replace(/<\/?style[^>]*>/gi, ''))
+    .join('\n');
+  
+  // 提取 body 内容（可能包含 body 的属性如 bgcolor 等）
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let content = bodyMatch ? bodyMatch[1] : html;
+  
+  // 如果提取失败，尝试移除 head 部分
+  if (!bodyMatch) {
+    content = html
+      .replace(/<!DOCTYPE[^>]*>/i, '')
+      .replace(/<html[^>]*>/i, '')
+      .replace(/<\/html>/i, '')
+      .replace(/<head[\s\S]*?<\/head>/i, '')
+      .replace(/<body[^>]*>/i, '')
+      .replace(/<\/body>/i, '')
+      .trim();
+  }
+  
+  // 添加打印样式
+  const printStyles = `
+    /* 打印样式 */
+    @media print {
+      body {
+        background: white !important;
+      }
+      .contract-content {
+        width: 210mm !important;
+        padding: 2.54cm 3.17cm !important;
+        box-sizing: border-box !important;
+      }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+    }
+  `;
+  
+  return {
+    styles: styles + '\n' + printStyles,
+    content: content,
+    fullHtml: html,
+  };
+}
+
+/**
  * 提取 HTML 中的纯文本
  */
 function extractTextFromHtml(html: string): string {
@@ -76,53 +138,6 @@ function extractTextFromHtml(html: string): string {
     .replace(/<[^>]+>/g, ' ') // 移除标签
     .replace(/\s+/g, ' ') // 合并空白
     .trim();
-}
-
-/**
- * HTML后处理 - 添加打印约束和文档样式
- */
-function postProcessHtml(html: string): string {
-  // 添加打印样式和文档基础样式
-  const styles = `
-    <style>
-      /* 文档基础样式 */
-      body {
-        font-family: "Times New Roman", "宋体", SimSun, serif;
-        font-size: 12pt;
-        line-height: 1.5;
-        color: #000;
-        margin: 0;
-        padding: 0;
-      }
-      
-      /* 打印样式 */
-      @media print {
-        body {
-          background: white !important;
-        }
-        .contract-content {
-          width: 210mm !important;
-          padding: 2.54cm 3.17cm !important;
-          box-sizing: border-box !important;
-        }
-        @page {
-          size: A4;
-          margin: 0;
-        }
-      }
-    </style>
-  `;
-  
-  // 在 </head> 或 <body> 前插入样式
-  if (html.includes('</head>')) {
-    html = html.replace('</head>', `${styles}</head>`);
-  } else if (html.includes('<body')) {
-    html = html.replace('<body', `${styles}<body`);
-  } else {
-    html = styles + html;
-  }
-  
-  return html;
 }
 
 /**
@@ -173,14 +188,12 @@ export async function POST(request: NextRequest) {
       const mainBuffer = Buffer.from(mainArrayBuffer);
       
       // 2. 使用 LibreOffice 转换为 HTML（样式保留度高）
-      let html = convertWithLibreOffice(mainBuffer, fileName);
-      const fullText = extractTextFromHtml(html);
-      
-      // 后处理：添加打印样式
-      html = postProcessHtml(html);
+      const rawHtml = convertWithLibreOffice(mainBuffer, fileName);
+      const parsed = parseLibreOfficeHtml(rawHtml);
+      const fullText = extractTextFromHtml(rawHtml);
       
       // 3. 处理附件
-      const attachmentResults: { id: string; name: string; url: string; html: string; text: string }[] = [];
+      const attachmentResults: { id: string; name: string; url: string; html: string; styles: string; text: string }[] = [];
       
       for (let i = 0; i < attachments.length; i++) {
         const attachment = attachments[i];
@@ -192,14 +205,16 @@ export async function POST(request: NextRequest) {
           const attBuffer = Buffer.from(attArrayBuffer);
           
           // 使用 LibreOffice 转换附件
-          const attHtml = convertWithLibreOffice(attBuffer, attachment.name);
-          const attText = extractTextFromHtml(attHtml);
+          const attRawHtml = convertWithLibreOffice(attBuffer, attachment.name);
+          const attParsed = parseLibreOfficeHtml(attRawHtml);
+          const attText = extractTextFromHtml(attRawHtml);
           
           attachmentResults.push({
             id: `att-${i}`,
             name: attachment.name,
             url: attachment.url,
-            html: postProcessHtml(attHtml),
+            html: attParsed.content,
+            styles: attParsed.styles,
             text: attText,
           });
         } catch (attError) {
@@ -214,6 +229,7 @@ export async function POST(request: NextRequest) {
         displayName: att.name.replace(/\.[^/.]+$/, ''),
         url: att.url,
         html: att.html,
+        styles: att.styles,
         text: att.text,
         order: index,
       }));
@@ -225,15 +241,16 @@ export async function POST(request: NextRequest) {
         fileName,
         fileType: fileType as 'docx' | 'doc',
         fileUrl, // 保留原始文件URL，供后续使用
+        styles: parsed.styles,  // LibreOffice 生成的样式
         pages: [{
           pageNumber: 1,
           text: fullText,
-          html: html,
+          html: parsed.content,
           hasTables: detectTables(fullText),
           hasImages: false,
         }],
         fullText,
-        html: html,
+        html: parsed.content,
         attachments: parsedAttachments,
         detectedAttachments: [],
         detectedFields: [],

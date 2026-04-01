@@ -197,7 +197,8 @@ export interface ParsedAttachment {
   name: string;           // 文件名
   displayName: string;    // 显示名称（不含扩展名）
   url: string;            // 文件URL（用于docx-preview渲染）
-  html: string;           // HTML内容（备用）
+  html: string;           // HTML内容（body 内）
+  styles?: string;        // LibreOffice 生成的 CSS 样式
   text: string;           // 纯文本内容
   order: number;          // 排序
 }
@@ -218,7 +219,8 @@ export interface ParseResult {
   // 解析内容 - 主文档
   pages: ParsedPage[];
   fullText: string;
-  html?: string;  // 主文档HTML格式内容（备用）
+  html?: string;      // 主文档内容（body 内的 HTML）
+  styles?: string;    // LibreOffice 生成的 CSS 样式
   
   // 附件文档 - 分开展示
   attachments: ParsedAttachment[];
