@@ -1717,6 +1717,11 @@ export default function NewTemplatePage() {
   
   // 步骤2: 变量绑定（简化为单一编辑模式）
   const renderBindingStep = () => {
+    // 调试信息
+    console.log('[渲染绑定页面] parseResult:', parseResult ? 'exists' : 'null');
+    console.log('[渲染绑定页面] parseResult.attachments:', parseResult?.attachments);
+    console.log('[渲染绑定页面] parseResult.attachments.length:', parseResult?.attachments?.length);
+    
     if (!parseResult?.html) {
       return (
         <Card>
@@ -1732,6 +1737,16 @@ export default function NewTemplatePage() {
     
     return (
       <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* 调试信息 - 临时 */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="lg:col-span-3 p-2 bg-yellow-100 text-xs">
+            调试: parseResult={parseResult ? 'exists' : 'null'}, 
+            attachments={parseResult?.attachments?.length || 0}个
+            {parseResult?.attachments && parseResult.attachments.length > 0 && (
+              <span> - {parseResult.attachments.map(a => a.displayName).join(', ')}</span>
+            )}
+          </div>
+        )}
         {/* 左侧：合同预览 */}
         <Card className="lg:col-span-2 overflow-hidden">
           <CardHeader className="py-3 border-b">
@@ -2198,7 +2213,8 @@ export default function NewTemplatePage() {
             </div>
             
             {/* 文档标签页 - 类似Excel的Sheet标签，固定在底部 */}
-            {parseResult && (parseResult.attachments?.length > 0) && (
+            {/* 调试信息: parseResult={parseResult ? 'exists' : 'null'}, attachments={parseResult?.attachments?.length || 0} */}
+            {parseResult && parseResult.attachments && parseResult.attachments.length > 0 && (
               <div className="shrink-0 bg-white border-t flex items-center px-2 py-1 gap-1">
                 <button
                   onClick={() => setActiveDocumentId('main')}
