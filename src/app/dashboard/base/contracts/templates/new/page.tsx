@@ -1461,7 +1461,7 @@ export default function NewTemplatePage() {
     return result;
   }, [activeDocumentId, currentDocumentHtml, editedHtml, currentDocumentMarkers, selectedVariables]);
   
-  // 优化排版功能
+  // 优化排版功能（只优化当前文档）
   const handleOptimizeLayout = useCallback(async () => {
     if (!processedHtml) {
       toast.error("没有可优化的内容");
@@ -1475,7 +1475,7 @@ export default function NewTemplatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           html: processedHtml,
-          variables: markers.map(m => ({
+          variables: currentDocumentMarkers.map(m => ({
             key: m.variableKey,
             name: m.variableKey || '未绑定'
           }))
@@ -1485,7 +1485,23 @@ export default function NewTemplatePage() {
       const data = await response.json();
       
       if (data.success) {
-        setEditedHtml(data.data.html);
+        // 根据当前文档类型，保存到对应位置
+        if (activeDocumentId === 'main') {
+          setEditedHtml(data.data.html);
+        } else {
+          // 更新附件的 HTML
+          setParseResult(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              attachments: (prev.attachments || []).map(att => 
+                att.id === activeDocumentId 
+                  ? { ...att, html: data.data.html }
+                  : att
+              ),
+            };
+          });
+        }
         toast.success("排版优化完成");
       } else {
         throw new Error(data.error || "优化失败");
@@ -1496,7 +1512,7 @@ export default function NewTemplatePage() {
     } finally {
       setOptimizing(false);
     }
-  }, [processedHtml, markers]);
+  }, [processedHtml, currentDocumentMarkers, activeDocumentId]);
   
   // ========== 保存模板 ==========
   
@@ -1827,7 +1843,7 @@ export default function NewTemplatePage() {
                 className="h-7"
                 onClick={handleOptimizeLayout}
                 disabled={optimizing || !processedHtml}
-                title="使用AI优化文档排版"
+                title={activeDocumentId === 'main' ? "使用AI优化主合同排版" : "使用AI优化当前附件排版"}
               >
                 <Sparkles className="h-3.5 w-3.5 mr-1" />
                 {optimizing ? "优化中..." : "优化排版"}
