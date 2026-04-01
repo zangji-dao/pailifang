@@ -1461,48 +1461,83 @@ export default function NewTemplatePage() {
     return result;
   }, [activeDocumentId, currentDocumentHtml, editedHtml, currentDocumentMarkers, selectedVariables]);
   
-  // 优化排版功能（只优化当前文档）
+  // 优化排版功能（统一优化主合同和所有附件）
   const handleOptimizeLayout = useCallback(async () => {
-    if (!processedHtml) {
+    // 检查是否有内容可优化
+    const hasMainContent = editedHtml || parseResult?.html;
+    const hasAttachments = parseResult?.attachments && parseResult.attachments.length > 0;
+    
+    if (!hasMainContent && !hasAttachments) {
       toast.error("没有可优化的内容");
       return;
     }
     
     setOptimizing(true);
     try {
+      // 收集所有变量
+      const allVariables = markers.map(m => ({
+        key: m.variableKey,
+        name: m.variableKey || '未绑定'
+      }));
+      
+      // 收集所有文档内容
+      const documents = [];
+      
+      // 主合同
+      if (hasMainContent) {
+        documents.push({
+          id: 'main',
+          name: '主合同',
+          html: editedHtml || parseResult?.html || '',
+        });
+      }
+      
+      // 附件
+      if (hasAttachments) {
+        for (const att of parseResult!.attachments!) {
+          documents.push({
+            id: att.id,
+            name: att.displayName || att.name,
+            html: att.html || '',
+          });
+        }
+      }
+      
       const response = await fetch("/api/contract-templates/optimize-layout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          html: processedHtml,
-          variables: currentDocumentMarkers.map(m => ({
-            key: m.variableKey,
-            name: m.variableKey || '未绑定'
-          }))
+          documents,
+          variables: allVariables
         })
       });
       
       const data = await response.json();
       
       if (data.success) {
-        // 根据当前文档类型，保存到对应位置
-        if (activeDocumentId === 'main') {
-          setEditedHtml(data.data.html);
-        } else {
-          // 更新附件的 HTML
-          setParseResult(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              attachments: (prev.attachments || []).map(att => 
-                att.id === activeDocumentId 
-                  ? { ...att, html: data.data.html }
-                  : att
-              ),
-            };
-          });
+        // 处理优化结果
+        const results = data.data.results || [];
+        
+        for (const result of results) {
+          if (result.id === 'main') {
+            setEditedHtml(result.html);
+          } else {
+            // 更新附件的 HTML
+            setParseResult(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                attachments: (prev.attachments || []).map(att => 
+                  att.id === result.id 
+                    ? { ...att, html: result.html }
+                    : att
+                ),
+              };
+            });
+          }
         }
-        toast.success("排版优化完成");
+        
+        toast.success(`排版优化完成（共${results.length}个文档）`);
       } else {
         throw new Error(data.error || "优化失败");
       }
@@ -1512,7 +1547,7 @@ export default function NewTemplatePage() {
     } finally {
       setOptimizing(false);
     }
-  }, [processedHtml, currentDocumentMarkers, activeDocumentId]);
+  }, [editedHtml, parseResult, markers]);
   
   // ========== 保存模板 ==========
   
@@ -1842,8 +1877,8 @@ export default function NewTemplatePage() {
                 size="sm"
                 className="h-7"
                 onClick={handleOptimizeLayout}
-                disabled={optimizing || !processedHtml}
-                title={activeDocumentId === 'main' ? "使用AI优化主合同排版" : "使用AI优化当前附件排版"}
+                disabled={optimizing || (!editedHtml && !parseResult?.html && (!parseResult?.attachments || parseResult.attachments.length === 0))}
+                title="统一优化主合同和所有附件的排版"
               >
                 <Sparkles className="h-3.5 w-3.5 mr-1" />
                 {optimizing ? "优化中..." : "优化排版"}

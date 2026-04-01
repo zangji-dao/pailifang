@@ -7,17 +7,21 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/contract-templates/optimize-layout
- * 使用LLM优化合同文档排版（用于最终输出）
+ * 使用LLM优化合同文档排版（统一优化主合同和所有附件）
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { html, variables = [] } = body as {
-      html: string;
+    const { documents, variables = [] } = body as {
+      documents?: Array<{ id: string; name: string; html: string }>;
+      html?: string; // 兼容旧的单文档模式
       variables?: { key: string; name: string; value?: string }[];
     };
 
-    if (!html) {
+    // 兼容旧的单文档模式
+    const docsToProcess = documents || (body.html ? [{ id: 'main', name: '主合同', html: body.html }] : []);
+    
+    if (docsToProcess.length === 0) {
       return NextResponse.json(
         { success: false, error: '缺少HTML内容' },
         { status: 400 }
@@ -77,33 +81,56 @@ export async function POST(request: NextRequest) {
 5. 允许使用必要的间距样式（margin、padding），让文档更美观
 6. 签章区域可使用表格实现左右并排布局`;
 
-    const userPrompt = `请优化以下合同文档的排版，特别注意签字盖章区域和行间距的优化。
+    const results = [];
+    
+    // 逐个处理文档
+    for (const doc of docsToProcess) {
+      const userPrompt = `请优化以下合同文档的排版，特别注意签字盖章区域和行间距的优化。
 
+【文档名称】：${doc.name}
 【变量列表（必须保留）】：${variables.map(v => `{{${v.name}}}`).join(', ')}
 
 【HTML内容】：
-${html}
+${doc.html}
 
 请输出优化后的HTML（变量标记必须原样保留）：`;
 
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      { role: 'user' as const, content: userPrompt }
-    ];
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userPrompt }
+      ];
 
-    const response = await client.invoke(messages, {
-      model: 'doubao-seed-2-0-lite-260215',
-      temperature: 0.2,
-    });
+      try {
+        const response = await client.invoke(messages, {
+          model: 'doubao-seed-2-0-lite-260215',
+          temperature: 0.2,
+        });
 
-    let result = response.content;
-    
-    // 清理可能的markdown代码块标记
-    result = result.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+        let result = response.content;
+        
+        // 清理可能的markdown代码块标记
+        result = result.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+
+        results.push({
+          id: doc.id,
+          name: doc.name,
+          html: result,
+        });
+      } catch (docError) {
+        console.error(`优化文档 ${doc.name} 失败:`, docError);
+        // 如果某个文档优化失败，保留原内容
+        results.push({
+          id: doc.id,
+          name: doc.name,
+          html: doc.html,
+          error: docError instanceof Error ? docError.message : '优化失败',
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      data: { html: result }
+      data: { results }
     });
   } catch (error) {
     console.error('优化排版失败:', error);
