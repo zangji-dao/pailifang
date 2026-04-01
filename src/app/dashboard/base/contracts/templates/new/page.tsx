@@ -736,9 +736,27 @@ export default function NewTemplatePage() {
     toast.success(`已插入 ${rows} 行 ${cols} 列的表格`);
   }, [syncEditedContent]);
   
-  // 处理文档点击 - 只处理点击变量标记的情况
+  // 保存选区位置（解决点击按钮时选区丢失的问题）
+  const savedRangeRef = useRef<Range | null>(null);
+  
+  // 保存当前选区
+  const saveSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      // 检查选区是否在文档内
+      if (contentRef.current?.contains(range.commonAncestorContainer)) {
+        savedRangeRef.current = range.cloneRange();
+      }
+    }
+  }, []);
+  
+  // 处理文档点击 - 保存选区并处理点击变量标记
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
+    
+    // 保存选区
+    saveSelection();
     
     // 如果点击的是标记，打开变量选择器
     if (target.classList.contains('variable-marker')) {
@@ -748,8 +766,12 @@ export default function NewTemplatePage() {
         setShowVariablePicker(true);
       }
     }
-    // 其他点击不做处理，允许正常编辑
-  }, []);
+  }, [saveSelection]);
+  
+  // 处理键盘事件 - 保存选区
+  const handleContentKeyUp = useCallback(() => {
+    saveSelection();
+  }, [saveSelection]);
   
   // 辅助函数：查找最近的有ID的父元素
   const findNearestId = (element: HTMLElement | null): string => {
@@ -1684,6 +1706,7 @@ export default function NewTemplatePage() {
                   contentEditable={true}
                   suppressContentEditableWarning
                   onClick={handleContentClick}
+                  onKeyUp={handleContentKeyUp}
                   onBlur={syncEditedContent}
                   onKeyDown={(e) => {
                     // 处理快捷键
@@ -1772,23 +1795,11 @@ export default function NewTemplatePage() {
               <Button 
                 className="w-full"
                 onClick={() => {
-                  const selection = window.getSelection();
+                  // 使用保存的选区（解决点击按钮时选区丢失的问题）
+                  const savedRange = savedRangeRef.current;
                   
-                  // 检查选区是否在文档内
-                  if (!selection || selection.rangeCount === 0) {
+                  if (!savedRange) {
                     toast.info("请先在文档中点击定位光标");
-                    return;
-                  }
-                  
-                  const range = selection.getRangeAt(0);
-                  
-                  // 检查光标是否在 contentEditable 文档内
-                  const container = range.commonAncestorContainer;
-                  const isInDocument = contentRef.current?.contains(container);
-                  
-                  if (!isInDocument) {
-                    toast.info("请先在文档中点击定位光标");
-                    // 聚焦到文档
                     contentRef.current?.focus();
                     return;
                   }
@@ -1803,18 +1814,28 @@ export default function NewTemplatePage() {
                   markerSpan.textContent = '【待绑定】';
                   
                   try {
-                    if (!selection.isCollapsed) {
+                    // 恢复保存的选区
+                    const selection = window.getSelection();
+                    selection?.removeAllRanges();
+                    selection?.addRange(savedRange);
+                    
+                    // 在保存的位置插入标记
+                    if (!selection?.isCollapsed) {
                       // 有选中文字：替换选中内容
-                      range.deleteContents();
+                      savedRange.deleteContents();
                     }
+                    
                     // 在光标位置插入标记
-                    range.insertNode(markerSpan);
+                    savedRange.insertNode(markerSpan);
                     
                     // 将光标移到标记后面
-                    range.setStartAfter(markerSpan);
-                    range.setEndAfter(markerSpan);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                    savedRange.setStartAfter(markerSpan);
+                    savedRange.setEndAfter(markerSpan);
+                    selection?.removeAllRanges();
+                    selection?.addRange(savedRange);
+                    
+                    // 清除保存的选区
+                    savedRangeRef.current = null;
                     
                     syncEditedContent();
                     
