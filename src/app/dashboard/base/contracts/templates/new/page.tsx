@@ -710,7 +710,7 @@ export default function NewTemplatePage() {
     toast.success(`字体大小已调整为 ${size}`);
   }, [syncEditedContent]);
   
-  // 处理文档点击 - 用户自定义绑定位置
+  // 处理文档点击 - 只处理点击变量标记的情况
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     
@@ -721,134 +721,8 @@ export default function NewTemplatePage() {
         setActiveMarkerId(markerId);
         setShowVariablePicker(true);
       }
-      return;
     }
-    
-    // 获取点击位置的文本信息
-    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-    
-    if (!range) return;
-    
-    const textNode = range.startContainer;
-    if (textNode.nodeType !== Node.TEXT_NODE) return;
-    
-    // 获取完整的父元素文本内容
-    const parentElement = textNode.parentElement;
-    const fullText = parentElement?.textContent || textNode.textContent || '';
-    const offset = range.startOffset;
-    
-    // 计算在父元素中的总偏移量
-    let totalOffset = offset;
-    if (parentElement && parentElement !== textNode) {
-      // 遍历找到该文本节点在父元素中的位置
-      const walker = document.createTreeWalker(parentElement, NodeFilter.SHOW_TEXT);
-      let node: Node | null;
-      while ((node = walker.nextNode()) && node !== textNode) {
-        totalOffset += node.textContent?.length || 0;
-      }
-    }
-    
-    // ===== 关键改进：获取更长的上下文，向上遍历DOM找到包含甲方/乙方关键词的区域 =====
-    // 向上遍历DOM，找到包含"甲方"或"乙方"关键词的区块
-    const findPartyContext = (element: HTMLElement | null): { party: string; fullContext: string } => {
-      let current = element;
-      let accumulatedText = '';
-      const maxDepth = 20;
-      let depth = 0;
-      
-      while (current && depth < maxDepth) {
-        // 获取当前元素的文本内容
-        const currentText = current.textContent || '';
-        
-        // 检查是否包含甲方或乙方关键词
-        const partyAMatch = currentText.match(/甲方[（(]?[^）)]*[）)]?/);
-        const partyBMatch = currentText.match(/乙方[（(]?[^）)]*[）)]?/);
-        
-        if (partyAMatch || partyBMatch) {
-          // 找到了包含甲方/乙方的区块
-          // 现在需要确定点击位置是在"甲方"还是"乙方"的区域内
-          // 通过检查关键词在文本中的位置来判断
-          const partyAIndex = currentText.indexOf('甲方');
-          const partyBIndex = currentText.indexOf('乙方');
-          
-          // 获取点击位置在整个区块中的偏移
-          // 需要计算点击点在current元素文本中的位置
-          let clickOffsetInCurrent = totalOffset;
-          if (parentElement !== current) {
-            // 计算点击的文本节点在current元素中的偏移
-            const tempWalker = document.createTreeWalker(current, NodeFilter.SHOW_TEXT);
-            let tempNode: Node | null;
-            clickOffsetInCurrent = 0;
-            while ((tempNode = tempWalker.nextNode()) && tempNode !== textNode) {
-              clickOffsetInCurrent += tempNode.textContent?.length || 0;
-            }
-            clickOffsetInCurrent += offset;
-          }
-          
-          // 判断点击位置在甲方还是乙方之后
-          // 如果甲方关键词在点击位置之前，乙方关键词也在点击位置之前，取最近的那个
-          // 如果只有甲方在之前，则是甲方区域
-          // 如果只有乙方在之前，则是乙方区域
-          // 如果两者都在之前，取距离点击位置最近的
-          
-          let party = '';
-          if (partyAIndex >= 0 && partyBIndex >= 0) {
-            // 两者都存在，判断点击位置是在哪个之后
-            if (clickOffsetInCurrent > partyAIndex && clickOffsetInCurrent > partyBIndex) {
-              // 点击位置在两者之后，取距离最近的
-              party = (clickOffsetInCurrent - partyAIndex) < (clickOffsetInCurrent - partyBIndex) ? '甲方' : '乙方';
-            } else if (clickOffsetInCurrent > partyAIndex) {
-              party = '甲方';
-            } else if (clickOffsetInCurrent > partyBIndex) {
-              party = '乙方';
-            }
-          } else if (partyAIndex >= 0 && clickOffsetInCurrent > partyAIndex) {
-            party = '甲方';
-          } else if (partyBIndex >= 0 && clickOffsetInCurrent > partyBIndex) {
-            party = '乙方';
-          }
-          
-          return { party, fullContext: currentText.substring(Math.max(0, clickOffsetInCurrent - 200), clickOffsetInCurrent + 200) };
-        }
-        
-        accumulatedText = currentText + accumulatedText;
-        current = current.parentElement;
-        depth++;
-      }
-      
-      return { party: '', fullContext: accumulatedText };
-    };
-    
-    const partyContext = findPartyContext(parentElement);
-    
-    // 获取锚点文本：包含更多上下文以确保唯一性
-    const contextLength = 150;
-    const contextStart = Math.max(0, totalOffset - contextLength);
-    const contextEnd = Math.min(fullText.length, totalOffset + contextLength);
-    const anchorText = fullText.substring(contextStart, contextEnd);
-    const insertOffset = totalOffset - contextStart;
-    
-    // 创建新标记
-    const newMarker: Marker = {
-      id: `marker-${Date.now()}`,
-      status: 'pending',
-      position: {
-        beforeText: anchorText,
-        afterText: '',
-        textOffset: insertOffset,
-        // 添加额外的定位信息
-        clickContext: {
-          parentTagName: parentElement?.tagName || '',
-          parentClass: parentElement?.className || '',
-          nearestId: partyContext.party || findNearestId(parentElement), // 优先使用甲方/乙方标识
-          party: partyContext.party, // 明确记录甲方或乙方
-        },
-      },
-    };
-    
-    setMarkers(prev => [...prev, newMarker]);
-    setActiveMarkerId(newMarker.id);
-    setShowVariablePicker(true);
+    // 其他点击不做处理，允许正常编辑
   }, []);
   
   // 辅助函数：查找最近的有ID的父元素
