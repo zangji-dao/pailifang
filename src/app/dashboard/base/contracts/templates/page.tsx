@@ -556,7 +556,7 @@ export default function ContractTemplatesPage() {
                             }}
                           >
                             <Edit3 className="h-4 w-4 mr-1" />
-                            继续编辑
+                            继续创建
                           </Button>
                           <Button
                             variant="ghost"
