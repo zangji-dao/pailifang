@@ -339,7 +339,7 @@ export default function NewTemplatePage() {
         });
         
         setTemplateId(uploadData.data.templateId);
-        toast.success("文件已上传，可以保存草稿或继续解析");
+        toast.success("文件已上传，点击「下一步」解析文档");
       } catch (err) {
         console.error("上传失败:", err);
         toast.error(err instanceof Error ? err.message : "上传失败");
@@ -2452,7 +2452,8 @@ export default function NewTemplatePage() {
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return parseResult !== null;
+        // 需要已上传文件（有fileUrl）才能进入下一步
+        return parseResult?.fileUrl !== null;
       case 2:
       case 3:
         return true;
@@ -2464,8 +2465,15 @@ export default function NewTemplatePage() {
   };
   
   const handleNext = async () => {
-    if (currentStep === 1 && !parseResult) {
-      handleUploadAndParse();
+    if (currentStep === 1) {
+      // 如果还没有解析HTML，先执行解析
+      if (!parseResult?.html) {
+        await handleUploadAndParse();
+      } else {
+        // 已解析，直接进入下一步
+        await handleSaveDraft(true);
+        setCurrentStep(2);
+      }
       return;
     }
     
