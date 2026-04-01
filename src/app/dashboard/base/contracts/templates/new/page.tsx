@@ -35,6 +35,7 @@ import {
   ZoomIn,
   ZoomOut,
   Sparkles,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ParseResult } from "@/types/contract-template";
@@ -708,6 +710,30 @@ export default function NewTemplatePage() {
     document.execCommand('fontSize', false, sizeMap[size] || '3');
     syncEditedContent();
     toast.success(`字体大小已调整为 ${size}`);
+  }, [syncEditedContent]);
+  
+  // 编辑功能：插入表格
+  const [tableRows, setTableRows] = useState(2);
+  const [tableCols, setTableCols] = useState(2);
+  const [showTablePopover, setShowTablePopover] = useState(false);
+  
+  const handleInsertTable = useCallback((rows: number, cols: number) => {
+    // 生成表格 HTML
+    let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 8pt 0; border: 1px solid #000;">';
+    for (let i = 0; i < rows; i++) {
+      tableHtml += '<tr>';
+      for (let j = 0; j < cols; j++) {
+        tableHtml += '<td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: top; width: ' + (100 / cols) + '%;">&nbsp;</td>';
+      }
+      tableHtml += '</tr>';
+    }
+    tableHtml += '</table>';
+    
+    // 使用 insertHTML 命令插入表格
+    document.execCommand('insertHTML', false, tableHtml);
+    syncEditedContent();
+    setShowTablePopover(false);
+    toast.success(`已插入 ${rows} 行 ${cols} 列的表格`);
   }, [syncEditedContent]);
   
   // 处理文档点击 - 只处理点击变量标记的情况
@@ -1479,6 +1505,57 @@ export default function NewTemplatePage() {
                   >
                     <ListOrdered className="h-3.5 w-3.5" />
                   </Button>
+                  <div className="w-px h-5 bg-border mx-1" />
+                  {/* 插入表格 */}
+                  <Popover open={showTablePopover} onOpenChange={setShowTablePopover}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7"
+                        title="插入表格"
+                      >
+                        <Table className="h-3.5 w-3.5 mr-1" />
+                        表格
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64" align="start">
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">插入表格</div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <Label className="text-xs text-muted-foreground">行数</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={tableRows}
+                              onChange={(e) => setTableRows(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                              className="h-8 mt-1"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <Label className="text-xs text-muted-foreground">列数</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={tableCols}
+                              onChange={(e) => setTableCols(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                              className="h-8 mt-1"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleInsertTable(tableRows, tableCols)}
+                        >
+                          插入 {tableRows} 行 {tableCols} 列表格
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <div className="w-px h-5 bg-border mx-1" />
                   <Button
                     variant="outline"
