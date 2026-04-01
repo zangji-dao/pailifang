@@ -2675,8 +2675,8 @@ export default function NewTemplatePage() {
 
       {/* 自定义变量弹窗 */}
       {showAddDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-          <Card className="w-[400px]">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={(e) => e.target === e.currentTarget && setShowAddDialog(false)}>
+          <Card className="w-[400px]" onClick={(e) => e.stopPropagation()}>
             <CardHeader>
               <CardTitle>添加自定义变量</CardTitle>
             </CardHeader>
@@ -2712,7 +2712,7 @@ export default function NewTemplatePage() {
                 <Label>变量类型</Label>
                 <Select value={newVariable.type} onValueChange={(v) => setNewVariable({ ...newVariable, type: v as VariableType })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[70]">
                     <SelectItem value="text">文本</SelectItem>
                     <SelectItem value="number">数字</SelectItem>
                     <SelectItem value="date">日期</SelectItem>
@@ -2731,8 +2731,8 @@ export default function NewTemplatePage() {
 
       {/* 变量选择弹窗 */}
       {showVariablePicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-[600px] max-h-[80vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.target === e.currentTarget && setShowVariablePicker(false)}>
+          <Card className="w-[600px] max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <CardHeader className="pb-3">
               <CardTitle>选择变量</CardTitle>
               <p className="text-sm text-muted-foreground">
