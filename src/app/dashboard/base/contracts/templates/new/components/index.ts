@@ -4,5 +4,5 @@ export { MarkerPanel } from './MarkerPanel';
 export { AttachmentTabs } from './AttachmentTabs';
 export { BasicInfoStep } from './BasicInfoStep';
 export { CompleteStep } from './CompleteStep';
-export { StepNavigation } from './StepNavigation';
+export { StepNavigation, StepIndicator } from './StepNavigation';
 export { BindVariablesStep } from './BindVariablesStep';

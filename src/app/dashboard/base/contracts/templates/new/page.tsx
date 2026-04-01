@@ -20,6 +20,7 @@ import {
   BindVariablesStep,
   CompleteStep,
   StepNavigation,
+  StepIndicator,
 } from "./components";
 
 export default function NewTemplatePage() {
@@ -702,7 +703,10 @@ export default function NewTemplatePage() {
   }
   
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-6 pb-20">
+      {/* 步骤指示器 */}
+      <StepIndicator currentStep={currentStep} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
@@ -717,7 +721,7 @@ export default function NewTemplatePage() {
       {renderStep()}
       
       {/* 底部导航 */}
-      <div className="fixed bottom-0 left-0 right-0 z-50">
+      <div className="fixed bottom-0 right-0 left-0 lg:left-56 z-50">
         <StepNavigation
           currentStep={currentStep}
           saving={saving}

@@ -5,6 +5,48 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STEPS } from "../types";
 
+interface StepIndicatorProps {
+  currentStep: number;
+}
+
+export function StepIndicator({ currentStep }: StepIndicatorProps) {
+  const progress = (currentStep / STEPS.length) * 100;
+
+  return (
+    <div className="border-b bg-white px-6 py-4">
+      <div className="flex items-center justify-between mb-3">
+        {STEPS.map((step, index) => (
+          <div
+            key={step.id}
+            className="flex items-center"
+          >
+            <div
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                currentStep > step.id
+                  ? "bg-primary text-primary-foreground"
+                  : currentStep === step.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {currentStep > step.id ? "✓" : step.id}
+            </div>
+            <span className={`ml-2 text-sm ${
+              currentStep === step.id ? "font-medium" : "text-muted-foreground"
+            }`}>
+              {step.title}
+            </span>
+            {index < STEPS.length - 1 && (
+              <div className="w-16 h-0.5 bg-muted mx-2" />
+            )}
+          </div>
+        ))}
+      </div>
+      <Progress value={progress} className="h-1" />
+    </div>
+  );
+}
+
 interface StepNavigationProps {
   currentStep: number;
   saving: boolean;
@@ -28,45 +70,9 @@ export function StepNavigation({
   onSaveDraft,
   onComplete,
 }: StepNavigationProps) {
-  const progress = (currentStep / STEPS.length) * 100;
-
   return (
-    <div className="border-t bg-white">
-      {/* 步骤指示器 */}
-      <div className="px-6 py-3 border-b">
-        <div className="flex items-center justify-between mb-2">
-          {STEPS.map((step, index) => (
-            <div
-              key={step.id}
-              className="flex items-center"
-            >
-              <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                  currentStep > step.id
-                    ? "bg-primary text-primary-foreground"
-                    : currentStep === step.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {currentStep > step.id ? "✓" : step.id}
-              </div>
-              <span className={`ml-2 text-sm ${
-                currentStep === step.id ? "font-medium" : "text-muted-foreground"
-              }`}>
-                {step.title}
-              </span>
-              {index < STEPS.length - 1 && (
-                <div className="w-16 h-0.5 bg-muted mx-2" />
-              )}
-            </div>
-          ))}
-        </div>
-        <Progress value={progress} className="h-1" />
-      </div>
-
-      {/* 导航按钮 */}
-      <div className="flex items-center justify-between px-6 py-4">
+    <div className="border-t bg-white px-6 py-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
