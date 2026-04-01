@@ -1737,19 +1737,17 @@ export default function NewTemplatePage() {
     
     return (
       <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 调试信息 - 临时 */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="lg:col-span-3 p-2 bg-yellow-100 text-xs">
-            调试: parseResult={parseResult ? 'exists' : 'null'}, 
-            attachments={parseResult?.attachments?.length || 0}个
-            {parseResult?.attachments && parseResult.attachments.length > 0 && (
-              <span> - {parseResult.attachments.map(a => a.displayName).join(', ')}</span>
-            )}
-          </div>
-        )}
+        {/* 调试信息 - 临时显示 */}
+        <div className="lg:col-span-3 p-2 bg-yellow-100 text-xs rounded">
+          调试: parseResult={parseResult ? 'exists' : 'null'}, 
+          attachments={parseResult?.attachments?.length || 0}个
+          {parseResult?.attachments && parseResult.attachments.length > 0 && (
+            <span> - {parseResult.attachments.map(a => a.displayName).join(', ')}</span>
+          )}
+        </div>
         {/* 左侧：合同预览 */}
-        <Card className="lg:col-span-2 overflow-hidden">
-          <CardHeader className="py-3 border-b">
+        <Card className="lg:col-span-2 overflow-hidden flex flex-col">
+          <CardHeader className="py-3 border-b shrink-0">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">合同编辑</CardTitle>
               <div className="flex items-center gap-3">
@@ -2097,12 +2095,9 @@ export default function NewTemplatePage() {
                 </div>
               </div>
             </CardHeader>
-          <CardContent className={cn(
-            "p-0 flex flex-col",
-            parseResult?.attachments?.length ? "h-[calc(100%-52px)]" : "h-[calc(100%-52px)]"
-          )}>
+          <CardContent className="p-0 flex flex-col flex-1 min-h-0">
             {/* 文档内容区域 - 可滚动 */}
-            <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center">
+            <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center min-h-0">
               {/* 注入 LibreOffice 生成的样式 */}
               {parseResult?.styles && (
                 <style dangerouslySetInnerHTML={{ __html: parseResult.styles }} />
@@ -2215,7 +2210,7 @@ export default function NewTemplatePage() {
             {/* 文档标签页 - 类似Excel的Sheet标签，固定在底部 */}
             {/* 调试信息: parseResult={parseResult ? 'exists' : 'null'}, attachments={parseResult?.attachments?.length || 0} */}
             {parseResult && parseResult.attachments && parseResult.attachments.length > 0 && (
-              <div className="shrink-0 bg-white border-t flex items-center px-2 py-1 gap-1">
+              <div className="shrink-0 bg-white border-t flex items-center px-2 py-1.5 gap-1 min-h-[36px]">
                 <button
                   onClick={() => setActiveDocumentId('main')}
                   className={cn(
