@@ -1766,8 +1766,8 @@ export default function NewTemplatePage() {
     
     setSaving(true);
     try {
-      // 构建附件列表（包含URL）
-      const attachmentsList = parseResult?.attachments?.length 
+      // 构建附件列表（包含URL），并进行去重和排序
+      const rawAttachments = parseResult?.attachments?.length 
         ? parseResult.attachments.map(a => ({
             id: a.id,
             name: a.displayName || a.name,
@@ -1784,6 +1784,13 @@ export default function NewTemplatePage() {
             required: false,
             order: 0,
           }));
+      
+      // 去重（根据id）并按order排序
+      const attachmentsList = [...rawAttachments]
+        .filter((att, index, self) => 
+          self.findIndex(a => a.id === att.id) === index
+        )
+        .sort((a, b) => a.order - b.order);
       
       // 1. 更新基本信息并设置为已发布状态
       const updateRes = await fetch("/api/contract-templates", {
@@ -1831,7 +1838,8 @@ export default function NewTemplatePage() {
   // 打开附件选择对话框
   const openAttachmentDialog = () => {
     // 优先使用解析后的附件，否则使用已上传的附件
-    const allParsedAttachments = parseResult?.attachments?.length 
+    // 并进行去重（根据id）和排序（根据order）
+    const rawAttachments = parseResult?.attachments?.length 
       ? parseResult.attachments 
       : uploadedAttachments.map(att => ({
           id: att.id,
@@ -1843,6 +1851,13 @@ export default function NewTemplatePage() {
           text: '',
           order: 0,
         }));
+    
+    // 去重（根据id）并按order排序
+    const allParsedAttachments = [...rawAttachments]
+      .filter((att, index, self) => 
+        self.findIndex(a => a.id === att.id) === index
+      )
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
     
     // 默认选中所有附件
     const allAttachmentIds = allParsedAttachments.map(a => a.id);
@@ -1866,7 +1881,8 @@ export default function NewTemplatePage() {
       : parseResult?.attachments?.find(a => a.id === activeDocumentId)?.html || '';
     
     // 优先使用解析后的附件，否则使用已上传的附件
-    const allParsedAttachments = parseResult?.attachments?.length 
+    // 并进行去重（根据id）和排序（根据order）
+    const rawAttachments = parseResult?.attachments?.length 
       ? parseResult.attachments 
       : uploadedAttachments.map(att => ({
           id: att.id,
@@ -1879,8 +1895,15 @@ export default function NewTemplatePage() {
           order: 0,
         }));
     
+    // 去重（根据id）并按order排序
+    const allParsedAttachments = [...rawAttachments]
+      .filter((att, index, self) => 
+        self.findIndex(a => a.id === att.id) === index
+      )
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    
     // 构建附件列表
-    const attachments = (allParsedAttachments || [])
+    const attachments = allParsedAttachments
       .filter(att => selectedExportAttachments.includes(att.id))
       .map(att => ({
         id: att.id,
@@ -2712,41 +2735,50 @@ export default function NewTemplatePage() {
             </div>
             
             {/* 文档标签页 - 类似Excel的Sheet标签，固定在底部 */}
-            {parseResult && parseResult.attachments && parseResult.attachments.length > 0 && (
-              <div className="shrink-0 bg-white border-t flex items-center px-2 py-1.5 gap-1 min-h-[36px]">
-                <button
-                  onClick={() => setActiveDocumentId('main')}
-                  className={cn(
-                    "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors",
-                    activeDocumentId === 'main'
-                      ? "bg-background border-primary text-primary font-medium"
-                      : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  <FileText className="h-3 w-3 inline-block mr-1" />
-                  主合同
-                </button>
-                {parseResult.attachments?.map((att) => {
-                  const displayName = att.displayName || att.name?.replace(/\.[^/.]+$/, '') || '未命名附件';
-                  return (
-                    <button
-                      key={att.id}
-                      onClick={() => setActiveDocumentId(att.id)}
-                      className={cn(
-                        "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors max-w-32 truncate",
-                        activeDocumentId === att.id
-                          ? "bg-background border-primary text-primary font-medium"
-                          : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
-                      )}
-                      title={displayName}
-                    >
-                      <FileText className="h-3 w-3 inline-block mr-1" />
-                      {displayName}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {parseResult && parseResult.attachments && parseResult.attachments.length > 0 && (() => {
+              // 去重（根据id）并按order排序
+              const uniqueAttachments = [...parseResult.attachments]
+                .filter((att, index, self) => 
+                  self.findIndex(a => a.id === att.id) === index
+                )
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+              
+              return uniqueAttachments.length > 0 && (
+                <div className="shrink-0 bg-white border-t flex items-center px-2 py-1.5 gap-1 min-h-[36px]">
+                  <button
+                    onClick={() => setActiveDocumentId('main')}
+                    className={cn(
+                      "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors",
+                      activeDocumentId === 'main'
+                        ? "bg-background border-primary text-primary font-medium"
+                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    <FileText className="h-3 w-3 inline-block mr-1" />
+                    主合同
+                  </button>
+                  {uniqueAttachments.map((att) => {
+                    const displayName = att.displayName || att.name?.replace(/\.[^/.]+$/, '') || '未命名附件';
+                    return (
+                      <button
+                        key={att.id}
+                        onClick={() => setActiveDocumentId(att.id)}
+                        className={cn(
+                          "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors max-w-32 truncate",
+                          activeDocumentId === att.id
+                            ? "bg-background border-primary text-primary font-medium"
+                            : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                        )}
+                        title={displayName}
+                      >
+                        <FileText className="h-3 w-3 inline-block mr-1" />
+                        {displayName}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 
@@ -2992,7 +3024,8 @@ export default function NewTemplatePage() {
   const renderCompleteStep = () => {
     const selectedBase = bases.find(b => b.id === baseId);
     // 优先使用解析后的附件，否则使用已上传的附件
-    const allAttachments = parseResult?.attachments?.length 
+    // 并进行去重（根据id）和排序（根据order）
+    const rawAttachments = parseResult?.attachments?.length 
       ? parseResult.attachments 
       : uploadedAttachments.map(att => ({
           id: att.id,
@@ -3004,6 +3037,13 @@ export default function NewTemplatePage() {
           text: '',
           order: 0,
         }));
+    
+    // 去重（根据id）并按order排序
+    const allAttachments = [...rawAttachments]
+      .filter((att, index, self) => 
+        self.findIndex(a => a.id === att.id) === index
+      )
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
     
     return (
       <div className="space-y-6">
