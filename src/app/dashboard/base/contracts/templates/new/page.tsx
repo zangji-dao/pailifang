@@ -1705,20 +1705,33 @@ export default function NewTemplatePage() {
                   margin: 3pt 0;
                 }
                 
-                /* 绑定模式样式 */
-                .a4-paper.bind-mode { cursor: crosshair; }
-                .a4-paper.bind-mode:hover { outline: 1px dashed #d1d5db; outline-offset: -1px; }
-                
                 /* 编辑模式样式 */
                 .a4-paper.edit-mode { outline: 2px solid #3b82f6; outline-offset: 4px; }
                 .a4-paper.edit-mode:focus { outline-color: #2563eb; }
                 
-                /* 变量标记样式 */
-                .variable-marker { cursor: pointer; transition: all 0.15s ease; }
-                .variable-marker.pending { background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px; }
-                .variable-marker.pending:hover { background: rgba(251, 191, 36, 0.5); }
-                .variable-marker.bound { background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; border: 1px solid #22c55e; font-weight: 500; }
-                .variable-marker.bound:hover { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #dc2626; }
+                /* 变量标记样式 - 保留原文字样式 */
+                .variable-marker {
+                  cursor: pointer;
+                  transition: all 0.15s ease;
+                  display: inline;
+                }
+                .variable-marker.pending {
+                  background: rgba(251, 191, 36, 0.25);
+                  border-bottom: 2px dashed #f59e0b;
+                  padding: 1px 2px;
+                }
+                .variable-marker.pending:hover {
+                  background: rgba(251, 191, 36, 0.4);
+                }
+                .variable-marker.bound {
+                  background: rgba(34, 197, 94, 0.15);
+                  border-bottom: 2px solid #22c55e;
+                  padding: 1px 2px;
+                }
+                .variable-marker.bound:hover {
+                  background: rgba(239, 68, 68, 0.15);
+                  border-bottom-color: #ef4444;
+                }
                 
                 /* 打印样式 */
                 @media print {
@@ -1835,47 +1848,50 @@ export default function NewTemplatePage() {
                 onClick={() => {
                   // 检查是否有选中文字
                   const selection = window.getSelection();
-                  if (selection && !selection.isCollapsed) {
-                    // 有选中文字，记录选中信息后插入标记
-                    const range = selection.getRangeAt(0);
-                    const selectedText = range.toString().trim();
-                    if (selectedText) {
-                      // 在选中位置插入变量标记
-                      const markerId = `marker-${Date.now()}`;
-                      const markerSpan = document.createElement('span');
-                      markerSpan.className = 'variable-marker pending';
-                      markerSpan.dataset.markerId = markerId;
-                      markerSpan.contentEditable = 'false';
-                      markerSpan.textContent = '待绑定';
-                      
-                      try {
-                        range.deleteContents();
-                        range.insertNode(markerSpan);
-                        syncEditedContent();
-                        
-                        // 添加标记
-                        const newMarker: Marker = {
-                          id: markerId,
-                          status: 'pending',
-                          position: {
-                            beforeText: '',
-                            afterText: '',
-                            textOffset: 0,
-                          },
-                          displayText: selectedText,
-                        };
-                        setMarkers(prev => [...prev, newMarker]);
-                        setActiveMarkerId(markerId);
-                        setShowVariablePicker(true);
-                        toast.success("已插入变量标记，请选择变量");
-                      } catch {
-                        toast.error("插入标记失败，请重试");
-                      }
-                      return;
-                    }
+                  if (!selection || selection.isCollapsed) {
+                    toast.info("请先在文档中选中要绑定为变量的文字");
+                    return;
                   }
-                  // 没有选中文字，提示用户
-                  toast.info("请先在文档中选中要绑定为变量的文字");
+                  
+                  const range = selection.getRangeAt(0);
+                  const selectedText = range.toString().trim();
+                  if (!selectedText) {
+                    toast.info("请先在文档中选中要绑定为变量的文字");
+                    return;
+                  }
+                  
+                  // 在选中位置包裹变量标记（保留原文字）
+                  const markerId = `marker-${Date.now()}`;
+                  const markerSpan = document.createElement('span');
+                  markerSpan.className = 'variable-marker pending';
+                  markerSpan.dataset.markerId = markerId;
+                  markerSpan.contentEditable = 'true'; // 允许编辑内部文字
+                  markerSpan.textContent = selectedText;
+                  
+                  try {
+                    // 删除选中内容，插入带标记的文本
+                    range.deleteContents();
+                    range.insertNode(markerSpan);
+                    syncEditedContent();
+                    
+                    // 添加标记记录
+                    const newMarker: Marker = {
+                      id: markerId,
+                      status: 'pending',
+                      position: {
+                        beforeText: '',
+                        afterText: '',
+                        textOffset: 0,
+                      },
+                      displayText: selectedText,
+                    };
+                    setMarkers(prev => [...prev, newMarker]);
+                    setActiveMarkerId(markerId);
+                    setShowVariablePicker(true);
+                    toast.success("已标记变量，请选择变量");
+                  } catch {
+                    toast.error("插入标记失败，请重试");
+                  }
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
