@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/contract-templates/optimize-layout
  * 使用LLM优化合同文档排版（统一优化主合同和所有附件）
+ * 注意：只优化排版样式，不添加、删除或修改任何内容
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,59 +32,39 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config);
 
-    const systemPrompt = `你是一个专业的合同文档排版专家。你的任务是为HTML添加内联样式，优化排版效果。
+    const systemPrompt = `你是一个HTML排版助手。你的唯一任务是为现有HTML标签添加内联style属性来优化排版。
 
-## 【最重要规则】
-1. **绝对不能删除、修改或遗漏任何原始内容**
-2. **只添加内联style属性，不改变HTML结构和内容**
-3. **必须保留所有文本内容和HTML标签**
+## 绝对禁止事项
+1. 【禁止】添加任何新内容、新标签、新文本
+2. 【禁止】删除任何现有内容、标签、文本
+3. 【禁止】修改任何文本内容
+4. 【禁止】改变HTML结构（标签嵌套关系）
+5. 【禁止】添加签章区域表格等任何新元素
 
-## 排版样式规则
+## 你只能做的事
+只给现有HTML标签添加style属性，例如：
+- <p>文字</p> → <p style="line-height: 2; margin: 1em 0; text-indent: 2em">文字</p>
+- <h1>标题</h1> → <h1 style="text-align: center; font-size: 24px; margin: 30px 0">标题</h1>
 
-### 行间距
-- 正文段落：line-height: 2（双倍行距）
-- 段落间距：margin: 1em 0
-- 首行缩进：text-indent: 2em
+## 排版样式规范
+- 正文段落：line-height: 2; margin: 1em 0; text-indent: 2em
+- 标题：text-align: center; font-size: 24px (h1); font-weight: bold (h2)
+- 表格：保持原有结构，只添加适当的padding和border样式
 
-### 标题
-- h1：text-align: center; font-size: 24px; margin: 30px 0; line-height: 1.5
-- h2：font-weight: bold; margin: 20px 0 10px; line-height: 1.6
+## 变量标记
+必须完整保留所有 {{变量名}} 格式的变量标记。
 
-### 签章区域
-如果文档末尾有甲方、乙方签章区域，使用表格布局：
-<table style="width: 100%; border-collapse: collapse; margin-top: 40px; page-break-inside: avoid;">
-  <tr>
-    <td style="width: 50%; padding: 20px; vertical-align: top;">
-      <!-- 甲方内容 -->
-    </td>
-    <td style="width: 50%; padding: 20px; vertical-align: top;">
-      <!-- 乙方内容 -->
-    </td>
-  </tr>
-</table>
-
-### 变量标记
-必须完整保留所有 {{变量名}} 格式的变量标记及其所在标签。
-
-## 输出要求
-只输出优化后的HTML代码，不要任何解释或说明。`;
+## 输出
+只输出处理后的HTML，不要任何解释。`;
 
     // 处理单个文档的函数
     const processDocument = async (doc: { id: string; name: string; html: string }) => {
-      const userPrompt = `请为以下HTML添加内联样式，优化排版效果。
+      const userPrompt = `给以下HTML的所有标签添加内联style属性优化排版。不要改变任何内容。
 
-【文档名称】${doc.name}
+变量标记（必须保留）：${variables.map(v => `{{${v.name}}}`).join(', ') || '无'}
 
-【变量标记（必须保留）】
-${variables.map(v => `{{${v.name}}}`).join(', ')}
-
-【原始HTML】
-${doc.html}
-
-【输出要求】
-1. 保留所有原始内容，一个字都不能少
-2. 只添加内联style属性
-3. 变量标记完整保留`;
+HTML：
+${doc.html}`;
 
       const messages = [
         { role: 'system' as const, content: systemPrompt },
@@ -91,10 +72,9 @@ ${doc.html}
       ];
 
       try {
-        // 使用更强大的模型（pro版本更适合处理大量内容）
         const response = await client.invoke(messages, {
-          model: 'doubao-seed-2-0-pro-260215',  // 使用pro版本，更适合处理大量内容
-          temperature: 0.1,  // 降低随机性
+          model: 'doubao-seed-2-0-pro-260215',
+          temperature: 0.1,
         });
 
         let result = response.content;
@@ -102,11 +82,12 @@ ${doc.html}
         // 清理可能的markdown代码块标记
         result = result.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
         
-        // 内容长度检查：如果优化后内容少于原来的70%，认为优化失败，返回原内容
+        // 内容长度检查：如果优化后内容长度差异过大，保留原内容
         const originalLength = doc.html.length;
         const resultLength = result.length;
         
-        if (resultLength < originalLength * 0.7) {
+        // 允许20%的差异（因为添加了style属性，长度会增加）
+        if (resultLength < originalLength * 0.8) {
           console.warn(`文档 ${doc.name} 优化后内容过少，保留原内容。原长度: ${originalLength}, 新长度: ${resultLength}`);
           return {
             id: doc.id,
@@ -123,7 +104,6 @@ ${doc.html}
         };
       } catch (docError) {
         console.error(`优化文档 ${doc.name} 失败:`, docError);
-        // 如果某个文档优化失败，保留原内容
         return {
           id: doc.id,
           name: doc.name,
@@ -133,7 +113,7 @@ ${doc.html}
       }
     };
 
-    // 串行处理每个文档，避免并行问题
+    // 串行处理每个文档
     const results = [];
     for (const doc of docsToProcess) {
       const result = await processDocument(doc);
