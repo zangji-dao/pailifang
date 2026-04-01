@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ParseResult, ParsedPage } from '@/types/contract-template';
 import { execSync } from 'child_process';
-import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // 强制使用Node.js运行时
@@ -16,6 +16,9 @@ interface AttachmentInfo {
   fileType: string;
 }
 
+// LibreOffice 用户配置目录（避免每次创建新配置）
+const LIBREOFFICE_PROFILE = '/tmp/libreoffice-profile';
+
 /**
  * 使用 LibreOffice 转换 Word 文档为 HTML
  * 样式保留度比 mammoth 高很多
@@ -25,18 +28,30 @@ function convertWithLibreOffice(buffer: Buffer, fileName: string): string {
   const tmpDir = join('/tmp', `libreoffice-${Date.now()}`);
   mkdirSync(tmpDir, { recursive: true });
   
+  // 确保用户配置目录存在
+  if (!existsSync(LIBREOFFICE_PROFILE)) {
+    mkdirSync(LIBREOFFICE_PROFILE, { recursive: true });
+  }
+  
   try {
     // 保存输入文件
     const inputFile = join(tmpDir, fileName);
     writeFileSync(inputFile, buffer);
     
-    // 调用 LibreOffice 转换
-    const cmd = `libreoffice --headless --convert-to html --outdir "${tmpDir}" "${inputFile}"`;
-    execSync(cmd, { timeout: 30000 }); // 30秒超时
+    // 调用 LibreOffice 转换（优化参数：跳过启动向导、使用缓存配置）
+    const cmd = `libreoffice --headless --nologo --nofirststartwizard --norestore --infilter="Microsoft Word 2007-2019 XML" --convert-to html --outdir "${tmpDir}" "${inputFile}" -env:UserInstallation=file://${LIBREOFFICE_PROFILE}`;
+    execSync(cmd, { 
+      timeout: 60000, // 60秒超时
+      env: { ...process.env, HOME: '/tmp' } // 设置 HOME 环境变量
+    });
     
     // 读取生成的 HTML 文件
     const htmlFileName = fileName.replace(/\.[^/.]+$/, '.html');
     const htmlFile = join(tmpDir, htmlFileName);
+    
+    if (!existsSync(htmlFile)) {
+      throw new Error(`HTML 文件未生成: ${htmlFileName}`);
+    }
     
     const html = readFileSync(htmlFile, 'utf-8');
     
