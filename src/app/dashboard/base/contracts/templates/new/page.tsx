@@ -243,6 +243,7 @@ export default function NewTemplatePage() {
             // 恢复选中的变量
             if (draftData.selectedVariables && Array.isArray(draftData.selectedVariables)) {
               setSelectedVariables(draftData.selectedVariables.map((v: any) => ({
+                id: v.id || `var_custom_${v.key}`, // 确保 id 存在，兼容旧数据
                 key: v.key,
                 name: v.name,
                 type: v.type || 'text',
@@ -754,8 +755,10 @@ export default function NewTemplatePage() {
           variableKey: m.variableKey,
           status: m.status,
           position: m.position,
+          documentId: m.documentId,
         })),
         selectedVariables: selectedVariables.map(v => ({
+          id: v.id,
           key: v.key,
           name: v.name,
           type: v.type,
@@ -2804,7 +2807,7 @@ export default function NewTemplatePage() {
                     const isComputed = variable.type === 'computed';
                     return (
                       <Button
-                        key={variable.id}
+                        key={variable.id || variable.key}
                         variant={bound ? "secondary" : "outline"}
                         className={cn(
                           "justify-start h-auto py-3",
