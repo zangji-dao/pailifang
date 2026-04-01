@@ -980,6 +980,128 @@ export default function NewTemplatePage() {
     toast.success(`已应用${labels[level]}样式`);
   }, [syncEditedContent]);
   
+  // 编辑功能：公文格式一键设置
+  const handleDocFormat = useCallback((formatType: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      toast.info("请先选中要调整的文字");
+      return;
+    }
+    
+    // 字号映射（fontSize command 使用 1-7）
+    const sizeMap: Record<string, string> = {
+      '22pt': '6', // 二号
+      '16pt': '4', // 三号
+      '14pt': '3', // 四号
+      '12pt': '2', // 小四
+    };
+    
+    // 格式配置
+    const formats: Record<string, {
+      font: string;
+      size: string;
+      bold: boolean;
+      center: boolean;
+      lineHeight: string;
+      label: string;
+    }> = {
+      'docTitle': {
+        font: 'SimHei',
+        size: '22pt',
+        bold: true,
+        center: true,
+        lineHeight: '1.5',
+        label: '公文标题'
+      },
+      'heading1': {
+        font: 'SimHei',
+        size: '16pt',
+        bold: true,
+        center: false,
+        lineHeight: '1.5',
+        label: '一级标题'
+      },
+      'heading2': {
+        font: 'KaiTi',
+        size: '16pt',
+        bold: true,
+        center: false,
+        lineHeight: '1.5',
+        label: '二级标题'
+      },
+      'heading3': {
+        font: 'FangSong',
+        size: '16pt',
+        bold: true,
+        center: false,
+        lineHeight: '1.5',
+        label: '三级标题'
+      },
+      'body': {
+        font: 'FangSong',
+        size: '16pt',
+        bold: false,
+        center: false,
+        lineHeight: '1.5',
+        label: '正文'
+      },
+      'bodySmall': {
+        font: 'FangSong',
+        size: '14pt',
+        bold: false,
+        center: false,
+        lineHeight: '1.5',
+        label: '正文(小四)'
+      },
+      'signature': {
+        font: 'FangSong',
+        size: '16pt',
+        bold: false,
+        center: false,
+        lineHeight: '1.8',
+        label: '签章区'
+      }
+    };
+    
+    const format = formats[formatType];
+    if (!format) return;
+    
+    // 应用字体
+    document.execCommand('fontName', false, format.font);
+    
+    // 应用字号
+    document.execCommand('fontSize', false, sizeMap[format.size] || '4');
+    
+    // 应用加粗
+    if (format.bold) {
+      document.execCommand('bold', false);
+    }
+    
+    // 应用居中
+    if (format.center) {
+      document.execCommand('justifyCenter', false);
+    }
+    
+    // 设置行距
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.startContainer;
+    const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH', 'SECTION', 'ARTICLE', 'BODY'];
+    
+    while (node && contentRef.current && node !== contentRef.current) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as HTMLElement;
+        if (blockTags.includes(element.tagName)) {
+          element.style.lineHeight = format.lineHeight;
+          break;
+        }
+      }
+      node = node.parentNode;
+    }
+    
+    syncEditedContent();
+    toast.success(`已应用「${format.label}」格式`);
+  }, [syncEditedContent]);
+  
   // 编辑功能：字体选择
   const handleFontFamily = useCallback((fontFamily: string) => {
     const selection = window.getSelection();
@@ -1891,6 +2013,25 @@ export default function NewTemplatePage() {
             
             {/* 编辑工具栏 */}
             <div className="space-y-2 pt-2 border-t mt-2">
+              {/* 公文格式快捷设置 */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-xs text-muted-foreground mr-2">公文格式：</span>
+                <Select onValueChange={handleDocFormat}>
+                  <SelectTrigger className="h-7 w-28 text-xs">
+                    <SelectValue placeholder="选择格式" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="docTitle">公文标题</SelectItem>
+                    <SelectItem value="heading1">一级标题</SelectItem>
+                    <SelectItem value="heading2">二级标题</SelectItem>
+                    <SelectItem value="heading3">三级标题</SelectItem>
+                    <SelectItem value="body">正文(三号)</SelectItem>
+                    <SelectItem value="bodySmall">正文(小四)</SelectItem>
+                    <SelectItem value="signature">签章区</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               {/* 格式化按钮组 */}
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-xs text-muted-foreground mr-2">格式：</span>
