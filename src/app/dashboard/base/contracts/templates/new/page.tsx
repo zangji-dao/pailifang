@@ -969,7 +969,23 @@ export default function NewTemplatePage() {
   
   // 添加自定义变量
   const handleAddCustomVariable = () => {
-    if (!newVariable.name || !newVariable.key) return;
+    if (!newVariable.name || !newVariable.key) {
+      toast.error('请填写变量名称和标识');
+      return;
+    }
+    
+    // 验证 key 格式：只允许英文、数字、下划线
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newVariable.key)) {
+      toast.error('变量标识只能包含英文、数字、下划线，且不能以数字开头');
+      return;
+    }
+    
+    // 检查 key 是否已存在
+    const existingKeys = [...selectedVariables, ...PresetVariables].map(v => v.key);
+    if (existingKeys.includes(newVariable.key)) {
+      toast.error(`变量标识 "${newVariable.key}" 已存在，请使用其他标识`);
+      return;
+    }
     
     const customVar: TemplateVariable = {
       id: `var_custom_${Date.now()}`,
@@ -1003,6 +1019,8 @@ export default function NewTemplatePage() {
       setShowVariablePicker(false);
       setActiveMarkerId(null);
       toast.success(`已绑定: ${customVar.name}`);
+    } else {
+      toast.success(`已添加自定义变量: ${customVar.name}`);
     }
     
     setShowAddDialog(false);
@@ -2412,19 +2430,23 @@ export default function NewTemplatePage() {
                     setNewVariable({
                       ...newVariable,
                       name,
-                      key: name ? name.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fa5]/g, '') : '',
                     });
                   }}
                   placeholder="如：项目负责人"
                 />
               </div>
               <div>
-                <Label>变量标识 *</Label>
+                <Label>变量标识 * <span className="text-xs text-muted-foreground font-normal">（仅限英文、数字、下划线）</span></Label>
                 <Input
                   value={newVariable.key}
-                  onChange={(e) => setNewVariable({ ...newVariable, key: e.target.value })}
+                  onChange={(e) => {
+                    // 只允许英文、数字、下划线
+                    const value = e.target.value.replace(/[^a-z0-9_A-Z]/g, '');
+                    setNewVariable({ ...newVariable, key: value });
+                  }}
                   placeholder="如：project_manager"
                 />
+                <p className="text-xs text-muted-foreground mt-1">建议使用英文命名，如：project_manager、contact_person</p>
               </div>
               <div>
                 <Label>变量类型</Label>
