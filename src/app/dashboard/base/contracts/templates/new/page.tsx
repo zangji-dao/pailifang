@@ -561,9 +561,11 @@ export default function NewTemplatePage() {
     }
   }, [templateId, mainFile, name, description, type, baseId, currentStep, editedHtml, markers, selectedVariables, bindings, parseResult]);
   
-  // 过滤变量
+  // 过滤变量（包含预设变量和自定义变量）
   const filteredVariables = useMemo(() => {
-    let vars = PresetVariables;
+    // 合并预设变量和自定义变量（自定义变量放前面）
+    const customVars = selectedVariables.filter(v => v.category === 'custom');
+    let vars = [...customVars, ...PresetVariables];
     
     if (activeCategory !== 'all') {
       vars = vars.filter(v => v.category === activeCategory);
@@ -578,7 +580,7 @@ export default function NewTemplatePage() {
     }
     
     return vars;
-  }, [activeCategory, searchTerm]);
+  }, [activeCategory, searchTerm, selectedVariables]);
   
   // 检查变量是否已绑定
   const isVariableBound = (key: string) => {
@@ -2243,7 +2245,7 @@ export default function NewTemplatePage() {
                   >
                     全部
                   </Button>
-                  {(['enterprise', 'contract', 'location', 'date'] as VariableCategory[]).map((cat) => (
+                  {(['custom', 'enterprise', 'contract', 'location', 'date'] as VariableCategory[]).map((cat) => (
                     <Button 
                       key={cat} 
                       variant={activeCategory === cat ? 'default' : 'outline'} 
