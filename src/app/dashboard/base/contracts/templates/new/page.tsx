@@ -1711,7 +1711,7 @@ export default function NewTemplatePage() {
             <div className="p-4 bg-muted/50 border-b">
               <p className="text-xs text-muted-foreground">
                 <MousePointer className="h-3 w-3 inline-block mr-1" />
-                在文档中点击位置或选中文本，然后点击下方"插入变量"按钮
+                在文档中定位光标，点击下方按钮插入变量标记
               </p>
             </div>
             
@@ -1720,32 +1720,35 @@ export default function NewTemplatePage() {
               <Button 
                 className="w-full"
                 onClick={() => {
-                  // 检查是否有选中文字
                   const selection = window.getSelection();
-                  if (!selection || selection.isCollapsed) {
-                    toast.info("请先在文档中选中要绑定为变量的文字");
-                    return;
-                  }
-                  
-                  const range = selection.getRangeAt(0);
-                  const selectedText = range.toString().trim();
-                  if (!selectedText) {
-                    toast.info("请先在文档中选中要绑定为变量的文字");
-                    return;
-                  }
-                  
-                  // 在选中位置包裹变量标记（保留原文字）
                   const markerId = `marker-${Date.now()}`;
+                  
+                  // 创建变量标记元素
                   const markerSpan = document.createElement('span');
                   markerSpan.className = 'variable-marker pending';
                   markerSpan.dataset.markerId = markerId;
-                  markerSpan.contentEditable = 'true'; // 允许编辑内部文字
-                  markerSpan.textContent = selectedText;
+                  markerSpan.contentEditable = 'false';
                   
                   try {
-                    // 删除选中内容，插入带标记的文本
-                    range.deleteContents();
-                    range.insertNode(markerSpan);
+                    if (selection && !selection.isCollapsed) {
+                      // 有选中文字：用选中文字作为占位符
+                      const range = selection.getRangeAt(0);
+                      const selectedText = range.toString().trim();
+                      markerSpan.textContent = selectedText || '变量';
+                      
+                      range.deleteContents();
+                      range.insertNode(markerSpan);
+                    } else if (selection && selection.rangeCount > 0) {
+                      // 没有选中文字：在光标位置插入占位符
+                      const range = selection.getRangeAt(0);
+                      markerSpan.textContent = '【变量】';
+                      range.insertNode(markerSpan);
+                    } else {
+                      // 没有光标：提示用户先点击文档
+                      toast.info("请先在文档中点击定位光标");
+                      return;
+                    }
+                    
                     syncEditedContent();
                     
                     // 添加标记记录
@@ -1757,12 +1760,12 @@ export default function NewTemplatePage() {
                         afterText: '',
                         textOffset: 0,
                       },
-                      displayText: selectedText,
+                      displayText: markerSpan.textContent || '变量',
                     };
                     setMarkers(prev => [...prev, newMarker]);
                     setActiveMarkerId(markerId);
                     setShowVariablePicker(true);
-                    toast.success("已标记变量，请选择变量");
+                    toast.success("已插入变量标记，请选择变量");
                   } catch {
                     toast.error("插入标记失败，请重试");
                   }
@@ -1777,8 +1780,8 @@ export default function NewTemplatePage() {
               /* 无标记 */
               <div className="p-6 text-center text-muted-foreground">
                 <MousePointer className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-medium">暂无标记</p>
-                <p className="text-xs mt-1">选中文字后点击"插入变量标记"</p>
+                <p className="text-sm font-medium">暂无变量标记</p>
+                <p className="text-xs mt-1">在文档中定位光标后点击"插入变量标记"</p>
               </div>
             ) : (
               /* 有标记 */
