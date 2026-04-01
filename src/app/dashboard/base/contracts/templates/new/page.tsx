@@ -935,26 +935,23 @@ export default function NewTemplatePage() {
     toast.success("已添加删除线");
   }, [syncEditedContent]);
   
-  // 编辑功能：添加下划线填充（变量居中）
-  const handleAddUnderlineFill = useCallback((width: string) => {
+  // 编辑功能：添加下划线填充（自动占满行尾，变量居中）
+  const handleAddUnderlineFill = useCallback(() => {
     const selection = window.getSelection();
     if (!selection) return;
     
     // 获取选中的内容
-    const selectedText = selection.toString();
+    const selectedText = selection.toString() || '';
     
-    // 如果没有选中内容，插入一个空的带下划线的占位符
-    const content = selectedText || '______';
-    
-    // 创建带下划线填充的HTML
-    // 使用 inline-block + border-bottom + text-align: center
-    const underlineHtml = `<span style="display: inline-block; min-width: ${width}; border-bottom: 1px solid #000; text-align: center; padding: 0 8px;">${content}</span>`;
+    // 使用表格实现：左边标签 + 右边下划线自动填充
+    // 这样下划线会自动延伸到行尾
+    const tableHtml = `<table style="display: inline-table; width: 100%; border-collapse: collapse; margin: 0; vertical-align: middle;"><tr style="height: 1.5em;"><td style="width: 1px; white-space: nowrap; border: none; padding: 0 4px 0 0; vertical-align: bottom;">${selectedText}</td><td style="border: none; border-bottom: 1px solid #000; padding: 0; text-align: center; vertical-align: bottom;">&nbsp;</td></tr></table>`;
     
     // 使用 insertHTML 命令插入
-    document.execCommand('insertHTML', false, underlineHtml);
+    document.execCommand('insertHTML', false, tableHtml);
     
     syncEditedContent();
-    toast.success(`已添加下划线填充（${width}）`);
+    toast.success('已添加下划线填充（自动延伸到行尾）');
   }, [syncEditedContent]);
   
   // 编辑功能：文本对齐
@@ -2087,18 +2084,15 @@ export default function NewTemplatePage() {
                     <line x1="4" y1="21" x2="20" y2="21" />
                   </svg>
                 </Button>
-                <Select onValueChange={handleAddUnderlineFill}>
-                  <SelectTrigger className="h-7 w-24 text-xs" title="下划线填充（选中变量后使用）">
-                    <SelectValue placeholder="下划线" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="100px">短 (100px)</SelectItem>
-                    <SelectItem value="150px">中 (150px)</SelectItem>
-                    <SelectItem value="200px">长 (200px)</SelectItem>
-                    <SelectItem value="250px">较长 (250px)</SelectItem>
-                    <SelectItem value="300px">超长 (300px)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={handleAddUnderlineFill}
+                  title="下划线填充：选中内容后点击，下划线自动延伸到行尾"
+                >
+                  下划线填充
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
