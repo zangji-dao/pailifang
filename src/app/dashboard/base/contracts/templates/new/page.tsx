@@ -1500,14 +1500,12 @@ export default function NewTemplatePage() {
             {/* 文档内容区域 - 可滚动 */}
             <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center">
               <style jsx global>{`
-                /* A4纸张容器样式 - 确保白色背景延伸到所有内容 */
+                /* A4纸张容器样式 */
                 .a4-paper {
                   width: 210mm;
                   min-height: 297mm;
                   max-width: 210mm;
                   padding: 2.54cm 3.17cm;
-                  background: white !important;
-                  background-color: white !important;
                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                   color: #000;
                   box-sizing: border-box;
@@ -1519,43 +1517,39 @@ export default function NewTemplatePage() {
                   position: relative;
                 }
                 
-                /* contentEditable 元素默认背景问题修复 */
+                /* 使用伪元素创建白色背景层 */
+                .a4-paper::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: white;
+                  z-index: -1;
+                }
+                
+                /* contentEditable 元素样式 */
                 .a4-paper[contenteditable="true"],
                 .a4-paper[contenteditable="true"]:focus {
-                  background: white !important;
-                  background-color: white !important;
                   outline: none;
                 }
                 
-                /* 确保所有子元素背景透明，让纸张背景显示 */
-                .a4-paper * {
-                  background: transparent;
-                }
-                
                 /* 标题样式 */
-                .a4-paper h1 { font-size: 22pt; font-weight: bold; text-align: center; margin: 12pt 0; background: transparent; }
-                .a4-paper h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0; background: transparent; }
-                .a4-paper h3 { font-size: 14pt; font-weight: bold; margin: 8pt 0; background: transparent; }
-                
-                /* 段落样式 */
-                .a4-paper p,
-                .a4-paper div,
-                .a4-paper section {
-                  background: transparent;
-                }
+                .a4-paper h1 { font-size: 22pt; font-weight: bold; text-align: center; margin: 12pt 0; }
+                .a4-paper h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0; }
+                .a4-paper h3 { font-size: 14pt; font-weight: bold; margin: 8pt 0; }
                 
                 /* 表格样式 */
                 .a4-paper table {
                   border-collapse: collapse;
                   width: 100%;
                   margin: 6pt 0;
-                  background: transparent;
                 }
                 .a4-paper table td,
                 .a4-paper table th {
                   padding: 4pt 6pt;
                   vertical-align: top;
-                  background: transparent;
                 }
                 .a4-paper table th {
                   font-weight: bold;
@@ -1566,18 +1560,17 @@ export default function NewTemplatePage() {
                 .a4-paper ol {
                   margin: 6pt 0;
                   padding-left: 24pt;
-                  background: transparent;
                 }
                 .a4-paper li {
                   margin: 3pt 0;
-                  background: transparent;
                 }
                 
-                /* 变量标记样式 - 使用 !important 覆盖透明背景 */
+                /* 变量标记样式 */
                 .variable-marker {
                   cursor: pointer;
                   transition: all 0.15s ease;
                   display: inline;
+                  position: relative;
                 }
                 .variable-marker.pending {
                   background: rgba(251, 191, 36, 0.25) !important;
@@ -1617,6 +1610,16 @@ export default function NewTemplatePage() {
                 ref={contentRef}
                 className="a4-paper"
                 style={{
+                  width: '210mm',
+                  minHeight: '297mm',
+                  padding: '2.54cm 3.17cm',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  color: '#000',
+                  boxSizing: 'border-box',
+                  wordWrap: 'break-word',
+                  fontFamily: '"Times New Roman", "宋体", SimSun, serif',
+                  fontSize: '12pt',
+                  lineHeight: 1.5,
                   transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
                   transformOrigin: 'top center',
                 }}
