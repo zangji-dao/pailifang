@@ -34,7 +34,6 @@ import {
   Printer,
   ZoomIn,
   ZoomOut,
-  Sparkles,
   Table,
   Trash2,
 } from "lucide-react";
@@ -167,9 +166,6 @@ export default function NewTemplatePage() {
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
-  
-  // 优化排版状态
-  const [optimizing, setOptimizing] = useState(false);
   
   // 缩放功能
   const handleZoomIn = useCallback(() => {
@@ -959,6 +955,31 @@ export default function NewTemplatePage() {
     toast.success(increase ? "已增加缩进" : "已减少缩进");
   }, [syncEditedContent]);
   
+  // 编辑功能：标题样式（居中+加粗+字号）
+  const handleHeadingStyle = useCallback((level: 1 | 2 | 3) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要设置标题的文字");
+      return;
+    }
+    
+    // 字号映射
+    const sizeMap: Record<number, string> = {
+      1: '6', // 32px
+      2: '5', // 24px
+      3: '4', // 18px
+    };
+    
+    // 应用样式
+    document.execCommand('justifyCenter', false);
+    document.execCommand('bold', false);
+    document.execCommand('fontSize', false, sizeMap[level]);
+    
+    syncEditedContent();
+    const labels = { 1: '一级标题', 2: '二级标题', 3: '三级标题' };
+    toast.success(`已应用${labels[level]}样式`);
+  }, [syncEditedContent]);
+  
   // 编辑功能：列表
   const handleList = useCallback((ordered: boolean) => {
     document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false);
@@ -1465,172 +1486,7 @@ export default function NewTemplatePage() {
     
     return result;
   }, [activeDocumentId, currentDocumentHtml, editedHtml, currentDocumentMarkers, selectedVariables]);
-  
-  // 优化排版进度状态
-  const [optimizeProgress, setOptimizeProgress] = useState<{
-    current: number;
-    total: number;
-    documentName: string;
-  } | null>(null);
 
-  // 优化排版功能（统一优化主合同和所有附件）
-  const handleOptimizeLayout = useCallback(async () => {
-    // 检查是否有内容可优化
-    const hasMainContent = editedHtml || parseResult?.html;
-    const hasAttachments = parseResult?.attachments && parseResult.attachments.length > 0;
-    
-    if (!hasMainContent && !hasAttachments) {
-      toast.error("没有可优化的内容");
-      return;
-    }
-    
-    // 收集所有文档内容
-    const documents = [];
-    
-    // 主合同
-    if (hasMainContent) {
-      documents.push({
-        id: 'main',
-        name: '主合同',
-        html: editedHtml || parseResult?.html || '',
-      });
-    }
-    
-    // 附件
-    if (hasAttachments) {
-      for (const att of parseResult!.attachments!) {
-        documents.push({
-          id: att.id,
-          name: att.displayName || att.name,
-          html: att.html || '',
-        });
-      }
-    }
-    
-    // 立即显示进度卡片
-    setOptimizeProgress({
-      current: 0,
-      total: documents.length,
-      documentName: '准备中...',
-    });
-    setOptimizing(true);
-    
-    try {
-      // 收集所有变量
-      const allVariables = markers.map(m => ({
-        key: m.variableKey,
-        name: m.variableKey || '未绑定'
-      }));
-      
-      // 使用 fetch 处理 SSE 流
-      const response = await fetch("/api/contract-templates/optimize-layout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documents,
-          variables: allVariables
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error("优化请求失败");
-      }
-      
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let finalResults: Array<{ id: string; name: string; html: string }> = [];
-      
-      if (!reader) {
-        throw new Error("无法读取响应流");
-      }
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        
-        // 解析 SSE 事件
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-        
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          
-          // 解析事件
-          const eventMatch = line.match(/^event:\s*(.+)$/m);
-          const dataMatch = line.match(/^data:\s*(.+)$/m);
-          
-          if (eventMatch && dataMatch) {
-            const event = eventMatch[1];
-            const data = JSON.parse(dataMatch[1]);
-            
-            switch (event) {
-              case "start":
-                setOptimizeProgress({ current: 0, total: data.total, documentName: "" });
-                break;
-                
-              case "progress":
-                setOptimizeProgress({
-                  current: data.current,
-                  total: data.total,
-                  documentName: data.documentName,
-                });
-                break;
-                
-              case "complete":
-                toast.success(`${data.documentName} 优化完成`);
-                break;
-                
-              case "warning":
-                toast.warning(`${data.documentName}: ${data.message}`);
-                break;
-                
-              case "error":
-                toast.error(`${data.documentName}: ${data.message}`);
-                break;
-                
-              case "done":
-                finalResults = data.results || [];
-                break;
-            }
-          }
-        }
-      }
-      
-      // 处理优化结果
-      if (finalResults.length > 0) {
-        for (const result of finalResults) {
-          if (result.id === 'main') {
-            setEditedHtml(result.html);
-          } else {
-            // 更新附件的 HTML
-            setParseResult(prev => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                attachments: (prev.attachments || []).map(att => 
-                  att.id === result.id 
-                    ? { ...att, html: result.html }
-                    : att
-                ),
-              };
-            });
-          }
-        }
-        
-        toast.success(`全部优化完成（共${finalResults.length}个文档）`);
-      }
-    } catch (error) {
-      console.error("优化排版失败:", error);
-      toast.error(error instanceof Error ? error.message : "优化排版失败");
-    } finally {
-      setOptimizing(false);
-      setOptimizeProgress(null);
-    }
-  }, [editedHtml, parseResult, markers]);
-  
   // ========== 保存模板 ==========
   
   const handleSave = async () => {
@@ -1954,17 +1810,6 @@ export default function NewTemplatePage() {
                 <Printer className="h-3.5 w-3.5 mr-1" />
                 打印
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7"
-                onClick={handleOptimizeLayout}
-                disabled={optimizing || (!editedHtml && !parseResult?.html && (!parseResult?.attachments || parseResult.attachments.length === 0))}
-                title="统一优化主合同和所有附件的排版"
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1" />
-                {optimizing ? "优化中..." : "优化排版"}
-              </Button>
             </div>
             
             {/* 编辑工具栏 */}
@@ -2025,6 +1870,35 @@ export default function NewTemplatePage() {
                     <SelectItem value="32px" className="text-2xl">32px</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="w-px h-5 bg-border mx-1" />
+                {/* 标题快捷样式 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs font-bold"
+                  onClick={() => handleHeadingStyle(1)}
+                  title="一级标题：居中+加粗+大号"
+                >
+                  H1
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs font-bold"
+                  onClick={() => handleHeadingStyle(2)}
+                  title="二级标题：居中+加粗+中号"
+                >
+                  H2
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs font-bold"
+                  onClick={() => handleHeadingStyle(3)}
+                  title="三级标题：居中+加粗+小号"
+                >
+                  H3
+                </Button>
                 </div>
                 
                 {/* 对齐和列表按钮组 */}
@@ -3011,52 +2885,6 @@ export default function NewTemplatePage() {
               </Button>
             </div>
           </Card>
-        </div>
-      )}
-
-      {/* 优化进度弹窗 - 固定在视口中央，阻止所有操作 */}
-      {optimizeProgress && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
-          <div className="bg-card rounded-xl shadow-2xl p-6 w-96 border">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">正在优化排版</h3>
-                <p className="text-sm text-muted-foreground">
-                  请稍候，正在处理文档...
-                </p>
-              </div>
-            </div>
-            
-            {/* 进度条 */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">处理进度</span>
-                <span className="font-medium text-primary">
-                  {optimizeProgress.current} / {optimizeProgress.total}
-                </span>
-              </div>
-              
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-                  style={{ 
-                    width: `${(optimizeProgress.current / optimizeProgress.total) * 100}%` 
-                  }}
-                />
-              </div>
-              
-              {optimizeProgress.documentName && (
-                <div className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-3 mt-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-                  <span className="text-muted-foreground">正在优化：</span>
-                  <span className="font-medium truncate">{optimizeProgress.documentName}</span>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </div>
