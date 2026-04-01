@@ -1,201 +1,150 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Save,
-  ArrowLeft,
-  Loader2,
-  Upload,
-  FileText,
-  SaveAll,
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  X,
-  Building2,
-  Plus,
-  MousePointer,
-  GripVertical,
-  Type,
-  Minus,
-  RotateCcw,
-  Bold,
-  Italic,
-  Strikethrough,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  List,
-  ListOrdered,
-  IndentIncrease,
-  IndentDecrease,
-  Printer,
-  ZoomIn,
-  ZoomOut,
-  Table,
-  Trash2,
-  Download,
-  Paperclip,
-  Eye,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import type { ParseResult } from "@/types/contract-template";
-import type { TemplateVariable, VariableType, VariableCategory } from "@/types/template-variable";
-import { PresetVariables, VariableTypeLabels, VariableCategoryLabels, computeVariableValue } from "@/types/template-variable";
-
-// 步骤定义
-const STEPS = [
-  { id: 1, title: "上传文档", description: "上传合同文件" },
-  { id: 2, title: "绑定变量", description: "选择变量并绑定位置" },
-  { id: 3, title: "基本信息", description: "填写模板信息" },
-  { id: 4, title: "完成", description: "预览并保存" },
-];
-
-// 附件文件类型
-interface AttachmentFile {
-  id: string;
-  file: File;
-  name: string;
-  type: string;
-  size: number;
-}
-
-// 已上传的附件类型
-interface UploadedAttachment {
-  id: string;
-  name: string;
-  url: string;
-  fileType: string;
-  size: number;
-}
-
-// 基地类型
-interface Base {
-  id: string;
-  name: string;
-  address: string | null;
-}
+import type { Base, Marker, Binding, UploadedAttachment } from "./types";
+import { dedupeAndSortAttachments } from "./types";
+import { 
+  useAttachments, 
+  useMarkers, 
+  useTemplateDraft, 
+  usePdfExport, 
+  useEditor 
+} from "./hooks";
+import {
+  UploadStep,
+  BasicInfoStep,
+  BindVariablesStep,
+  CompleteStep,
+  StepNavigation,
+} from "./components";
 
 export default function NewTemplatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mainFileInputRef = useRef<HTMLInputElement>(null);
-  const attachmentInputRef = useRef<HTMLInputElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const draftLoadedRef = useRef(false); // 防止草稿重复加载
+  const draftLoadedRef = useRef(false);
   
-  // 当前步骤
+  // 基本状态
   const [currentStep, setCurrentStep] = useState(1);
-  
-  // 加载草稿状态
   const [loadingDraft, setLoadingDraft] = useState(false);
+  const [templateId, setTemplateId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
   
-  // 步骤1: 上传文档
+  // 主文件状态
   const [mainFile, setMainFile] = useState<File | null>(null);
-  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [mainFileUrl, setMainFileUrl] = useState<string>("");
+  const [mainFileName, setMainFileName] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
-  const [templateId, setTemplateId] = useState<string>("");
-  
-  // 解析结果
+  const [parseProgress, setParseProgress] = useState(0);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   
-  // 已上传的附件
-  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
-  const uploadedAttachmentsRef = useRef<UploadedAttachment[]>([]);
-  
-  // 同步 uploadedAttachments 到 ref
-  useEffect(() => {
-    uploadedAttachmentsRef.current = uploadedAttachments;
-  }, [uploadedAttachments]);
-  
-  // 基地列表
-  const [bases, setBases] = useState<Base[]>([]);
-  const [loadingBases, setLoadingBases] = useState(false);
-  
-  // 自定义变量弹窗
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newVariable, setNewVariable] = useState<Partial<TemplateVariable>>({
-    name: '',
-    key: '',
-    type: 'text',
-    category: 'custom',
-    placeholder: '',
-  });
-  
-  // 步骤3: 基本信息
+  // 基本信息
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("tenant");
   const [baseId, setBaseId] = useState<string>("");
   const [isDefault, setIsDefault] = useState(false);
   
-  // 保存状态
-  const [saving, setSaving] = useState(false);
-  const [savingDraft, setSavingDraft] = useState(false);
-  const [isDraft, setIsDraft] = useState(false);
+  // 基地列表
+  const [bases, setBases] = useState<Base[]>([]);
+  const [loadingBases, setLoadingBases] = useState(false);
   
-  // 导出PDF相关状态
-  const [exporting, setExporting] = useState(false);
-  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
-  const [selectedExportAttachments, setSelectedExportAttachments] = useState<string[]>([]);
+  // 预览缩放
   const [previewZoom, setPreviewZoom] = useState(100);
   
-  // 缩放比例
-  const [zoom, setZoom] = useState(100);
+  // Hooks
+  const {
+    attachments,
+    uploadedAttachments,
+    uploadedAttachmentsRef,
+    draggedId,
+    dragOverId,
+    handleAttachmentsSelect,
+    removeAttachment,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd,
+    loadFromTemplate: loadAttachmentsFromTemplate,
+    loadFromDraft: loadAttachmentsFromDraft,
+  } = useAttachments();
   
-  // 当前选中的文档标签（主文档为 'main'，附件为附件id）
-  const [activeDocumentId, setActiveDocumentId] = useState<string>('main');
+  const {
+    savingDraft,
+    isDraft,
+    setIsDraft,
+    saveDraft,
+    autoSave,
+  } = useTemplateDraft();
   
-  // 拖拽状态
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const {
+    exporting,
+    attachmentDialogOpen,
+    setAttachmentDialogOpen,
+    selectedExportAttachments,
+    setSelectedExportAttachments,
+    openAttachmentDialog,
+    toggleExportAttachment,
+    handleQuickExport,
+    handleExportPDF,
+  } = usePdfExport();
   
-  // 打印功能
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+  // 编辑器
+  const {
+    contentRef,
+    editedHtml,
+    setEditedHtml,
+    activeDocumentId,
+    setActiveDocumentId,
+    zoom,
+    setZoom,
+    syncEditedContent,
+    handleBold,
+    handleItalic,
+    handleUnderline,
+    handleStrikethrough,
+    handleAlign,
+    handleOrderedList,
+    handleUnorderedList,
+    handleIndent,
+    handleOutdent,
+    handleSetFont,
+    handleSetFontSize,
+    handleSetLineHeight,
+    handleApplyPreset,
+    handleAddUnderlineFill,
+    handleInsertTable,
+    handleDeleteRow,
+    handleDeleteColumn,
+    handlePrint,
+    handleZoomIn,
+    handleZoomOut,
+    handleZoomReset,
+  } = useEditor(parseResult, setParseResult);
   
-  // 缩放功能
-  const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(prev + 10, 150));
-  }, []);
-  
-  const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(prev - 10, 50));
-  }, []);
-  
-  const handleZoomReset = useCallback(() => {
-    setZoom(100);
-  }, []);
+  // 标记管理
+  const {
+    markers,
+    setMarkers,
+    activeMarkerId,
+    setActiveMarkerId,
+    showVariablePicker,
+    setShowVariablePicker,
+    selectedVariables,
+    setSelectedVariables,
+    bindings,
+    insertMarker,
+    handleBindVariable,
+    handleRemoveMarker,
+    handleChangeVariable,
+    addCustomVariable,
+    loadFromTemplate: loadMarkersFromTemplate,
+  } = useMarkers(contentRef, syncEditedContent, () => activeDocumentId);
   
   // 获取基地列表
   useEffect(() => {
@@ -224,8 +173,6 @@ export default function NewTemplatePage() {
       const templateIdParam = searchParams.get('templateId');
       
       if (!draftId && !templateIdParam) return;
-      
-      // 防止重复加载
       if (draftLoadedRef.current) return;
       draftLoadedRef.current = true;
       
@@ -235,7 +182,6 @@ export default function NewTemplatePage() {
         let isDraftTemplate = false;
         
         if (draftId) {
-          // 加载草稿
           const response = await fetch(`/api/contract-templates/draft?id=${draftId}`);
           const result = await response.json();
           if (result.success && result.data) {
@@ -243,7 +189,6 @@ export default function NewTemplatePage() {
             isDraftTemplate = true;
           }
         } else if (templateIdParam) {
-          // 加载已发布模板
           const response = await fetch(`/api/contract-templates?id=${templateIdParam}`);
           const result = await response.json();
           if (result.success && result.data) {
@@ -260,7 +205,7 @@ export default function NewTemplatePage() {
           setType(template.type || 'tenant');
           setBaseId(template.base_id || '');
           
-          // 如果是草稿，有 draft_data
+          // 如果是草稿
           if (isDraftTemplate && template.draft_data) {
             const draftData = template.draft_data;
             setCurrentStep(draftData.currentStep || 1);
@@ -290,10 +235,9 @@ export default function NewTemplatePage() {
             }
           }
           
-          // 恢复解析结果（草稿和已发布模板都可能有）
+          // 恢复解析结果
           if (template.source_file_url) {
-            // 构建解析结果
-            const parseData = {
+            const parseData: ParseResult = {
               success: true,
               totalPages: 1,
               fileName: template.source_file_name || '合同文档',
@@ -307,7 +251,7 @@ export default function NewTemplatePage() {
                 id: a.id,
                 name: a.name,
                 displayName: a.name,
-                url: a.url || '', // 保留URL
+                url: a.url || '',
                 html: '',
                 styles: '',
                 text: '',
@@ -318,57 +262,26 @@ export default function NewTemplatePage() {
               mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
             };
             setParseResult(parseData);
+            setMainFileUrl(template.source_file_url);
+            setMainFileName(template.source_file_name || '');
             
-            // 设置编辑后的HTML
             if (isDraftTemplate && template.draft_data?.editedHtml) {
               setEditedHtml(template.draft_data.editedHtml);
             }
           }
           
           // 恢复附件
-          const attachmentsList = template.attachments || [];
-          if (attachmentsList.length > 0) {
-            setUploadedAttachments(attachmentsList.map((a: any) => ({
-              id: a.id,
-              name: a.name,
-              url: a.url || '',
-              fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              size: 0,
-            })));
-            uploadedAttachmentsRef.current = attachmentsList.map((a: any) => ({
-              id: a.id,
-              name: a.name,
-              url: a.url || '',
-              fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              size: 0,
-            }));
-            setAttachments(attachmentsList.map((a: any) => ({
-              id: a.id,
-              name: a.name,
-              type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              size: 0,
-              file: null as any,
-            })));
-          }
+          loadAttachmentsFromTemplate(template);
           
-          // 如果是草稿，恢复已上传的附件
+          // 草稿附件
           if (isDraftTemplate && template.draft_data?.uploadedAttachments) {
-            const uploadedAtts = template.draft_data.uploadedAttachments;
-            setUploadedAttachments(uploadedAtts);
-            uploadedAttachmentsRef.current = uploadedAtts;
-            setAttachments(uploadedAtts.map((a: any) => ({
-              id: a.id,
-              name: a.name,
-              type: a.fileType,
-              size: a.size || 0,
-              file: null as any,
-            })));
+            loadAttachmentsFromDraft(template.draft_data);
           }
           
           toast.success(isDraftTemplate ? "草稿已加载" : "模板已加载");
         }
-      } catch (error) {
-        console.error("加载模板失败:", error);
+      } catch (err) {
+        console.error("加载模板失败:", err);
         toast.error("加载模板失败");
       } finally {
         setLoadingDraft(false);
@@ -376,237 +289,68 @@ export default function NewTemplatePage() {
     };
     
     loadTemplate();
-  }, [searchParams]);
+  }, [searchParams, setMarkers, setSelectedVariables, setEditedHtml, loadAttachmentsFromTemplate, loadAttachmentsFromDraft, setIsDraft]);
   
-  // ========== 步骤1: 上传文档 ==========
-  
-  const handleMainFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const allowedTypes = [
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword"
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("合同文档仅支持 Word 格式（.doc 或 .docx）");
-        return;
-      }
-      setMainFile(file);
-      
-      // 自动上传文件（但不解析）
-      setUploading(true);
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        const uploadRes = await fetch("/api/contract-templates/upload", {
-          method: "POST",
-          body: formData,
-        });
-        
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success) {
-          throw new Error(uploadData.error || "上传失败");
-        }
-        
-        // 保存上传结果，但不解析（保留已有的附件数据）
-        setParseResult(prev => ({
-          success: true,
-          totalPages: 1,
-          fileName: uploadData.data.fileName,
-          fileType: uploadData.data.fileType,
-          fileUrl: uploadData.data.fileUrl,
-          pages: [],
-          fullText: '',
-          html: '',
-          styles: prev?.styles || '',
-          attachments: prev?.attachments || [], // 保留已有的附件
-          detectedAttachments: [],
-          detectedFields: [],
-          mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-        }));
-        
-        setTemplateId(uploadData.data.templateId);
-        toast.success("文件已上传，点击「下一步」解析文档");
-      } catch (err) {
-        console.error("上传失败:", err);
-        toast.error(err instanceof Error ? err.message : "上传失败");
-      } finally {
-        setUploading(false);
-      }
-    }
-  };
-  
-  const handleAttachmentsSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    // 附件只支持 Word 格式
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/msword',
-    ];
+  // 主文件选择
+  const handleMainFileSelect = async (file: File) => {
+    setMainFile(file);
+    setUploading(true);
+    setParseProgress(20);
     
-    const validFiles: AttachmentFile[] = [];
-    for (const file of files) {
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(`文件"${file.name}"格式不支持，附件仅支持 Word 格式`);
-        continue;
-      }
-      validFiles.push({
-        id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        file,
-        name: file.name,
-        type: file.type,
-        size: file.size,
+    try {
+      // 上传文件
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const uploadRes = await fetch("/api/contract-templates/upload", {
+        method: "POST",
+        body: formData,
       });
-    }
-    
-    if (validFiles.length > 0) {
-      setAttachments(prev => [...prev, ...validFiles]);
       
-      // 自动上传附件到服务器（逐个上传）
-      setUploading(true);
-      const uploadedList: UploadedAttachment[] = [];
-      const failedFiles: string[] = [];
+      const uploadData = await uploadRes.json();
       
-      for (const validFile of validFiles) {
-        try {
-          const formData = new FormData();
-          formData.append("file", validFile.file);
-          
-          const uploadRes = await fetch("/api/contract-templates/upload-attachment", {
-            method: "POST",
-            body: formData,
-          });
-          
-          const uploadData = await uploadRes.json();
-          if (!uploadData.success) {
-            throw new Error(uploadData.error || "上传附件失败");
-          }
-          
-          uploadedList.push(uploadData.data);
-        } catch (err) {
-          console.error(`上传附件 ${validFile.name} 失败:`, err);
-          failedFiles.push(validFile.name);
-          // 从列表中移除上传失败的文件
-          setAttachments(prev => prev.filter(a => a.id !== validFile.id));
-        }
+      if (!uploadData.success) {
+        throw new Error(uploadData.error || "上传失败");
       }
       
-      // 添加成功上传的附件到列表，同时更新 ref
-      if (uploadedList.length > 0) {
-        setUploadedAttachments(prev => [...prev, ...uploadedList]);
-        // 直接更新 ref，避免等待 useEffect 同步
-        uploadedAttachmentsRef.current = [...uploadedAttachmentsRef.current, ...uploadedList];
-        toast.success(`已上传 ${uploadedList.length} 个附件`);
-      }
+      setParseProgress(60);
+      setTemplateId(uploadData.templateId);
+      setMainFileUrl(uploadData.fileUrl);
+      setMainFileName(file.name);
       
-      if (failedFiles.length > 0) {
-        toast.error(`${failedFiles.join("、")} 上传失败`);
-      }
-      
+      toast.success("文件已上传，点击「下一步」解析文档");
+    } catch (err) {
+      console.error("上传失败:", err);
+      toast.error(err instanceof Error ? err.message : "上传失败");
+    } finally {
       setUploading(false);
-    }
-    
-    if (attachmentInputRef.current) {
-      attachmentInputRef.current.value = "";
+      setParseProgress(0);
     }
   };
   
-  const removeAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== id));
-    // 同时从已上传列表中删除
-    setUploadedAttachments(prev => prev.filter(a => a.id !== id));
-  };
-  
-  // 拖拽排序
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
-  };
-  
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (draggedId && draggedId !== id) {
-      setDragOverId(id);
-    }
-  };
-  
-  const handleDragLeave = () => {
-    setDragOverId(null);
-  };
-  
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    setDragOverId(null);
-    
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-    
-    setAttachments(prev => {
-      const draggedIndex = prev.findIndex(a => a.id === draggedId);
-      const targetIndex = prev.findIndex(a => a.id === targetId);
-      
-      if (draggedIndex === -1 || targetIndex === -1) return prev;
-      
-      const newAttachments = [...prev];
-      const [draggedItem] = newAttachments.splice(draggedIndex, 1);
-      newAttachments.splice(targetIndex, 0, draggedItem);
-      
-      // 同步更新 uploadedAttachments 的顺序
-      setUploadedAttachments(prevUploaded => {
-        // 根据 newAttachments 的顺序重新排列
-        const newUploaded = newAttachments
-          .map(att => prevUploaded.find(u => u.id === att.id))
-          .filter((u): u is UploadedAttachment => u !== undefined);
-        // 同步更新 ref
-        uploadedAttachmentsRef.current = newUploaded;
-        return newUploaded;
-      });
-      
-      return newAttachments;
-    });
-    
-    setDraggedId(null);
-  };
-  
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-  
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-  };
-  
+  // 上传并解析
   const handleUploadAndParse = async () => {
-    // 检查是否已有文件URL（已上传过）
-    if (!parseResult?.fileUrl && !mainFile) {
+    if (!parseResult?.fileUrl && !mainFile && !mainFileUrl) {
       toast.error("请先上传文档");
       return;
     }
     
     setParsing(true);
+    setParseProgress(20);
+    
     try {
-      let fileUrl = parseResult?.fileUrl;
-      let fileName = parseResult?.fileName;
-      let fileType = parseResult?.fileType;
+      let fileUrl = parseResult?.fileUrl || mainFileUrl;
+      let fileName = parseResult?.fileName || mainFileName;
+      let fileType = parseResult?.fileType || 'docx';
       let templateIdToUse = templateId;
       
-      // 检查是否有未上传的附件（file 不为 null）
+      // 上传未上传的附件
       const pendingAttachments = attachments.filter(att => att.file !== null);
       const newlyUploaded: UploadedAttachment[] = [];
       
-      // 如果有未上传的附件需要上传
       if (pendingAttachments.length > 0) {
         setUploading(true);
         
-        // 逐个上传未上传的附件
         for (const att of pendingAttachments) {
           if (!att.file) continue;
           
@@ -628,15 +372,12 @@ export default function NewTemplatePage() {
           }
         }
         
-        // 合并新上传的附件
-        if (newlyUploaded.length > 0) {
-          setUploadedAttachments(prev => [...prev, ...newlyUploaded]);
-        }
-        
         setUploading(false);
       }
       
-      // 执行解析 - 使用 ref 获取最新值，合并新上传的附件
+      setParseProgress(50);
+      
+      // 解析
       const allAttachments = [...uploadedAttachmentsRef.current, ...newlyUploaded];
       
       const parseRes = await fetch("/api/contract-templates/parse", {
@@ -656,6 +397,8 @@ export default function NewTemplatePage() {
         }),
       });
       
+      setParseProgress(80);
+      
       const parseData = await parseRes.json();
       
       if (!parseData.success) {
@@ -668,6 +411,7 @@ export default function NewTemplatePage() {
         setName(fileName.replace(/\.[^/.]+$/, ""));
       }
       
+      setParseProgress(100);
       toast.success("文档解析成功");
       setCurrentStep(2);
     } catch (err) {
@@ -676,1077 +420,35 @@ export default function NewTemplatePage() {
     } finally {
       setUploading(false);
       setParsing(false);
+      setParseProgress(0);
     }
   };
   
-  // ========== 步骤2: 变量绑定 ==========
-  
-  // 文档编辑状态：始终可编辑
-  const [editedHtml, setEditedHtml] = useState<string>(""); // 编辑后的HTML
-  
-  // 标记类型：基于用户点击位置
-  interface Marker {
-    id: string;
-    documentId: string; // 'main' 或附件ID，标记所属文档
-    status: 'pending' | 'bound';
-    variableKey?: string;
-    // 位置信息：用于在文档中定位
-    position: {
-      beforeText: string;   // 标记前面的文字（用于定位）
-      afterText: string;    // 标记后面的文字（用于定位）
-      textOffset: number;   // 在原文中的偏移量
-      // 额外的定位信息，用于处理锚点文本不唯一的情况
-      clickContext?: {
-        parentTagName: string;
-        parentClass: string;
-        nearestId: string;
-        party?: string; // '甲方' 或 '乙方'
-      };
-    };
-    displayText?: string;   // 显示的文字（如"待绑定"或变量名）
-  }
-  
-  const [markers, setMarkers] = useState<Marker[]>([]);
-  const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
-  const [showVariablePicker, setShowVariablePicker] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
-  
-  // 已选变量（用于保存）
-  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
-  
-  // 兼容旧数据结构的 bindings（用于保存到后端）
-  const bindings = useMemo(() => {
-    return markers
-      .filter(m => m.status === 'bound' && m.variableKey)
-      .map(m => ({
-        id: m.id,
-        variableKey: m.variableKey!,
-        position: m.position,
-      }));
-  }, [markers]);
-  
-  // 草稿保存功能
+  // 保存草稿
   const handleSaveDraft = useCallback(async (silent = false) => {
-    // 静默模式下，如果没有必要的数据，直接返回不报错
-    if (silent && !mainFile && !templateId && !name.trim()) {
-      return;
-    }
+    const id = await saveDraft({
+      templateId,
+      mainFile,
+      name,
+      description,
+      type,
+      baseId,
+      currentStep,
+      editedHtml,
+      markers,
+      selectedVariables,
+      bindings,
+      parseResult,
+      uploadedAttachments,
+    }, { silent });
     
-    // 非静默模式下，需要检查必要数据
-    if (!silent && !mainFile && !templateId && !name.trim()) {
-      toast.error("请至少填写模板名称或上传文档");
-      return;
+    if (id) {
+      setTemplateId(id);
     }
-    
-    // 如果没有任何需要保存的内容，直接返回
-    if (!mainFile && !templateId && !name.trim() && !editedHtml) {
-      return;
-    }
-    
-    setSavingDraft(true);
-    try {
-      const draftData = {
-        id: templateId || undefined,
-        name,
-        description,
-        type,
-        base_id: baseId || null,
-        currentStep,
-        editedHtml: editedHtml || undefined,
-        markers: markers.map(m => ({
-          id: m.id,
-          variableKey: m.variableKey,
-          status: m.status,
-          position: m.position,
-          documentId: m.documentId,
-        })),
-        selectedVariables: selectedVariables.map(v => ({
-          id: v.id,
-          key: v.key,
-          name: v.name,
-          type: v.type,
-          category: v.category,
-          placeholder: v.placeholder,
-        })),
-        bindings,
-        source_file_url: parseResult?.fileUrl,
-        source_file_name: parseResult?.fileName,
-        source_file_type: parseResult?.fileType,
-        styles: parseResult?.styles, // 保存样式
-        // 保存已解析的附件
-        attachments: parseResult?.attachments?.map(a => ({
-          id: a.id,
-          name: a.name,
-          displayName: a.displayName,
-          url: a.url,
-          html: a.html,
-        })),
-        // 保存已上传但未解析的附件
-        uploadedAttachments: uploadedAttachments.map(a => ({
-          id: a.id,
-          name: a.name,
-          url: a.url,
-          fileType: a.fileType,
-          size: a.size,
-        })),
-      };
-      
-      const response = await fetch("/api/contract-templates/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draftData),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setTemplateId(result.data.id);
-        setIsDraft(true);
-        if (!silent) {
-          toast.success("草稿已保存");
-        }
-      } else {
-        throw new Error(result.error || "保存草稿失败");
-      }
-    } catch (error) {
-      console.error("保存草稿失败:", error);
-      if (!silent) {
-        toast.error(error instanceof Error ? error.message : "保存草稿失败");
-      }
-    } finally {
-      setSavingDraft(false);
-    }
-  }, [templateId, mainFile, name, description, type, baseId, currentStep, editedHtml, markers, selectedVariables, bindings, parseResult, uploadedAttachments]);
+  }, [templateId, mainFile, name, description, type, baseId, currentStep, editedHtml, markers, selectedVariables, bindings, parseResult, uploadedAttachments, saveDraft]);
   
-  // 过滤变量（包含预设变量和自定义变量）
-  const filteredVariables = useMemo(() => {
-    // 合并预设变量和自定义变量（自定义变量放前面）
-    const customVars = selectedVariables.filter(v => v.category === 'custom');
-    let vars = [...customVars, ...PresetVariables];
-    
-    if (activeCategory !== 'all') {
-      vars = vars.filter(v => v.category === activeCategory);
-    }
-    
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      vars = vars.filter(
-        v => v.name.toLowerCase().includes(term) || 
-             v.key.toLowerCase().includes(term)
-      );
-    }
-    
-    return vars;
-  }, [activeCategory, searchTerm, selectedVariables]);
-  
-  // 检查变量是否已绑定
-  const isVariableBound = (key: string) => {
-    return markers.some(m => m.status === 'bound' && m.variableKey === key);
-  };
-  
-  // 同步编辑后的HTML
-  const syncEditedContent = useCallback(() => {
-    if (contentRef.current) {
-      if (activeDocumentId === 'main') {
-        setEditedHtml(contentRef.current.innerHTML);
-      } else {
-        // 更新附件的 HTML
-        setParseResult(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            attachments: (prev.attachments || []).map(att => 
-              att.id === activeDocumentId 
-                ? { ...att, html: contentRef.current!.innerHTML }
-                : att
-            ),
-          };
-        });
-      }
-    }
-  }, [activeDocumentId]);
-  
-  // 重置文档到原始状态
-  const handleResetDocument = () => {
-    setEditedHtml("");
-    setMarkers([]);
-    toast.success("文档已重置为原始内容");
-  };
-  
-  // 编辑功能：给选中文字添加下划线
-  const handleAddUnderline = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要添加下划线的文字");
-      return;
-    }
-    
-    // 使用 execCommand 添加下划线
-    document.execCommand('underline', false);
-    syncEditedContent();
-    toast.success("已添加下划线");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：移除下划线
-  const handleRemoveUnderline = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要移除下划线的文字");
-      return;
-    }
-    
-    // 使用 execCommand 移除下划线
-    document.execCommand('removeFormat', false);
-    syncEditedContent();
-    toast.success("已移除格式");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：加粗
-  const handleBold = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要加粗的文字");
-      return;
-    }
-    document.execCommand('bold', false);
-    syncEditedContent();
-    toast.success("已加粗");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：斜体
-  const handleItalic = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要斜体的文字");
-      return;
-    }
-    document.execCommand('italic', false);
-    syncEditedContent();
-    toast.success("已设置斜体");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：删除线
-  const handleStrikethrough = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要添加删除线的文字");
-      return;
-    }
-    document.execCommand('strikeThrough', false);
-    syncEditedContent();
-    toast.success("已添加删除线");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：添加下划线填充（变量居中）
-  const handleAddUnderlineFill = useCallback((width: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    
-    // 获取选中的内容（包含HTML）
-    const fragment = range.extractContents();
-    const div = document.createElement('div');
-    div.appendChild(fragment);
-    
-    // 检查选中内容是否包含变量标记
-    const markerElements = div.querySelectorAll('.variable-marker');
-    let processedHtml = div.innerHTML || '&nbsp;';
-    
-    // 如果包含变量标记，将其替换为占位符（以便 processedHtml 能正确处理）
-    markerElements.forEach(marker => {
-      const markerId = marker.getAttribute('data-marker-id');
-      if (markerId) {
-        // 用占位符替换变量标记
-        const markerHtml = marker.outerHTML;
-        processedHtml = processedHtml.replace(markerHtml, `<!--MARKER_PLACEHOLDER:${markerId}-->`);
-      }
-    });
-    
-    // 创建下划线容器 - 内容居中，下划线在底部
-    const underlineSpan = document.createElement('span');
-    underlineSpan.className = 'underline-fill-container';
-    underlineSpan.style.cssText = `display: inline-block; width: ${width}; border-bottom: 1px solid #000; text-align: center; vertical-align: baseline; line-height: inherit;`;
-    underlineSpan.innerHTML = processedHtml;
-    
-    // 插入
-    range.insertNode(underlineSpan);
-    
-    // 清除选中
-    selection.removeAllRanges();
-    
-    syncEditedContent();
-    const widthLabels: Record<string, string> = {
-      '150px': '短',
-      '200px': '中',
-      '300px': '长',
-      '400px': '较长',
-      '500px': '超长',
-    };
-    toast.success(`已添加下划线填充（${widthLabels[width] || width}）`);
-  }, [syncEditedContent]);
-  
-  // 编辑功能：文本对齐
-  const handleAlign = useCallback((alignment: 'left' | 'center' | 'right' | 'justify') => {
-    const command = {
-      left: 'justifyLeft',
-      center: 'justifyCenter',
-      right: 'justifyRight',
-      justify: 'justifyFull',
-    }[alignment];
-    document.execCommand(command, false);
-    syncEditedContent();
-    toast.success(`已${alignment === 'left' ? '左对齐' : alignment === 'center' ? '居中对齐' : alignment === 'right' ? '右对齐' : '两端对齐'}`);
-  }, [syncEditedContent]);
-  
-  // 编辑功能：缩进
-  const handleIndent = useCallback((increase: boolean) => {
-    document.execCommand(increase ? 'indent' : 'outdent', false);
-    syncEditedContent();
-    toast.success(increase ? "已增加缩进" : "已减少缩进");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：标题样式（居中+加粗+字号）
-  const handleHeadingStyle = useCallback((level: 1 | 2 | 3) => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要设置标题的文字");
-      return;
-    }
-    
-    // 字号映射
-    const sizeMap: Record<number, string> = {
-      1: '6', // 32px
-      2: '5', // 24px
-      3: '4', // 18px
-    };
-    
-    // 应用样式
-    document.execCommand('justifyCenter', false);
-    document.execCommand('bold', false);
-    document.execCommand('fontSize', false, sizeMap[level]);
-    
-    syncEditedContent();
-    const labels = { 1: '一级标题', 2: '二级标题', 3: '三级标题' };
-    toast.success(`已应用${labels[level]}样式`);
-  }, [syncEditedContent]);
-  
-  // 编辑功能：公文格式一键设置
-  const handleDocFormat = useCallback((formatType: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      toast.info("请先选中要调整的文字");
-      return;
-    }
-    
-    // 字号映射（fontSize command 使用 1-7）
-    const sizeMap: Record<string, string> = {
-      '22pt': '6', // 二号
-      '16pt': '4', // 三号
-      '14pt': '3', // 四号
-      '12pt': '2', // 小四
-    };
-    
-    // 格式配置
-    const formats: Record<string, {
-      font: string;
-      size: string;
-      bold: boolean;
-      center: boolean;
-      lineHeight: string;
-      label: string;
-    }> = {
-      'docTitle': {
-        font: 'SimHei',
-        size: '22pt',
-        bold: true,
-        center: true,
-        lineHeight: '1.5',
-        label: '公文标题'
-      },
-      'heading1': {
-        font: 'SimHei',
-        size: '16pt',
-        bold: true,
-        center: false,
-        lineHeight: '1.5',
-        label: '一级标题'
-      },
-      'heading2': {
-        font: 'KaiTi',
-        size: '16pt',
-        bold: true,
-        center: false,
-        lineHeight: '1.5',
-        label: '二级标题'
-      },
-      'heading3': {
-        font: 'FangSong',
-        size: '16pt',
-        bold: true,
-        center: false,
-        lineHeight: '1.5',
-        label: '三级标题'
-      },
-      'body': {
-        font: 'FangSong',
-        size: '16pt',
-        bold: false,
-        center: false,
-        lineHeight: '1.5',
-        label: '正文'
-      },
-      'bodySmall': {
-        font: 'FangSong',
-        size: '14pt',
-        bold: false,
-        center: false,
-        lineHeight: '1.5',
-        label: '正文(小四)'
-      },
-      'signature': {
-        font: 'FangSong',
-        size: '16pt',
-        bold: false,
-        center: false,
-        lineHeight: '1.8',
-        label: '签章区'
-      }
-    };
-    
-    const format = formats[formatType];
-    if (!format) return;
-    
-    // 应用字体
-    document.execCommand('fontName', false, format.font);
-    
-    // 应用字号
-    document.execCommand('fontSize', false, sizeMap[format.size] || '4');
-    
-    // 应用加粗
-    if (format.bold) {
-      document.execCommand('bold', false);
-    }
-    
-    // 应用居中
-    if (format.center) {
-      document.execCommand('justifyCenter', false);
-    }
-    
-    // 设置行距
-    const range = selection.getRangeAt(0);
-    let node: Node | null = range.startContainer;
-    const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH', 'SECTION', 'ARTICLE', 'BODY'];
-    
-    while (node && contentRef.current && node !== contentRef.current) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as HTMLElement;
-        if (blockTags.includes(element.tagName)) {
-          element.style.lineHeight = format.lineHeight;
-          break;
-        }
-      }
-      node = node.parentNode;
-    }
-    
-    syncEditedContent();
-    toast.success(`已应用「${format.label}」格式`);
-  }, [syncEditedContent]);
-  
-  // 编辑功能：字体选择
-  const handleFontFamily = useCallback((fontFamily: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要调整的文字");
-      return;
-    }
-    document.execCommand('fontName', false, fontFamily);
-    syncEditedContent();
-    const fontNames: Record<string, string> = {
-      'SimSun': '宋体',
-      'SimHei': '黑体',
-      'KaiTi': '楷体',
-      'FangSong': '仿宋',
-      'Microsoft YaHei': '微软雅黑',
-      'Arial': 'Arial',
-      'Times New Roman': 'Times New Roman',
-    };
-    toast.success(`字体已调整为 ${fontNames[fontFamily] || fontFamily}`);
-  }, [syncEditedContent]);
-  
-  // 编辑功能：列表
-  const handleList = useCallback((ordered: boolean) => {
-    document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false);
-    syncEditedContent();
-    toast.success(ordered ? "已插入有序列表" : "已插入无序列表");
-  }, [syncEditedContent]);
-  
-  // 编辑功能：字体大小
-  const handleFontSize = useCallback((size: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast.info("请先选中要调整的文字");
-      return;
-    }
-    // fontSize command accepts 1-7 (7 is largest)
-    const sizeMap: Record<string, string> = {
-      '12px': '1',
-      '14px': '2',
-      '16px': '3',
-      '18px': '4',
-      '24px': '5',
-      '32px': '6',
-      '48px': '7',
-    };
-    document.execCommand('fontSize', false, sizeMap[size] || '3');
-    syncEditedContent();
-    toast.success(`字体大小已调整为 ${size}`);
-  }, [syncEditedContent]);
-  
-  // 编辑功能：行间距
-  const handleLineHeight = useCallback((lineHeight: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      toast.info("请先选中要调整的文字");
-      return;
-    }
-    
-    const range = selection.getRangeAt(0);
-    let node: Node | null = range.startContainer;
-    
-    // 向上查找块级元素
-    const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH', 'SECTION', 'ARTICLE', 'BODY'];
-    let foundElement: HTMLElement | null = null;
-    
-    while (node && node !== contentRef.current) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as HTMLElement;
-        if (blockTags.includes(element.tagName)) {
-          foundElement = element;
-          break;
-        }
-      }
-      node = node.parentNode;
-    }
-    
-    if (foundElement) {
-      // 设置行高
-      foundElement.style.lineHeight = lineHeight;
-      
-      // 强制触发重绘
-      void foundElement.offsetHeight;
-      
-      // 同步内容
-      syncEditedContent();
-      
-      const labels: Record<string, string> = {
-        '0.5': '0.5倍行距',
-        '1': '单倍行距',
-        '1.5': '1.5倍行距',
-        '1.8': '1.8倍行距',
-        '2': '双倍行距',
-        '2.5': '2.5倍行距',
-        '3': '三倍行距',
-      };
-      toast.success(`已应用${labels[lineHeight] || lineHeight}`);
-    } else {
-      // 如果没找到块级元素，直接在编辑器容器上设置
-      if (contentRef.current) {
-        contentRef.current.style.lineHeight = lineHeight;
-        syncEditedContent();
-        toast.success(`已应用全局行距`);
-      }
-    }
-  }, [syncEditedContent]);
-  
-  // 编辑功能：插入表格
-  const [tableRows, setTableRows] = useState(2);
-  const [tableCols, setTableCols] = useState(2);
-  const [showTablePopover, setShowTablePopover] = useState(false);
-  
-  const handleInsertTable = useCallback((rows: number, cols: number) => {
-    // 生成表格 HTML
-    let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 8pt 0; border: 1px solid #000;">';
-    for (let i = 0; i < rows; i++) {
-      tableHtml += '<tr>';
-      for (let j = 0; j < cols; j++) {
-        tableHtml += '<td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: top; width: ' + (100 / cols) + '%;">&nbsp;</td>';
-      }
-      tableHtml += '</tr>';
-    }
-    tableHtml += '</table>';
-    
-    // 使用 insertHTML 命令插入表格
-    document.execCommand('insertHTML', false, tableHtml);
-    syncEditedContent();
-    setShowTablePopover(false);
-    toast.success(`已插入 ${rows} 行 ${cols} 列的表格`);
-  }, [syncEditedContent]);
-  
-  // 获取当前光标所在的表格单元格
-  const getCurrentTableCell = useCallback((): { cell: HTMLTableCellElement; row: HTMLTableRowElement; table: HTMLTableElement } | null => {
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return null;
-    
-    let node = selection.anchorNode;
-    while (node && node !== contentRef.current) {
-      if (node instanceof HTMLTableCellElement) {
-        const cell = node;
-        const row = cell.closest('tr');
-        const table = cell.closest('table');
-        if (row && table) {
-          return { cell, row, table };
-        }
-      }
-      node = node.parentNode;
-    }
-    return null;
-  }, []);
-  
-  // 删除当前行
-  const handleDeleteRow = useCallback(() => {
-    const cellInfo = getCurrentTableCell();
-    if (!cellInfo) {
-      toast.error('请先在表格中选择要删除的行');
-      return;
-    }
-    
-    const { row, table } = cellInfo;
-    const rows = table.querySelectorAll('tr');
-    
-    if (rows.length <= 1) {
-      // 如果只有一行，删除整个表格
-      table.remove();
-      toast.success('已删除表格');
-    } else {
-      row.remove();
-      toast.success('已删除当前行');
-    }
-    
-    syncEditedContent();
-  }, [getCurrentTableCell, syncEditedContent]);
-  
-  // 删除当前列
-  const handleDeleteColumn = useCallback(() => {
-    const cellInfo = getCurrentTableCell();
-    if (!cellInfo) {
-      toast.error('请先在表格中选择要删除的列');
-      return;
-    }
-    
-    const { cell, table } = cellInfo;
-    const cellIndex = cell.cellIndex;
-    const rows = table.querySelectorAll('tr');
-    
-    // 检查是否只有一列
-    const firstRow = rows[0];
-    if (firstRow && firstRow.querySelectorAll('td, th').length <= 1) {
-      // 如果只有一列，删除整个表格
-      table.remove();
-      toast.success('已删除表格');
-    } else {
-      rows.forEach(row => {
-        const cells = row.querySelectorAll('td, th');
-        if (cells[cellIndex]) {
-          cells[cellIndex].remove();
-        }
-      });
-      toast.success('已删除当前列');
-    }
-    
-    syncEditedContent();
-  }, [getCurrentTableCell, syncEditedContent]);
-  
-  // 在当前行上方插入行
-  const handleInsertRowAbove = useCallback(() => {
-    const cellInfo = getCurrentTableCell();
-    if (!cellInfo) {
-      toast.error('请先在表格中选择位置');
-      return;
-    }
-    
-    const { row, table } = cellInfo;
-    const colCount = row.querySelectorAll('td, th').length;
-    
-    const newRow = document.createElement('tr');
-    for (let i = 0; i < colCount; i++) {
-      const newCell = document.createElement('td');
-      newCell.style.cssText = 'border: 1px solid #000; padding: 4pt 6pt; vertical-align: top;';
-      newCell.innerHTML = '&nbsp;';
-      newRow.appendChild(newCell);
-    }
-    
-    row.parentNode?.insertBefore(newRow, row);
-    toast.success('已在当前行上方插入新行');
-    syncEditedContent();
-  }, [getCurrentTableCell, syncEditedContent]);
-  
-  // 在当前行下方插入行
-  const handleInsertRowBelow = useCallback(() => {
-    const cellInfo = getCurrentTableCell();
-    if (!cellInfo) {
-      toast.error('请先在表格中选择位置');
-      return;
-    }
-    
-    const { row, table } = cellInfo;
-    const colCount = row.querySelectorAll('td, th').length;
-    
-    const newRow = document.createElement('tr');
-    for (let i = 0; i < colCount; i++) {
-      const newCell = document.createElement('td');
-      newCell.style.cssText = 'border: 1px solid #000; padding: 4pt 6pt; vertical-align: top;';
-      newCell.innerHTML = '&nbsp;';
-      newRow.appendChild(newCell);
-    }
-    
-    if (row.nextSibling) {
-      row.parentNode?.insertBefore(newRow, row.nextSibling);
-    } else {
-      row.parentNode?.appendChild(newRow);
-    }
-    
-    toast.success('已在当前行下方插入新行');
-    syncEditedContent();
-  }, [getCurrentTableCell, syncEditedContent]);
-  
-  // 删除整个表格
-  const handleDeleteTable = useCallback(() => {
-    const cellInfo = getCurrentTableCell();
-    if (!cellInfo) {
-      toast.error('请先在表格中选择要删除的表格');
-      return;
-    }
-    
-    const { table } = cellInfo;
-    table.remove();
-    toast.success('已删除表格');
-    syncEditedContent();
-  }, [getCurrentTableCell, syncEditedContent]);
-  
-  // 处理文档点击 - 处理点击变量标记
-  const handleContentClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    
-    // 如果点击的是标记，打开变量选择器
-    if (target.classList.contains('variable-marker')) {
-      const markerId = target.dataset.markerId;
-      if (markerId) {
-        setActiveMarkerId(markerId);
-        setShowVariablePicker(true);
-      }
-    }
-  }, []);
-  
-  // 辅助函数：查找最近的有ID的父元素
-  const findNearestId = (element: HTMLElement | null): string => {
-    let current = element;
-    let depth = 0;
-    const maxDepth = 10;
-    
-    while (current && depth < maxDepth) {
-      if (current.id) {
-        return current.id;
-      }
-      // 也检查特定的class，如甲方、乙方区域
-      if (current.className && (
-        current.className.includes('甲方') || 
-        current.className.includes('乙方') ||
-        current.className.includes('party-a') ||
-        current.className.includes('party-b')
-      )) {
-        return current.className;
-      }
-      current = current.parentElement;
-      depth++;
-    }
-    return '';
-  };
-  
-  // 为标记绑定变量
-  const handleBindVariable = (variable: TemplateVariable) => {
-    if (!activeMarkerId) return;
-    
-    setMarkers(prev => prev.map(m => 
-      m.id === activeMarkerId 
-        ? { ...m, status: 'bound', variableKey: variable.key }
-        : m
-    ));
-    
-    // 添加到已选变量
-    if (!selectedVariables.find(v => v.key === variable.key)) {
-      setSelectedVariables(prev => [...prev, variable]);
-    }
-    
-    // 更新 DOM 中标记的显示
-    const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`) as HTMLElement;
-    if (markerEl) {
-      markerEl.className = 'variable-marker bound';
-      markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; border: 2px solid #22c55e; font-weight: 500; display: inline-block; margin: 0 2px;';
-      markerEl.textContent = `{{${variable.name}}}`;
-      syncEditedContent();
-    }
-    
-    setShowVariablePicker(false);
-    setActiveMarkerId(null);
-    toast.success(`已绑定: ${variable.name}`);
-  };
-  
-  // 删除标记
-  const handleRemoveMarker = (markerId: string) => {
-    // 从 DOM 中删除标记元素
-    const markerEl = contentRef.current?.querySelector(`[data-marker-id="${markerId}"]`);
-    if (markerEl) {
-      markerEl.remove();
-      syncEditedContent();
-    }
-    
-    setMarkers(prev => prev.filter(m => m.id !== markerId));
-    toast.success("已删除标记");
-  };
-  
-  // 更换变量（重新绑定）
-  const handleChangeVariable = (markerId: string) => {
-    setActiveMarkerId(markerId);
-    setShowVariablePicker(true);
-  };
-  
-  // 添加自定义变量
-  const handleAddCustomVariable = () => {
-    if (!newVariable.name || !newVariable.key) {
-      toast.error('请填写变量名称和标识');
-      return;
-    }
-    
-    // 验证 key 格式：只允许英文、数字、下划线
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newVariable.key)) {
-      toast.error('变量标识只能包含英文、数字、下划线，且不能以数字开头');
-      return;
-    }
-    
-    // 检查 key 是否已存在
-    const existingKeys = [...selectedVariables, ...PresetVariables].map(v => v.key);
-    if (existingKeys.includes(newVariable.key)) {
-      toast.error(`变量标识 "${newVariable.key}" 已存在，请使用其他标识`);
-      return;
-    }
-    
-    const customVar: TemplateVariable = {
-      id: `var_custom_${Date.now()}`,
-      name: newVariable.name,
-      key: newVariable.key,
-      type: newVariable.type || 'text',
-      category: 'custom',
-      placeholder: newVariable.placeholder,
-    };
-    
-    // 添加到已选变量
-    setSelectedVariables(prev => [...prev, customVar]);
-    
-    // 如果有活动的标记，直接绑定
-    if (activeMarkerId) {
-      setMarkers(prev => prev.map(m => 
-        m.id === activeMarkerId 
-          ? { ...m, status: 'bound', variableKey: customVar.key }
-          : m
-      ));
-      
-      // 更新 DOM 中标记的显示
-      const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`) as HTMLElement;
-      if (markerEl) {
-        markerEl.className = 'variable-marker bound';
-        markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; border: 2px solid #22c55e; font-weight: 500; display: inline-block; margin: 0 2px;';
-        markerEl.textContent = `{{${customVar.name}}}`;
-        syncEditedContent();
-      }
-      
-      setShowVariablePicker(false);
-      setActiveMarkerId(null);
-      toast.success(`已绑定: ${customVar.name}`);
-    } else {
-      toast.success(`已添加自定义变量: ${customVar.name}`);
-    }
-    
-    setShowAddDialog(false);
-    setNewVariable({
-      name: '',
-      key: '',
-      type: 'text',
-      category: 'custom',
-      placeholder: '',
-    });
-  };
-  
-  // 获取当前文档的基础HTML（根据选中的标签）
-  const currentDocumentHtml = useMemo(() => {
-    if (activeDocumentId === 'main') {
-      return parseResult?.html || '';
-    }
-    // 查找对应的附件
-    const attachment = parseResult?.attachments?.find(a => a.id === activeDocumentId);
-    return attachment?.html || '';
-  }, [activeDocumentId, parseResult]);
-  
-  // 当前文档的标记
-  const currentDocumentMarkers = useMemo(() => {
-    return markers.filter(m => m.documentId === activeDocumentId);
-  }, [markers, activeDocumentId]);
-  
-  // 生成处理后的HTML - 在用户点击位置渲染标记
-  const processedHtml = useMemo(() => {
-    // 主文档：优先使用编辑后的HTML，否则使用原始HTML
-    // 附件：直接使用原始HTML
-    const baseHtml = activeDocumentId === 'main' 
-      ? (editedHtml || currentDocumentHtml)
-      : currentDocumentHtml;
-    if (!baseHtml) return '';
-    
-    let result = baseHtml;
-    
-    // 清理所有现有的标记元素，避免重复
-    result = result.replace(/<span class="variable-marker[^"]*"[^>]*>.*?<\/span>/g, '');
-    
-    // 辅助函数：查找最佳匹配位置
-    const findBestMatchPosition = (html: string, anchorText: string, context?: Marker['position']['clickContext']): number => {
-      // 如果锚点文本为空，返回-1
-      if (!anchorText) return -1;
-      
-      // 查找所有匹配位置
-      const positions: number[] = [];
-      let searchPos = 0;
-      while (true) {
-        const pos = html.indexOf(anchorText, searchPos);
-        if (pos === -1) break;
-        positions.push(pos);
-        searchPos = pos + 1;
-      }
-      
-      // 如果只有一个匹配，直接返回
-      if (positions.length === 1) return positions[0];
-      
-      // 如果没有匹配，返回-1
-      if (positions.length === 0) return -1;
-      
-      // 多个匹配时，根据上下文选择最佳位置
-      
-      // 策略1：优先使用party字段（甲方/乙方）来确定位置
-      if (context?.party) {
-        const partyKeyword = context.party; // '甲方' 或 '乙方'
-        
-        // 找到HTML中所有甲方/乙方的位置
-        const partyPositions: { party: string; index: number }[] = [];
-        let partySearchPos = 0;
-        
-        while (true) {
-          const partyAIdx = html.indexOf('甲方', partySearchPos);
-          const partyBIdx = html.indexOf('乙方', partySearchPos);
-          
-          if (partyAIdx === -1 && partyBIdx === -1) break;
-          
-          if (partyAIdx !== -1 && (partyBIdx === -1 || partyAIdx < partyBIdx)) {
-            partyPositions.push({ party: '甲方', index: partyAIdx });
-            partySearchPos = partyAIdx + 2;
-          } else if (partyBIdx !== -1) {
-            partyPositions.push({ party: '乙方', index: partyBIdx });
-            partySearchPos = partyBIdx + 2;
-          }
-        }
-        
-        // 对于每个锚点匹配位置，找到最近的甲方/乙方关键词
-        for (const pos of positions) {
-          // 获取该位置之前最近的甲方/乙方
-          let nearestParty = '';
-          let nearestPartyDistance = Infinity;
-          
-          for (const pp of partyPositions) {
-            if (pp.index < pos) {
-              const distance = pos - pp.index;
-              if (distance < nearestPartyDistance) {
-                nearestPartyDistance = distance;
-                nearestParty = pp.party;
-              }
-            }
-          }
-          
-          // 如果最近的party匹配用户点击的位置
-          if (nearestParty === partyKeyword) {
-            return pos;
-          }
-        }
-      }
-      
-      // 策略2：使用nearestId特征匹配
-      if (context?.nearestId) {
-        for (const pos of positions) {
-          const extendedContext = html.substring(Math.max(0, pos - 500), Math.min(html.length, pos + anchorText.length + 500));
-          if (extendedContext.includes(context.nearestId)) {
-            return pos;
-          }
-        }
-      }
-      
-      // 策略3：检查锚点文本本身是否包含"甲方"或"乙方"
-      for (const pos of positions) {
-        const beforeContext = html.substring(Math.max(0, pos - 300), pos + anchorText.length);
-        if (anchorText.includes('甲方') && beforeContext.includes('甲方')) {
-          return pos;
-        }
-        if (anchorText.includes('乙方') && beforeContext.includes('乙方')) {
-          return pos;
-        }
-      }
-      
-      // 默认返回第一个匹配位置
-      return positions[0];
-    };
-    
-    // 为每个标记在对应位置渲染
-    // 按照创建时间排序（后创建的先渲染，避免位置偏移）
-    const sortedMarkers = [...currentDocumentMarkers].sort((a, b) => {
-      // 按ID中的时间戳倒序排列（后创建的先处理）
-      return b.id.localeCompare(a.id);
-    });
-    
-    sortedMarkers.forEach((marker) => {
-      const variable = marker.variableKey 
-        ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
-        : null;
-      
-      // 检查是否有对应的占位符（在下划线容器中）
-      const placeholderPattern = `<!--MARKER_PLACEHOLDER:${marker.id}-->`;
-      const placeholderPos = result.indexOf(placeholderPattern);
-      
-      let markerHtml: string;
-      if (marker.status === 'bound' && variable) {
-        // 已绑定标记 - 绿色实线
-        markerHtml = `<span class="variable-marker bound" data-marker-id="${marker.id}" data-variable-key="${marker.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
-      } else {
-        // 待绑定标记 - 橙色虚线
-        markerHtml = `<span class="variable-marker pending" data-marker-id="${marker.id}" style="background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; cursor: pointer; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px;">待绑定</span>`;
-      }
-      
-      if (placeholderPos !== -1) {
-        // 找到占位符，替换占位符为变量标记
-        result = result.slice(0, placeholderPos) + markerHtml + result.slice(placeholderPos + placeholderPattern.length);
-      } else {
-        // 没有占位符，使用原始的位置插入逻辑
-        const { beforeText, textOffset, clickContext } = marker.position;
-        const anchorPos = findBestMatchPosition(result, beforeText, clickContext);
-        
-        if (anchorPos !== -1) {
-          const insertPos = anchorPos + textOffset;
-          result = result.slice(0, insertPos) + markerHtml + result.slice(insertPos);
-        }
-      }
-    });
-    
-    return result;
-  }, [activeDocumentId, currentDocumentHtml, editedHtml, currentDocumentMarkers, selectedVariables]);
-
-  // ========== 保存模板 ==========
-  
-  const handleSave = async () => {
+  // 完成创建
+  const handleComplete = async () => {
     if (!templateId) {
       toast.error("请先上传文档");
       return;
@@ -1766,7 +468,7 @@ export default function NewTemplatePage() {
     
     setSaving(true);
     try {
-      // 构建附件列表（包含URL），并进行去重和排序
+      // 构建附件列表
       const rawAttachments = parseResult?.attachments?.length 
         ? parseResult.attachments.map(a => ({
             id: a.id,
@@ -1785,14 +487,9 @@ export default function NewTemplatePage() {
             order: 0,
           }));
       
-      // 去重（根据id）并按order排序
-      const attachmentsList = [...rawAttachments]
-        .filter((att, index, self) => 
-          self.findIndex(a => a.id === att.id) === index
-        )
-        .sort((a, b) => a.order - b.order);
+      const attachmentsList = dedupeAndSortAttachments(rawAttachments);
       
-      // 1. 更新基本信息并设置为已发布状态
+      // 更新模板
       const updateRes = await fetch("/api/contract-templates", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -1803,14 +500,14 @@ export default function NewTemplatePage() {
           type,
           base_id: baseId || null,
           is_default: isDefault,
-          status: 'published', // 发布时设置为已发布状态
-          attachments: attachmentsList, // 保存附件列表
+          status: 'published',
+          attachments: attachmentsList,
         }),
       });
       
       if (!updateRes.ok) throw new Error("更新基本信息失败");
       
-      // 2. 保存变量绑定
+      // 保存变量绑定
       if (selectedVariables.length > 0) {
         await fetch("/api/contract-templates/variables", {
           method: "POST",
@@ -1833,1792 +530,185 @@ export default function NewTemplatePage() {
     }
   };
   
-  // ========== 导出PDF功能 ==========
-  
-  // 打开附件选择对话框
-  const openAttachmentDialog = () => {
-    // 优先使用解析后的附件，否则使用已上传的附件
-    // 并进行去重（根据id）和排序（根据order）
-    const rawAttachments = parseResult?.attachments?.length 
-      ? parseResult.attachments 
-      : uploadedAttachments.map(att => ({
-          id: att.id,
-          name: att.name,
-          displayName: att.name.replace(/\.[^/.]+$/, ''),
-          url: att.url,
-          html: '',
-          styles: '',
-          text: '',
-          order: 0,
-        }));
-    
-    // 去重（根据id）并按order排序
-    const allParsedAttachments = [...rawAttachments]
-      .filter((att, index, self) => 
-        self.findIndex(a => a.id === att.id) === index
-      )
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    // 默认选中所有附件
-    const allAttachmentIds = allParsedAttachments.map(a => a.id);
-    setSelectedExportAttachments(allAttachmentIds);
-    setAttachmentDialogOpen(true);
-  };
-  
-  // 切换附件选择
-  const toggleExportAttachment = (attachmentId: string) => {
-    setSelectedExportAttachments(prev => 
-      prev.includes(attachmentId)
-        ? prev.filter(id => id !== attachmentId)
-        : [...prev, attachmentId]
-    );
-  };
-  
-  // 构建导出用的模板数据
-  const buildExportTemplateData = useCallback(() => {
-    const currentHtml = activeDocumentId === 'main' 
-      ? (editedHtml || parseResult?.html || '')
-      : parseResult?.attachments?.find(a => a.id === activeDocumentId)?.html || '';
-    
-    // 优先使用解析后的附件，否则使用已上传的附件
-    // 并进行去重（根据id）和排序（根据order）
-    const rawAttachments = parseResult?.attachments?.length 
-      ? parseResult.attachments 
-      : uploadedAttachments.map(att => ({
-          id: att.id,
-          name: att.name,
-          displayName: att.name.replace(/\.[^/.]+$/, ''),
-          url: att.url,
-          html: '',
-          styles: '',
-          text: '',
-          order: 0,
-        }));
-    
-    // 去重（根据id）并按order排序
-    const allParsedAttachments = [...rawAttachments]
-      .filter((att, index, self) => 
-        self.findIndex(a => a.id === att.id) === index
-      )
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    // 构建附件列表
-    const attachments = allParsedAttachments
-      .filter(att => selectedExportAttachments.includes(att.id))
-      .map(att => ({
-        id: att.id,
-        name: att.displayName || att.name,
-        description: '',
-        required: false,
-        order: att.order || 0,
-      }));
-    
-    return {
-      id: templateId || 'preview',
-      name: name || '未命名模板',
-      description: description,
-      type: type,
-      html: currentHtml,
-      styles: parseResult?.styles || '',
-      attachments: attachments,
-      styleConfig: {
-        pageSize: 'A4' as const,
-        orientation: 'portrait' as const,
-        margins: { top: 20, right: 25, bottom: 20, left: 25 },
-        font: { family: 'SimSun', size: 12, lineHeight: 1.5 },
-        titleFont: { family: 'SimHei', size: 18, weight: 'bold' },
-        colors: {
-          primary: '#000000',
-          secondary: '#666666',
-          text: '#333333',
-          border: '#cccccc',
-          headerBg: '#f5f5f5',
-        },
-        layout: {
-          showLogo: false,
-          logoPosition: 'left',
-          showPageNumber: true,
-          pageNumberPosition: 'center',
-          headerHeight: 0,
-          footerHeight: 0,
-        },
-        clauseStyle: {
-          numberingStyle: 'decimal',
-          indent: 20,
-          spacing: 10,
-        },
-      },
-      clauses: [],
-      isDefault: false,
-      isActive: true,
-    };
-  }, [templateId, name, description, type, activeDocumentId, editedHtml, parseResult, selectedExportAttachments, uploadedAttachments]);
-  
-  // 导出PDF（带附件选择）
-  const handleExportPDF = async () => {
-    setAttachmentDialogOpen(false);
-    setExporting(true);
-    
-    try {
-      toast.info('正在生成PDF...');
-      
-      // 使用统一的PDF导出库
-      const { exportContractTemplateToPdf } = await import('@/lib/pdf-export');
-      const templateData = buildExportTemplateData();
-      
-      await exportContractTemplateToPdf(templateData, {
-        includeAttachments: selectedExportAttachments.length > 0,
-        selectedAttachments: selectedExportAttachments,
-      });
-      
-      toast.success('PDF导出成功');
-    } catch (err) {
-      console.error('导出PDF失败:', err);
-      toast.error('导出失败');
-    } finally {
-      setExporting(false);
+  // 步骤导航
+  const handlePrev = () => {
+    if (currentStep > 1) {
+      handleSaveDraft(true);
+      setCurrentStep(currentStep - 1);
     }
   };
   
-  // 快速导出（不含附件选择）
-  const handleQuickExport = async () => {
-    setExporting(true);
-    
-    try {
-      toast.info('正在生成PDF...');
-      
-      const { exportContractTemplateToPdf } = await import('@/lib/pdf-export');
-      const templateData = buildExportTemplateData();
-      
-      await exportContractTemplateToPdf(templateData, {
-        includeAttachments: false,
-        selectedAttachments: [],
-      });
-      
-      toast.success('PDF导出成功');
-    } catch (err) {
-      console.error('导出PDF失败:', err);
-      toast.error('导出失败');
-    } finally {
-      setExporting(false);
+  const handleNext = () => {
+    if (currentStep === 1) {
+      handleUploadAndParse();
+    } else {
+      handleSaveDraft(true);
+      setCurrentStep(currentStep + 1);
     }
   };
   
-  // ========== 渲染步骤内容 ==========
-  
-  const renderStepContent = () => {
+  // 渲染当前步骤
+  const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return renderUploadStep();
+        return (
+          <UploadStep
+            mainFile={mainFile}
+            mainFileUrl={mainFileUrl}
+            mainFileName={mainFileName}
+            uploading={uploading}
+            parsing={parsing}
+            parseProgress={parseProgress}
+            attachments={attachments}
+            bases={bases}
+            draggedId={draggedId}
+            dragOverId={dragOverId}
+            onMainFileSelect={handleMainFileSelect}
+            onAttachmentsSelect={handleAttachmentsSelect}
+            onRemoveAttachment={removeAttachment}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
+            onNext={handleNext}
+          />
+        );
+      
       case 2:
-        return renderBindingStep();
+        return (
+          <BindVariablesStep
+            parseResult={parseResult}
+            editedHtml={editedHtml}
+            activeDocumentId={activeDocumentId}
+            markers={markers}
+            activeMarkerId={activeMarkerId}
+            showVariablePicker={showVariablePicker}
+            selectedVariables={selectedVariables}
+            zoom={zoom}
+            contentRef={contentRef}
+            onEditedHtmlChange={setEditedHtml}
+            onDocumentChange={setActiveDocumentId}
+            onZoomChange={setZoom}
+            onInsertMarker={insertMarker}
+            onBindVariable={handleBindVariable}
+            onRemoveMarker={handleRemoveMarker}
+            onChangeVariable={handleChangeVariable}
+            onSetActiveMarker={setActiveMarkerId}
+            onShowVariablePicker={setShowVariablePicker}
+            onAddCustomVariable={addCustomVariable}
+            onSyncEditedContent={syncEditedContent}
+            onBold={handleBold}
+            onItalic={handleItalic}
+            onUnderline={handleUnderline}
+            onStrikethrough={handleStrikethrough}
+            onAlign={handleAlign}
+            onOrderedList={handleOrderedList}
+            onUnorderedList={handleUnorderedList}
+            onIndent={handleIndent}
+            onOutdent={handleOutdent}
+            onSetFont={handleSetFont}
+            onSetFontSize={handleSetFontSize}
+            onSetLineHeight={handleSetLineHeight}
+            onApplyPreset={handleApplyPreset}
+            onAddUnderlineFill={handleAddUnderlineFill}
+            onInsertTable={handleInsertTable}
+            onDeleteRow={handleDeleteRow}
+            onDeleteColumn={handleDeleteColumn}
+            onPrint={handlePrint}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+          />
+        );
+      
       case 3:
-        return renderBasicInfoStep();
+        return (
+          <BasicInfoStep
+            name={name}
+            description={description}
+            type={type}
+            baseId={baseId}
+            isDefault={isDefault}
+            bases={bases}
+            loadingBases={loadingBases}
+            onNameChange={setName}
+            onDescriptionChange={setDescription}
+            onTypeChange={setType}
+            onBaseChange={setBaseId}
+            onDefaultChange={setIsDefault}
+          />
+        );
+      
       case 4:
-        return renderCompleteStep();
+        return (
+          <CompleteStep
+            name={name}
+            description={description}
+            type={type}
+            baseId={baseId}
+            bindings={bindings}
+            selectedVariables={selectedVariables}
+            parseResult={parseResult}
+            uploadedAttachments={uploadedAttachments}
+            bases={bases}
+            previewZoom={previewZoom}
+            editedHtml={editedHtml}
+            exporting={exporting}
+            attachmentDialogOpen={attachmentDialogOpen}
+            selectedExportAttachments={selectedExportAttachments}
+            onZoomChange={setPreviewZoom}
+            onQuickExport={() => handleQuickExport(templateId, name, description, type, activeDocumentId, editedHtml, parseResult)}
+            onOpenAttachmentDialog={() => openAttachmentDialog(parseResult, uploadedAttachments)}
+            onExportPDF={() => handleExportPDF(templateId, name, description, type, activeDocumentId, editedHtml, parseResult, selectedExportAttachments, uploadedAttachments)}
+            onAttachmentDialogChange={setAttachmentDialogOpen}
+            onToggleExportAttachment={toggleExportAttachment}
+          />
+        );
+      
       default:
         return null;
     }
   };
   
-  // 步骤1: 上传文档
-  const renderUploadStep = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>上传合同文档</CardTitle>
-          <CardDescription>仅支持 Word 文档（.doc 或 .docx 格式）</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div
-            className={cn(
-              "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-              (mainFile || parseResult?.fileUrl) 
-                ? "border-green-500 bg-green-50" 
-                : "border-muted-foreground/25 hover:border-amber-500 hover:bg-amber-50/50"
-            )}
-            onClick={() => mainFileInputRef.current?.click()}
-          >
-            <input
-              ref={mainFileInputRef}
-              type="file"
-              accept=".doc,.docx"
-              onChange={handleMainFileSelect}
-              className="hidden"
-            />
-            {mainFile ? (
-              <div className="flex items-center justify-center gap-3">
-                <FileText className="h-8 w-8 text-green-600" />
-                <div className="text-left">
-                  <p className="font-medium">{mainFile.name}</p>
-                  <p className="text-sm text-muted-foreground">{formatFileSize(mainFile.size)}</p>
-                </div>
-              </div>
-            ) : parseResult?.fileUrl ? (
-              <div className="flex items-center justify-center gap-3">
-                <FileText className="h-8 w-8 text-green-600" />
-                <div className="text-left">
-                  <p className="font-medium">{parseResult.fileName}</p>
-                  <p className="text-sm text-muted-foreground">已上传 · 点击可重新选择</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">点击上传合同文档</p>
-                <p className="text-sm text-muted-foreground">支持 .doc、.docx 格式</p>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>合同附件</CardTitle>
-              <CardDescription>附件将与主合同合并展示，支持绑定变量</CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => attachmentInputRef.current?.click()}>
-              <Plus className="h-4 w-4 mr-1" />
-              添加附件
-            </Button>
-            <input
-              ref={attachmentInputRef}
-              type="file"
-              accept=".doc,.docx"
-              multiple
-              onChange={handleAttachmentsSelect}
-              className="hidden"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {attachments.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
-              <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">点击"添加附件"上传附件文件</p>
-              <p className="text-xs mt-1">仅支持 Word 格式，将合并到主合同预览</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {attachments.map((att, index) => (
-                <div
-                  key={att.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, att.id)}
-                  onDragOver={(e) => handleDragOver(e, att.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, att.id)}
-                  onDragEnd={handleDragEnd}
-                  className={cn(
-                    "flex items-center gap-3 p-3 bg-muted/50 rounded-lg transition-all cursor-move",
-                    draggedId === att.id && "opacity-50 scale-[0.98]",
-                    dragOverId === att.id && "border-2 border-amber-500 bg-amber-50/50"
-                  )}
-                >
-                  {/* 拖拽手柄 */}
-                  <div className="text-muted-foreground hover:text-foreground transition-colors">
-                    <GripVertical className="h-5 w-5" />
-                  </div>
-                  
-                  {/* 序号 */}
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-medium shrink-0">
-                    {index + 1}
-                  </div>
-                  
-                  {/* 文件信息 */}
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <FileText className="h-4 w-4 text-blue-500 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{att.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
-                    </div>
-                  </div>
-                  
-                  {/* 删除按钮 */}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={(e) => { e.stopPropagation(); removeAttachment(att.id); }} 
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground text-center pt-2">拖拽附件可调整顺序</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {(uploading || parsing) && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{uploading ? "上传文件中..." : "正在解析文档..."}</span>
-              </div>
-              <Progress value={uploading ? 30 : 70} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-  
-  // 步骤2: 变量绑定（简化为单一编辑模式）
-  const renderBindingStep = () => {
-    if (!parseResult?.html) {
-      return (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <p>未检测到合同内容，请返回步骤1重新上传</p>
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    const pendingCount = currentDocumentMarkers.filter(m => m.status === 'pending').length;
-    const boundCount = currentDocumentMarkers.filter(m => m.status === 'bound').length;
-    
+  // 加载中
+  if (loadingDraft) {
     return (
-      <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 左侧：合同预览 */}
-        <Card className="lg:col-span-2 overflow-hidden flex flex-col">
-          <CardHeader className="py-3 border-b shrink-0">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">合同编辑</CardTitle>
-              <div className="flex items-center gap-3">
-                {/* 状态显示 */}
-                {currentDocumentMarkers.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    {pendingCount > 0 && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">
-                        {pendingCount} 待绑定
-                      </Badge>
-                    )}
-                    <Badge variant="secondary" className="bg-green-100 text-green-700">
-                      {boundCount} 已绑定
-                    </Badge>
-                  </div>
-                )}
-                
-                {/* 重置按钮 */}
-                {(editedHtml || currentDocumentMarkers.length > 0) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-muted-foreground"
-                    onClick={handleResetDocument}
-                  >
-                    <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                    重置
-                  </Button>
-                )}
-              </div>
-            </div>
-            
-            {/* 缩放和打印控制 */}
-            <div className="flex items-center gap-2 pt-2 border-t mt-2">
-              <span className="text-xs text-muted-foreground">缩放：</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={handleZoomOut}
-                disabled={zoom <= 50}
-                title="缩小"
-              >
-                <ZoomOut className="h-3.5 w-3.5" />
-              </Button>
-              <span className="text-xs font-medium w-12 text-center">{zoom}%</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={handleZoomIn}
-                disabled={zoom >= 150}
-                title="放大"
-              >
-                <ZoomIn className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleZoomReset}
-              >
-                重置
-              </Button>
-              <div className="flex-1" />
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7"
-                onClick={handlePrint}
-                title="打印文档"
-              >
-                <Printer className="h-3.5 w-3.5 mr-1" />
-                打印
-              </Button>
-            </div>
-            
-            {/* 编辑工具栏 */}
-            <div className="space-y-2 pt-2 border-t mt-2">
-              {/* 公文格式快捷设置 */}
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-xs text-muted-foreground mr-2">公文格式：</span>
-                <Select onValueChange={handleDocFormat}>
-                  <SelectTrigger className="h-7 w-28 text-xs">
-                    <SelectValue placeholder="选择格式" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="docTitle">公文标题</SelectItem>
-                    <SelectItem value="heading1">一级标题</SelectItem>
-                    <SelectItem value="heading2">二级标题</SelectItem>
-                    <SelectItem value="heading3">三级标题</SelectItem>
-                    <SelectItem value="body">正文(三号)</SelectItem>
-                    <SelectItem value="bodySmall">正文(小四)</SelectItem>
-                    <SelectItem value="signature">签章区</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* 格式化按钮组 */}
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-xs text-muted-foreground mr-2">格式：</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={handleBold}
-                  title="加粗 (Ctrl+B)"
-                >
-                  <Bold className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={handleItalic}
-                  title="斜体 (Ctrl+I)"
-                >
-                  <Italic className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={handleAddUnderline}
-                  title="下划线 (Ctrl+U)"
-                >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
-                    <line x1="4" y1="21" x2="20" y2="21" />
-                  </svg>
-                </Button>
-                <Select onValueChange={handleAddUnderlineFill}>
-                  <SelectTrigger className="h-7 w-28 text-xs" title="下划线填充（选中内容后使用）">
-                    <SelectValue placeholder="下划线填充" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="150px">短 (150px)</SelectItem>
-                    <SelectItem value="200px">中 (200px)</SelectItem>
-                    <SelectItem value="300px">长 (300px)</SelectItem>
-                    <SelectItem value="400px">较长 (400px)</SelectItem>
-                    <SelectItem value="500px">超长 (500px)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={handleStrikethrough}
-                  title="删除线"
-                >
-                  <Strikethrough className="h-3.5 w-3.5" />
-                </Button>
-                <div className="w-px h-5 bg-border mx-1" />
-                {/* 字体选择 */}
-                <Select onValueChange={handleFontFamily}>
-                  <SelectTrigger className="h-7 w-24 text-xs">
-                    <SelectValue placeholder="字体" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SimSun" style={{ fontFamily: 'SimSun, serif' }}>宋体</SelectItem>
-                    <SelectItem value="SimHei" style={{ fontFamily: 'SimHei, sans-serif' }}>黑体</SelectItem>
-                    <SelectItem value="KaiTi" style={{ fontFamily: 'KaiTi, serif' }}>楷体</SelectItem>
-                    <SelectItem value="FangSong" style={{ fontFamily: 'FangSong, serif' }}>仿宋</SelectItem>
-                    <SelectItem value="Microsoft YaHei" style={{ fontFamily: 'Microsoft YaHei, sans-serif' }}>微软雅黑</SelectItem>
-                    <SelectItem value="Arial" style={{ fontFamily: 'Arial, sans-serif' }}>Arial</SelectItem>
-                    <SelectItem value="Times New Roman" style={{ fontFamily: 'Times New Roman, serif' }}>Times New Roman</SelectItem>
-                  </SelectContent>
-                </Select>
-                {/* 字号选择 */}
-                <Select onValueChange={handleFontSize}>
-                  <SelectTrigger className="h-7 w-20 text-xs">
-                    <SelectValue placeholder="字号" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="12px" className="text-xs">12px</SelectItem>
-                    <SelectItem value="14px" className="text-sm">14px</SelectItem>
-                    <SelectItem value="16px" className="text-base">16px</SelectItem>
-                    <SelectItem value="18px" className="text-lg">18px</SelectItem>
-                    <SelectItem value="24px" className="text-xl">24px</SelectItem>
-                    <SelectItem value="32px" className="text-2xl">32px</SelectItem>
-                  </SelectContent>
-                </Select>
-                {/* 行间距选择 */}
-                <Select onValueChange={handleLineHeight}>
-                  <SelectTrigger className="h-7 w-22 text-xs">
-                    <SelectValue placeholder="行距" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0.5">0.5倍</SelectItem>
-                    <SelectItem value="1">单倍</SelectItem>
-                    <SelectItem value="1.5">1.5倍</SelectItem>
-                    <SelectItem value="1.8">1.8倍</SelectItem>
-                    <SelectItem value="2">双倍</SelectItem>
-                    <SelectItem value="2.5">2.5倍</SelectItem>
-                    <SelectItem value="3">三倍</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="w-px h-5 bg-border mx-1" />
-                {/* 标题快捷样式 */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 text-xs font-bold"
-                  onClick={() => handleHeadingStyle(1)}
-                  title="一级标题：居中+加粗+大号"
-                >
-                  H1
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 text-xs font-bold"
-                  onClick={() => handleHeadingStyle(2)}
-                  title="二级标题：居中+加粗+中号"
-                >
-                  H2
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 text-xs font-bold"
-                  onClick={() => handleHeadingStyle(3)}
-                  title="三级标题：居中+加粗+小号"
-                >
-                  H3
-                </Button>
-                </div>
-                
-                {/* 对齐和列表按钮组 */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-xs text-muted-foreground mr-2">段落：</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleAlign('left')}
-                    title="左对齐"
-                  >
-                    <AlignLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleAlign('center')}
-                    title="居中对齐"
-                  >
-                    <AlignCenter className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleAlign('right')}
-                    title="右对齐"
-                  >
-                    <AlignRight className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleAlign('justify')}
-                    title="两端对齐"
-                  >
-                    <AlignJustify className="h-3.5 w-3.5" />
-                  </Button>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleIndent(false)}
-                    title="减少缩进"
-                  >
-                    <IndentDecrease className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleIndent(true)}
-                    title="增加缩进"
-                  >
-                    <IndentIncrease className="h-3.5 w-3.5" />
-                  </Button>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleList(false)}
-                    title="无序列表"
-                  >
-                    <List className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleList(true)}
-                    title="有序列表"
-                  >
-                    <ListOrdered className="h-3.5 w-3.5" />
-                  </Button>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  {/* 插入表格 */}
-                  <Popover open={showTablePopover} onOpenChange={setShowTablePopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7"
-                        title="表格操作"
-                      >
-                        <Table className="h-3.5 w-3.5 mr-1" />
-                        表格
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-72" align="start">
-                      <div className="space-y-4">
-                        {/* 插入新表格 */}
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">插入新表格</div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1">
-                              <Label className="text-xs text-muted-foreground">行数</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={tableRows}
-                                onChange={(e) => setTableRows(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                                className="h-8 mt-1"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <Label className="text-xs text-muted-foreground">列数</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={tableCols}
-                                onChange={(e) => setTableCols(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                                className="h-8 mt-1"
-                              />
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            onClick={() => handleInsertTable(tableRows, tableCols)}
-                          >
-                            插入 {tableRows} 行 {tableCols} 列表格
-                          </Button>
-                        </div>
-                        
-                        <Separator />
-                        
-                        {/* 编辑表格 */}
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">编辑表格</div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleInsertRowAbove}
-                              className="justify-start"
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              上方插入行
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleInsertRowBelow}
-                              className="justify-start"
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              下方插入行
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleDeleteRow}
-                              className="justify-start text-amber-600 hover:text-amber-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" />
-                              删除当前行
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleDeleteColumn}
-                              className="justify-start text-amber-600 hover:text-amber-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" />
-                              删除当前列
-                            </Button>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleDeleteTable}
-                            className="w-full text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            删除整个表格
-                          </Button>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7"
-                    onClick={handleRemoveUnderline}
-                    title="清除格式"
-                  >
-                    <Minus className="h-3.5 w-3.5 mr-1" />
-                    清除格式
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          <CardContent className="p-0 flex flex-col flex-1 min-h-0">
-            {/* 文档内容区域 - 可滚动 */}
-            <div className="flex-1 overflow-auto bg-muted/30 p-6 flex justify-center min-h-0 relative">
-              {/* 注入 LibreOffice 生成的样式 */}
-              {parseResult?.styles && (
-                <style dangerouslySetInnerHTML={{ __html: parseResult.styles }} />
-              )}
-              <style jsx global>{`
-                /* 文档容器样式 - 只保留容器相关样式，不覆盖内容样式 */
-                .a4-paper {
-                  padding: 2.54cm 3.17cm;
-                  background: white;
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                  color: #000;
-                  box-sizing: border-box;
-                  max-width: 210mm;
-                  width: 100%;
-                }
-                
-                /* contentEditable 元素样式 */
-                .a4-paper[contenteditable="true"],
-                .a4-paper[contenteditable="true"]:focus {
-                  outline: none;
-                }
-                
-                /* 表格基础样式 - 仅在 LibreOffice 未定义时生效 */
-                .a4-paper table {
-                  border-collapse: collapse;
-                  width: 100%;
-                }
-                .a4-paper table td,
-                .a4-paper table th {
-                  vertical-align: top;
-                }
-                
-                /* 变量标记样式 */
-                .variable-marker {
-                  cursor: pointer;
-                  transition: all 0.15s ease;
-                  display: inline;
-                  position: relative;
-                }
-                .variable-marker.pending {
-                  background: rgba(251, 191, 36, 0.25) !important;
-                  border-bottom: 2px dashed #f59e0b;
-                  padding: 1px 2px;
-                }
-                .variable-marker.pending:hover {
-                  background: rgba(251, 191, 36, 0.4) !important;
-                }
-                .variable-marker.bound {
-                  background: rgba(34, 197, 94, 0.15) !important;
-                  border-bottom: 2px solid #22c55e;
-                  padding: 1px 2px;
-                }
-                .variable-marker.bound:hover {
-                  background: rgba(239, 68, 68, 0.15) !important;
-                  border-bottom-color: #ef4444;
-                }
-                
-                /* 下划线容器内的变量标记：移除自身下划线，使用容器的下划线 */
-                .underline-fill-container .variable-marker {
-                  border-bottom: none !important;
-                }
-                
-                /* 打印样式 */
-                @media print {
-                  body {
-                    background: white !important;
-                  }
-                  .a4-paper {
-                    box-shadow: none !important;
-                    margin: 0 !important;
-                    padding: 2.5cm 2.8cm !important;
-                  }
-                  @page {
-                    size: A4;
-                    margin: 0;
-                  }
-                }
-              `}</style>
-              {/* 缩放容器 */}
-              <div style={{
-                transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
-                transformOrigin: 'top center',
-              }}>
-                <div
-                  ref={contentRef}
-                  className="a4-paper"
-                  contentEditable={true}
-                  suppressContentEditableWarning
-                  onClick={handleContentClick}
-                  onBlur={syncEditedContent}
-                  onKeyDown={(e) => {
-                    // 处理快捷键
-                    if (e.ctrlKey || e.metaKey) {
-                      switch (e.key.toLowerCase()) {
-                        case 'b':
-                          e.preventDefault();
-                          handleBold();
-                          break;
-                        case 'i':
-                          e.preventDefault();
-                          handleItalic();
-                          break;
-                        case 'u':
-                          e.preventDefault();
-                          handleAddUnderline();
-                          break;
-                      }
-                    }
-                  }}
-                  dangerouslySetInnerHTML={{ __html: activeDocumentId === 'main' ? (editedHtml || currentDocumentHtml) : currentDocumentHtml || '' }}
-                />
-              </div>
-            </div>
-            
-            {/* 文档标签页 - 类似Excel的Sheet标签，固定在底部 */}
-            {parseResult && parseResult.attachments && parseResult.attachments.length > 0 && (() => {
-              // 去重（根据id）并按order排序
-              const uniqueAttachments = [...parseResult.attachments]
-                .filter((att, index, self) => 
-                  self.findIndex(a => a.id === att.id) === index
-                )
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-              
-              return uniqueAttachments.length > 0 && (
-                <div className="shrink-0 bg-white border-t flex items-center px-2 py-1.5 gap-1 min-h-[36px]">
-                  <button
-                    onClick={() => setActiveDocumentId('main')}
-                    className={cn(
-                      "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors",
-                      activeDocumentId === 'main'
-                        ? "bg-background border-primary text-primary font-medium"
-                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    <FileText className="h-3 w-3 inline-block mr-1" />
-                    主合同
-                  </button>
-                  {uniqueAttachments.map((att) => {
-                    const displayName = att.displayName || att.name?.replace(/\.[^/.]+$/, '') || '未命名附件';
-                    return (
-                      <button
-                        key={att.id}
-                        onClick={() => setActiveDocumentId(att.id)}
-                        className={cn(
-                          "px-3 py-1.5 text-xs rounded-t border-b-2 transition-colors max-w-32 truncate",
-                          activeDocumentId === att.id
-                            ? "bg-background border-primary text-primary font-medium"
-                            : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
-                        )}
-                        title={displayName}
-                      >
-                        <FileText className="h-3 w-3 inline-block mr-1" />
-                        {displayName}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
-
-        {/* 右侧：标记面板 */}
-        <Card className="overflow-hidden">
-          <CardHeader className="py-3 border-b">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">标记管理</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
-                  <Plus className="h-3 w-3 mr-1" />
-                  自定义变量
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
-            {/* 提示信息 */}
-            <div className="p-4 bg-muted/50 border-b">
-              <p className="text-xs text-muted-foreground">
-                <MousePointer className="h-3 w-3 inline-block mr-1" />
-                在文档中定位光标，点击下方按钮插入变量标记
-              </p>
-            </div>
-            
-            {/* 插入变量按钮 */}
-            <div className="p-3 border-b">
-              <Button 
-                className="w-full"
-                onMouseDown={(e) => {
-                  // 阻止按钮获取焦点，保持文档选区
-                  e.preventDefault();
-                }}
-                onClick={() => {
-                  const selection = window.getSelection();
-                  
-                  if (!selection || selection.rangeCount === 0) {
-                    toast.info("请先在文档中点击定位光标");
-                    contentRef.current?.focus();
-                    return;
-                  }
-                  
-                  const range = selection.getRangeAt(0);
-                  
-                  // 检查光标是否在文档内
-                  if (!contentRef.current?.contains(range.commonAncestorContainer)) {
-                    toast.info("请先在文档中点击定位光标");
-                    contentRef.current?.focus();
-                    return;
-                  }
-                  
-                  const markerId = `marker-${Date.now()}`;
-                  
-                  // 创建变量标记元素
-                  const markerSpan = document.createElement('span');
-                  markerSpan.className = 'variable-marker pending';
-                  markerSpan.dataset.markerId = markerId;
-                  markerSpan.style.cssText = 'background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; border: 2px dashed #f59e0b; font-weight: 500; display: inline-block; margin: 0 2px;';
-                  markerSpan.textContent = '【待绑定】';
-                  
-                  try {
-                    // 如果有选中文字，替换
-                    if (!selection.isCollapsed) {
-                      range.deleteContents();
-                    }
-                    
-                    // 在光标位置插入标记
-                    range.insertNode(markerSpan);
-                    
-                    // 将光标移到标记后面
-                    range.setStartAfter(markerSpan);
-                    range.setEndAfter(markerSpan);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                    
-                    syncEditedContent();
-                    
-                    // 添加标记记录
-                    const newMarker: Marker = {
-                      id: markerId,
-                      documentId: activeDocumentId, // 记录所属文档
-                      status: 'pending',
-                      position: {
-                        beforeText: '',
-                        afterText: '',
-                        textOffset: 0,
-                      },
-                      displayText: markerSpan.textContent || '变量',
-                    };
-                    setMarkers(prev => [...prev, newMarker]);
-                    setActiveMarkerId(markerId);
-                    setShowVariablePicker(true);
-                    toast.success("已插入变量标记，请选择变量");
-                  } catch {
-                    toast.error("插入标记失败，请重试");
-                  }
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                插入变量标记
-              </Button>
-            </div>
-            
-            {currentDocumentMarkers.length === 0 ? (
-              /* 无标记 */
-              <div className="p-6 text-center text-muted-foreground">
-                <MousePointer className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-medium">暂无变量标记</p>
-                <p className="text-xs mt-1">在文档中定位光标后点击"插入变量标记"</p>
-              </div>
-            ) : (
-              /* 有标记 */
-              <div className="p-3 space-y-2">
-                {currentDocumentMarkers.map((marker, index) => {
-                  const variable = marker.variableKey 
-                    ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
-                    : null;
-                  
-                  return (
-                    <div
-                      key={marker.id}
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg border transition-colors",
-                        marker.status === 'pending' 
-                          ? "bg-amber-50 border-amber-200" 
-                          : "bg-green-50 border-green-200"
-                      )}
-                    >
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-medium shrink-0">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          {marker.status === 'pending' ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
-                              待绑定
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
-                              已绑定
-                            </Badge>
-                          )}
-                          <span className="font-medium text-sm truncate">
-                            {variable ? variable.name : '未选择变量'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {variable ? variable.key : `位置: ...${marker.position.beforeText.slice(-10)}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => handleChangeVariable(marker.id)}
-                        >
-                          {marker.status === 'pending' ? '绑定' : '更换'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveMarker(marker.id)}
-                        >
-                          删除
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
-  };
-  
-  // 步骤3: 基本信息
-  const renderBasicInfoStep = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>模板基本信息</CardTitle>
-          <CardDescription>设置模板的名称、类型和描述</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>模板名称 *</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：园区入驻服务合同模板" />
-            </div>
-            <div className="space-y-2">
-              <Label>所属基地 *</Label>
-              <Select value={baseId} onValueChange={setBaseId} disabled={loadingBases}>
-                <SelectTrigger>
-                  <SelectValue placeholder={loadingBases ? "加载中..." : "选择基地"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {bases.map((base) => (
-                    <SelectItem key={base.id} value={base.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>{base.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>模板类型</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tenant">入驻合同</SelectItem>
-                  <SelectItem value="service">服务合同</SelectItem>
-                  <SelectItem value="lease">租赁合同</SelectItem>
-                  <SelectItem value="other">其他合同</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 flex items-end">
-              <div className="flex items-center gap-2">
-                <Switch checked={isDefault} onCheckedChange={setIsDefault} />
-                <Label className="font-normal">设为默认模板</Label>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>模板描述</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述该模板的用途和特点" rows={3} />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-  
-  // 步骤4: 完成
-  const renderCompleteStep = () => {
-    const selectedBase = bases.find(b => b.id === baseId);
-    // 优先使用解析后的附件，否则使用已上传的附件
-    // 并进行去重（根据id）和排序（根据order）
-    const rawAttachments = parseResult?.attachments?.length 
-      ? parseResult.attachments 
-      : uploadedAttachments.map(att => ({
-          id: att.id,
-          name: att.name,
-          displayName: att.name.replace(/\.[^/.]+$/, ''),
-          url: att.url,
-          html: '',
-          styles: '',
-          text: '',
-          order: 0,
-        }));
-    
-    // 去重（根据id）并按order排序
-    const allAttachments = [...rawAttachments]
-      .filter((att, index, self) => 
-        self.findIndex(a => a.id === att.id) === index
-      )
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    return (
-      <div className="space-y-6">
-        {/* 操作按钮区 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleQuickExport}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              快速导出PDF
-            </Button>
-            
-            {allAttachments.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={openAttachmentDialog}
-                disabled={exporting}
-              >
-                <Paperclip className="h-4 w-4 mr-2" />
-                导出（含附件）
-              </Button>
-            )}
-          </div>
-          
-          {/* 缩放控制 */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(Math.max(50, previewZoom - 10))}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground w-12 text-center">{previewZoom}%</span>
-            <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(Math.min(150, previewZoom + 10))}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(100)}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* 文档预览区域 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
-                  文档预览
-                </CardTitle>
-                <CardDescription>预览模板效果，导出PDF查看最终效果</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div 
-              className="overflow-auto border rounded-lg bg-muted/30 p-4"
-              style={{ maxHeight: '500px' }}
-            >
-              <div 
-                className="mx-auto bg-white shadow-lg"
-                style={{
-                  transform: previewZoom !== 100 ? `scale(${previewZoom / 100})` : undefined,
-                  transformOrigin: 'top center',
-                  width: '210mm',
-                  minHeight: '297mm',
-                  padding: '2.5cm 2.8cm',
-                }}
-              >
-                <div 
-                  className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: processedHtml || editedHtml || parseResult?.html || '<p class="text-muted-foreground">暂无内容</p>' 
-                  }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* 确认信息 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>确认并保存</CardTitle>
-            <CardDescription>请检查以下信息，确认无误后保存模板</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">模板名称</Label>
-                <p className="font-medium">{name || "未填写"}</p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">所属基地</Label>
-                <p className="font-medium flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  {selectedBase?.name || "未选择"}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">模板类型</Label>
-                <p className="font-medium">
-                  {type === "tenant" ? "入驻合同" : type === "service" ? "服务合同" : type === "lease" ? "租赁合同" : "其他合同"}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">变量绑定</Label>
-                <p className="font-medium">{bindings.length} 处</p>
-              </div>
-            </div>
-          
-            {bindings.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">已绑定变量</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {bindings.map((binding) => {
-                      const variable = [...selectedVariables, ...PresetVariables].find(v => v.key === binding.variableKey);
-                      if (!variable) return null;
-                      
-                      const isComputed = variable.type === 'computed';
-                      
-                      return (
-                        <Badge 
-                          key={binding.id} 
-                          variant="outline" 
-                          className={cn(
-                            "flex items-center gap-1",
-                            isComputed ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-green-50"
-                          )}
-                        >
-                          {variable.name}
-                          {isComputed && (
-                            <span className="text-[10px] bg-blue-100 px-1 rounded ml-1">
-                              自动计算
-                            </span>
-                          )}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* 计算型变量说明 */}
-                  {bindings.some(b => {
-                    const v = [...selectedVariables, ...PresetVariables].find(v => v.key === b.variableKey);
-                    return v?.type === 'computed';
-                  }) && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <p className="text-sm text-blue-700">
-                        <span className="font-medium">💡 计算型变量说明：</span>
-                        带有"自动计算"标记的变量会根据其依赖的变量值自动计算生成。例如"租赁年限"会根据"开始日期"和"结束日期"自动计算。
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-            
-            {/* 附件信息 */}
-            {allAttachments.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground flex items-center gap-2">
-                    <Paperclip className="h-4 w-4" />
-                    附件 ({allAttachments.length} 个)
-                  </Label>
-                  <div className="flex flex-wrap gap-2">
-                    {allAttachments.map((att) => (
-                      <Badge key={att.id} variant="outline" className="bg-muted/50">
-                        {att.displayName || att.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* 附件选择弹窗 */}
-        <Dialog open={attachmentDialogOpen} onOpenChange={setAttachmentDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5" />
-                选择导出附件
-              </DialogTitle>
-              <DialogDescription>
-                选择需要包含在PDF中的附件，导出时将作为合同附件列表
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              {allAttachments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Paperclip className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>该合同模板暂无附件</p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    {allAttachments.map((attachment) => {
-                      const isSelected = selectedExportAttachments.includes(attachment.id);
-                      return (
-                        <div
-                          key={attachment.id}
-                          className={cn(
-                            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                            isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                          )}
-                          onClick={() => toggleExportAttachment(attachment.id)}
-                        >
-                          <Checkbox
-                            id={attachment.id}
-                            checked={isSelected}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <label
-                              htmlFor={attachment.id}
-                              className="text-sm font-medium cursor-pointer"
-                            >
-                              {attachment.displayName || attachment.name}
-                            </label>
-                          </div>
-                          {isSelected && (
-                            <Check className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-4">
-                    已选择 {selectedExportAttachments.length} / {allAttachments.length} 个附件
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setAttachmentDialogOpen(false)}
-              >
-                取消
-              </Button>
-              <Button onClick={handleExportPDF} disabled={exporting}>
-                {exporting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                导出PDF
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  };
-  
-  // ========== 导航按钮 ==========
-  
-  const canGoNext = () => {
-    switch (currentStep) {
-      case 1:
-        // 需要已上传文件（有fileUrl）才能进入下一步
-        return parseResult?.fileUrl !== null;
-      case 2:
-      case 3:
-        return true;
-      case 4:
-        return false;
-      default:
-        return false;
-    }
-  };
-  
-  const handleNext = async () => {
-    if (currentStep === 1) {
-      // 如果还没有解析HTML，先执行解析
-      if (!parseResult?.html) {
-        await handleUploadAndParse();
-      } else {
-        // 已解析，直接进入下一步
-        await handleSaveDraft(true);
-        setCurrentStep(2);
-      }
-      return;
-    }
-    
-    // 自动保存草稿后再切换步骤
-    if (currentStep < 4) {
-      await handleSaveDraft(true); // true 表示静默保存（不显示成功提示）
-      setCurrentStep(currentStep + 1);
-    }
-  };
-  
-  const handlePrev = async () => {
-    // 自动保存草稿后再切换步骤
-    if (currentStep > 1) {
-      await handleSaveDraft(true); // true 表示静默保存（不显示成功提示）
-      setCurrentStep(currentStep - 1);
-    }
-  };
+  }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/base/contracts/templates")}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            返回
-          </Button>
-          <h1 className="text-2xl font-semibold">{templateId ? '编辑合同模板' : '新建合同模板'}</h1>
+        <div>
+          <h1 className="text-2xl font-bold">
+            {isDraft ? "编辑模板" : "新建合同模板"}
+          </h1>
+          <p className="text-muted-foreground">
+            创建可重复使用的合同模板，支持变量绑定
+          </p>
         </div>
       </div>
       
-      {/* 步骤指示器 */}
-      <div className="flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          {STEPS.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full transition-colors",
-                currentStep === step.id ? "bg-amber-600 text-white" : currentStep > step.id ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
-              )}>
-                <span className={cn(
-                  "flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium",
-                  currentStep === step.id ? "bg-white/20" : currentStep > step.id ? "bg-green-200" : "bg-muted-foreground/20"
-                )}>
-                  {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}
-                </span>
-                <span className="hidden sm:inline">{step.title}</span>
-              </div>
-              {index < STEPS.length - 1 && <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground" />}
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      <div className="min-h-[400px]">{renderStepContent()}</div>
+      {renderStep()}
       
       {/* 底部导航 */}
-      <div className="flex items-center justify-between pt-4 border-t">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handlePrev} disabled={currentStep === 1}>
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            上一步
-          </Button>
-          {isDraft && (
-            <Badge variant="outline" className="text-amber-600 border-amber-300">
-              草稿
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* 保存草稿按钮 - 所有步骤都显示 */}
-          <Button 
-            variant="outline" 
-            onClick={() => handleSaveDraft(false)} 
-            disabled={savingDraft}
-            className="text-amber-600 border-amber-300 hover:bg-amber-50"
-          >
-            {savingDraft ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
-            ) : (
-              <><SaveAll className="h-4 w-4 mr-2" />保存草稿</>
-            )}
-          </Button>
-          {currentStep === 4 ? (
-            <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
-              {saving ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
-              ) : (
-                <><Save className="h-4 w-4 mr-2" />保存模板</>
-              )}
-            </Button>
-          ) : (
-            <Button onClick={handleNext} disabled={!canGoNext() && currentStep !== 1} className="bg-amber-600 hover:bg-amber-700">
-              {currentStep === 1 && !parseResult ? (
-                uploading || parsing ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{uploading ? "上传中..." : "解析中..."}</>
-                ) : (
-                  <><Upload className="h-4 w-4 mr-2" />上传并解析</>
-                )
-              ) : (
-                <><span>下一步</span><ChevronRight className="h-4 w-4 ml-1" /></>
-              )}
-            </Button>
-          )}
-        </div>
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <StepNavigation
+          currentStep={currentStep}
+          saving={saving}
+          savingDraft={savingDraft}
+          canGoNext={currentStep === 1 ? !!(mainFile || mainFileUrl) : true}
+          isLastStep={currentStep === 4}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onSaveDraft={() => handleSaveDraft(false)}
+          onComplete={handleComplete}
+        />
       </div>
-
-      {/* 自定义变量弹窗 */}
-      {showAddDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={(e) => e.target === e.currentTarget && setShowAddDialog(false)}>
-          <Card className="w-[400px]" onClick={(e) => e.stopPropagation()}>
-            <CardHeader>
-              <CardTitle>添加自定义变量</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>变量名称 *</Label>
-                <Input
-                  value={newVariable.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setNewVariable({
-                      ...newVariable,
-                      name,
-                    });
-                  }}
-                  placeholder="如：项目负责人"
-                />
-              </div>
-              <div>
-                <Label>变量标识 * <span className="text-xs text-muted-foreground font-normal">（仅限英文、数字、下划线）</span></Label>
-                <Input
-                  value={newVariable.key}
-                  onChange={(e) => {
-                    // 只允许英文、数字、下划线
-                    const value = e.target.value.replace(/[^a-z0-9_A-Z]/g, '');
-                    setNewVariable({ ...newVariable, key: value });
-                  }}
-                  placeholder="如：project_manager"
-                />
-                <p className="text-xs text-muted-foreground mt-1">建议使用英文命名，如：project_manager、contact_person</p>
-              </div>
-              <div>
-                <Label>变量类型</Label>
-                <Select value={newVariable.type} onValueChange={(v) => setNewVariable({ ...newVariable, type: v as VariableType })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="z-[70]">
-                    <SelectItem value="text">文本</SelectItem>
-                    <SelectItem value="number">数字</SelectItem>
-                    <SelectItem value="date">日期</SelectItem>
-                    <SelectItem value="money">金额</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-            <div className="flex justify-end gap-2 p-4 border-t">
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>取消</Button>
-              <Button onClick={handleAddCustomVariable} disabled={!newVariable.name || !newVariable.key}>添加</Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* 变量选择弹窗 */}
-      {showVariablePicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.target === e.currentTarget && setShowVariablePicker(false)}>
-          <Card className="w-[600px] max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="pb-3">
-              <CardTitle>选择变量</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                选择要绑定的变量，或点击取消删除此标记
-              </p>
-            </CardHeader>
-            <CardContent className="p-0 overflow-hidden">
-              {/* 搜索和分类 */}
-              <div className="p-4 border-b space-y-3">
-                <Input
-                  placeholder="搜索变量..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <div className="flex gap-2 flex-wrap">
-                  <Button 
-                    variant={activeCategory === 'all' ? 'default' : 'outline'} 
-                    size="sm" 
-                    onClick={() => setActiveCategory('all')}
-                  >
-                    全部
-                  </Button>
-                  {(['custom', 'enterprise', 'contract', 'location', 'date'] as VariableCategory[]).map((cat) => (
-                    <Button 
-                      key={cat} 
-                      variant={activeCategory === cat ? 'default' : 'outline'} 
-                      size="sm" 
-                      onClick={() => setActiveCategory(cat)}
-                    >
-                      {VariableCategoryLabels[cat]}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* 变量列表 */}
-              <div className="overflow-auto max-h-[400px]">
-                <div className="grid grid-cols-2 gap-2 p-4">
-                  {filteredVariables.map((variable) => {
-                    const bound = isVariableBound(variable.key);
-                    const isComputed = variable.type === 'computed';
-                    return (
-                      <Button
-                        key={variable.id || variable.key}
-                        variant={bound ? "secondary" : "outline"}
-                        className={cn(
-                          "justify-start h-auto py-3",
-                          bound && "bg-green-50 border-green-200",
-                          isComputed && "border-blue-200 bg-blue-50/30"
-                        )}
-                        onClick={() => handleBindVariable(variable)}
-                      >
-                        <div className="flex items-center gap-2">
-                          {bound ? (
-                            <Check className="h-4 w-4 text-green-600 shrink-0" />
-                          ) : (
-                            <Plus className="h-4 w-4 shrink-0" />
-                          )}
-                        </div>
-                        <div className="text-left flex-1 min-w-0">
-                          <div className="font-medium flex items-center gap-1">
-                            <span className="truncate">{variable.name}</span>
-                            {isComputed && (
-                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded shrink-0">
-                                自动
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {isComputed && variable.computed ? (
-                              <span className="text-blue-600">
-                                依赖: {variable.computed.dependsOn.map(k => {
-                                  const depVar = PresetVariables.find(v => v.key === k);
-                                  return depVar?.name || k;
-                                }).join('、')}
-                              </span>
-                            ) : (
-                              VariableTypeLabels[variable.type]
-                            )}
-                            {bound && " · 已绑定"}
-                          </div>
-                        </div>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-            <div className="flex justify-between p-4 border-t">
-              <Button 
-                variant="ghost" 
-                onClick={() => setShowAddDialog(true)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                自定义变量
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowVariablePicker(false);
-                  // 如果是待绑定状态，删除标记
-                  if (activeMarkerId) {
-                    const marker = markers.find(m => m.id === activeMarkerId);
-                    if (marker?.status === 'pending') {
-                      handleRemoveMarker(activeMarkerId);
-                    }
-                  }
-                  setActiveMarkerId(null);
-                }}
-              >
-                取消
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
