@@ -233,6 +233,7 @@ export default function NewTemplatePage() {
             if (draftData.markers && Array.isArray(draftData.markers)) {
               setMarkers(draftData.markers.map((m: any) => ({
                 id: m.id,
+                documentId: m.documentId || 'main', // 兼容旧数据，默认为主文档
                 variableKey: m.variableKey,
                 status: m.status,
                 position: m.position,
@@ -681,6 +682,7 @@ export default function NewTemplatePage() {
   // 标记类型：基于用户点击位置
   interface Marker {
     id: string;
+    documentId: string; // 'main' 或附件ID，标记所属文档
     status: 'pending' | 'bound';
     variableKey?: string;
     // 位置信息：用于在文档中定位
@@ -839,9 +841,24 @@ export default function NewTemplatePage() {
   // 同步编辑后的HTML
   const syncEditedContent = useCallback(() => {
     if (contentRef.current) {
-      setEditedHtml(contentRef.current.innerHTML);
+      if (activeDocumentId === 'main') {
+        setEditedHtml(contentRef.current.innerHTML);
+      } else {
+        // 更新附件的 HTML
+        setParseResult(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            attachments: (prev.attachments || []).map(att => 
+              att.id === activeDocumentId 
+                ? { ...att, html: contentRef.current!.innerHTML }
+                : att
+            ),
+          };
+        });
+      }
     }
-  }, []);
+  }, [activeDocumentId]);
   
   // 重置文档到原始状态
   const handleResetDocument = () => {
@@ -1291,15 +1308,18 @@ export default function NewTemplatePage() {
     return attachment?.html || '';
   }, [activeDocumentId, parseResult]);
   
-  // 生成处理后的HTML - 在用户点击位置渲染标记（仅主文档）
+  // 当前文档的标记
+  const currentDocumentMarkers = useMemo(() => {
+    return markers.filter(m => m.documentId === activeDocumentId);
+  }, [markers, activeDocumentId]);
+  
+  // 生成处理后的HTML - 在用户点击位置渲染标记
   const processedHtml = useMemo(() => {
-    // 非主文档直接返回原HTML
-    if (activeDocumentId !== 'main') {
-      return currentDocumentHtml;
-    }
-    
     // 主文档：优先使用编辑后的HTML，否则使用原始HTML
-    const baseHtml = editedHtml || currentDocumentHtml;
+    // 附件：直接使用原始HTML
+    const baseHtml = activeDocumentId === 'main' 
+      ? (editedHtml || currentDocumentHtml)
+      : currentDocumentHtml;
     if (!baseHtml) return '';
     
     let result = baseHtml;
@@ -1403,7 +1423,7 @@ export default function NewTemplatePage() {
     
     // 为每个标记在对应位置渲染
     // 按照创建时间排序（后创建的先渲染，避免位置偏移）
-    const sortedMarkers = [...markers].sort((a, b) => {
+    const sortedMarkers = [...currentDocumentMarkers].sort((a, b) => {
       // 按ID中的时间戳倒序排列（后创建的先处理）
       return b.id.localeCompare(a.id);
     });
@@ -1436,7 +1456,7 @@ export default function NewTemplatePage() {
     });
     
     return result;
-  }, [activeDocumentId, currentDocumentHtml, editedHtml, markers, selectedVariables]);
+  }, [activeDocumentId, currentDocumentHtml, editedHtml, currentDocumentMarkers, selectedVariables]);
   
   // 优化排版功能
   const handleOptimizeLayout = useCallback(async () => {
@@ -1715,8 +1735,8 @@ export default function NewTemplatePage() {
       );
     }
     
-    const pendingCount = markers.filter(m => m.status === 'pending').length;
-    const boundCount = markers.filter(m => m.status === 'bound').length;
+    const pendingCount = currentDocumentMarkers.filter(m => m.status === 'pending').length;
+    const boundCount = currentDocumentMarkers.filter(m => m.status === 'bound').length;
     
     return (
       <div className="h-[calc(100vh-280px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1727,7 +1747,7 @@ export default function NewTemplatePage() {
               <CardTitle className="text-sm">合同编辑</CardTitle>
               <div className="flex items-center gap-3">
                 {/* 状态显示 */}
-                {markers.length > 0 && (
+                {currentDocumentMarkers.length > 0 && (
                   <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
                       <Badge variant="outline" className="text-amber-600 border-amber-300">
@@ -1741,7 +1761,7 @@ export default function NewTemplatePage() {
                 )}
                 
                 {/* 重置按钮 */}
-                {(editedHtml || markers.length > 0) && (
+                {(editedHtml || currentDocumentMarkers.length > 0) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -2177,7 +2197,7 @@ export default function NewTemplatePage() {
                       }
                     }
                   }}
-                  dangerouslySetInnerHTML={{ __html: editedHtml || currentDocumentHtml || '' }}
+                  dangerouslySetInnerHTML={{ __html: activeDocumentId === 'main' ? (editedHtml || currentDocumentHtml) : currentDocumentHtml || '' }}
                 />
               </div>
             </div>
@@ -2298,6 +2318,7 @@ export default function NewTemplatePage() {
                     // 添加标记记录
                     const newMarker: Marker = {
                       id: markerId,
+                      documentId: activeDocumentId, // 记录所属文档
                       status: 'pending',
                       position: {
                         beforeText: '',
@@ -2320,7 +2341,7 @@ export default function NewTemplatePage() {
               </Button>
             </div>
             
-            {markers.length === 0 ? (
+            {currentDocumentMarkers.length === 0 ? (
               /* 无标记 */
               <div className="p-6 text-center text-muted-foreground">
                 <MousePointer className="h-8 w-8 mx-auto mb-3 opacity-50" />
@@ -2330,7 +2351,7 @@ export default function NewTemplatePage() {
             ) : (
               /* 有标记 */
               <div className="p-3 space-y-2">
-                {markers.map((marker, index) => {
+                {currentDocumentMarkers.map((marker, index) => {
                   const variable = marker.variableKey 
                     ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
                     : null;
