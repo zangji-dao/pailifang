@@ -980,6 +980,27 @@ export default function NewTemplatePage() {
     toast.success(`已应用${labels[level]}样式`);
   }, [syncEditedContent]);
   
+  // 编辑功能：字体选择
+  const handleFontFamily = useCallback((fontFamily: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast.info("请先选中要调整的文字");
+      return;
+    }
+    document.execCommand('fontName', false, fontFamily);
+    syncEditedContent();
+    const fontNames: Record<string, string> = {
+      'SimSun': '宋体',
+      'SimHei': '黑体',
+      'KaiTi': '楷体',
+      'FangSong': '仿宋',
+      'Microsoft YaHei': '微软雅黑',
+      'Arial': 'Arial',
+      'Times New Roman': 'Times New Roman',
+    };
+    toast.success(`字体已调整为 ${fontNames[fontFamily] || fontFamily}`);
+  }, [syncEditedContent]);
+  
   // 编辑功能：列表
   const handleList = useCallback((ordered: boolean) => {
     document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false);
@@ -1857,6 +1878,22 @@ export default function NewTemplatePage() {
                   <Strikethrough className="h-3.5 w-3.5" />
                 </Button>
                 <div className="w-px h-5 bg-border mx-1" />
+                {/* 字体选择 */}
+                <Select onValueChange={handleFontFamily}>
+                  <SelectTrigger className="h-7 w-24 text-xs">
+                    <SelectValue placeholder="字体" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SimSun" style={{ fontFamily: 'SimSun, serif' }}>宋体</SelectItem>
+                    <SelectItem value="SimHei" style={{ fontFamily: 'SimHei, sans-serif' }}>黑体</SelectItem>
+                    <SelectItem value="KaiTi" style={{ fontFamily: 'KaiTi, serif' }}>楷体</SelectItem>
+                    <SelectItem value="FangSong" style={{ fontFamily: 'FangSong, serif' }}>仿宋</SelectItem>
+                    <SelectItem value="Microsoft YaHei" style={{ fontFamily: 'Microsoft YaHei, sans-serif' }}>微软雅黑</SelectItem>
+                    <SelectItem value="Arial" style={{ fontFamily: 'Arial, sans-serif' }}>Arial</SelectItem>
+                    <SelectItem value="Times New Roman" style={{ fontFamily: 'Times New Roman, serif' }}>Times New Roman</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* 字号选择 */}
                 <Select onValueChange={handleFontSize}>
                   <SelectTrigger className="h-7 w-20 text-xs">
                     <SelectValue placeholder="字号" />
