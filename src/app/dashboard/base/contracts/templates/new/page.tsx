@@ -464,6 +464,12 @@ export default function NewTemplatePage() {
       beforeText: string;   // 标记前面的文字（用于定位）
       afterText: string;    // 标记后面的文字（用于定位）
       textOffset: number;   // 在原文中的偏移量
+      // 额外的定位信息，用于处理锚点文本不唯一的情况
+      clickContext?: {
+        parentTagName: string;
+        parentClass: string;
+        nearestId: string;
+      };
     };
     displayText?: string;   // 显示的文字（如"待绑定"或变量名）
   }
@@ -761,12 +767,12 @@ export default function NewTemplatePage() {
       }
     }
     
-    // 获取更长的上下文（前后各 50 字符）作为定位锚点
-    const contextLength = 50;
+    // 获取更长的上下文（前后各 100 字符）作为定位锚点，增加唯一性
+    const contextLength = 100;
     const contextStart = Math.max(0, totalOffset - contextLength);
     const contextEnd = Math.min(fullText.length, totalOffset + contextLength);
     
-    // 获取锚点文本：包含更多上下文以确唯一性
+    // 获取锚点文本：包含更多上下文以确保唯一性
     const anchorText = fullText.substring(contextStart, contextEnd);
     const insertOffset = totalOffset - contextStart; // 在锚点中的插入位置
     
@@ -778,6 +784,13 @@ export default function NewTemplatePage() {
         beforeText: anchorText,
         afterText: '', // 不再使用 afterText
         textOffset: insertOffset,
+        // 添加额外的定位信息，用于更精确匹配
+        clickContext: {
+          parentTagName: parentElement?.tagName || '',
+          parentClass: parentElement?.className || '',
+          // 尝试获取最近的有特征的父元素（如带id或特定class的元素）
+          nearestId: findNearestId(parentElement),
+        },
       },
     };
     
@@ -785,6 +798,31 @@ export default function NewTemplatePage() {
     setActiveMarkerId(newMarker.id);
     setShowVariablePicker(true);
   }, [editMode]);
+  
+  // 辅助函数：查找最近的有ID的父元素
+  const findNearestId = (element: HTMLElement | null): string => {
+    let current = element;
+    let depth = 0;
+    const maxDepth = 10;
+    
+    while (current && depth < maxDepth) {
+      if (current.id) {
+        return current.id;
+      }
+      // 也检查特定的class，如甲方、乙方区域
+      if (current.className && (
+        current.className.includes('甲方') || 
+        current.className.includes('乙方') ||
+        current.className.includes('party-a') ||
+        current.className.includes('party-b')
+      )) {
+        return current.className;
+      }
+      current = current.parentElement;
+      depth++;
+    }
+    return '';
+  };
   
   // 为标记绑定变量
   const handleBindVariable = (variable: TemplateVariable) => {
@@ -882,15 +920,63 @@ export default function NewTemplatePage() {
     // 清理所有现有的标记元素，避免重复
     result = result.replace(/<span class="variable-marker[^"]*"[^>]*>.*?<\/span>/g, '');
     
+    // 辅助函数：查找最佳匹配位置
+    const findBestMatchPosition = (html: string, anchorText: string, context?: Marker['position']['clickContext']): number => {
+      // 如果锚点文本为空，返回-1
+      if (!anchorText) return -1;
+      
+      // 查找所有匹配位置
+      const positions: number[] = [];
+      let searchPos = 0;
+      while (true) {
+        const pos = html.indexOf(anchorText, searchPos);
+        if (pos === -1) break;
+        positions.push(pos);
+        searchPos = pos + 1;
+      }
+      
+      // 如果只有一个匹配，直接返回
+      if (positions.length === 1) return positions[0];
+      
+      // 如果没有匹配，返回-1
+      if (positions.length === 0) return -1;
+      
+      // 多个匹配时，根据上下文选择最佳位置
+      // 策略：查找锚点文本周围是否有特征词（如"甲方"、"乙方"）
+      if (context?.nearestId) {
+        // 如果有最近的ID或class特征，尝试匹配
+        for (const pos of positions) {
+          // 获取匹配位置前后更大的上下文
+          const extendedContext = html.substring(Math.max(0, pos - 500), Math.min(html.length, pos + anchorText.length + 500));
+          if (extendedContext.includes(context.nearestId)) {
+            return pos;
+          }
+        }
+      }
+      
+      // 如果锚点文本本身包含"甲方"或"乙方"等特征词，可以用来确定位置
+      // 检查锚点文本前面是否有"甲方"或"乙方"等关键词
+      for (const pos of positions) {
+        // 获取匹配位置之前的上下文
+        const beforeContext = html.substring(Math.max(0, pos - 300), pos + anchorText.length);
+        // 如果锚点文本中包含"甲方"，且该位置附近也有"甲方"，则匹配
+        if (anchorText.includes('甲方') && beforeContext.includes('甲方')) {
+          return pos;
+        }
+        if (anchorText.includes('乙方') && beforeContext.includes('乙方')) {
+          return pos;
+        }
+      }
+      
+      // 默认返回第一个匹配位置
+      return positions[0];
+    };
+    
     // 为每个标记在对应位置渲染
-    // 按照在锚点中的位置倒序排列，从后往前插入，避免位置偏移
+    // 按照创建时间排序（后创建的先渲染，避免位置偏移）
     const sortedMarkers = [...markers].sort((a, b) => {
-      // 根据 anchorText 在原文中的位置倒序
-      const aIndex = result.indexOf(a.position.beforeText);
-      const bIndex = result.indexOf(b.position.beforeText);
-      if (aIndex !== bIndex) return bIndex - aIndex;
-      // 如果锚点位置相同，按偏移量倒序
-      return b.position.textOffset - a.position.textOffset;
+      // 按ID中的时间戳倒序排列（后创建的先处理）
+      return b.id.localeCompare(a.id);
     });
     
     sortedMarkers.forEach((marker) => {
@@ -898,10 +984,10 @@ export default function NewTemplatePage() {
         ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
         : null;
       
-      const { beforeText, textOffset } = marker.position;
+      const { beforeText, textOffset, clickContext } = marker.position;
       
-      // 找到锚点文本在 HTML 中的位置
-      const anchorPos = result.indexOf(beforeText);
+      // 使用改进的查找函数找到最佳匹配位置
+      const anchorPos = findBestMatchPosition(result, beforeText, clickContext);
       
       if (anchorPos !== -1) {
         // 计算实际插入位置
