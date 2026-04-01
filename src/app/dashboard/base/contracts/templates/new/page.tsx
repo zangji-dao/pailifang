@@ -791,6 +791,14 @@ export default function NewTemplatePage() {
       setSelectedVariables(prev => [...prev, variable]);
     }
     
+    // 更新 DOM 中标记的显示
+    const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`);
+    if (markerEl) {
+      markerEl.className = 'variable-marker bound';
+      markerEl.textContent = `{{${variable.name}}}`;
+      syncEditedContent();
+    }
+    
     setShowVariablePicker(false);
     setActiveMarkerId(null);
     toast.success(`已绑定: ${variable.name}`);
@@ -798,6 +806,13 @@ export default function NewTemplatePage() {
   
   // 删除标记
   const handleRemoveMarker = (markerId: string) => {
+    // 从 DOM 中删除标记元素
+    const markerEl = contentRef.current?.querySelector(`[data-marker-id="${markerId}"]`);
+    if (markerEl) {
+      markerEl.remove();
+      syncEditedContent();
+    }
+    
     setMarkers(prev => prev.filter(m => m.id !== markerId));
     toast.success("已删除标记");
   };
@@ -831,6 +846,15 @@ export default function NewTemplatePage() {
           ? { ...m, status: 'bound', variableKey: customVar.key }
           : m
       ));
+      
+      // 更新 DOM 中标记的显示
+      const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`);
+      if (markerEl) {
+        markerEl.className = 'variable-marker bound';
+        markerEl.textContent = `{{${customVar.name}}}`;
+        syncEditedContent();
+      }
+      
       setShowVariablePicker(false);
       setActiveMarkerId(null);
       toast.success(`已绑定: ${customVar.name}`);
@@ -1680,7 +1704,7 @@ export default function NewTemplatePage() {
                       }
                     }
                   }}
-                  dangerouslySetInnerHTML={{ __html: processedHtml }}
+                  dangerouslySetInnerHTML={{ __html: editedHtml || currentDocumentHtml || '' }}
                 />
               </div>
             </div>
