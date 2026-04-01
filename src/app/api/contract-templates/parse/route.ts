@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ParseResult, ParsedPage } from '@/types/contract-template';
-import { LLMClient, Config } from 'coze-coding-dev-sdk';
+import { execSync } from 'child_process';
+import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
 
 // 强制使用Node.js运行时
 export const runtime = 'nodejs';
@@ -15,12 +17,70 @@ interface AttachmentInfo {
 }
 
 /**
- * 简单HTML后处理 - 保留原始样式，添加打印约束
+ * 使用 LibreOffice 转换 Word 文档为 HTML
+ * 样式保留度比 mammoth 高很多
+ */
+function convertWithLibreOffice(buffer: Buffer, fileName: string): string {
+  // 创建临时目录
+  const tmpDir = join('/tmp', `libreoffice-${Date.now()}`);
+  mkdirSync(tmpDir, { recursive: true });
+  
+  try {
+    // 保存输入文件
+    const inputFile = join(tmpDir, fileName);
+    writeFileSync(inputFile, buffer);
+    
+    // 调用 LibreOffice 转换
+    const cmd = `libreoffice --headless --convert-to html --outdir "${tmpDir}" "${inputFile}"`;
+    execSync(cmd, { timeout: 30000 }); // 30秒超时
+    
+    // 读取生成的 HTML 文件
+    const htmlFileName = fileName.replace(/\.[^/.]+$/, '.html');
+    const htmlFile = join(tmpDir, htmlFileName);
+    
+    const html = readFileSync(htmlFile, 'utf-8');
+    
+    return html;
+  } finally {
+    // 清理临时目录
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch (e) {
+      console.error('清理临时目录失败:', e);
+    }
+  }
+}
+
+/**
+ * 提取 HTML 中的纯文本
+ */
+function extractTextFromHtml(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // 移除样式
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // 移除脚本
+    .replace(/<[^>]+>/g, ' ') // 移除标签
+    .replace(/\s+/g, ' ') // 合并空白
+    .trim();
+}
+
+/**
+ * HTML后处理 - 添加打印约束和文档样式
  */
 function postProcessHtml(html: string): string {
-  // 添加打印样式，在打印时应用A4约束
-  const printStyles = `
+  // 添加打印样式和文档基础样式
+  const styles = `
     <style>
+      /* 文档基础样式 */
+      body {
+        font-family: "Times New Roman", "宋体", SimSun, serif;
+        font-size: 12pt;
+        line-height: 1.5;
+        color: #000;
+        margin: 0;
+        padding: 0;
+      }
+      
+      /* 打印样式 */
       @media print {
         body {
           background: white !important;
@@ -38,13 +98,16 @@ function postProcessHtml(html: string): string {
     </style>
   `;
   
-  return html
-    // 清理空段落
-    .replace(/<p[^>]*>\s*<\/p>/gi, '')
-    // 确保表格有基本样式（但不覆盖原有边框）
-    .replace(/<table/gi, '<table style="border-collapse: collapse; width: 100%; margin: 8pt 0;"')
-    .replace(/<td/gi, '<td style="padding: 4pt 6pt; vertical-align: top;"')
-    .replace(/<th/gi, '<th style="padding: 4pt 6pt; font-weight bold;"');
+  // 在 </head> 或 <body> 前插入样式
+  if (html.includes('</head>')) {
+    html = html.replace('</head>', `${styles}</head>`);
+  } else if (html.includes('<body')) {
+    html = html.replace('<body', `${styles}<body`);
+  } else {
+    html = styles + html;
+  }
+  
+  return html;
 }
 
 /**
@@ -94,14 +157,11 @@ export async function POST(request: NextRequest) {
       const mainArrayBuffer = await mainResponse.arrayBuffer();
       const mainBuffer = Buffer.from(mainArrayBuffer);
       
-      // 2. 使用mammoth转换为HTML（简单转换，用于编辑绑定变量）
-      const mammoth = await import('mammoth');
-      const textResult = await mammoth.extractRawText({ buffer: mainBuffer });
-      const htmlResult = await mammoth.convertToHtml({ buffer: mainBuffer });
-      const fullText = textResult.value;
-      let html = htmlResult.value;
+      // 2. 使用 LibreOffice 转换为 HTML（样式保留度高）
+      let html = convertWithLibreOffice(mainBuffer, fileName);
+      const fullText = extractTextFromHtml(html);
       
-      // 简单后处理
+      // 后处理：添加打印样式
       html = postProcessHtml(html);
       
       // 3. 处理附件
@@ -115,15 +175,17 @@ export async function POST(request: NextRequest) {
           
           const attArrayBuffer = await attResponse.arrayBuffer();
           const attBuffer = Buffer.from(attArrayBuffer);
-          const attTextResult = await mammoth.extractRawText({ buffer: attBuffer });
-          const attHtmlResult = await mammoth.convertToHtml({ buffer: attBuffer });
+          
+          // 使用 LibreOffice 转换附件
+          const attHtml = convertWithLibreOffice(attBuffer, attachment.name);
+          const attText = extractTextFromHtml(attHtml);
           
           attachmentResults.push({
             id: `att-${i}`,
             name: attachment.name,
             url: attachment.url,
-            html: postProcessHtml(attHtmlResult.value),
-            text: attTextResult.value,
+            html: postProcessHtml(attHtml),
+            text: attText,
           });
         } catch (attError) {
           console.error(`解析附件 ${attachment.name} 失败:`, attError);
