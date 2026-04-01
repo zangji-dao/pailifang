@@ -1824,8 +1824,22 @@ export default function NewTemplatePage() {
   
   // 打开附件选择对话框
   const openAttachmentDialog = () => {
+    // 优先使用解析后的附件，否则使用已上传的附件
+    const allParsedAttachments = parseResult?.attachments?.length 
+      ? parseResult.attachments 
+      : uploadedAttachments.map(att => ({
+          id: att.id,
+          name: att.name,
+          displayName: att.name.replace(/\.[^/.]+$/, ''),
+          url: att.url,
+          html: '',
+          styles: '',
+          text: '',
+          order: 0,
+        }));
+    
     // 默认选中所有附件
-    const allAttachmentIds = (parseResult?.attachments || []).map(a => a.id);
+    const allAttachmentIds = allParsedAttachments.map(a => a.id);
     setSelectedExportAttachments(allAttachmentIds);
     setAttachmentDialogOpen(true);
   };
@@ -1845,8 +1859,22 @@ export default function NewTemplatePage() {
       ? (editedHtml || parseResult?.html || '')
       : parseResult?.attachments?.find(a => a.id === activeDocumentId)?.html || '';
     
+    // 优先使用解析后的附件，否则使用已上传的附件
+    const allParsedAttachments = parseResult?.attachments?.length 
+      ? parseResult.attachments 
+      : uploadedAttachments.map(att => ({
+          id: att.id,
+          name: att.name,
+          displayName: att.name.replace(/\.[^/.]+$/, ''),
+          url: att.url,
+          html: '',
+          styles: '',
+          text: '',
+          order: 0,
+        }));
+    
     // 构建附件列表
-    const attachments = (parseResult?.attachments || [])
+    const attachments = (allParsedAttachments || [])
       .filter(att => selectedExportAttachments.includes(att.id))
       .map(att => ({
         id: att.id,
@@ -1895,7 +1923,7 @@ export default function NewTemplatePage() {
       isDefault: false,
       isActive: true,
     };
-  }, [templateId, name, description, type, activeDocumentId, editedHtml, parseResult, selectedExportAttachments]);
+  }, [templateId, name, description, type, activeDocumentId, editedHtml, parseResult, selectedExportAttachments, uploadedAttachments]);
   
   // 导出PDF（带附件选择）
   const handleExportPDF = async () => {
@@ -2957,7 +2985,19 @@ export default function NewTemplatePage() {
   // 步骤4: 完成
   const renderCompleteStep = () => {
     const selectedBase = bases.find(b => b.id === baseId);
-    const allAttachments = parseResult?.attachments || [];
+    // 优先使用解析后的附件，否则使用已上传的附件
+    const allAttachments = parseResult?.attachments?.length 
+      ? parseResult.attachments 
+      : uploadedAttachments.map(att => ({
+          id: att.id,
+          name: att.name,
+          displayName: att.name.replace(/\.[^/.]+$/, ''),
+          url: att.url,
+          html: '',
+          styles: '',
+          text: '',
+          order: 0,
+        }));
     
     return (
       <div className="space-y-6">
