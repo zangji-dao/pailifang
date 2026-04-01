@@ -946,18 +946,26 @@ export default function NewTemplatePage() {
     const fragment = range.extractContents();
     const div = document.createElement('div');
     div.appendChild(fragment);
-    const selectedHtml = div.innerHTML || '&nbsp;';
+    
+    // 检查选中内容是否包含变量标记
+    const markerElements = div.querySelectorAll('.variable-marker');
+    let processedHtml = div.innerHTML || '&nbsp;';
+    
+    // 如果包含变量标记，将其替换为占位符（以便 processedHtml 能正确处理）
+    markerElements.forEach(marker => {
+      const markerId = marker.getAttribute('data-marker-id');
+      if (markerId) {
+        // 用占位符替换变量标记
+        const markerHtml = marker.outerHTML;
+        processedHtml = processedHtml.replace(markerHtml, `<!--MARKER_PLACEHOLDER:${markerId}-->`);
+      }
+    });
     
     // 创建下划线容器 - 内容居中，下划线在底部
     const underlineSpan = document.createElement('span');
     underlineSpan.className = 'underline-fill-container';
     underlineSpan.style.cssText = `display: inline-block; width: ${width}; border-bottom: 1px solid #000; text-align: center; vertical-align: baseline; line-height: inherit;`;
-    underlineSpan.innerHTML = selectedHtml;
-    
-    // 移除容器内变量标记的 border-bottom，避免与下划线冲突
-    underlineSpan.querySelectorAll('.variable-marker').forEach(marker => {
-      (marker as HTMLElement).style.borderBottom = 'none';
-    });
+    underlineSpan.innerHTML = processedHtml;
     
     // 插入
     range.insertNode(underlineSpan);
@@ -1702,25 +1710,31 @@ export default function NewTemplatePage() {
         ? [...selectedVariables, ...PresetVariables].find(v => v.key === marker.variableKey)
         : null;
       
-      const { beforeText, textOffset, clickContext } = marker.position;
+      // 检查是否有对应的占位符（在下划线容器中）
+      const placeholderPattern = `<!--MARKER_PLACEHOLDER:${marker.id}-->`;
+      const placeholderPos = result.indexOf(placeholderPattern);
       
-      // 使用改进的查找函数找到最佳匹配位置
-      const anchorPos = findBestMatchPosition(result, beforeText, clickContext);
+      let markerHtml: string;
+      if (marker.status === 'bound' && variable) {
+        // 已绑定标记 - 绿色实线
+        markerHtml = `<span class="variable-marker bound" data-marker-id="${marker.id}" data-variable-key="${marker.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
+      } else {
+        // 待绑定标记 - 橙色虚线
+        markerHtml = `<span class="variable-marker pending" data-marker-id="${marker.id}" style="background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; cursor: pointer; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px;">待绑定</span>`;
+      }
       
-      if (anchorPos !== -1) {
-        // 计算实际插入位置
-        const insertPos = anchorPos + textOffset;
+      if (placeholderPos !== -1) {
+        // 找到占位符，替换占位符为变量标记
+        result = result.slice(0, placeholderPos) + markerHtml + result.slice(placeholderPos + placeholderPattern.length);
+      } else {
+        // 没有占位符，使用原始的位置插入逻辑
+        const { beforeText, textOffset, clickContext } = marker.position;
+        const anchorPos = findBestMatchPosition(result, beforeText, clickContext);
         
-        let markerHtml: string;
-        if (marker.status === 'bound' && variable) {
-          // 已绑定标记 - 绿色实线
-          markerHtml = `<span class="variable-marker bound" data-marker-id="${marker.id}" data-variable-key="${marker.variableKey}" style="background: rgba(34, 197, 94, 0.2); color: #16a34a; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #22c55e; font-weight: 500;">{{${variable.name}}}</span>`;
-        } else {
-          // 待绑定标记 - 橙色虚线
-          markerHtml = `<span class="variable-marker pending" data-marker-id="${marker.id}" style="background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; cursor: pointer; border: 1px dashed #f59e0b; font-weight: 500; font-size: 12px;">待绑定</span>`;
+        if (anchorPos !== -1) {
+          const insertPos = anchorPos + textOffset;
+          result = result.slice(0, insertPos) + markerHtml + result.slice(insertPos);
         }
-        
-        result = result.slice(0, insertPos) + markerHtml + result.slice(insertPos);
       }
     });
     
@@ -2460,6 +2474,11 @@ export default function NewTemplatePage() {
                 .variable-marker.bound:hover {
                   background: rgba(239, 68, 68, 0.15) !important;
                   border-bottom-color: #ef4444;
+                }
+                
+                /* 下划线容器内的变量标记：移除自身下划线，使用容器的下划线 */
+                .underline-fill-container .variable-marker {
+                  border-bottom: none !important;
                 }
                 
                 /* 打印样式 */
