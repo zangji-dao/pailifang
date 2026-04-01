@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
           const attText = extractTextFromHtml(attRawHtml);
           
           attachmentResults.push({
-            id: `att-${i}`,
+            id: attachment.id, // 使用前端传递的ID
             name: attachment.name,
             url: attachment.url,
             html: attParsed.content,
