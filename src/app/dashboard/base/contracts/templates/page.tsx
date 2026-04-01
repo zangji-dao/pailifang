@@ -86,6 +86,7 @@ interface ContractTemplate {
   name: string;
   description: string | null;
   type: string;
+  status?: 'draft' | 'published';
   styleConfig: TemplateStyleConfig;
   clauses: TemplateClause[];
   attachments?: {
@@ -151,6 +152,21 @@ export default function ContractTemplatesPage() {
 
   // 打开模板编辑页面
   const handleEdit = (template: ContractTemplate) => {
+    // 如果是草稿，跳转到新建页面并带上draftId
+    if (template.status === 'draft') {
+      if (tabs) {
+        tabs.openTab({
+          id: `draft-${template.id}`,
+          label: `编辑: ${template.name}`,
+          path: `/dashboard/base/contracts/templates/new?draftId=${template.id}`,
+          icon: <Settings className="h-3.5 w-3.5" />,
+        });
+      } else {
+        router.push(`/dashboard/base/contracts/templates/new?draftId=${template.id}`);
+      }
+      return;
+    }
+    
     if (tabs) {
       tabs.openTab({
         id: `template-${template.id}`,
@@ -392,6 +408,11 @@ export default function ContractTemplatesPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{template.name}</span>
+                          {template.status === 'draft' && (
+                            <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100 border-0 text-xs">
+                              草稿
+                            </Badge>
+                          )}
                           {template.isDefault && (
                             <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0 text-xs">
                               <Star className="h-3 w-3 mr-1" />

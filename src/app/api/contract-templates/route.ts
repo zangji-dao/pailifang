@@ -9,6 +9,7 @@ interface ContractTemplate {
   name: string;
   description: string | null;
   type: string; // 入驻合同、服务合同等
+  status?: 'draft' | 'published'; // 草稿或已发布
   style_config: TemplateStyleConfig;
   clauses: TemplateClause[];
   attachments?: ContractAttachment[]; // 合同附件列表
@@ -330,6 +331,7 @@ function formatTemplate(item: any): ContractTemplate {
     name: item.name,
     description: item.description,
     type: item.type,
+    status: item.status || 'published',
     style_config: item.style_config,
     clauses: item.clauses || [],
     attachments: item.attachments || [],

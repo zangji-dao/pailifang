@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Save,
   ArrowLeft,
   Loader2,
   Upload,
   FileText,
+  SaveAll,
   Check,
   ChevronRight,
   ChevronLeft,
@@ -84,12 +85,16 @@ interface Base {
 
 export default function NewTemplatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const mainFileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
   // 当前步骤
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // 加载草稿状态
+  const [loadingDraft, setLoadingDraft] = useState(false);
   
   // 步骤1: 上传文档
   const [mainFile, setMainFile] = useState<File | null>(null);
@@ -133,6 +138,8 @@ export default function NewTemplatePage() {
   
   // 保存状态
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [isDraft, setIsDraft] = useState(false);
   
   // 缩放比例
   const [zoom, setZoom] = useState(100);
@@ -184,6 +191,85 @@ export default function NewTemplatePage() {
     
     fetchBases();
   }, []);
+  
+  // 加载草稿
+  useEffect(() => {
+    const loadDraft = async () => {
+      const draftId = searchParams.get('draftId');
+      if (!draftId) return;
+      
+      setLoadingDraft(true);
+      try {
+        const response = await fetch(`/api/contract-templates/draft?id=${draftId}`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          const draft = result.data;
+          setTemplateId(draft.id);
+          setIsDraft(true);
+          setName(draft.name || '');
+          setDescription(draft.description || '');
+          setType(draft.type || 'tenant');
+          setBaseId(draft.base_id || '');
+          
+          // 恢复草稿数据
+          if (draft.draft_data) {
+            const draftData = draft.draft_data;
+            setCurrentStep(draftData.currentStep || 1);
+            setEditedHtml(draftData.editedHtml || '');
+            
+            // 恢复标记
+            if (draftData.markers && Array.isArray(draftData.markers)) {
+              setMarkers(draftData.markers.map((m: any) => ({
+                id: m.id,
+                variableKey: m.variableKey,
+                status: m.status,
+                position: m.position,
+              })));
+            }
+            
+            // 恢复选中的变量
+            if (draftData.selectedVariables && Array.isArray(draftData.selectedVariables)) {
+              setSelectedVariables(draftData.selectedVariables.map((v: any) => ({
+                key: v.key,
+                name: v.name,
+                type: v.type || 'text',
+                category: v.category || 'custom',
+                placeholder: v.placeholder,
+              })));
+            }
+            
+            // 恢复解析结果
+            if (draft.source_file_url) {
+              setParseResult({
+                success: true,
+                totalPages: 1,
+                fileName: draft.source_file_name || '草稿文档',
+                fileType: draft.source_file_type || 'docx',
+                fileUrl: draft.source_file_url,
+                pages: [],
+                fullText: '',
+                html: draftData.editedHtml || '',
+                attachments: draftData.attachments || [],
+                detectedAttachments: [],
+                detectedFields: [],
+                mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+              });
+            }
+          }
+          
+          toast.success("草稿已加载");
+        }
+      } catch (error) {
+        console.error("加载草稿失败:", error);
+        toast.error("加载草稿失败");
+      } finally {
+        setLoadingDraft(false);
+      }
+    };
+    
+    loadDraft();
+  }, [searchParams]);
   
   // ========== 步骤1: 上传文档 ==========
   
@@ -401,6 +487,72 @@ export default function NewTemplatePage() {
         position: m.position,
       }));
   }, [markers]);
+  
+  // 草稿保存功能
+  const handleSaveDraft = useCallback(async () => {
+    // 如果没有上传文档，至少需要有基本信息才能保存草稿
+    if (!mainFile && !templateId && !name.trim()) {
+      toast.error("请至少填写模板名称或上传文档");
+      return;
+    }
+    
+    setSavingDraft(true);
+    try {
+      const draftData = {
+        id: templateId || undefined,
+        name,
+        description,
+        type,
+        base_id: baseId || null,
+        currentStep,
+        editedHtml: editedHtml || undefined,
+        markers: markers.map(m => ({
+          id: m.id,
+          variableKey: m.variableKey,
+          status: m.status,
+          position: m.position,
+        })),
+        selectedVariables: selectedVariables.map(v => ({
+          key: v.key,
+          name: v.name,
+          type: v.type,
+          category: v.category,
+          placeholder: v.placeholder,
+        })),
+        bindings,
+        source_file_url: parseResult?.fileUrl,
+        source_file_name: parseResult?.fileName,
+        source_file_type: parseResult?.fileType,
+        attachments: parseResult?.attachments?.map(a => ({
+          id: a.id,
+          name: a.name,
+          url: a.url,
+          html: a.html,
+        })),
+      };
+      
+      const response = await fetch("/api/contract-templates/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draftData),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setTemplateId(result.data.id);
+        setIsDraft(true);
+        toast.success("草稿已保存");
+      } else {
+        throw new Error(result.error || "保存草稿失败");
+      }
+    } catch (error) {
+      console.error("保存草稿失败:", error);
+      toast.error(error instanceof Error ? error.message : "保存草稿失败");
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [templateId, mainFile, name, description, type, baseId, currentStep, editedHtml, markers, selectedVariables, bindings, parseResult]);
   
   // 过滤变量
   const filteredVariables = useMemo(() => {
@@ -830,7 +982,7 @@ export default function NewTemplatePage() {
     
     setSaving(true);
     try {
-      // 1. 更新基本信息
+      // 1. 更新基本信息并设置为已发布状态
       const updateRes = await fetch("/api/contract-templates", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -841,6 +993,7 @@ export default function NewTemplatePage() {
           type,
           base_id: baseId || null,
           is_default: isDefault,
+          status: 'published', // 发布时设置为已发布状态
         }),
       });
       
@@ -1816,11 +1969,33 @@ export default function NewTemplatePage() {
       
       {/* 底部导航 */}
       <div className="flex items-center justify-between pt-4 border-t">
-        <Button variant="outline" onClick={handlePrev} disabled={currentStep === 1}>
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          上一步
-        </Button>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handlePrev} disabled={currentStep === 1}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            上一步
+          </Button>
+          {isDraft && (
+            <Badge variant="outline" className="text-amber-600 border-amber-300">
+              草稿
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* 保存草稿按钮 - 在第2步及之后显示 */}
+          {currentStep >= 2 && (
+            <Button 
+              variant="outline" 
+              onClick={handleSaveDraft} 
+              disabled={savingDraft}
+              className="text-amber-600 border-amber-300 hover:bg-amber-50"
+            >
+              {savingDraft ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
+              ) : (
+                <><SaveAll className="h-4 w-4 mr-2" />保存草稿</>
+              )}
+            </Button>
+          )}
           {currentStep === 4 ? (
             <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
               {saving ? (
