@@ -113,6 +113,13 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
     td, th {
       vertical-align: top;
       padding: 2pt 4pt;
+      border: 1px solid #000;
+    }
+    
+    /* 签字处表格 - 无边框但保持布局 */
+    table[border="0"] td,
+    table[border="0"] th {
+      border: none;
     }
     
     /* 打印样式 */
