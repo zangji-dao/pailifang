@@ -2675,7 +2675,7 @@ export default function NewTemplatePage() {
 
       {/* 自定义变量弹窗 */}
       {showAddDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
           <Card className="w-[400px]">
             <CardHeader>
               <CardTitle>添加自定义变量</CardTitle>
