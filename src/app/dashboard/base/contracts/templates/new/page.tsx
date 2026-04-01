@@ -1039,30 +1039,33 @@ export default function NewTemplatePage() {
     }
     
     const range = selection.getRangeAt(0);
-    let container: Node | null = range.commonAncestorContainer;
+    let node: Node | null = range.startContainer;
     
-    // 找到包含选中内容的块级元素
-    while (container && container.nodeType !== Node.ELEMENT_NODE) {
-      container = container.parentNode;
+    // 向上查找块级元素
+    const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH', 'SECTION', 'ARTICLE', 'BODY'];
+    let foundElement: HTMLElement | null = null;
+    
+    while (node && node !== contentRef.current) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as HTMLElement;
+        if (blockTags.includes(element.tagName)) {
+          foundElement = element;
+          break;
+        }
+      }
+      node = node.parentNode;
     }
     
-    if (!container) {
-      toast.error("无法找到目标元素");
-      return;
-    }
-    
-    const element = container as HTMLElement;
-    
-    // 如果是行内元素，向上查找块级元素
-    const blockElements = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH'];
-    let blockElement: HTMLElement | null = element;
-    while (blockElement && !blockElements.includes(blockElement.tagName)) {
-      blockElement = blockElement.parentElement;
-    }
-    
-    if (blockElement) {
-      blockElement.style.lineHeight = lineHeight;
+    if (foundElement) {
+      // 设置行高
+      foundElement.style.lineHeight = lineHeight;
+      
+      // 强制触发重绘
+      void foundElement.offsetHeight;
+      
+      // 同步内容
       syncEditedContent();
+      
       const labels: Record<string, string> = {
         '1': '单倍行距',
         '1.5': '1.5倍行距',
@@ -1073,7 +1076,12 @@ export default function NewTemplatePage() {
       };
       toast.success(`已应用${labels[lineHeight] || lineHeight}`);
     } else {
-      toast.error("请在段落中使用此功能");
+      // 如果没找到块级元素，直接在编辑器容器上设置
+      if (contentRef.current) {
+        contentRef.current.style.lineHeight = lineHeight;
+        syncEditedContent();
+        toast.success(`已应用全局行距`);
+      }
     }
   }, [syncEditedContent]);
   
