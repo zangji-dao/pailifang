@@ -102,8 +102,19 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
       .trim();
   }
   
-  // 添加打印样式
-  const printStyles = `
+  // 添加打印样式和表格基础样式
+  const extraStyles = `
+    /* 表格基础样式 - 确保 LibreOffice 表格正确显示 */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 6pt 0;
+    }
+    td, th {
+      vertical-align: top;
+      padding: 2pt 4pt;
+    }
+    
     /* 打印样式 */
     @media print {
       body {
@@ -122,7 +133,7 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
   `;
   
   return {
-    styles: styles + '\n' + printStyles,
+    styles: styles + '\n' + extraStyles,
     content: content,
     fullHtml: html,
   };
