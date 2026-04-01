@@ -1466,7 +1466,7 @@ export default function NewTemplatePage() {
           <div
             className={cn(
               "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-              mainFile 
+              (mainFile || parseResult?.fileUrl) 
                 ? "border-green-500 bg-green-50" 
                 : "border-muted-foreground/25 hover:border-amber-500 hover:bg-amber-50/50"
             )}
@@ -1485,6 +1485,14 @@ export default function NewTemplatePage() {
                 <div className="text-left">
                   <p className="font-medium">{mainFile.name}</p>
                   <p className="text-sm text-muted-foreground">{formatFileSize(mainFile.size)}</p>
+                </div>
+              </div>
+            ) : parseResult?.fileUrl ? (
+              <div className="flex items-center justify-center gap-3">
+                <FileText className="h-8 w-8 text-green-600" />
+                <div className="text-left">
+                  <p className="font-medium">{parseResult.fileName}</p>
+                  <p className="text-sm text-muted-foreground">已上传 · 点击可重新选择</p>
                 </div>
               </div>
             ) : (
