@@ -1773,33 +1773,48 @@ export default function NewTemplatePage() {
                 className="w-full"
                 onClick={() => {
                   const selection = window.getSelection();
+                  
+                  // 检查选区是否在文档内
+                  if (!selection || selection.rangeCount === 0) {
+                    toast.info("请先在文档中点击定位光标");
+                    return;
+                  }
+                  
+                  const range = selection.getRangeAt(0);
+                  
+                  // 检查光标是否在 contentEditable 文档内
+                  const container = range.commonAncestorContainer;
+                  const isInDocument = contentRef.current?.contains(container);
+                  
+                  if (!isInDocument) {
+                    toast.info("请先在文档中点击定位光标");
+                    // 聚焦到文档
+                    contentRef.current?.focus();
+                    return;
+                  }
+                  
                   const markerId = `marker-${Date.now()}`;
                   
                   // 创建变量标记元素
                   const markerSpan = document.createElement('span');
                   markerSpan.className = 'variable-marker pending';
                   markerSpan.dataset.markerId = markerId;
-                  markerSpan.contentEditable = 'false';
+                  markerSpan.style.cssText = 'background: rgba(251, 191, 36, 0.3); color: #d97706; padding: 2px 10px; border-radius: 4px; border: 1px dashed #f59e0b;';
+                  markerSpan.textContent = '【待绑定】';
                   
                   try {
-                    if (selection && !selection.isCollapsed) {
-                      // 有选中文字：用选中文字作为占位符
-                      const range = selection.getRangeAt(0);
-                      const selectedText = range.toString().trim();
-                      markerSpan.textContent = selectedText || '变量';
-                      
+                    if (!selection.isCollapsed) {
+                      // 有选中文字：替换选中内容
                       range.deleteContents();
-                      range.insertNode(markerSpan);
-                    } else if (selection && selection.rangeCount > 0) {
-                      // 没有选中文字：在光标位置插入占位符
-                      const range = selection.getRangeAt(0);
-                      markerSpan.textContent = '【变量】';
-                      range.insertNode(markerSpan);
-                    } else {
-                      // 没有光标：提示用户先点击文档
-                      toast.info("请先在文档中点击定位光标");
-                      return;
                     }
+                    // 在光标位置插入标记
+                    range.insertNode(markerSpan);
+                    
+                    // 将光标移到标记后面
+                    range.setStartAfter(markerSpan);
+                    range.setEndAfter(markerSpan);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
                     
                     syncEditedContent();
                     
