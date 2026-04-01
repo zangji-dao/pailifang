@@ -597,10 +597,10 @@ export default function NewTemplatePage() {
     if (editMode) {
       // 退出编辑模式，同步内容
       syncEditedContent();
-      // 清除标记，因为内容可能已变化
+      // 不再自动清除标记，保留用户的绑定工作
+      // 如果编辑后标记位置不准确，用户可以手动调整
       if (markers.length > 0) {
-        toast.warning("文档已编辑，之前的标记可能需要重新设置");
-        setMarkers([]);
+        toast.info("编辑完成，如标记位置有变化请重新调整");
       }
     }
     setEditMode(!editMode);
