@@ -471,6 +471,16 @@ export default function NewTemplatePage() {
       const newAttachments = [...prev];
       const [draggedItem] = newAttachments.splice(draggedIndex, 1);
       newAttachments.splice(targetIndex, 0, draggedItem);
+      
+      // 同步更新 uploadedAttachments 的顺序
+      setUploadedAttachments(prevUploaded => {
+        // 根据 newAttachments 的顺序重新排列
+        const newUploaded = newAttachments
+          .map(att => prevUploaded.find(u => u.id === att.id))
+          .filter((u): u is UploadedAttachment => u !== undefined);
+        return newUploaded;
+      });
+      
       return newAttachments;
     });
     
