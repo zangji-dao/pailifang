@@ -493,12 +493,37 @@ export default function ContractTemplatesPage() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                     <Paperclip className="h-3.5 w-3.5" />
                     <span>
-                      附件: {template.attachments?.length || 0} 个
-                      {template.attachments && template.attachments.length > 0 && (
-                        <span className="ml-1">
-                          ({template.attachments.map((a: any) => a.name).join(', ')})
-                        </span>
-                      )}
+                      附件: {(() => {
+                        // 优先从 draft_data.attachments 读取，如果没有则从 template.attachments 读取
+                        const draftAttachments = (template as any).draft_data?.attachments;
+                        const templateAttachments = template.attachments;
+                        
+                        if (draftAttachments && draftAttachments.length > 0) {
+                          return draftAttachments.length;
+                        }
+                        return templateAttachments?.length || 0;
+                      })()} 个
+                      {(() => {
+                        // 优先从 draft_data.attachments 读取附件名称
+                        const draftAttachments = (template as any).draft_data?.attachments;
+                        const templateAttachments = template.attachments;
+                        
+                        let attachmentsToShow: any[] = [];
+                        if (draftAttachments && draftAttachments.length > 0) {
+                          attachmentsToShow = draftAttachments;
+                        } else if (templateAttachments && templateAttachments.length > 0) {
+                          attachmentsToShow = templateAttachments;
+                        }
+                        
+                        if (attachmentsToShow.length > 0) {
+                          return (
+                            <span className="ml-1">
+                              ({attachmentsToShow.map((a: any) => a.name || a.displayName).filter(Boolean).join(', ')})
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </span>
                   </div>
 
