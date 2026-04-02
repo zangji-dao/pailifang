@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, MousePointer, X, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -42,6 +42,18 @@ interface MarkerPanelProps {
   onAddCustomVariable: (variable: Partial<TemplateVariable>, onSuccess?: () => void) => boolean;
 }
 
+/**
+ * 生成变量标识符
+ * 规则：custom_ + 递增数字
+ */
+function generateVariableKey(existingKeys: string[]): string {
+  let index = 1;
+  while (existingKeys.includes(`custom_${index}`)) {
+    index++;
+  }
+  return `custom_${index}`;
+}
+
 export function MarkerPanel({
   markers,
   activeDocumentId,
@@ -66,6 +78,21 @@ export function MarkerPanel({
     category: 'custom',
     placeholder: '',
   });
+  
+  // 当打开对话框时，自动生成变量标识符
+  useEffect(() => {
+    if (showAddDialog) {
+      const existingKeys = [
+        ...selectedVariables.map(v => v.key),
+        ...PresetVariables.map(v => v.key),
+      ];
+      const autoKey = generateVariableKey(existingKeys);
+      setNewVariable(prev => ({
+        ...prev,
+        key: autoKey,
+      }));
+    }
+  }, [showAddDialog, selectedVariables]);
 
   // 过滤变量
   const filteredVariables = (() => {
@@ -283,12 +310,14 @@ export function MarkerPanel({
               />
             </div>
             <div>
-              <Label>变量标识 *</Label>
+              <Label>变量标识</Label>
               <Input
                 value={newVariable.key}
-                onChange={(e) => setNewVariable(prev => ({ ...prev, key: e.target.value }))}
-                placeholder="如：party_a_contact（仅英文、数字、下划线）"
+                readOnly
+                className="bg-muted text-muted-foreground"
+                placeholder="自动生成"
               />
+              <p className="text-xs text-muted-foreground mt-1">系统自动生成，无需手动输入</p>
             </div>
             <div>
               <Label>变量类型</Label>

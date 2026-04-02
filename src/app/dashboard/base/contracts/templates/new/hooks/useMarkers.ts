@@ -171,19 +171,19 @@ export function useMarkers(
     newVariable: Partial<TemplateVariable>,
     onSuccess?: () => void
   ) => {
-    if (!newVariable.name || !newVariable.key) {
-      toast.error('请填写变量名称和标识');
+    if (!newVariable.name) {
+      toast.error('请填写变量名称');
       return false;
     }
     
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newVariable.key)) {
-      toast.error('变量标识只能包含英文、数字、下划线，且不能以数字开头');
+    if (!newVariable.key) {
+      toast.error('变量标识生成失败，请重试');
       return false;
     }
     
     const existingKeys = [...selectedVariables].map(v => v.key);
     if (existingKeys.includes(newVariable.key)) {
-      toast.error(`变量标识 "${newVariable.key}" 已存在`);
+      toast.error(`变量标识 "${newVariable.key}" 已存在，请重试`);
       return false;
     }
     
