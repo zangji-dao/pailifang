@@ -123,9 +123,9 @@ export function MarkerPanel({
     return vars;
   })();
 
-  // 检查变量是否已绑定
-  const isVariableBound = (key: string) => {
-    return markers.some(m => m.status === 'bound' && m.variableKey === key);
+  // 检查变量绑定次数（支持同一变量多次绑定）
+  const getVariableBindCount = (key: string) => {
+    return markers.filter(m => m.status === 'bound' && m.variableKey === key).length;
   };
 
   // 当前文档的标记
@@ -163,14 +163,9 @@ export function MarkerPanel({
   // 删除自定义变量
   const handleDeleteVariable = (key: string) => {
     if (!onRemoveCustomVariable) return;
-    // 检查是否已被绑定
-    if (isVariableBound(key)) {
-      // 如果已绑定，先解绑
-      const boundMarker = markers.find(m => m.status === 'bound' && m.variableKey === key);
-      if (boundMarker) {
-        onRemoveMarker(boundMarker.id);
-      }
-    }
+    // 检查是否已被绑定，如果绑定则解绑所有
+    const boundMarkers = markers.filter(m => m.status === 'bound' && m.variableKey === key);
+    boundMarkers.forEach(m => onRemoveMarker(m.id));
     onRemoveCustomVariable(key);
   };
 
@@ -348,28 +343,24 @@ export function MarkerPanel({
           {/* 变量列表 */}
           <ScrollArea className="h-64">
             <div className="space-y-1 pr-4">
-              {filteredVariables.map(variable => (
-                <div
-                  key={variable.key}
-                  className={cn(
-                    "flex items-center justify-between p-2 rounded cursor-pointer hover:bg-muted",
-                    isVariableBound(variable.key) && "opacity-50"
-                  )}
-                  onClick={() => {
-                    if (!isVariableBound(variable.key)) {
-                      onBindVariable(variable);
-                    }
-                  }}
-                >
-                  <div>
-                    <p className="font-medium text-sm">{variable.name}</p>
-                    <p className="text-xs text-muted-foreground">{variable.key}</p>
+              {filteredVariables.map(variable => {
+                const bindCount = getVariableBindCount(variable.key);
+                return (
+                  <div
+                    key={variable.key}
+                    className="flex items-center justify-between p-2 rounded cursor-pointer hover:bg-muted"
+                    onClick={() => onBindVariable(variable)}
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{variable.name}</p>
+                      <p className="text-xs text-muted-foreground">{variable.key}</p>
+                    </div>
+                    {bindCount > 0 && (
+                      <Badge variant="outline" className="text-xs">已绑定 {bindCount} 次</Badge>
+                    )}
                   </div>
-                  {isVariableBound(variable.key) && (
-                    <Badge variant="outline" className="text-xs">已绑定</Badge>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         </DialogContent>
