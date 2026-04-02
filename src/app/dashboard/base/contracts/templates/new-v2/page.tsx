@@ -172,9 +172,41 @@ function TemplateCreateContent() {
     dispatch({ type: 'SET_PARSE_PROGRESS', payload: 20 });
     
     try {
-      const allAttachments = [...uploadedAttachmentsRef.current];
+      // 检查是否有未上传的附件（旧页面的逻辑）
+      const pendingAttachments = attachments.filter(att => att.file !== null);
+      const newlyUploaded: any[] = [];
+      
+      if (pendingAttachments.length > 0) {
+        dispatch({ type: 'SET_UPLOADING', payload: true });
+        
+        for (const att of pendingAttachments) {
+          if (!att.file) continue;
+          
+          try {
+            const formData = new FormData();
+            formData.append("file", att.file);
+            
+            const uploadRes = await fetch("/api/contract-templates/upload-attachment", {
+              method: "POST",
+              body: formData,
+            });
+            
+            const uploadData = await uploadRes.json();
+            if (uploadData.success) {
+              newlyUploaded.push(uploadData.data);
+            }
+          } catch (err) {
+            console.error(`上传附件 ${att.name} 失败:`, err);
+          }
+        }
+        
+        dispatch({ type: 'SET_UPLOADING', payload: false });
+      }
       
       dispatch({ type: 'SET_PARSE_PROGRESS', payload: 50 });
+      
+      // 合并已上传的附件
+      const allAttachments = [...uploadedAttachmentsRef.current, ...newlyUploaded];
       
       const parseRes = await fetch("/api/contract-templates/parse", {
         method: "POST",
