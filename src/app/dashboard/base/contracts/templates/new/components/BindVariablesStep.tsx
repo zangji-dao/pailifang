@@ -206,7 +206,8 @@ export function BindVariablesStep({
                 margin: 6pt 0;
               }
               .contract-container td, .contract-container th {
-                vertical-align: top;
+                vertical-align: middle;
+                text-align: center;
                 padding: 2pt 4pt;
                 border: 1px solid #000;
               }

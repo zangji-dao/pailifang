@@ -165,7 +165,7 @@ export function CompleteStep({
             style={{ maxHeight: '500px' }}
           >
             <div 
-              className="mx-auto bg-white shadow-lg"
+              className="mx-auto bg-white shadow-lg contract-container"
               style={{
                 transform: previewZoom !== 100 ? `scale(${previewZoom / 100})` : undefined,
                 transformOrigin: 'top center',
@@ -174,6 +174,41 @@ export function CompleteStep({
                 padding: '2.5cm 2.8cm',
               }}
             >
+              <style jsx global>{`
+                .contract-container table {
+                  border-collapse: collapse;
+                  width: 100%;
+                  margin: 6pt 0;
+                }
+                .contract-container td, .contract-container th {
+                  vertical-align: middle;
+                  text-align: center;
+                  padding: 2pt 4pt;
+                  border: 1px solid #000;
+                }
+                .contract-container table[border="0"] td,
+                .contract-container table[border="0"] th {
+                  border: none;
+                }
+                .contract-container .variable-marker {
+                  display: inline !important;
+                  white-space: nowrap;
+                }
+                .contract-container .variable-marker.pending {
+                  background: #fef3c7;
+                  color: #92400e;
+                  padding: 1px 4px;
+                  border-radius: 3px;
+                  border: 1px dashed #f59e0b;
+                }
+                .contract-container .variable-marker.bound {
+                  background: #dcfce7;
+                  color: #166534;
+                  padding: 1px 4px;
+                  border-radius: 3px;
+                  border: 1px solid #22c55e;
+                }
+              `}</style>
               <div 
                 className="contract-content"
                 dangerouslySetInnerHTML={{ 

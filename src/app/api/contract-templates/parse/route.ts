@@ -104,14 +104,15 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
   
   // 添加打印样式和表格基础样式
   const extraStyles = `
-    /* 表格基础样式 - 确保 LibreOffice 表格正确显示 */
+    /* 表格基础样式 - 确保 LibreOffice 表格正确显示，文字居中 */
     table {
       border-collapse: collapse;
       width: 100%;
       margin: 6pt 0;
     }
     td, th {
-      vertical-align: top;
+      vertical-align: middle;
+      text-align: center;
       padding: 2pt 4pt;
       border: 1px solid #000;
     }
