@@ -838,7 +838,7 @@ function createNewTemplateHtml(
         }
         td, th {
           vertical-align: middle;
-          padding: 2pt 4pt;
+          padding: 4pt 6pt;
         }
         /* 只给有边框的表格添加边框样式 */
         table:not([border="0"]) td,
