@@ -70,8 +70,8 @@ export function useAttachments() {
       }
       
       if (uploadedList.length > 0) {
+        // 只更新 state，ref 会通过 useEffect 自动同步
         setUploadedAttachments(prev => [...prev, ...uploadedList]);
-        uploadedAttachmentsRef.current = [...uploadedAttachmentsRef.current, ...uploadedList];
         toast.success(`已上传 ${uploadedList.length} 个附件`);
       }
       
@@ -130,7 +130,7 @@ export function useAttachments() {
         const newUploaded = newAttachments
           .map(att => prevUploaded.find(u => u.id === att.id))
           .filter((u): u is UploadedAttachment => u !== undefined);
-        uploadedAttachmentsRef.current = newUploaded;
+        // 只更新 state，ref 会通过 useEffect 自动同步
         return newUploaded;
       });
       
@@ -149,7 +149,7 @@ export function useAttachments() {
   const reset = useCallback(() => {
     setAttachments([]);
     setUploadedAttachments([]);
-    uploadedAttachmentsRef.current = [];
+    // 注意：不需要手动清空 ref，它会通过 useEffect 自动同步
     setDraggedId(null);
     setDragOverId(null);
   }, []);
@@ -158,20 +158,14 @@ export function useAttachments() {
   const loadFromTemplate = useCallback((template: any) => {
     const attachmentsList = template.attachments || [];
     if (attachmentsList.length > 0) {
+      // 只更新 state，ref 会通过 useEffect 自动同步
       setUploadedAttachments(attachmentsList.map((a: any) => ({
         id: a.id,
         name: a.name,
         url: a.url || '',
-        fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        fileType: 'application/vnd.openxmlformats-officientml.wordprocessingml.document',
         size: 0,
       })));
-      uploadedAttachmentsRef.current = attachmentsList.map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        url: a.url || '',
-        fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        size: 0,
-      }));
       setAttachments(attachmentsList.map((a: any) => ({
         id: a.id,
         name: a.name,
@@ -186,8 +180,8 @@ export function useAttachments() {
   const loadFromDraft = useCallback((draftData: any) => {
     if (draftData?.uploadedAttachments) {
       const uploadedAtts = draftData.uploadedAttachments;
+      // 只更新 state，ref 会通过 useEffect 自动同步
       setUploadedAttachments(uploadedAtts);
-      uploadedAttachmentsRef.current = uploadedAtts;
       setAttachments(uploadedAtts.map((a: any) => ({
         id: a.id,
         name: a.name,

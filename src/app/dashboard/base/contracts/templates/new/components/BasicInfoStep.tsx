@@ -19,14 +19,14 @@ import type { Base } from "../types";
 interface BasicInfoStepProps {
   name: string;
   description: string;
-  type: string;
+  type: 'tenant' | 'service' | 'lease' | 'other';
   baseId: string;
   isDefault: boolean;
   bases: Base[];
   loadingBases: boolean;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
-  onTypeChange: (type: string) => void;
+  onTypeChange: (type: 'tenant' | 'service' | 'lease' | 'other') => void;
   onBaseChange: (baseId: string) => void;
   onDefaultChange: (isDefault: boolean) => void;
 }

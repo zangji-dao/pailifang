@@ -88,7 +88,7 @@ export interface TemplateState {
   templateId: string;
   name: string;
   description: string;
-  type: 'tenant' | 'non_tenant';
+  type: 'tenant' | 'service' | 'lease' | 'other';
   baseId: string;
   isDefault: boolean;
   
@@ -138,7 +138,7 @@ export type TemplateAction =
   | { type: 'SET_TEMPLATE_ID'; payload: string }
   | { type: 'SET_NAME'; payload: string }
   | { type: 'SET_DESCRIPTION'; payload: string }
-  | { type: 'SET_TYPE'; payload: 'tenant' | 'non_tenant' }
+  | { type: 'SET_TYPE'; payload: 'tenant' | 'service' | 'lease' | 'other' }
   | { type: 'SET_BASE_ID'; payload: string }
   | { type: 'SET_IS_DEFAULT'; payload: boolean }
   

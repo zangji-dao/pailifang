@@ -468,7 +468,7 @@ function TemplateCreateContent() {
             loadingBases={state.loadingBases}
             onNameChange={(value: string) => dispatch({ type: 'SET_NAME', payload: value })}
             onDescriptionChange={(value: string) => dispatch({ type: 'SET_DESCRIPTION', payload: value })}
-            onTypeChange={(value) => dispatch({ type: 'SET_TYPE', payload: value as any })}
+            onTypeChange={(value) => dispatch({ type: 'SET_TYPE', payload: value })}
             onBaseChange={(value: string) => dispatch({ type: 'SET_BASE_ID', payload: value })}
             onDefaultChange={(value: boolean) => dispatch({ type: 'SET_IS_DEFAULT', payload: value })}
           />

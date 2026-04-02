@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         id: newTemplateId,
         name: templateName,
         type: 'tenant',
+        status: 'draft', // 新上传的文件标记为草稿状态
         source_file_url: mainFileUrl,
         source_file_name: mainFile.name,
         source_file_type: fileType,
