@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Loader2, CheckCircle, AlertCircle, Files, Play } from "lucide-react";
+import { FileText, Loader2, CheckCircle, AlertCircle, Files, Play, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -187,10 +187,43 @@ export function ParseStep({
       {allParsed && (
         <Card className="border-green-200 bg-green-50/50">
           <CardContent className="pt-4">
-            <p className="text-sm text-green-800">
-              <strong>解析完成！</strong>
-              所有文档已成功解析，请点击「下一步」继续配置变量绑定。
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-green-800">
+                <strong>解析完成！</strong>
+                所有文档已成功解析，请点击「下一步」继续配置变量绑定。
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onStartParse}
+                className="gap-1.5 text-green-700 border-green-300 hover:bg-green-100"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                重新解析
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 解析失败提示 */}
+      {parseError && !parsing && (
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-red-800">
+                <strong>解析失败：</strong>{parseError}
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onStartParse}
+                className="gap-1.5 text-red-700 border-red-300 hover:bg-red-100"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                重试
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

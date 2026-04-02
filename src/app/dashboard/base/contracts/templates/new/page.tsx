@@ -186,6 +186,10 @@ function TemplateCreateContent() {
       return;
     }
     
+    // 清除之前的解析结果（支持重新解析）
+    dispatch({ type: 'SET_PARSE_RESULT', payload: null });
+    dispatch({ type: 'SET_PARSE_ERROR', payload: null });
+    
     dispatch({ type: 'SET_PARSING', payload: true });
     dispatch({ type: 'SET_PARSE_PROGRESS', payload: 20 });
     
