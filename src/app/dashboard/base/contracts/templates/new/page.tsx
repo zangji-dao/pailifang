@@ -206,8 +206,8 @@ export default function NewTemplatePage() {
           setType(template.type || 'tenant');
           setBaseId(template.base_id || '');
           
-          // 如果是草稿
-          if (isDraftTemplate && template.draft_data) {
+          // 如果有草稿数据，恢复草稿状态
+          if (template.draft_data) {
             const draftData = template.draft_data;
             setCurrentStep(draftData.currentStep || 1);
             setEditedHtml(draftData.editedHtml || '');
@@ -271,8 +271,8 @@ export default function NewTemplatePage() {
             }
           }
           
-          // 恢复附件：草稿附件优先，否则从模板加载
-          if (isDraftTemplate && template.draft_data?.uploadedAttachments?.length) {
+          // 恢复附件：优先从草稿数据恢复，否则从模板附件恢复
+          if (template.draft_data?.uploadedAttachments?.length) {
             loadAttachmentsFromDraft(template.draft_data);
           } else {
             loadAttachmentsFromTemplate(template);

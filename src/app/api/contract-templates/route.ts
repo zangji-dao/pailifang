@@ -359,6 +359,7 @@ function formatTemplate(item: any): ContractTemplate & {
   source_file_name?: string;
   source_file_type?: string;
   base_id?: string;
+  draft_data?: any;
 } {
   return {
     id: item.id,
@@ -377,5 +378,6 @@ function formatTemplate(item: any): ContractTemplate & {
     source_file_name: item.source_file_name,
     source_file_type: item.source_file_type,
     base_id: item.base_id,
+    draft_data: item.draft_data,
   };
 }

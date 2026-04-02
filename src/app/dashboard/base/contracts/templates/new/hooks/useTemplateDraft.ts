@@ -39,7 +39,6 @@ export function useTemplateDraft() {
         description: data.description,
         type: data.type,
         base_id: data.baseId || null,
-        status: 'draft',
         draft_data: {
           currentStep: data.currentStep,
           editedHtml: data.editedHtml,
