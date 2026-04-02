@@ -64,12 +64,15 @@ export function BasicInfoStep({
           
           <div className="space-y-2">
             <Label>所属基地</Label>
-            <Select value={baseId} onValueChange={onBaseChange}>
+            <Select 
+              value={baseId || undefined} 
+              onValueChange={(value) => onBaseChange(value === '__none__' ? '' : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder={loadingBases ? "加载中..." : "选择所属基地"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">无</SelectItem>
+                <SelectItem value="__none__">无</SelectItem>
                 {bases.map((base) => (
                   <SelectItem key={base.id} value={base.id}>
                     <div className="flex items-center gap-2">
