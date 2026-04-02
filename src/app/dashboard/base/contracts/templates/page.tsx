@@ -489,6 +489,19 @@ export default function ContractTemplatesPage() {
                     </div>
                   )}
 
+                  {/* 附件信息显示 */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                    <Paperclip className="h-3.5 w-3.5" />
+                    <span>
+                      附件: {template.attachments?.length || 0} 个
+                      {template.attachments && template.attachments.length > 0 && (
+                        <span className="ml-1">
+                          ({template.attachments.map((a: any) => a.name).join(', ')})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
                   {/* 模板配置概览 - 仅已完成的模板显示 */}
                   {!isDraft && (
                     <>
