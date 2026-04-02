@@ -727,6 +727,20 @@ function getAttachmentContent(attachmentId: string): string {
 }
 
 /**
+ * 清理变量标记的内联样式（用于 PDF 导出）
+ */
+function cleanVariableMarkersForPdf(html: string): string {
+  // 移除变量标记的内联样式，只保留 class
+  return html.replace(
+    /<span([^>]*?)class="variable-marker[^"]*"([^>]*?)style="[^"]*"([^>]*)>/gi,
+    '<span$1class="variable-marker"$2$3>'
+  ).replace(
+    /<span([^>]*?)style="[^"]*"([^>]*?)class="variable-marker[^"]*"([^>]*)>/gi,
+    '<span$1$2class="variable-marker"$3>'
+  );
+}
+
+/**
  * 创建新模板格式的 HTML（使用 editedHtml）
  */
 function createNewTemplateHtml(
@@ -766,17 +780,22 @@ function createNewTemplateHtml(
   // 构建附件内容
   const attachmentsHtml = selectedAttachs.map((att: any) => {
     if (att.html) {
+      // 清理附件中的变量标记样式
+      const cleanedAttachmentHtml = cleanVariableMarkersForPdf(att.html);
       return `
         <div class="force-break-before" style="page-break-before: always;"></div>
         <div class="content-page">
           <div class="main-title" style="margin-bottom: 20px;">${att.displayName || att.name}</div>
           ${att.styles ? `<style>${att.styles}</style>` : ''}
-          <div class="contract-content">${att.html}</div>
+          <div class="contract-content">${cleanedAttachmentHtml}</div>
         </div>
       `;
     }
     return '';
   }).join('');
+
+  // 清理变量标记的内联样式，用于 PDF 导出
+  const cleanedHtml = cleanVariableMarkersForPdf(editedHtml);
 
   return `
     <!DOCTYPE html>
@@ -829,24 +848,25 @@ function createNewTemplateHtml(
         table[border="0"] th {
           border: none;
         }
-        /* 变量标记样式 */
+        /* 变量标记样式 - PDF导出时显示为下划线空白 */
         .variable-marker {
           display: inline !important;
-          white-space: nowrap;
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          border-bottom: 1px solid #000;
+          min-width: 3em;
+          display: inline-block;
         }
         .variable-marker.pending {
-          background: #fef3c7;
-          color: #92400e;
-          padding: 1px 4px;
-          border-radius: 3px;
-          border: 1px dashed #f59e0b;
+          background: transparent !important;
+          border: none !important;
+          border-bottom: 1px solid #000;
         }
         .variable-marker.bound {
-          background: #dcfce7;
-          color: #166534;
-          padding: 1px 4px;
-          border-radius: 3px;
-          border: 1px solid #22c55e;
+          background: transparent !important;
+          border: none !important;
+          border-bottom: 1px solid #000;
         }
         /* 强制分页 */
         .force-break-before {
@@ -863,7 +883,7 @@ function createNewTemplateHtml(
     </head>
     <body>
       <div class="content-page">
-        <div class="contract-content">${editedHtml}</div>
+        <div class="contract-content">${cleanedHtml}</div>
       </div>
       ${attachmentsHtml}
     </body>
