@@ -143,12 +143,12 @@ export function BindVariablesStep({
     <div className="flex gap-4 h-[calc(100vh-200px)] min-h-[600px]">
       {/* 左侧：文档编辑区域 */}
       <Card className="flex-1 overflow-hidden flex flex-col">
-        <CardHeader className="py-3 border-b">
+        <CardHeader className="py-2.5 border-b">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-sm">编辑文档</CardTitle>
-              <CardDescription>
-                编辑文档内容，在需要填充变量的位置插入标记
+              <CardTitle className="text-base">编辑合同文档</CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                在文档中定位光标后，点击右侧「插入变量标记」按钮
               </CardDescription>
             </div>
           </div>

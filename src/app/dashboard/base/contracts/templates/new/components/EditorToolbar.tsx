@@ -88,13 +88,13 @@ export function EditorToolbar({
   const [tableCols, setTableCols] = useState(3);
 
   return (
-    <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
+    <div className="relative z-30 flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
       {/* 字体选择 */}
       <Select onValueChange={onSetFont}>
         <SelectTrigger className="w-28 h-8">
           <SelectValue placeholder="字体" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-50">
           {FONT_OPTIONS.map(font => (
             <SelectItem key={font.value} value={font.value}>
               {font.label}
@@ -108,7 +108,7 @@ export function EditorToolbar({
         <SelectTrigger className="w-16 h-8">
           <SelectValue placeholder="字号" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-50">
           {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
             <SelectItem key={size} value={String(size)}>
               {size}
@@ -176,7 +176,7 @@ export function EditorToolbar({
         <SelectTrigger className="w-20 h-8">
           <SelectValue placeholder="行距" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-50">
           {LINE_HEIGHT_OPTIONS.map(opt => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
@@ -192,7 +192,7 @@ export function EditorToolbar({
         <SelectTrigger className="w-24 h-8">
           <SelectValue placeholder="公文格式" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-50">
           {DOCUMENT_PRESETS.map(preset => (
             <SelectItem key={preset.key} value={preset.key}>
               {preset.label}
