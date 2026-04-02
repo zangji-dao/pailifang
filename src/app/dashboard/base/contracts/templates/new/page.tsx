@@ -181,6 +181,7 @@ export default function NewTemplatePage() {
       try {
         let template: any;
         let isDraftTemplate = false;
+        let templateIdToUse: string | null = null;
         
         if (draftId) {
           const response = await fetch(`/api/contract-templates/draft?id=${draftId}`);
@@ -188,6 +189,7 @@ export default function NewTemplatePage() {
           if (result.success && result.data) {
             template = result.data;
             isDraftTemplate = true;
+            templateIdToUse = template.id;
           }
         } else if (templateIdParam) {
           const response = await fetch(`/api/contract-templates?id=${templateIdParam}`);
@@ -195,10 +197,18 @@ export default function NewTemplatePage() {
           if (result.success && result.data) {
             template = result.data;
             isDraftTemplate = false;
+            templateIdToUse = template.id;
           }
         }
         
-        if (template) {
+        if (template && templateIdToUse) {
+          // 处理历史遗留的草稿：如果 draft_data 中有 original_template_id，需要从原模板加载数据
+          let originalTemplateId = templateIdToUse;
+          if (template.draft_data?.original_template_id) {
+            originalTemplateId = template.draft_data.original_template_id;
+            console.log('检测到历史遗留草稿，从原模板加载数据:', originalTemplateId);
+          }
+          
           setTemplateId(template.id);
           setIsDraft(isDraftTemplate);
           setName(template.name || '');
@@ -223,8 +233,9 @@ export default function NewTemplatePage() {
               })));
             }
             
-            // 恢复选中的变量
-            if (draftData.selectedVariables && Array.isArray(draftData.selectedVariables)) {
+            // 恢复选中的变量 - 优先从 draft_data 恢复，如果没有则从 contract_fields 表加载
+            let variablesLoaded = false;
+            if (draftData.selectedVariables && Array.isArray(draftData.selectedVariables) && draftData.selectedVariables.length > 0) {
               setSelectedVariables(draftData.selectedVariables.map((v: any) => ({
                 id: v.id || `var_custom_${v.key}`,
                 key: v.key,
@@ -233,6 +244,46 @@ export default function NewTemplatePage() {
                 category: v.category || 'custom',
                 placeholder: v.placeholder,
               })));
+              variablesLoaded = true;
+            }
+            
+            // 如果 draft_data 中没有变量，或者是历史遗留草稿，从 contract_fields 表加载
+            if (!variablesLoaded || draftData.original_template_id) {
+              try {
+                const fieldsRes = await fetch(`/api/contract-templates/fields?templateId=${originalTemplateId}`);
+                const fieldsResult = await fieldsRes.json();
+                if (fieldsResult.success && fieldsResult.data && fieldsResult.data.length > 0) {
+                  setSelectedVariables(fieldsResult.data.map((f: any) => ({
+                    id: f.id || `var_custom_${f.field_key}`,
+                    key: f.field_key,
+                    name: f.field_label,
+                    type: f.field_type || 'text',
+                    category: 'custom',
+                    placeholder: f.placeholder,
+                  })));
+                  variablesLoaded = true;
+                }
+              } catch (fieldsErr) {
+                console.error('从 contract_fields 加载字段失败:', fieldsErr);
+              }
+            }
+          } else {
+            // 没有 draft_data 时，也尝试从 contract_fields 表加载字段
+            try {
+              const fieldsRes = await fetch(`/api/contract-templates/fields?templateId=${templateIdToUse}`);
+              const fieldsResult = await fieldsRes.json();
+              if (fieldsResult.success && fieldsResult.data && fieldsResult.data.length > 0) {
+                setSelectedVariables(fieldsResult.data.map((f: any) => ({
+                  id: f.id || `var_custom_${f.field_key}`,
+                  key: f.field_key,
+                  name: f.field_label,
+                  type: f.field_type || 'text',
+                  category: 'custom',
+                  placeholder: f.placeholder,
+                })));
+              }
+            } catch (fieldsErr) {
+              console.error('从 contract_fields 加载字段失败:', fieldsErr);
             }
           }
           

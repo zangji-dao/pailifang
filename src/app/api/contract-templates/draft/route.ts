@@ -39,11 +39,39 @@ export async function POST(request: NextRequest) {
     if (id) {
       const { data: existingTemplate, error: fetchError } = await supabase
         .from('contract_templates')
-        .select('id, status, name')
+        .select('id, status, name, draft_data')
         .eq('id', id)
         .single();
 
       if (existingTemplate) {
+        // 兼容性处理：如果新的 selectedVariables 为空，但旧的 draft_data 中有，则保留旧的
+        let finalSelectedVariables = selectedVariables;
+        const existingDraftData = (existingTemplate as any).draft_data;
+        if (existingDraftData && 
+            (!selectedVariables || selectedVariables.length === 0) && 
+            existingDraftData.selectedVariables && 
+            existingDraftData.selectedVariables.length > 0) {
+          finalSelectedVariables = existingDraftData.selectedVariables;
+          console.log('兼容性处理：保留旧的 selectedVariables');
+        }
+
+        // 兼容性处理：保留旧 draft_data 中的其他字段，只更新传入的字段
+        let finalDraftData: any = {
+          currentStep,
+          editedHtml,
+          markers,
+          selectedVariables: finalSelectedVariables,
+          bindings,
+          attachments,
+          styles,
+          uploadedAttachments,
+        };
+
+        // 如果旧的 draft_data 中有 original_template_id，保留它（历史兼容性）
+        if (existingDraftData && existingDraftData.original_template_id) {
+          finalDraftData.original_template_id = existingDraftData.original_template_id;
+        }
+
         // 无论是草稿还是已发布，都直接更新该模板的草稿数据
         const { data, error } = await supabase
           .from('contract_templates')
@@ -57,16 +85,7 @@ export async function POST(request: NextRequest) {
             source_file_url: source_file_url || undefined,
             source_file_name: source_file_name || undefined,
             source_file_type: source_file_type || undefined,
-            draft_data: {
-              currentStep,
-              editedHtml,
-              markers,
-              selectedVariables,
-              bindings,
-              attachments,
-              styles,
-              uploadedAttachments,
-            },
+            draft_data: finalDraftData,
             updated_at: now,
           })
           .eq('id', id)
@@ -175,9 +194,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 兼容性处理：如果草稿有 original_template_id，尝试从原模板补充数据
+    let enhancedData = { ...data };
+    if (data.draft_data?.original_template_id) {
+      const originalId = data.draft_data.original_template_id;
+      console.log('检测到历史遗留草稿，尝试从原模板补充数据:', originalId);
+      
+      try {
+        const { data: originalTemplate, error: originalError } = await supabase
+          .from('contract_templates')
+          .select('*')
+          .eq('id', originalId)
+          .single();
+          
+        if (!originalError && originalTemplate) {
+          // 如果草稿的 draft_data 不完整，从原模板补充
+          if (!data.draft_data.selectedVariables || data.draft_data.selectedVariables.length === 0) {
+            // 从 contract_fields 表获取原模板的字段
+            const { data: fields } = await supabase
+              .from('contract_fields')
+              .select('*')
+              .eq('template_id', originalId)
+              .order('sort_order', { ascending: true });
+              
+            if (fields && fields.length > 0) {
+              enhancedData.draft_data = {
+                ...enhancedData.draft_data,
+                selectedVariables: fields.map((f: any) => ({
+                  id: f.id,
+                  key: f.field_key,
+                  name: f.field_label,
+                  type: f.field_type || 'text',
+                  category: 'custom',
+                  placeholder: f.placeholder,
+                }))
+              };
+              console.log('已从原模板补充 selectedVariables');
+            }
+          }
+        }
+      } catch (originalErr) {
+        console.error('从原模板补充数据失败:', originalErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data,
+      data: enhancedData,
     });
   } catch (error) {
     console.error('获取草稿失败:', error);
