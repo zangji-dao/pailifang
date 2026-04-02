@@ -12,6 +12,8 @@ export function useEditor(
   const [editedHtml, setEditedHtml] = useState<string>(initialEditedHtml || "");
   const [activeDocumentId, setActiveDocumentId] = useState<string>('main');
   const [zoom, setZoom] = useState(100);
+  // 保存选区
+  const savedSelectionRef = useRef<Range | null>(null);
   
   // 当 initialEditedHtml 变化时（比如从草稿加载），更新内部状态
   useEffect(() => {
@@ -20,6 +22,29 @@ export function useEditor(
       setEditedHtml(initialEditedHtml);
     }
   }, [initialEditedHtml]);
+
+  // 保存当前选区
+  const saveSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      // 确保选区在编辑区域内
+      if (contentRef.current?.contains(range.commonAncestorContainer)) {
+        savedSelectionRef.current = range.cloneRange();
+      }
+    }
+  }, []);
+
+  // 恢复选区
+  const restoreSelection = useCallback(() => {
+    if (savedSelectionRef.current && contentRef.current) {
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(savedSelectionRef.current);
+      }
+    }
+  }, []);
 
   // 同步编辑后的HTML
   const syncEditedContent = useCallback(() => {
@@ -65,9 +90,15 @@ export function useEditor(
 
   // 执行编辑命令
   const execCommand = useCallback((command: string, value?: string) => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    // 恢复之前保存的选区
+    restoreSelection();
     document.execCommand(command, false, value);
     syncEditedContent();
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 加粗
   const handleBold = useCallback(() => {
@@ -364,6 +395,7 @@ export function useEditor(
     currentDocumentHtml,
     currentDocumentStyles,
     syncEditedContent,
+    saveSelection,
     // 编辑命令
     handleBold,
     handleItalic,

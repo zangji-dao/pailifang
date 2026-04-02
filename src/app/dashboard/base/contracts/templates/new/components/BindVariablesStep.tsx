@@ -32,6 +32,7 @@ interface BindVariablesStepProps {
   onRemoveCustomVariable?: (key: string) => void;
   onUpdateCustomVariable?: (key: string, variable: Partial<TemplateVariable>) => boolean;
   onSyncEditedContent: () => void;
+  onSaveSelection: () => void;
   // 编辑器命令
   onBold: () => void;
   onItalic: () => void;
@@ -78,6 +79,7 @@ export function BindVariablesStep({
   onRemoveCustomVariable,
   onUpdateCustomVariable,
   onSyncEditedContent,
+  onSaveSelection,
   onBold,
   onItalic,
   onUnderline,
@@ -165,6 +167,7 @@ export function BindVariablesStep({
         <div className="shrink-0">
           <EditorToolbar
             zoom={zoom}
+            onSaveSelection={onSaveSelection}
             onBold={onBold}
             onItalic={onItalic}
             onUnderline={onUnderline}

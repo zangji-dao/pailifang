@@ -37,6 +37,7 @@ import { FONT_OPTIONS, LINE_HEIGHT_OPTIONS, DOCUMENT_PRESETS } from "../types";
 
 interface EditorToolbarProps {
   zoom: number;
+  onSaveSelection: () => void;
   onBold: () => void;
   onItalic: () => void;
   onUnderline: () => void;
@@ -62,6 +63,7 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({
   zoom,
+  onSaveSelection,
   onBold,
   onItalic,
   onUnderline,
@@ -87,10 +89,26 @@ export function EditorToolbar({
   const [tableRows, setTableRows] = useState(3);
   const [tableCols, setTableCols] = useState(3);
 
+  // 包装按钮，在 mousedown 时保存选区
+  const ToolButton = ({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) => (
+    <Button 
+      variant="ghost" 
+      size="sm" 
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onSaveSelection();
+      }}
+      onClick={onClick} 
+      title={title}
+    >
+      {children}
+    </Button>
+  );
+
   return (
     <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
       {/* 字体选择 */}
-      <Select onValueChange={onSetFont}>
+      <Select onValueChange={(v) => { onSaveSelection(); onSetFont(v); }}>
         <SelectTrigger className="w-28 h-8">
           <SelectValue placeholder="字体" />
         </SelectTrigger>
@@ -104,7 +122,7 @@ export function EditorToolbar({
       </Select>
 
       {/* 字号选择 */}
-      <Select onValueChange={(v) => onSetFontSize(Number(v))}>
+      <Select onValueChange={(v) => { onSaveSelection(); onSetFontSize(Number(v)); }}>
         <SelectTrigger className="w-16 h-8">
           <SelectValue placeholder="字号" />
         </SelectTrigger>
@@ -120,59 +138,59 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 文本格式 */}
-      <Button variant="ghost" size="sm" onClick={onBold} title="加粗">
+      <ToolButton onClick={onBold} title="加粗">
         <Bold className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onItalic} title="斜体">
+      </ToolButton>
+      <ToolButton onClick={onItalic} title="斜体">
         <Italic className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onUnderline} title="下划线">
+      </ToolButton>
+      <ToolButton onClick={onUnderline} title="下划线">
         <Underline className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onStrikethrough} title="删除线">
+      </ToolButton>
+      <ToolButton onClick={onStrikethrough} title="删除线">
         <Strikethrough className="h-4 w-4" />
-      </Button>
+      </ToolButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 对齐 */}
-      <Button variant="ghost" size="sm" onClick={() => onAlign('left')} title="左对齐">
+      <ToolButton onClick={() => onAlign('left')} title="左对齐">
         <AlignLeft className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => onAlign('center')} title="居中">
+      </ToolButton>
+      <ToolButton onClick={() => onAlign('center')} title="居中">
         <AlignCenter className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => onAlign('right')} title="右对齐">
+      </ToolButton>
+      <ToolButton onClick={() => onAlign('right')} title="右对齐">
         <AlignRight className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => onAlign('justify')} title="两端对齐">
+      </ToolButton>
+      <ToolButton onClick={() => onAlign('justify')} title="两端对齐">
         <AlignJustify className="h-4 w-4" />
-      </Button>
+      </ToolButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 列表 */}
-      <Button variant="ghost" size="sm" onClick={onUnorderedList} title="无序列表">
+      <ToolButton onClick={onUnorderedList} title="无序列表">
         <List className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onOrderedList} title="有序列表">
+      </ToolButton>
+      <ToolButton onClick={onOrderedList} title="有序列表">
         <ListOrdered className="h-4 w-4" />
-      </Button>
+      </ToolButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 缩进 */}
-      <Button variant="ghost" size="sm" onClick={onIndent} title="增加缩进">
+      <ToolButton onClick={onIndent} title="增加缩进">
         <IndentIncrease className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onOutdent} title="减少缩进">
+      </ToolButton>
+      <ToolButton onClick={onOutdent} title="减少缩进">
         <IndentDecrease className="h-4 w-4" />
-      </Button>
+      </ToolButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 行间距 */}
-      <Select onValueChange={onSetLineHeight}>
+      <Select onValueChange={(v) => { onSaveSelection(); onSetLineHeight(v); }}>
         <SelectTrigger className="w-20 h-8">
           <SelectValue placeholder="行距" />
         </SelectTrigger>
@@ -188,7 +206,7 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 公文格式预设 */}
-      <Select onValueChange={onApplyPreset}>
+      <Select onValueChange={(v) => { onSaveSelection(); onApplyPreset(v); }}>
         <SelectTrigger className="w-28 h-8">
           <SelectValue placeholder="格式" />
         </SelectTrigger>
@@ -202,16 +220,16 @@ export function EditorToolbar({
       </Select>
 
       {/* 下划线填充 */}
-      <Button variant="ghost" size="sm" onClick={onAddUnderlineFill} title="下划线填充">
+      <ToolButton onClick={onAddUnderlineFill} title="下划线填充">
         <Minus className="h-4 w-4" />
-      </Button>
+      </ToolButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 表格 */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" title="插入表格">
+          <Button variant="ghost" size="sm" title="插入表格" onMouseDown={(e) => { e.preventDefault(); onSaveSelection(); }}>
             <Table className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
@@ -242,6 +260,7 @@ export function EditorToolbar({
             <Button
               size="sm"
               className="w-full"
+              onMouseDown={(e) => { e.preventDefault(); onSaveSelection(); }}
               onClick={() => onInsertTable(tableRows, tableCols)}
             >
               插入表格
@@ -249,12 +268,12 @@ export function EditorToolbar({
           </div>
         </PopoverContent>
       </Popover>
-      <Button variant="ghost" size="sm" onClick={onDeleteRow} title="删除行">
+      <ToolButton onClick={onDeleteRow} title="删除行">
         删行
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onDeleteColumn} title="删除列">
+      </ToolButton>
+      <ToolButton onClick={onDeleteColumn} title="删除列">
         删列
-      </Button>
+      </ToolButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 

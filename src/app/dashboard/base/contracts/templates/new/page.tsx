@@ -100,6 +100,7 @@ function TemplateCreateContent() {
     zoom,
     setZoom,
     syncEditedContent,
+    saveSelection,
     handleBold,
     handleItalic,
     handleUnderline,
@@ -580,6 +581,7 @@ function TemplateCreateContent() {
             onRemoveCustomVariable={removeCustomVariable}
             onUpdateCustomVariable={updateCustomVariable}
             onSyncEditedContent={syncEditedContent as any}
+            onSaveSelection={saveSelection}
             onBold={handleBold}
             onItalic={handleItalic}
             onUnderline={handleUnderline}
