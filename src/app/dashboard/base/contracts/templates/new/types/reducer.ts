@@ -56,6 +56,11 @@ export const initialState: TemplateState = {
 
 // Reducer 函数
 export function templateReducer(state: TemplateState, action: TemplateAction): TemplateState {
+  // 添加调试日志
+  if (action.type === 'SET_MAIN_FILE' || action.type === 'SET_TEMPLATE_ID') {
+    console.log('reducer - 处理 action:', action.type, action.payload);
+  }
+  
   switch (action.type) {
     // 步骤相关
     case 'SET_STEP':
@@ -77,6 +82,11 @@ export function templateReducer(state: TemplateState, action: TemplateAction): T
     
     // 文件相关
     case 'SET_MAIN_FILE':
+      console.log('reducer - SET_MAIN_FILE:', {
+        mainFile: action.payload.file,
+        mainFileUrl: action.payload.url,
+        mainFileName: action.payload.name,
+      });
       return {
         ...state,
         mainFile: action.payload.file,

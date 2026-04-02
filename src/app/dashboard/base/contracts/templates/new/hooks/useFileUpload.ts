@@ -13,6 +13,8 @@ export function useFileUpload() {
   
   // 上传主文件
   const uploadMainFile = useCallback(async (file: File) => {
+    console.log('uploadMainFile - 开始上传:', file.name);
+    
     dispatch({ type: 'SET_UPLOADING', payload: true });
     dispatch({ type: 'SET_PARSE_PROGRESS', payload: 20 });
     
@@ -27,20 +29,32 @@ export function useFileUpload() {
       
       const uploadData = await uploadRes.json();
       
+      console.log('uploadMainFile - 上传结果:', uploadData);
+      
       if (!uploadData.success) {
         throw new Error(uploadData.error || '上传失败');
       }
       
+      // 修正：从 data 对象中读取 templateId 和 fileUrl
+      const { templateId, fileUrl } = uploadData.data;
+      
+      console.log('uploadMainFile - 解析数据:', { templateId, fileUrl });
+      
       dispatch({ type: 'SET_PARSE_PROGRESS', payload: 60 });
-      dispatch({ type: 'SET_TEMPLATE_ID', payload: uploadData.templateId });
-      dispatch({ type: 'SET_MAIN_FILE', payload: { file, url: uploadData.fileUrl, name: file.name } });
+      dispatch({ type: 'SET_TEMPLATE_ID', payload: templateId });
+      dispatch({ type: 'SET_MAIN_FILE', payload: { file, url: fileUrl, name: file.name } });
+      
+      console.log('uploadMainFile - 状态已更新:', {
+        templateId,
+        mainFileUrl: fileUrl,
+      });
       
       toast.success('文件已上传，点击「下一步」解析文档');
       
       return {
         success: true,
-        templateId: uploadData.templateId,
-        fileUrl: uploadData.fileUrl,
+        templateId,
+        fileUrl,
       };
     } catch (err) {
       console.error('上传失败:', err);

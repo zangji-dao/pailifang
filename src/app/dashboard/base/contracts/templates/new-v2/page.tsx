@@ -263,6 +263,16 @@ function TemplateCreateContent() {
   
   const handleNext = () => {
     if (state.currentStep === 1) {
+      // 调试信息
+      console.log('handleNext - 当前状态:', {
+        uploading: fileUpload.uploading,
+        templateId: state.templateId,
+        mainFileUrl: state.mainFileUrl,
+        mainFile: !!state.mainFile,
+        mainFileName: state.mainFileName,
+        attachments: state.attachments.length,
+      });
+      
       // 检查是否正在上传
       if (fileUpload.uploading) {
         toast.error("文件正在上传中，请稍候...");
@@ -274,17 +284,20 @@ function TemplateCreateContent() {
       
       if (isEditingExistingTemplate) {
         // 编辑已有模板，直接跳到第二步
+        console.log('编辑已有模板，直接跳到第二步');
         draft.saveDraft(true);
         dispatch({ type: 'SET_STEP', payload: 2 });
       } else {
         // 新建模板
         // 检查是否已上传文件
         if (!state.templateId || !state.mainFileUrl) {
+          console.log('未上传文件:', { templateId: state.templateId, mainFileUrl: state.mainFileUrl });
           toast.error("请先上传文档");
           return;
         }
         
         // 文件已上传，开始解析
+        console.log('开始解析文档');
         handleUploadAndParse();
       }
     } else if (state.currentStep === 4) {

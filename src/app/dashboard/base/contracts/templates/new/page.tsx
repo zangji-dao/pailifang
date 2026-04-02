@@ -430,9 +430,12 @@ export default function NewTemplatePage() {
         throw new Error(uploadData.error || "上传失败");
       }
       
+      // 修正：从 data 对象中读取 templateId 和 fileUrl
+      const { templateId, fileUrl } = uploadData.data;
+      
       setParseProgress(60);
-      setTemplateId(uploadData.templateId);
-      setMainFileUrl(uploadData.fileUrl);
+      setTemplateId(templateId);
+      setMainFileUrl(fileUrl);
       setMainFileName(file.name);
       
       toast.success("文件已上传，点击「下一步」解析文档");
