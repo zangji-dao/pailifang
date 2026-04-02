@@ -1,6 +1,14 @@
 /**
  * 合同模板创建页面的状态类型定义
+ * 复用现有的类型定义，避免类型冲突
  */
+
+// 从现有类型导入
+import type { 
+  ParseResult, 
+  DocumentType,
+  ContractFieldDefinition 
+} from '@/types/contract-template';
 
 // 基础类型
 export interface Base {
@@ -9,7 +17,7 @@ export interface Base {
   address?: string;
 }
 
-// 附件类型
+// 附件类型（兼容现有的 AttachmentFile）
 export interface Attachment {
   id: string;
   name: string;
@@ -58,28 +66,6 @@ export interface Binding {
   variableKey: string;
 }
 
-// 解析结果类型
-export interface ParseResult {
-  success: boolean;
-  totalPages: number;
-  fileName: string;
-  fileType: string;
-  fileUrl: string;
-  pages: any[];
-  fullText: string;
-  html: string;
-  styles: string;
-  attachments: Attachment[];
-  detectedAttachments: any[];
-  detectedFields: any[];
-  mainContract: {
-    startPage: number;
-    endPage: number;
-    pageRange: string;
-    content: string;
-  };
-}
-
 // 草稿数据类型
 export interface DraftData {
   currentStep: number;
@@ -116,7 +102,7 @@ export interface TemplateState {
   parsing: boolean;
   parseProgress: number;
   
-  // 解析结果
+  // 解析结果（使用现有类型）
   parseResult: ParseResult | null;
   editedHtml: string;
   
@@ -195,3 +181,7 @@ export type TemplateAction =
   // 批量更新
   | { type: 'LOAD_DRAFT'; payload: Partial<TemplateState> }
   | { type: 'RESET_STATE' };
+
+// 重新导出现有类型，供其他文件使用
+export type { ParseResult, DocumentType, ContractFieldDefinition };
+
