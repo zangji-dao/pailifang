@@ -92,9 +92,14 @@ export async function POST(request: NextRequest) {
         }
 
         // 构建要保存的附件列表（同时保存到 template.attachments 字段）
+        // 优先使用 uploadedAttachments（上传步骤），其次使用 attachments（解析后的附件）
         let attachmentsToSave: any[] | undefined;
-        if (attachments && attachments.length > 0) {
-          attachmentsToSave = attachments.map((a: any) => ({
+        const attachmentsSource = (uploadedAttachments && uploadedAttachments.length > 0) 
+          ? uploadedAttachments 
+          : attachments;
+        
+        if (attachmentsSource && attachmentsSource.length > 0) {
+          attachmentsToSave = attachmentsSource.map((a: any) => ({
             id: a.id,
             name: a.name || a.displayName || '未命名附件',
             url: a.url || '',

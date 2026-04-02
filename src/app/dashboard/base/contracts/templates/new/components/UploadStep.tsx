@@ -170,7 +170,17 @@ export function UploadStep({
                     <FileText className="h-4 w-4 text-blue-500 shrink-0" />
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">{att.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {att.uploading ? (
+                          <span className="text-amber-500">上传中...</span>
+                        ) : att.size > 0 ? (
+                          formatFileSize(att.size)
+                        ) : att.url ? (
+                          <span className="text-green-500">已上传</span>
+                        ) : (
+                          '待上传'
+                        )}
+                      </p>
                     </div>
                   </div>
                   <Button

@@ -494,25 +494,29 @@ export default function ContractTemplatesPage() {
                     <Paperclip className="h-3.5 w-3.5" />
                     <span>
                       附件: {(() => {
-                        // 优先从 draft_data.attachments 读取，如果没有则从 template.attachments 读取
-                        const draftAttachments = (template as any).draft_data?.attachments;
+                        // 优先从 template.attachments 读取（上传的附件）
+                        // 其次从 draft_data.uploadedAttachments 读取
                         const templateAttachments = template.attachments;
+                        const uploadedAttachments = (template as any).draft_data?.uploadedAttachments;
                         
-                        if (draftAttachments && draftAttachments.length > 0) {
-                          return draftAttachments.length;
+                        if (templateAttachments && templateAttachments.length > 0) {
+                          return templateAttachments.length;
                         }
-                        return templateAttachments?.length || 0;
+                        if (uploadedAttachments && uploadedAttachments.length > 0) {
+                          return uploadedAttachments.length;
+                        }
+                        return 0;
                       })()} 个
                       {(() => {
-                        // 优先从 draft_data.attachments 读取附件名称
-                        const draftAttachments = (template as any).draft_data?.attachments;
+                        // 显示附件名称
                         const templateAttachments = template.attachments;
+                        const uploadedAttachments = (template as any).draft_data?.uploadedAttachments;
                         
                         let attachmentsToShow: any[] = [];
-                        if (draftAttachments && draftAttachments.length > 0) {
-                          attachmentsToShow = draftAttachments;
-                        } else if (templateAttachments && templateAttachments.length > 0) {
+                        if (templateAttachments && templateAttachments.length > 0) {
                           attachmentsToShow = templateAttachments;
+                        } else if (uploadedAttachments && uploadedAttachments.length > 0) {
+                          attachmentsToShow = uploadedAttachments;
                         }
                         
                         if (attachmentsToShow.length > 0) {

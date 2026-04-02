@@ -1,4 +1,5 @@
 export { UploadStep } from './UploadStep';
+export { ParseStep } from './ParseStep';
 export { EditorToolbar } from './EditorToolbar';
 export { MarkerPanel } from './MarkerPanel';
 export { AttachmentTabs } from './AttachmentTabs';

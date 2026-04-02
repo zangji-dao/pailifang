@@ -29,6 +29,7 @@ import {
 // 组件（复用现有）
 import {
   UploadStep,
+  ParseStep,
   BasicInfoStep,
   BindVariablesStep,
   CompleteStep,
@@ -161,6 +162,13 @@ function TemplateCreateContent() {
     fetchBases();
   }, [dispatch]);
   
+  // 同步 useAttachments 的 uploadedAttachments 到 Context
+  useEffect(() => {
+    if (uploadedAttachments.length > 0) {
+      dispatch({ type: 'SET_UPLOADED_ATTACHMENTS', payload: uploadedAttachments });
+    }
+  }, [uploadedAttachments, dispatch]);
+  
   // 解析文档
   const handleUploadAndParse = async () => {
     if (!state.templateId || !state.mainFileUrl) {
@@ -242,7 +250,8 @@ function TemplateCreateContent() {
       dispatch({ type: 'SET_PARSE_PROGRESS', payload: 100 });
       toast.success("文档解析成功");
       
-      dispatch({ type: 'SET_STEP', payload: 2 });
+      // 解析完成后自动进入下一步（绑定变量）
+      dispatch({ type: 'SET_STEP', payload: 3 });
     } catch (err) {
       console.error("上传解析失败:", err);
       toast.error(err instanceof Error ? err.message : "上传解析失败");
@@ -256,24 +265,18 @@ function TemplateCreateContent() {
   // 步骤导航
   const handlePrev = () => {
     if (state.currentStep > 1) {
+      // 如果在第3步（绑定变量）返回，回到解析步骤（第2步）
+      // 如果在第2步（解析）返回，回到上传步骤（第1步）
       draft.saveDraft(true);
       dispatch({ type: 'SET_STEP', payload: state.currentStep - 1 });
     }
   };
   
   const handleNext = () => {
+    console.log('handleNext - 当前步骤:', state.currentStep);
+    
     if (state.currentStep === 1) {
-      // 调试信息
-      console.log('handleNext - 当前状态:', {
-        uploading: fileUpload.uploading,
-        templateId: state.templateId,
-        mainFileUrl: state.mainFileUrl,
-        mainFile: !!state.mainFile,
-        mainFileName: state.mainFileName,
-        parseResult: !!state.parseResult,
-        attachments: state.attachments.length,
-      });
-      
+      // 第1步：上传文档 → 进入解析步骤
       // 检查是否正在上传
       if (fileUpload.uploading) {
         toast.error("文件正在上传中，请稍候...");
@@ -282,27 +285,30 @@ function TemplateCreateContent() {
       
       // 检查是否已上传文件
       if (!state.templateId || !state.mainFileUrl) {
-        console.log('未上传文件:', { templateId: state.templateId, mainFileUrl: state.mainFileUrl });
-        toast.error("请先上传文档");
+        toast.error("请先上传主文档");
         return;
       }
       
-      // 判断是否需要解析：
-      // 1. 如果 parseResult 已存在，说明已经解析过，直接跳到下一步（编辑已有模板或已解析的新模板）
-      // 2. 如果 parseResult 不存在，需要调用解析 API
+      // 进入解析步骤
+      draft.saveDraft(true);
+      dispatch({ type: 'SET_STEP', payload: 2 });
+      
+    } else if (state.currentStep === 2) {
+      // 第2步：解析文档 → 开始解析
+      // 如果已经解析过，直接进入下一步
       if (state.parseResult) {
-        console.log('已有解析结果，直接跳到第二步');
         draft.saveDraft(true);
-        dispatch({ type: 'SET_STEP', payload: 2 });
+        dispatch({ type: 'SET_STEP', payload: 3 });
       } else {
-        // 需要解析文档
-        console.log('开始解析文档');
+        // 开始解析
         handleUploadAndParse();
       }
-    } else if (state.currentStep === 4) {
+      
+    } else if (state.currentStep === 5) {
       // 最后一步，完成创建
       handleComplete();
     } else {
+      // 其他步骤正常流转
       draft.saveDraft(true);
       dispatch({ type: 'SET_STEP', payload: state.currentStep + 1 });
     }
@@ -361,7 +367,27 @@ function TemplateCreateContent() {
     await draft.saveDraft(false);
   };
   
-  const isLastStep = state.currentStep === 4;
+  // 删除附件后自动保存草稿（同步到数据库）
+  const handleRemoveAttachment = async (id: string) => {
+    // 从 useAttachments 中删除
+    removeAttachment(id);
+    
+    // 同时从 Context 中删除（同步状态）
+    dispatch({
+      type: 'SET_UPLOADED_ATTACHMENTS',
+      payload: state.uploadedAttachments.filter(a => a.id !== id),
+    });
+    
+    // 如果已有 templateId，自动保存草稿以同步附件列表
+    if (state.templateId) {
+      // 稍作延迟，等待状态更新
+      setTimeout(() => {
+        draft.saveDraft(true);
+      }, 100);
+    }
+  };
+  
+  const isLastStep = state.currentStep === 5;
   const canGoNext = !fileUpload.uploading && !state.parsing;
   
   // 加载中
@@ -401,7 +427,7 @@ function TemplateCreateContent() {
             bases={state.bases}
             onMainFileSelect={fileUpload.handleMainFileSelect}
             onAttachmentsSelect={handleAttachmentsSelect}
-            onRemoveAttachment={removeAttachment}
+            onRemoveAttachment={handleRemoveAttachment}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -412,6 +438,17 @@ function TemplateCreateContent() {
         )}
         
         {state.currentStep === 2 && (
+          <ParseStep
+            mainFileName={state.mainFileName}
+            mainFileUrl={state.mainFileUrl}
+            attachments={state.uploadedAttachments}
+            parsing={state.parsing}
+            parseProgress={state.parseProgress}
+            parseResult={state.parseResult}
+          />
+        )}
+        
+        {state.currentStep === 3 && (
           <BindVariablesStep
             parseResult={state.parseResult}
             editedHtml={editedHtml}
@@ -457,7 +494,7 @@ function TemplateCreateContent() {
           />
         )}
         
-        {state.currentStep === 3 && (
+        {state.currentStep === 4 && (
           <BasicInfoStep
             name={state.name}
             description={state.description}
@@ -474,7 +511,7 @@ function TemplateCreateContent() {
           />
         )}
         
-        {state.currentStep === 4 && (
+        {state.currentStep === 5 && (
           <CompleteStep
             name={state.name}
             description={state.description}

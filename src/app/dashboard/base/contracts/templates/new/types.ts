@@ -1,18 +1,21 @@
-// 步骤定义
+// 步骤定义 - 将解析独立为单独步骤
 export const STEPS = [
   { id: 1, title: "上传文档", description: "上传合同文件" },
-  { id: 2, title: "绑定变量", description: "选择变量并绑定位置" },
-  { id: 3, title: "基本信息", description: "填写模板信息" },
-  { id: 4, title: "完成", description: "预览并保存" },
+  { id: 2, title: "解析文档", description: "解析文档内容" },
+  { id: 3, title: "绑定变量", description: "选择变量并绑定位置" },
+  { id: 4, title: "基本信息", description: "填写模板信息" },
+  { id: 5, title: "完成", description: "预览并保存" },
 ] as const;
 
-// 附件文件类型
+// 附件文件类型（包含上传状态）
 export interface AttachmentFile {
   id: string;
-  file: File;
+  file?: File | null; // 新上传的文件（可选，已上传的附件没有这个）
   name: string;
   type: string;
   size: number;
+  url?: string; // 已上传的附件 URL（可选）
+  uploading?: boolean; // 是否正在上传
 }
 
 // 已上传的附件类型
@@ -21,7 +24,7 @@ export interface UploadedAttachment {
   name: string;
   url: string;
   fileType: string;
-  size: number;
+  size?: number; // 可选
 }
 
 // 基地类型

@@ -36,10 +36,12 @@ export function useAttachments() {
         name: file.name,
         type: file.type,
         size: file.size,
+        uploading: true, // 标记为上传中
       });
     }
     
     if (validFiles.length > 0) {
+      // 先添加到列表，显示上传中状态
       setAttachments(prev => [...prev, ...validFiles]);
       
       // 自动上传附件到服务器
@@ -49,7 +51,7 @@ export function useAttachments() {
       for (const validFile of validFiles) {
         try {
           const formData = new FormData();
-          formData.append("file", validFile.file);
+          formData.append("file", validFile.file!);
           
           const uploadRes = await fetch("/api/contract-templates/upload-attachment", {
             method: "POST",
@@ -62,9 +64,17 @@ export function useAttachments() {
           }
           
           uploadedList.push(uploadData.data);
+          
+          // 更新附件状态：标记为已上传，添加 url
+          setAttachments(prev => prev.map(a => 
+            a.id === validFile.id 
+              ? { ...a, uploading: false, url: uploadData.data.url }
+              : a
+          ));
         } catch (err) {
           console.error(`上传附件 ${validFile.name} 失败:`, err);
           failedFiles.push(validFile.name);
+          // 上传失败，从列表中移除
           setAttachments(prev => prev.filter(a => a.id !== validFile.id));
         }
       }
@@ -159,19 +169,22 @@ export function useAttachments() {
     const attachmentsList = template.attachments || [];
     if (attachmentsList.length > 0) {
       // 只更新 state，ref 会通过 useEffect 自动同步
-      setUploadedAttachments(attachmentsList.map((a: any) => ({
+      const uploadedAtts = attachmentsList.map((a: any) => ({
         id: a.id,
         name: a.name,
         url: a.url || '',
-        fileType: 'application/vnd.openxmlformats-officientml.wordprocessingml.document',
-        size: 0,
-      })));
+        fileType: a.fileType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: a.size || 0,
+      }));
+      setUploadedAttachments(uploadedAtts);
+      // attachments 也要包含 url 信息
       setAttachments(attachmentsList.map((a: any) => ({
         id: a.id,
         name: a.name,
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        size: 0,
-        file: null as any,
+        type: a.fileType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: a.size || 0,
+        url: a.url || '',
+        file: null,
       })));
     }
   }, []);

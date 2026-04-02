@@ -35,6 +35,7 @@ export interface UploadedAttachment {
   name: string;
   url: string;
   fileType: string;
+  size?: number; // 可选，与 types.ts 保持一致
 }
 
 // 变量标记类型
