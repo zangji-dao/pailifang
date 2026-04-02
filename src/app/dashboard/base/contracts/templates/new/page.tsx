@@ -494,6 +494,19 @@ export default function NewTemplatePage() {
       
       setParseProgress(50);
       
+      // 调试信息：打印解析参数
+      console.log('解析参数 - 调试信息:', {
+        templateIdToUse,
+        fileUrl,
+        fileName,
+        fileType,
+        hasTemplateId: !!templateIdToUse,
+        hasFileUrl: !!fileUrl,
+        uploadedAttachmentsRef: uploadedAttachmentsRef.current,
+        newlyUploaded,
+        allAttachmentsCount: uploadedAttachmentsRef.current.length + newlyUploaded.length
+      });
+      
       // 解析
       const allAttachments = [...uploadedAttachmentsRef.current, ...newlyUploaded];
       
