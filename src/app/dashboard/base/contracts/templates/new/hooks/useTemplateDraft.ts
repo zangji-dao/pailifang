@@ -33,56 +33,55 @@ export function useTemplateDraft() {
     setSavingDraft(true);
     
     try {
-      const draftData = {
+      // API 期望的字段在顶层，而不是嵌套在 draft_data 内
+      const requestBody = {
         id: data.templateId || undefined,
         name: data.name || '未命名模板',
         description: data.description,
         type: data.type,
         base_id: data.baseId || null,
-        draft_data: {
-          currentStep: data.currentStep,
-          editedHtml: data.editedHtml,
-          markers: data.markers.map(m => ({
-            id: m.id,
-            variableKey: m.variableKey,
-            status: m.status,
-            position: m.position,
-            documentId: m.documentId,
-          })),
-          selectedVariables: data.selectedVariables.map(v => ({
-            id: v.id,
-            key: v.key,
-            name: v.name,
-            type: v.type,
-            category: v.category,
-            placeholder: v.placeholder,
-          })),
-          bindings: data.bindings,
-          source_file_url: data.parseResult?.fileUrl,
-          source_file_name: data.parseResult?.fileName,
-          source_file_type: data.parseResult?.fileType,
-          styles: data.parseResult?.styles,
-          attachments: data.parseResult?.attachments?.map(a => ({
-            id: a.id,
-            name: a.name,
-            displayName: a.displayName,
-            url: a.url,
-            html: a.html,
-          })),
-          uploadedAttachments: data.uploadedAttachments.map(a => ({
-            id: a.id,
-            name: a.name,
-            url: a.url,
-            fileType: a.fileType,
-            size: a.size,
-          })),
-        },
+        currentStep: data.currentStep,
+        editedHtml: data.editedHtml,
+        markers: data.markers.map(m => ({
+          id: m.id,
+          variableKey: m.variableKey,
+          status: m.status,
+          position: m.position,
+          documentId: m.documentId,
+        })),
+        selectedVariables: data.selectedVariables.map(v => ({
+          id: v.id,
+          key: v.key,
+          name: v.name,
+          type: v.type,
+          category: v.category,
+          placeholder: v.placeholder,
+        })),
+        bindings: data.bindings,
+        source_file_url: data.parseResult?.fileUrl,
+        source_file_name: data.parseResult?.fileName,
+        source_file_type: data.parseResult?.fileType,
+        styles: data.parseResult?.styles,
+        attachments: data.parseResult?.attachments?.map(a => ({
+          id: a.id,
+          name: a.name,
+          displayName: a.displayName,
+          url: a.url,
+          html: a.html,
+        })),
+        uploadedAttachments: data.uploadedAttachments.map(a => ({
+          id: a.id,
+          name: a.name,
+          url: a.url,
+          fileType: a.fileType,
+          size: a.size,
+        })),
       };
       
       const response = await fetch("/api/contract-templates/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draftData),
+        body: JSON.stringify(requestBody),
       });
       
       const result = await response.json();
