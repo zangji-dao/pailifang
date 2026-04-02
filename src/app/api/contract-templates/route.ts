@@ -10,13 +10,13 @@ interface ContractTemplate {
   description: string | null;
   type: string; // 入驻合同、服务合同等
   status?: 'draft' | 'published'; // 草稿或已发布
-  style_config: TemplateStyleConfig;
+  styleConfig: TemplateStyleConfig;
   clauses: TemplateClause[];
   attachments?: ContractAttachment[]; // 合同附件列表
-  is_default: boolean;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 interface TemplateStyleConfig {
@@ -372,13 +372,13 @@ function formatTemplate(item: any): ContractTemplate & {
     description: item.description,
     type: item.type,
     status: item.status || 'published',
-    style_config: item.style_config,
+    styleConfig: item.style_config,
     clauses: item.clauses || [],
     attachments: item.attachments || [],
-    is_default: item.is_default,
-    is_active: item.is_active,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
+    isDefault: item.is_default,
+    isActive: item.is_active,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
     source_file_url: item.source_file_url,
     source_file_name: item.source_file_name,
     source_file_type: item.source_file_type,
