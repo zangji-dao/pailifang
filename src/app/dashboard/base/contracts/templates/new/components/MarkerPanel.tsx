@@ -40,6 +40,8 @@ interface MarkerPanelProps {
   onSetActiveMarker: (markerId: string | null) => void;
   onShowVariablePicker: (show: boolean) => void;
   onAddCustomVariable: (variable: Partial<TemplateVariable>, onSuccess?: () => void) => boolean;
+  onRemoveCustomVariable?: (key: string) => void;
+  onUpdateCustomVariable?: (key: string, variable: Partial<TemplateVariable>) => boolean;
 }
 
 /**
@@ -67,8 +69,12 @@ export function MarkerPanel({
   onSetActiveMarker,
   onShowVariablePicker,
   onAddCustomVariable,
+  onRemoveCustomVariable,
+  onUpdateCustomVariable,
 }: MarkerPanelProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingVariable, setEditingVariable] = useState<TemplateVariable | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
   const [newVariable, setNewVariable] = useState<Partial<TemplateVariable>>({
@@ -93,6 +99,9 @@ export function MarkerPanel({
       }));
     }
   }, [showAddDialog, selectedVariables]);
+  
+  // 自定义变量列表
+  const customVariables = selectedVariables.filter(v => v.category === 'custom');
 
   // 过滤变量
   const filteredVariables = (() => {
@@ -133,6 +142,36 @@ export function MarkerPanel({
         placeholder: '',
       });
     });
+  };
+  
+  // 打开编辑对话框
+  const handleEditVariable = (variable: TemplateVariable) => {
+    setEditingVariable(variable);
+    setShowEditDialog(true);
+  };
+  
+  // 保存编辑
+  const handleSaveEdit = () => {
+    if (!editingVariable || !onUpdateCustomVariable) return;
+    const success = onUpdateCustomVariable(editingVariable.key, editingVariable);
+    if (success) {
+      setShowEditDialog(false);
+      setEditingVariable(null);
+    }
+  };
+  
+  // 删除自定义变量
+  const handleDeleteVariable = (key: string) => {
+    if (!onRemoveCustomVariable) return;
+    // 检查是否已被绑定
+    if (isVariableBound(key)) {
+      // 如果已绑定，先解绑
+      const boundMarker = markers.find(m => m.status === 'bound' && m.variableKey === key);
+      if (boundMarker) {
+        onRemoveMarker(boundMarker.id);
+      }
+    }
+    onRemoveCustomVariable(key);
   };
 
   return (
@@ -226,6 +265,48 @@ export function MarkerPanel({
               </div>
             )}
           </div>
+          
+          {/* 自定义变量列表 */}
+          {customVariables.length > 0 && (
+            <div className="p-3 border-t">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">自定义变量</span>
+                <Badge variant="outline">{customVariables.length}</Badge>
+              </div>
+              <div className="space-y-1">
+                {customVariables.map(variable => (
+                  <div
+                    key={variable.key}
+                    className="flex items-center justify-between p-2 rounded border bg-blue-50 border-blue-200 text-sm"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{variable.name}</p>
+                      <p className="text-xs text-muted-foreground">{variable.key}</p>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditVariable(variable)}
+                        title="编辑变量"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteVariable(variable.key)}
+                        className="text-destructive hover:text-destructive"
+                        title="删除变量"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -351,6 +432,70 @@ export function MarkerPanel({
             </Button>
             <Button onClick={handleAddVariable}>
               添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* 编辑自定义变量对话框 */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑自定义变量</DialogTitle>
+          </DialogHeader>
+          {editingVariable && (
+            <div className="space-y-4">
+              <div>
+                <Label>变量名称 *</Label>
+                <Input
+                  value={editingVariable.name}
+                  onChange={(e) => setEditingVariable(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  placeholder="如：甲方联系人"
+                />
+              </div>
+              <div>
+                <Label>变量标识</Label>
+                <Input
+                  value={editingVariable.key}
+                  readOnly
+                  className="bg-muted text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground mt-1">变量标识不可修改</p>
+              </div>
+              <div>
+                <Label>变量类型</Label>
+                <Select
+                  value={editingVariable.type}
+                  onValueChange={(v) => setEditingVariable(prev => prev ? { ...prev, type: v as any } : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">文本</SelectItem>
+                    <SelectItem value="number">数字</SelectItem>
+                    <SelectItem value="date">日期</SelectItem>
+                    <SelectItem value="money">金额</SelectItem>
+                    <SelectItem value="select">选项</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>占位提示</Label>
+                <Input
+                  value={editingVariable.placeholder || ''}
+                  onChange={(e) => setEditingVariable(prev => prev ? { ...prev, placeholder: e.target.value } : null)}
+                  placeholder="如：请输入甲方联系人姓名"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              保存
             </Button>
           </DialogFooter>
         </DialogContent>

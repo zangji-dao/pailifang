@@ -224,6 +224,37 @@ export function useMarkers(
     onSuccess?.();
     return true;
   }, [activeMarkerId, selectedVariables, contentRef, syncEditedContent]);
+  
+  // 删除自定义变量
+  const removeCustomVariable = useCallback((key: string) => {
+    setSelectedVariables(prev => prev.filter(v => v.key !== key));
+    toast.success('已删除自定义变量');
+  }, []);
+  
+  // 更新自定义变量
+  const updateCustomVariable = useCallback((key: string, updates: Partial<TemplateVariable>) => {
+    if (!updates.name) {
+      toast.error('请填写变量名称');
+      return false;
+    }
+    
+    setSelectedVariables(prev => prev.map(v => 
+      v.key === key ? { ...v, ...updates } : v
+    ));
+    
+    // 如果有绑定的标记，更新显示文本
+    const boundMarker = markers.find(m => m.status === 'bound' && m.variableKey === key);
+    if (boundMarker) {
+      const markerEl = contentRef.current?.querySelector(`[data-marker-id="${boundMarker.id}"]`) as HTMLElement;
+      if (markerEl) {
+        markerEl.textContent = `{{${updates.name}}}`;
+        syncEditedContent();
+      }
+    }
+    
+    toast.success('已更新自定义变量');
+    return true;
+  }, [markers, contentRef, syncEditedContent]);
 
   // 从模板加载
   const loadFromTemplate = useCallback((template: any) => {
@@ -272,6 +303,8 @@ export function useMarkers(
     handleRemoveMarker,
     handleChangeVariable,
     addCustomVariable,
+    removeCustomVariable,
+    updateCustomVariable,
     loadFromTemplate,
     reset,
   };

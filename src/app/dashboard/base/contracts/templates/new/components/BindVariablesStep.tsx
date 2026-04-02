@@ -29,6 +29,8 @@ interface BindVariablesStepProps {
   onSetActiveMarker: (markerId: string | null) => void;
   onShowVariablePicker: (show: boolean) => void;
   onAddCustomVariable: (variable: Partial<TemplateVariable>, onSuccess?: () => void) => boolean;
+  onRemoveCustomVariable?: (key: string) => void;
+  onUpdateCustomVariable?: (key: string, variable: Partial<TemplateVariable>) => boolean;
   onSyncEditedContent: () => void;
   // 编辑器命令
   onBold: () => void;
@@ -73,6 +75,8 @@ export function BindVariablesStep({
   onSetActiveMarker,
   onShowVariablePicker,
   onAddCustomVariable,
+  onRemoveCustomVariable,
+  onUpdateCustomVariable,
   onSyncEditedContent,
   onBold,
   onItalic,
@@ -285,6 +289,8 @@ export function BindVariablesStep({
           onSetActiveMarker={onSetActiveMarker}
           onShowVariablePicker={onShowVariablePicker}
           onAddCustomVariable={onAddCustomVariable}
+          onRemoveCustomVariable={onRemoveCustomVariable}
+          onUpdateCustomVariable={onUpdateCustomVariable}
         />
       </div>
     </div>

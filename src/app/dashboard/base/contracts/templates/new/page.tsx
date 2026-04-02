@@ -147,6 +147,8 @@ function TemplateCreateContent() {
     handleRemoveMarker,
     handleChangeVariable,
     addCustomVariable,
+    removeCustomVariable,
+    updateCustomVariable,
     loadFromTemplate: loadMarkersFromTemplate,
   } = useMarkers(contentRef, syncEditedContent, () => activeDocumentId || 'main', state.markers as any, state.selectedVariables as any);
   
@@ -543,6 +545,8 @@ function TemplateCreateContent() {
             onSetActiveMarker={setActiveMarkerId}
             onShowVariablePicker={setShowVariablePicker}
             onAddCustomVariable={addCustomVariable as any}
+            onRemoveCustomVariable={removeCustomVariable}
+            onUpdateCustomVariable={updateCustomVariable}
             onSyncEditedContent={syncEditedContent as any}
             onBold={handleBold}
             onItalic={handleItalic}
