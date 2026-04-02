@@ -298,9 +298,19 @@ export default function NewTemplatePage() {
               hasDraftData: !!template.draft_data,
               draftDataAttachments: template.draft_data?.attachments?.length || 0,
               templateAttachments: template.attachments?.length || 0,
+              draftDataKeys: template.draft_data ? Object.keys(template.draft_data) : [],
+              templateKeys: Object.keys(template),
               draftData: template.draft_data,
               templateAttachmentsData: template.attachments
             });
+            
+            // 打印完整的 draftData，看看有没有其他地方保存了附件
+            if (template.draft_data) {
+              console.log('完整 draftData:', JSON.stringify(template.draft_data, null, 2));
+            }
+            
+            // 打印完整的 template 对象
+            console.log('完整 template:', JSON.stringify(template, null, 2));
             
             if (isDraftTemplate && template.draft_data) {
               // 如果是草稿，优先从 draft_data 恢复完整数据
