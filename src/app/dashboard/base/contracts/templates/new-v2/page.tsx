@@ -231,27 +231,28 @@ function TemplateCreateContent() {
   
   const handleNext = () => {
     if (state.currentStep === 1) {
+      // 检查是否正在上传
       if (fileUpload.uploading) {
         toast.error("文件正在上传中，请稍候...");
         return;
       }
       
+      // 检查是否是编辑已有模板
       const isEditingExistingTemplate = state.templateId && state.mainFileUrl;
       
       if (isEditingExistingTemplate) {
+        // 编辑已有模板，直接跳到第二步
         draft.saveDraft(true);
         dispatch({ type: 'SET_STEP', payload: 2 });
       } else {
-        if (!state.mainFile && !state.mainFileUrl) {
+        // 新建模板
+        // 检查是否已上传文件
+        if (!state.templateId || !state.mainFileUrl) {
           toast.error("请先上传文档");
           return;
         }
         
-        if (state.mainFile && (!state.templateId || !state.mainFileUrl)) {
-          toast.error("文件上传失败，请重新选择文件");
-          return;
-        }
-        
+        // 文件已上传，开始解析
         handleUploadAndParse();
       }
     } else if (state.currentStep === 4) {
