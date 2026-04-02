@@ -447,8 +447,9 @@ export default function NewTemplatePage() {
   
   // 上传并解析
   const handleUploadAndParse = async () => {
-    if (!parseResult?.fileUrl && !mainFile && !mainFileUrl) {
-      toast.error("请先上传文档");
+    // 检查是否有必要的参数
+    if (!templateId || !mainFileUrl) {
+      toast.error("请先上传文档并等待上传完成");
       return;
     }
     
@@ -456,9 +457,9 @@ export default function NewTemplatePage() {
     setParseProgress(20);
     
     try {
-      let fileUrl = parseResult?.fileUrl || mainFileUrl;
-      let fileName = parseResult?.fileName || mainFileName;
-      let fileType = parseResult?.fileType || 'docx';
+      let fileUrl = mainFileUrl;
+      let fileName = mainFileName;
+      let fileType = 'docx';
       let templateIdToUse = templateId;
       
       // 上传未上传的附件
@@ -705,7 +706,15 @@ export default function NewTemplatePage() {
         mainFileUrl,
         parseResult: !!parseResult,
         searchParams_templateId: searchParams.get('templateId'),
+        uploading,
+        mainFile: !!mainFile,
       });
+      
+      // 如果文件正在上传，提示等待
+      if (uploading) {
+        toast.error("文件正在上传中，请稍候...");
+        return;
+      }
       
       // 判断是否是编辑已有模板：有 templateId 并且有 source_file_url
       const isEditingExistingTemplate = templateId && mainFileUrl;
@@ -715,7 +724,18 @@ export default function NewTemplatePage() {
         handleSaveDraft(true);
         setCurrentStep(2);
       } else {
-        // 否则才需要解析
+        // 新建模板，需要检查是否已选择文件
+        if (!mainFile && !mainFileUrl) {
+          toast.error("请先上传文档");
+          return;
+        }
+        
+        // 如果选择了文件但没有 templateId，说明文件还没上传完成
+        if (mainFile && !templateId) {
+          toast.error("文件上传中，请稍候...");
+          return;
+        }
+        
         console.log('新建模板，需要解析');
         handleUploadAndParse();
       }
