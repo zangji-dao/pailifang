@@ -72,6 +72,19 @@ export async function POST(request: NextRequest) {
           finalDraftData.original_template_id = existingDraftData.original_template_id;
         }
 
+        // 构建要保存的附件列表（同时保存到 template.attachments 字段）
+        let attachmentsToSave: any[] | undefined;
+        if (attachments && attachments.length > 0) {
+          attachmentsToSave = attachments.map((a: any) => ({
+            id: a.id,
+            name: a.name || a.displayName || '未命名附件',
+            url: a.url || '',
+            description: '',
+            required: false,
+            order: a.order || 0,
+          }));
+        }
+
         // 无论是草稿还是已发布，都直接更新该模板的草稿数据
         const { data, error } = await supabase
           .from('contract_templates')
@@ -86,6 +99,8 @@ export async function POST(request: NextRequest) {
             source_file_name: source_file_name || undefined,
             source_file_type: source_file_type || undefined,
             draft_data: finalDraftData,
+            // 同时更新 attachments 字段，这样列表页也能看到附件信息
+            ...(attachmentsToSave ? { attachments: attachmentsToSave } : {}),
             updated_at: now,
           })
           .eq('id', id)
@@ -111,6 +126,19 @@ export async function POST(request: NextRequest) {
     // 创建新草稿（新建模板的情况）
     const templateId = crypto.randomUUID();
     
+    // 构建要保存的附件列表
+    let attachmentsToSave: any[] | undefined;
+    if (attachments && attachments.length > 0) {
+      attachmentsToSave = attachments.map((a: any) => ({
+        id: a.id,
+        name: a.name || a.displayName || '未命名附件',
+        url: a.url || '',
+        description: '',
+        required: false,
+        order: a.order || 0,
+      }));
+    }
+    
     const { data, error } = await supabase
       .from('contract_templates')
       .insert({
@@ -133,6 +161,8 @@ export async function POST(request: NextRequest) {
           styles,
           uploadedAttachments,
         },
+        // 同时保存 attachments 字段
+        ...(attachmentsToSave ? { attachments: attachmentsToSave } : {}),
         is_default: false,
         is_active: true,
         created_at: now,
