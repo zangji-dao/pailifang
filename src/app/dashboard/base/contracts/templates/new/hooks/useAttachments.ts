@@ -173,7 +173,7 @@ export function useAttachments() {
         id: a.id,
         name: a.name,
         url: a.url || '',
-        fileType: a.fileType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        fileType: a.fileType || 'docx',
         size: a.size || 0,
       }));
       setUploadedAttachments(uploadedAtts);
@@ -181,7 +181,29 @@ export function useAttachments() {
       setAttachments(attachmentsList.map((a: any) => ({
         id: a.id,
         name: a.name,
-        type: a.fileType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        type: a.fileType || 'docx',
+        size: a.size || 0,
+        url: a.url || '',
+        file: null,
+      })));
+    }
+  }, []);
+  
+  // 从模板 attachments 字段加载（用于已发布模板）
+  const loadFromTemplateAttachments = useCallback((attachmentsList: any[]) => {
+    if (attachmentsList && attachmentsList.length > 0) {
+      const uploadedAtts = attachmentsList.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        url: a.url || '',
+        fileType: a.fileType || 'docx',
+        size: a.size || 0,
+      }));
+      setUploadedAttachments(uploadedAtts);
+      setAttachments(attachmentsList.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        type: a.fileType || 'docx',
         size: a.size || 0,
         url: a.url || '',
         file: null,
@@ -198,9 +220,10 @@ export function useAttachments() {
       setAttachments(uploadedAtts.map((a: any) => ({
         id: a.id,
         name: a.name,
-        type: a.fileType,
+        type: a.fileType || a.type,
         size: a.size || 0,
-        file: null as any,
+        url: a.url || '',
+        file: null,
       })));
     }
   }, []);
@@ -220,6 +243,7 @@ export function useAttachments() {
     handleDragEnd,
     reset,
     loadFromTemplate,
+    loadFromTemplateAttachments,
     loadFromDraft,
   };
 }

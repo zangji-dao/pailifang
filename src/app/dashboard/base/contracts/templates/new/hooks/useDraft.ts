@@ -106,6 +106,17 @@ export function useDraft() {
       
       const template = result.data;
       
+      // 确定附件来源：优先 draft_data.uploadedAttachments，其次 template.attachments
+      const attachments = template.draft_data?.uploadedAttachments?.length > 0
+        ? template.draft_data.uploadedAttachments
+        : (template.attachments || []).map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            url: a.url,
+            fileType: a.fileType || 'docx',
+            size: a.size || 0,
+          }));
+      
       // 恢复状态
       dispatch({
         type: 'LOAD_DRAFT',
@@ -120,7 +131,7 @@ export function useDraft() {
           markers: template.draft_data?.markers || [],
           selectedVariables: template.draft_data?.selectedVariables || [],
           bindings: template.draft_data?.bindings || [],
-          uploadedAttachments: template.draft_data?.uploadedAttachments || [],
+          uploadedAttachments: attachments,
           mainFileUrl: template.source_file_url || '',
           mainFileName: template.source_file_name || '',
           isDraft: true,

@@ -93,11 +93,25 @@ export function UploadStep({
               <div className="flex items-center justify-center gap-3">
                 <FileText className="h-8 w-8 text-blue-500" />
                 <div className="text-left">
-                  <p className="font-medium">{mainFileName || mainFile?.name}</p>
+                  <p className="font-medium">{mainFileName || mainFile?.name || '合同文档'}</p>
                   <p className="text-sm text-muted-foreground">
-                    {mainFile ? formatFileSize(mainFile.size) : '已上传'}
+                    {mainFile ? formatFileSize(mainFile.size) : <span className="text-green-500">已上传</span>}
                   </p>
                 </div>
+                {mainFileUrl && !mainFile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      mainFileInputRef.current?.click();
+                    }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    重新上传
+                  </Button>
+                )}
               </div>
             ) : (
               <>

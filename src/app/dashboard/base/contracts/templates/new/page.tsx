@@ -67,6 +67,7 @@ function TemplateCreateContent() {
     handleDrop,
     handleDragEnd,
     loadFromTemplate: loadAttachmentsFromTemplate,
+    loadFromTemplateAttachments,
     loadFromDraft: loadAttachmentsFromDraft,
   } = useAttachments();
   
@@ -168,6 +169,15 @@ function TemplateCreateContent() {
       dispatch({ type: 'SET_UPLOADED_ATTACHMENTS', payload: uploadedAttachments });
     }
   }, [uploadedAttachments, dispatch]);
+  
+  // 从 Context 同步附件到 useAttachments（编辑模板时）
+  useEffect(() => {
+    // 当 Context 中有附件但 useAttachments 没有时，同步过去
+    if (state.templateId && state.uploadedAttachments.length > 0 && attachments.length === 0) {
+      console.log('同步附件到 useAttachments:', state.uploadedAttachments);
+      loadAttachmentsFromDraft({ uploadedAttachments: state.uploadedAttachments });
+    }
+  }, [state.templateId, state.uploadedAttachments, attachments.length, loadAttachmentsFromDraft]);
   
   // 解析文档
   const handleUploadAndParse = async () => {
