@@ -189,8 +189,8 @@ export function EditorToolbar({
 
       {/* 公文格式预设 */}
       <Select onValueChange={onApplyPreset}>
-        <SelectTrigger className="w-24 h-8">
-          <SelectValue placeholder="公文格式" />
+        <SelectTrigger className="w-28 h-8">
+          <SelectValue placeholder="格式" />
         </SelectTrigger>
         <SelectContent className="z-50">
           {DOCUMENT_PRESETS.map(preset => (
