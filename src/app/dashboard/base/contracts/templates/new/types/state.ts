@@ -78,6 +78,8 @@ export interface DraftData {
   attachments: Attachment[];
   uploadedAttachments: UploadedAttachment[];
   original_template_id?: string;
+  // 原始解析的 HTML（用于恢复时显示）
+  originalHtml?: string;
 }
 
 // 模板状态

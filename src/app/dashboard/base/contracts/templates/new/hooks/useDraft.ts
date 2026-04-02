@@ -45,6 +45,8 @@ export function useDraft() {
         bindings: state.bindings,
         attachments: state.parseResult?.attachments || [],
         uploadedAttachments: state.uploadedAttachments,
+        // 保存原始解析的 HTML，用于恢复时显示
+        originalHtml: state.parseResult?.html || '',
       };
       
       const response = await fetch('/api/contract-templates/draft', {
@@ -67,6 +69,8 @@ export function useDraft() {
           styles: state.parseResult?.styles || '',
           attachments: state.parseResult?.attachments || [],
           uploadedAttachments: state.uploadedAttachments,
+          // 保存原始解析的 HTML
+          originalHtml: state.parseResult?.html || '',
         }),
       });
       
@@ -148,7 +152,8 @@ export function useDraft() {
           fileUrl: template.source_file_url,
           pages: [],
           fullText: '',
-          html: template.draft_data?.editedHtml || '',
+          // 使用原始解析的 HTML（如果有的话），否则使用 editedHtml
+          html: template.draft_data?.originalHtml || template.draft_data?.editedHtml || '',
           styles: template.draft_data?.styles || '',
           attachments: template.draft_data?.attachments || [],
           detectedAttachments: [],
