@@ -32,7 +32,6 @@ export default function NewTemplatePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [templateId, setTemplateId] = useState<string>("");
-  const [originalTemplateId, setOriginalTemplateId] = useState<string>(""); // 编辑已发布模板时的原模板ID
   const [saving, setSaving] = useState(false);
   
   // 主文件状态
@@ -212,11 +211,6 @@ export default function NewTemplatePage() {
             const draftData = template.draft_data;
             setCurrentStep(draftData.currentStep || 1);
             setEditedHtml(draftData.editedHtml || '');
-            
-            // 恢复原模板ID（编辑已发布模板时）
-            if (draftData.original_template_id) {
-              setOriginalTemplateId(draftData.original_template_id);
-            }
             
             // 恢复标记
             if (draftData.markers && Array.isArray(draftData.markers)) {
@@ -523,7 +517,7 @@ export default function NewTemplatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: templateId,
-          original_template_id: originalTemplateId || undefined, // 如果是编辑已发布模板，传递原模板ID
+          clear_draft: true, // 完成时清除草稿数据
           name,
           description,
           type,
@@ -542,7 +536,7 @@ export default function NewTemplatePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            templateId: originalTemplateId || templateId,
+            templateId,
             fields: selectedVariables.map((v, index) => ({
               key: v.key,
               label: v.name,
@@ -554,7 +548,7 @@ export default function NewTemplatePage() {
         });
       }
       
-      toast.success(originalTemplateId ? "模板更新成功" : "模板创建成功");
+      toast.success("模板保存成功");
       router.push("/dashboard/base/contracts/templates");
     } catch (err) {
       console.error("保存失败:", err);

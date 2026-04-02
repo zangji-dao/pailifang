@@ -35,24 +35,25 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // 如果有id，检查是否为草稿状态
+    // 如果有id，直接更新该模板的草稿数据
     if (id) {
       const { data: existingTemplate, error: fetchError } = await supabase
         .from('contract_templates')
-        .select('id, status')
+        .select('id, status, name')
         .eq('id', id)
         .single();
 
-      // 如果是草稿状态，更新现有草稿
-      if (existingTemplate && existingTemplate.status === 'draft') {
+      if (existingTemplate) {
+        // 无论是草稿还是已发布，都直接更新该模板的草稿数据
         const { data, error } = await supabase
           .from('contract_templates')
           .update({
-            name: name || '未命名草稿',
+            name: name || (existingTemplate as any).name || '未命名模板',
             description,
             type: type || 'tenant',
             base_id,
-            status: 'draft',
+            // 保持原有状态，已发布的模板保存草稿时不改变状态
+            // status: existingTemplate.status, // 保持原状态
             source_file_url: source_file_url || undefined,
             source_file_name: source_file_name || undefined,
             source_file_type: source_file_type || undefined,
@@ -73,9 +74,9 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (error) {
-          console.error('更新草稿失败:', error);
+          console.error('保存草稿失败:', error);
           return NextResponse.json(
-            { success: false, error: `更新草稿失败: ${error.message}` },
+            { success: false, error: `保存草稿失败: ${error.message}` },
             { status: 500 }
           );
         }
@@ -86,59 +87,9 @@ export async function POST(request: NextRequest) {
           message: '草稿已保存',
         });
       }
-
-      // 如果不是草稿状态（已发布模板），创建新草稿并记录原模板ID
-      if (existingTemplate && existingTemplate.status !== 'draft') {
-        const newDraftId = crypto.randomUUID();
-        
-        const { data, error } = await supabase
-          .from('contract_templates')
-          .insert({
-            id: newDraftId,
-            name: name || '未命名草稿',
-            description,
-            type: type || 'tenant',
-            base_id,
-            status: 'draft',
-            source_file_url,
-            source_file_name,
-            source_file_type,
-            draft_data: {
-              currentStep,
-              editedHtml,
-              markers,
-              selectedVariables,
-              bindings,
-              attachments,
-              styles,
-              uploadedAttachments,
-              original_template_id: id, // 记录原模板ID
-            },
-            is_default: false,
-            is_active: true,
-            created_at: now,
-            updated_at: now,
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('创建草稿失败:', error);
-          return NextResponse.json(
-            { success: false, error: `创建草稿失败: ${error.message}` },
-            { status: 500 }
-          );
-        }
-
-        return NextResponse.json({
-          success: true,
-          data: { id: newDraftId, ...data },
-          message: '已创建编辑草稿',
-        });
-      }
     }
 
-    // 创建新草稿
+    // 创建新草稿（新建模板的情况）
     const templateId = crypto.randomUUID();
     
     const { data, error } = await supabase

@@ -240,7 +240,7 @@ export async function PUT(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
-    const { id, original_template_id, delete_draft, ...updateData } = body;
+    const { id, clear_draft, ...updateData } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -249,32 +249,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 如果是编辑已发布模板后完成，需要更新原模板并删除草稿
-    if (original_template_id) {
-      // 更新原模板
+    // 如果需要清除草稿数据（完成编辑时）
+    if (clear_draft) {
       const { data, error } = await supabase
         .from('contract_templates')
         .update({
           ...updateData,
+          draft_data: null, // 清除草稿数据
           updated_at: new Date().toISOString(),
         })
-        .eq('id', original_template_id)
+        .eq('id', id)
         .select()
         .single();
 
       if (error) {
-        console.error('更新原模板失败:', error);
+        console.error('更新合同模板失败:', error);
         return NextResponse.json(
-          { success: false, error: `更新原模板失败: ${error.message}` },
+          { success: false, error: `更新合同模板失败: ${error.message}` },
           { status: 500 }
         );
       }
-
-      // 删除草稿
-      await supabase
-        .from('contract_templates')
-        .delete()
-        .eq('id', id);
 
       return NextResponse.json({
         success: true,
