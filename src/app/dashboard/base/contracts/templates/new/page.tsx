@@ -374,6 +374,7 @@ function TemplateCreateContent() {
     dispatch({ type: 'SET_SAVING', payload: true });
     
     try {
+      // 1. 更新模板基本信息
       const res = await fetch("/api/contract-templates", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -392,6 +393,32 @@ function TemplateCreateContent() {
       
       if (!data.success) {
         throw new Error(data.error || "保存失败");
+      }
+      
+      // 2. 保存自定义变量到 contract_fields 表
+      const customVariables = selectedVariables.filter(v => v.category === 'custom');
+      if (customVariables.length > 0) {
+        const fieldsRes = await fetch("/api/contract-templates/fields", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            templateId: state.templateId,
+            fields: customVariables.map(v => ({
+              key: v.key,
+              label: v.name,
+              type: v.type || 'text',
+              required: true,
+              placeholder: v.placeholder,
+              options: v.options,
+            })),
+          }),
+        });
+        
+        const fieldsData = await fieldsRes.json();
+        if (!fieldsData.success) {
+          console.error("保存字段失败:", fieldsData.error);
+          // 不阻止流程，只记录错误
+        }
       }
       
       toast.success("模板创建成功");
