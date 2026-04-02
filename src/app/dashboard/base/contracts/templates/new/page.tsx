@@ -289,30 +289,75 @@ export default function NewTemplatePage() {
           
           // 恢复解析结果
           if (template.source_file_url) {
-            const parseData: ParseResult = {
-              success: true,
-              totalPages: 1,
-              fileName: template.source_file_name || '合同文档',
-              fileType: template.source_file_type || 'docx',
-              fileUrl: template.source_file_url,
-              pages: [],
-              fullText: '',
-              html: isDraftTemplate ? (template.draft_data?.editedHtml || '') : '',
-              styles: isDraftTemplate ? template.draft_data?.styles : '',
-              attachments: (template.attachments || []).map((a: any) => ({
-                id: a.id,
-                name: a.name,
-                displayName: a.name,
-                url: a.url || '',
+            // 优先从 draft_data 恢复完整的解析结果（包括附件的HTML内容）
+            let parseData: ParseResult;
+            
+            if (isDraftTemplate && template.draft_data) {
+              // 如果是草稿，优先从 draft_data 恢复完整数据
+              parseData = {
+                success: true,
+                totalPages: 1,
+                fileName: template.source_file_name || '合同文档',
+                fileType: template.source_file_type || 'docx',
+                fileUrl: template.source_file_url,
+                pages: [],
+                fullText: '',
+                html: template.draft_data?.editedHtml || '',
+                styles: template.draft_data?.styles || '',
+                // 关键：从 draft_data 恢复完整的附件数据（包含HTML和样式）
+                attachments: template.draft_data?.attachments && template.draft_data.attachments.length > 0 
+                  ? template.draft_data.attachments.map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    displayName: a.displayName || a.name,
+                    url: a.url || '',
+                    html: a.html || '',
+                    styles: a.styles || '',
+                    text: a.text || '',
+                    order: a.order || 0,
+                  }))
+                  : (template.attachments || []).map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    displayName: a.name,
+                    url: a.url || '',
+                    html: '',
+                    styles: '',
+                    text: '',
+                    order: a.order || 0,
+                  })),
+                detectedAttachments: [],
+                detectedFields: [],
+                mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+              };
+            } else {
+              // 不是草稿的情况，从模板基本信息恢复
+              parseData = {
+                success: true,
+                totalPages: 1,
+                fileName: template.source_file_name || '合同文档',
+                fileType: template.source_file_type || 'docx',
+                fileUrl: template.source_file_url,
+                pages: [],
+                fullText: '',
                 html: '',
                 styles: '',
-                text: '',
-                order: a.order || 0,
-              })),
-              detectedAttachments: [],
-              detectedFields: [],
-              mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
-            };
+                attachments: (template.attachments || []).map((a: any) => ({
+                  id: a.id,
+                  name: a.name,
+                  displayName: a.name,
+                  url: a.url || '',
+                  html: '',
+                  styles: '',
+                  text: '',
+                  order: a.order || 0,
+                })),
+                detectedAttachments: [],
+                detectedFields: [],
+                mainContract: { startPage: 1, endPage: 1, pageRange: '1', content: '' },
+              };
+            }
+            
             setParseResult(parseData);
             setMainFileUrl(template.source_file_url);
             setMainFileName(template.source_file_name || '');
