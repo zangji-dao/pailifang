@@ -16,13 +16,23 @@ export function AttachmentTabs({
   activeDocumentId,
   onDocumentChange,
 }: AttachmentTabsProps) {
+  // 调试信息
+  console.log('AttachmentTabs - 调试信息:', {
+    hasParseResult: !!parseResult,
+    attachments: parseResult?.attachments,
+    attachmentsLength: parseResult?.attachments?.length || 0,
+  });
+
   if (!parseResult?.attachments || parseResult.attachments.length === 0) {
+    console.log('AttachmentTabs - 没有附件，不显示标签页');
     return null;
   }
 
   const uniqueAttachments = dedupeAndSortAttachments(parseResult.attachments);
+  console.log('AttachmentTabs - 去重排序后的附件:', uniqueAttachments);
 
   if (uniqueAttachments.length === 0) {
+    console.log('AttachmentTabs - 去重后没有附件，不显示标签页');
     return null;
   }
 

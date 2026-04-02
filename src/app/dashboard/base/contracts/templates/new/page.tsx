@@ -292,6 +292,16 @@ export default function NewTemplatePage() {
             // 优先从 draft_data 恢复完整的解析结果（包括附件的HTML内容）
             let parseData: ParseResult;
             
+            // 调试信息：打印附件数据
+            console.log('恢复解析结果 - 调试信息:', {
+              isDraftTemplate,
+              hasDraftData: !!template.draft_data,
+              draftDataAttachments: template.draft_data?.attachments?.length || 0,
+              templateAttachments: template.attachments?.length || 0,
+              draftData: template.draft_data,
+              templateAttachmentsData: template.attachments
+            });
+            
             if (isDraftTemplate && template.draft_data) {
               // 如果是草稿，优先从 draft_data 恢复完整数据
               parseData = {
@@ -319,7 +329,7 @@ export default function NewTemplatePage() {
                   : (template.attachments || []).map((a: any) => ({
                     id: a.id,
                     name: a.name,
-                    displayName: a.name,
+                    displayName: a.displayName || a.name,
                     url: a.url || '',
                     html: '',
                     styles: '',
@@ -345,7 +355,7 @@ export default function NewTemplatePage() {
                 attachments: (template.attachments || []).map((a: any) => ({
                   id: a.id,
                   name: a.name,
-                  displayName: a.name,
+                  displayName: a.displayName || a.name,
                   url: a.url || '',
                   html: '',
                   styles: '',
@@ -358,6 +368,7 @@ export default function NewTemplatePage() {
               };
             }
             
+            console.log('最终设置的 parseData.attachments:', parseData.attachments);
             setParseResult(parseData);
             setMainFileUrl(template.source_file_url);
             setMainFileName(template.source_file_name || '');
