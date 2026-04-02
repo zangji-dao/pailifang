@@ -123,7 +123,7 @@ function TemplateCreateContent() {
     handleZoomReset,
   } = useEditor(state.parseResult, ((result: ParseResult | null) => {
     dispatch({ type: 'SET_PARSE_RESULT', payload: result });
-  }) as any);
+  }) as any, state.editedHtml);
   
   // 同步 useEditor 的 editedHtml 到 Context
   useEffect(() => {
@@ -148,7 +148,7 @@ function TemplateCreateContent() {
     handleChangeVariable,
     addCustomVariable,
     loadFromTemplate: loadMarkersFromTemplate,
-  } = useMarkers(contentRef, syncEditedContent, () => activeDocumentId || 'main');
+  } = useMarkers(contentRef, syncEditedContent, () => activeDocumentId || 'main', state.markers as any, state.selectedVariables as any);
   
   // 同步 useMarkers 的 markers 和 selectedVariables 到 Context（使用类型断言）
   useEffect(() => {

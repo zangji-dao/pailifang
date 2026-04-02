@@ -144,6 +144,16 @@ export function useDraft() {
       
       // 如果有解析结果，恢复
       if (template.source_file_url && template.draft_data) {
+        // 使用 originalHtml（原始解析的 HTML）或 editedHtml（编辑后的内容）
+        const htmlContent = template.draft_data.originalHtml || template.draft_data.editedHtml || '';
+        console.log('加载草稿 - originalHtml:', template.draft_data.originalHtml?.substring(0, 100));
+        console.log('加载草稿 - editedHtml:', template.draft_data.editedHtml?.substring(0, 100));
+        console.log('加载草稿 - 最终 htmlContent:', htmlContent.substring(0, 100));
+        
+        // 如果没有 HTML 内容，但有文件，说明是旧数据或解析未完成
+        // 需要引导用户重新解析
+        const needsReparse = !htmlContent && template.source_file_url;
+        
         const parseResult = {
           success: true,
           totalPages: 1,
@@ -153,7 +163,7 @@ export function useDraft() {
           pages: [],
           fullText: '',
           // 使用原始解析的 HTML（如果有的话），否则使用 editedHtml
-          html: template.draft_data?.originalHtml || template.draft_data?.editedHtml || '',
+          html: htmlContent,
           styles: template.draft_data?.styles || '',
           attachments: template.draft_data?.attachments || [],
           detectedAttachments: [],
@@ -162,6 +172,13 @@ export function useDraft() {
         };
         
         dispatch({ type: 'SET_PARSE_RESULT', payload: parseResult });
+        
+        // 如果需要重新解析，提示用户
+        if (needsReparse) {
+          // 设置当前步骤为解析步骤（第2步），让用户重新解析
+          dispatch({ type: 'SET_STEP', payload: 2 });
+          console.log('草稿缺少解析内容，引导用户重新解析');
+        }
       }
       
       toast.success('草稿已加载');

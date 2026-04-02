@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       styles,
       attachments,
       uploadedAttachments,
+      originalHtml,
     } = body;
 
     const now = new Date().toISOString();
@@ -84,6 +85,8 @@ export async function POST(request: NextRequest) {
           attachments,
           styles,
           uploadedAttachments,
+          // 保存原始 HTML，用于恢复显示
+          originalHtml,
         };
 
         // 如果旧的 draft_data 中有 original_template_id，保留它（历史兼容性）
@@ -184,6 +187,8 @@ export async function POST(request: NextRequest) {
           attachments,
           styles,
           uploadedAttachments,
+          // 保存原始 HTML，用于恢复显示
+          originalHtml,
         },
         // 同时保存 attachments 字段
         ...(attachmentsToSave ? { attachments: attachmentsToSave } : {}),

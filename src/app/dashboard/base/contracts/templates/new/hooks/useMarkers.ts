@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import type { Marker, Binding } from "../types";
 import type { TemplateVariable } from "@/types/template-variable";
@@ -6,12 +6,29 @@ import type { TemplateVariable } from "@/types/template-variable";
 export function useMarkers(
   contentRef: React.RefObject<HTMLDivElement | null>,
   syncEditedContent: () => void,
-  getActiveDocumentId: () => string
+  getActiveDocumentId: () => string,
+  initialMarkers?: Marker[],
+  initialSelectedVariables?: TemplateVariable[]
 ) {
-  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [markers, setMarkers] = useState<Marker[]>(initialMarkers || []);
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
   const [showVariablePicker, setShowVariablePicker] = useState(false);
-  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([]);
+  const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>(initialSelectedVariables || []);
+  
+  // 当初始值变化时（比如从草稿加载），更新内部状态
+  useEffect(() => {
+    if (initialMarkers && initialMarkers.length > 0 && JSON.stringify(initialMarkers) !== JSON.stringify(markers)) {
+      console.log('useMarkers - 从外部初始化 markers:', initialMarkers.length);
+      setMarkers(initialMarkers);
+    }
+  }, [initialMarkers]);
+  
+  useEffect(() => {
+    if (initialSelectedVariables && initialSelectedVariables.length > 0 && JSON.stringify(initialSelectedVariables) !== JSON.stringify(selectedVariables)) {
+      console.log('useMarkers - 从外部初始化 selectedVariables:', initialSelectedVariables.length);
+      setSelectedVariables(initialSelectedVariables);
+    }
+  }, [initialSelectedVariables]);
 
   // 兼容旧数据结构的 bindings
   const bindings = useMemo(() => {

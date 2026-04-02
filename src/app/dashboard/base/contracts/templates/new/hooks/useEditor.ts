@@ -5,12 +5,21 @@ import { dedupeAndSortAttachments, FONT_OPTIONS, LINE_HEIGHT_OPTIONS, DOCUMENT_P
 
 export function useEditor(
   parseResult: ParseResult | null,
-  setParseResult: React.Dispatch<React.SetStateAction<ParseResult | null>>
+  setParseResult: React.Dispatch<React.SetStateAction<ParseResult | null>>,
+  initialEditedHtml?: string
 ) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [editedHtml, setEditedHtml] = useState<string>("");
+  const [editedHtml, setEditedHtml] = useState<string>(initialEditedHtml || "");
   const [activeDocumentId, setActiveDocumentId] = useState<string>('main');
   const [zoom, setZoom] = useState(100);
+  
+  // 当 initialEditedHtml 变化时（比如从草稿加载），更新内部状态
+  useEffect(() => {
+    if (initialEditedHtml && initialEditedHtml !== editedHtml) {
+      console.log('useEditor - 从外部初始化 editedHtml:', initialEditedHtml.substring(0, 100));
+      setEditedHtml(initialEditedHtml);
+    }
+  }, [initialEditedHtml]);
 
   // 同步编辑后的HTML
   const syncEditedContent = useCallback(() => {
