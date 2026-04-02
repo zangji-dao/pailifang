@@ -465,10 +465,19 @@ function TemplateCreateContent() {
   
   const isLastStep = state.currentStep === 5;
   
-  // 第2步（解析步骤）只有解析完成后才能点击下一步
-  const canGoNext = !fileUpload.uploading && !state.parsing && !state.saving && (
-    state.currentStep !== 2 || state.parseResult !== null
-  );
+  // 各步骤的下一步条件
+  const canGoNext = !fileUpload.uploading && !state.parsing && !state.saving && (() => {
+    switch (state.currentStep) {
+      case 1: // 基本信息：需要填写名称
+        return state.name.trim().length > 0;
+      case 2: // 上传文档：需要上传主文档
+        return state.mainFile !== null || !!state.mainFileUrl;
+      case 3: // 解析文档：需要解析完成
+        return state.parseResult !== null;
+      default:
+        return true;
+    }
+  })();
   
   // 加载中
   if (state.loadingDraft) {
@@ -494,6 +503,23 @@ function TemplateCreateContent() {
       
       <div className="mt-6">
         {state.currentStep === 1 && (
+          <BasicInfoStep
+            name={state.name}
+            description={state.description}
+            type={state.type}
+            baseId={state.baseId}
+            isDefault={state.isDefault}
+            bases={state.bases}
+            loadingBases={state.loadingBases}
+            onNameChange={(value: string) => dispatch({ type: 'SET_NAME', payload: value })}
+            onDescriptionChange={(value: string) => dispatch({ type: 'SET_DESCRIPTION', payload: value })}
+            onTypeChange={(value) => dispatch({ type: 'SET_TYPE', payload: value })}
+            onBaseChange={(value: string) => dispatch({ type: 'SET_BASE_ID', payload: value })}
+            onDefaultChange={(value: boolean) => dispatch({ type: 'SET_IS_DEFAULT', payload: value })}
+          />
+        )}
+        
+        {state.currentStep === 2 && (
           <UploadStep
             mainFile={state.mainFile}
             mainFileUrl={state.mainFileUrl}
@@ -517,7 +543,7 @@ function TemplateCreateContent() {
           />
         )}
         
-        {state.currentStep === 2 && (
+        {state.currentStep === 3 && (
           <ParseStep
             mainFileName={state.mainFileName}
             mainFileUrl={state.mainFileUrl}
@@ -530,7 +556,7 @@ function TemplateCreateContent() {
           />
         )}
         
-        {state.currentStep === 3 && (
+        {state.currentStep === 4 && (
           <BindVariablesStep
             parseResult={state.parseResult}
             editedHtml={editedHtml}
@@ -575,23 +601,6 @@ function TemplateCreateContent() {
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onZoomReset={handleZoomReset}
-          />
-        )}
-        
-        {state.currentStep === 4 && (
-          <BasicInfoStep
-            name={state.name}
-            description={state.description}
-            type={state.type}
-            baseId={state.baseId}
-            isDefault={state.isDefault}
-            bases={state.bases}
-            loadingBases={state.loadingBases}
-            onNameChange={(value: string) => dispatch({ type: 'SET_NAME', payload: value })}
-            onDescriptionChange={(value: string) => dispatch({ type: 'SET_DESCRIPTION', payload: value })}
-            onTypeChange={(value) => dispatch({ type: 'SET_TYPE', payload: value })}
-            onBaseChange={(value: string) => dispatch({ type: 'SET_BASE_ID', payload: value })}
-            onDefaultChange={(value: boolean) => dispatch({ type: 'SET_IS_DEFAULT', payload: value })}
           />
         )}
         

@@ -1,9 +1,9 @@
-// 步骤定义 - 将解析独立为单独步骤
+// 步骤定义 - 基本信息放在第一步
 export const STEPS = [
-  { id: 1, title: "上传文档", description: "上传合同文件" },
-  { id: 2, title: "解析文档", description: "解析文档内容" },
-  { id: 3, title: "绑定变量", description: "选择变量并绑定位置" },
-  { id: 4, title: "基本信息", description: "填写模板信息" },
+  { id: 1, title: "基本信息", description: "填写模板信息" },
+  { id: 2, title: "上传文档", description: "上传合同文件" },
+  { id: 3, title: "解析文档", description: "解析文档内容" },
+  { id: 4, title: "绑定变量", description: "选择变量并绑定位置" },
   { id: 5, title: "完成", description: "预览并保存" },
 ] as const;
 
