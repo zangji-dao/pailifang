@@ -730,9 +730,21 @@ export default function NewTemplatePage() {
           return;
         }
         
-        // 如果选择了文件但没有 templateId，说明文件还没上传完成
-        if (mainFile && !templateId) {
-          toast.error("文件上传中，请稍候...");
+        // 如果正在上传，提示等待
+        if (uploading) {
+          toast.error("文件正在上传中，请稍候...");
+          return;
+        }
+        
+        // 如果选择了文件但没有 templateId 和 mainFileUrl，说明上传失败了
+        if (mainFile && (!templateId || !mainFileUrl)) {
+          toast.error("文件上传失败，请重新选择文件");
+          return;
+        }
+        
+        // 如果有 templateId 但没有 mainFileUrl，说明数据不完整
+        if (templateId && !mainFileUrl) {
+          toast.error("数据不完整，请重新上传文档");
           return;
         }
         
