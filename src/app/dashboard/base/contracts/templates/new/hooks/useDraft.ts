@@ -9,6 +9,13 @@ import { toast } from 'sonner';
 import { useTemplateContext } from '../types/context';
 import { DraftData } from '../types/state';
 
+// 验证是否为有效的 UUID 格式
+function isValidUUID(id: string): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
 export function useDraft() {
   const { state, dispatch } = useTemplateContext();
   const router = useRouter();
@@ -17,10 +24,12 @@ export function useDraft() {
   
   // 保存草稿
   const saveDraft = useCallback(async (silent = false) => {
-    if (!state.templateId) {
+    // 严格验证 templateId 必须是有效的 UUID
+    if (!state.templateId || !isValidUUID(state.templateId)) {
       if (!silent) {
         toast.error('请先上传文档');
       }
+      console.log('saveDraft - templateId 无效:', state.templateId);
       return null;
     }
     

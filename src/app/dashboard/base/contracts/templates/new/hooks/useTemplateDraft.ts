@@ -4,6 +4,13 @@ import type { ParseResult } from "@/types/contract-template";
 import type { Marker, Binding, UploadedAttachment } from "../types";
 import type { TemplateVariable } from "@/types/template-variable";
 
+// 验证是否为有效的 UUID 格式
+function isValidUUID(id: string): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
 interface DraftData {
   templateId: string;
   mainFile: File | null;
@@ -30,6 +37,16 @@ export function useTemplateDraft() {
     options?: { silent?: boolean }
   ) => {
     const { silent = false } = options || {};
+    
+    // 验证 templateId 必须是有效的 UUID
+    if (!data.templateId || !isValidUUID(data.templateId)) {
+      console.log('useTemplateDraft - templateId 无效:', data.templateId);
+      if (!silent) {
+        toast.error('请先上传文档');
+      }
+      return null;
+    }
+    
     setSavingDraft(true);
     
     try {

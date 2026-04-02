@@ -5,6 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// 验证是否为有效的 UUID 格式
+function isValidUUID(id: string): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
 /**
  * POST /api/contract-templates/draft
  * 保存草稿（支持中间状态保存）
@@ -34,6 +41,18 @@ export async function POST(request: NextRequest) {
     } = body;
 
     const now = new Date().toISOString();
+
+    // 验证 id 格式（如果提供了 id）
+    if (id && !isValidUUID(id)) {
+      return NextResponse.json(
+        { success: false, error: '无效的模板ID格式' },
+        { status: 400 }
+      );
+    }
+
+    // 验证 base_id 格式（如果提供了 base_id）
+    // 将空字符串转换为 null
+    const validBaseId = base_id && isValidUUID(base_id) ? base_id : null;
 
     // 如果有id，直接更新该模板的草稿数据
     if (id) {
@@ -92,7 +111,7 @@ export async function POST(request: NextRequest) {
             name: name || (existingTemplate as any).name || '未命名模板',
             description,
             type: type || 'tenant',
-            base_id,
+            base_id: validBaseId,
             // 保持原有状态，已发布的模板保存草稿时不改变状态
             // status: existingTemplate.status, // 保持原状态
             source_file_url: source_file_url || undefined,
@@ -146,7 +165,7 @@ export async function POST(request: NextRequest) {
         name: name || '未命名草稿',
         description,
         type: type || 'tenant',
-        base_id,
+        base_id: validBaseId,
         status: 'draft',
         source_file_url,
         source_file_name,
