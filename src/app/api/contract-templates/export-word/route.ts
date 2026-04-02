@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { asBlob } from 'html-docx-js-typescript';
+import AdmZip from 'adm-zip';
+import { writeFileSync, mkdirSync, rmSync, readFileSync } from 'fs';
+import { join } from 'path';
 
 // 强制使用 Node.js 运行时
 export const runtime = 'nodejs';
@@ -42,37 +45,75 @@ interface DraftData {
 }
 
 /**
- * 构建完整的 HTML 文档（主文档 + 附件）
+ * 生成单个文档片段（HTML 转 Word chunk）
  */
-function buildCompleteHtml(draftData: DraftData): string {
-  const parts: string[] = [];
-  
-  // 添加主文档
-  if (draftData.editedHtml) {
-    parts.push(draftData.editedHtml);
+async function generateChunk(htmlContent: string): Promise<Buffer> {
+  const docxResult = await asBlob(htmlContent, {
+    margins: {
+      top: 1440,
+      right: 1440,
+      bottom: 1440,
+      left: 1440,
+    },
+  });
+
+  if (Buffer.isBuffer(docxResult)) {
+    return docxResult;
   }
-  
-  // 添加附件
-  if (draftData.attachments && draftData.attachments.length > 0) {
-    for (const attachment of draftData.attachments) {
-      if (attachment.html) {
-        // 添加分页符和附件内容
-        parts.push(`
-          <div style="page-break-before: always;"></div>
-          <div class="attachment-content" data-attachment-id="${attachment.id}">
-            ${attachment.html}
-          </div>
-        `);
-      }
+  const arrayBuffer = await (docxResult as Blob).arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * 构建原生 Word XML 文档结构，每个附件独立一个 chunk
+ */
+function buildWordDocumentXml(chunkIds: string[]): string {
+  const chunks = chunkIds.map((id, index) => {
+    // 如果不是第一个 chunk，前面加分页符
+    if (index > 0) {
+      return `    <w:p>
+      <w:r>
+        <w:br w:type="page"/>
+      </w:r>
+    </w:p>
+    <w:altChunk r:id="${id}" />`;
     }
-  }
-  
-  return parts.join('\n');
+    return `    <w:altChunk r:id="${id}" />`;
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+${chunks}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840" w:orient="portrait" />
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"
+               w:header="720" w:footer="720" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+}
+
+/**
+ * 构建 document.xml.rels 文件
+ */
+function buildRelsXml(chunkIds: string[]): string {
+  const relationships = chunkIds.map((id, index) => {
+    return `    <Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/afChunk" Target="chunk${index}.mht"/>`;
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+${relationships}
+</Relationships>`;
 }
 
 /**
  * POST /api/contract-templates/export-word
- * 基于 HTML 内容导出 Word 文档（包含主文档和附件）
+ * 基于 HTML 内容导出 Word 文档（每个附件独立分页）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -100,81 +141,133 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '没有找到草稿数据' }, { status: 400 });
     }
 
-    // 构建完整的 HTML（主文档 + 附件）
-    let htmlContent = buildCompleteHtml(draftData);
+    console.log('开始导出 Word 文档...');
+    console.log('附件数量:', draftData.attachments?.length || 0);
 
-    if (!htmlContent) {
+    // 处理变量替换的函数
+    const processVariables = (html: string): string => {
+      let result = html;
+      
+      // 如果提供了 variableValues，替换变量值
+      if (variableValues && Object.keys(variableValues).length > 0) {
+        for (const [key, value] of Object.entries(variableValues)) {
+          const varPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+          result = result.replace(varPattern, value as string);
+        }
+      }
+
+      // 将变量标记从 {{variableKey}} 转换为 {{变量名}}
+      if (draftData.selectedVariables) {
+        for (const variable of draftData.selectedVariables) {
+          const keyPattern = new RegExp(`\\{\\{${variable.key}\\}\\}`, 'g');
+          result = result.replace(keyPattern, `{{${variable.name}}}`);
+        }
+      }
+
+      // 清理 marker 相关的 HTML 属性
+      result = result.replace(/\s*data-marker-id="[^"]*"/g, '');
+      result = result.replace(/\s*data-document-id="[^"]*"/g, '');
+      result = result.replace(/\s*class="variable-marker[^"]*"/g, '');
+      result = result.replace(/<span\s+[^>]*style="[^"]*"[^>]*>(\{\{[^}]+\}\})<\/span>/g, '$1');
+
+      return result;
+    };
+
+    // 准备所有 HTML 内容
+    const htmlParts: string[] = [];
+    
+    // 主文档
+    if (draftData.editedHtml) {
+      htmlParts.push(processVariables(draftData.editedHtml));
+    }
+    
+    // 附件
+    if (draftData.attachments && draftData.attachments.length > 0) {
+      for (const attachment of draftData.attachments) {
+        if (attachment.html) {
+          htmlParts.push(processVariables(attachment.html));
+        }
+      }
+    }
+
+    if (htmlParts.length === 0) {
       return NextResponse.json({ success: false, error: '没有找到文档内容' }, { status: 400 });
     }
 
-    console.log('开始导出 Word 文档...');
-    console.log('HTML 内容长度:', htmlContent.length);
-    console.log('附件数量:', draftData.attachments?.length || 0);
-
-    // 如果提供了 variableValues，替换变量值
-    if (variableValues && Object.keys(variableValues).length > 0) {
-      for (const [key, value] of Object.entries(variableValues)) {
-        // 替换 {{变量名}} 格式
-        const varPattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        htmlContent = htmlContent.replace(varPattern, value as string);
-      }
-      console.log('已替换变量值:', Object.keys(variableValues));
-    }
-
-    // 将变量标记从 {{variableKey}} 转换为 {{变量名}}（用于显示）
-    if (draftData.selectedVariables) {
-      for (const variable of draftData.selectedVariables) {
-        const keyPattern = new RegExp(`\\{\\{${variable.key}\\}\\}`, 'g');
-        htmlContent = htmlContent.replace(keyPattern, `{{${variable.name}}}`);
-      }
-    }
-
-    // 清理 marker 相关的 HTML 属性（保留内容）
-    htmlContent = htmlContent.replace(/\s*data-marker-id="[^"]*"/g, '');
-    htmlContent = htmlContent.replace(/\s*data-document-id="[^"]*"/g, '');
-    htmlContent = htmlContent.replace(/\s*class="variable-marker[^"]*"/g, '');
-    // 清理变量标记的 span 标签，只保留内容
-    htmlContent = htmlContent.replace(/<span\s+[^>]*style="[^"]*"[^>]*>(\{\{[^}]+\}\})<\/span>/g, '$1');
-
-    // 添加基础 HTML 结构（如果没有的话）
-    if (!htmlContent.includes('<html') && !htmlContent.includes('<body')) {
-      htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: '仿宋', Arial, sans-serif; font-size: 10pt; }
-    table { border-collapse: collapse; width: 100%; }
-    td, th { border: 1px solid #000; padding: 4pt 8pt; }
-  </style>
-</head>
-<body>
-${htmlContent}
-</body>
-</html>`;
-    }
+    // 创建临时目录
+    const tmpDir = join('/tmp', `word-export-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
 
     try {
-      // 使用 html-docx-js 将 HTML 转换为 Word
-      const docxResult = await asBlob(htmlContent, {
-        margins: {
-          top: 1440,    // 1 inch = 1440 twips
-          right: 1440,
-          bottom: 1440,
-          left: 1440,
-        },
-      });
+      // 为每个 HTML 部分生成 Word chunk
+      const chunkIds: string[] = [];
+      const zip = new AdmZip();
 
-      console.log('Word 文档生成成功');
+      // 添加基础文件结构
+      zip.addFile('[Content_Types].xml', Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="mht" ContentType="message/rfc822"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`));
 
-      // 转换为 ArrayBuffer 确保类型兼容
-      let outputBuffer: ArrayBuffer;
-      if (Buffer.isBuffer(docxResult)) {
-        outputBuffer = docxResult.buffer.slice(docxResult.byteOffset, docxResult.byteOffset + docxResult.byteLength) as ArrayBuffer;
-      } else {
-        // Blob 类型
-        outputBuffer = await (docxResult as Blob).arrayBuffer();
+      // 添加 styles.xml（基础样式）
+      zip.addFile('word/styles.xml', Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault>
+      <w:rPr>
+        <w:rFonts w:ascii="仿宋" w:eastAsia="仿宋" w:hAnsi="仿宋"/>
+        <w:sz w:val="21"/>
+        <w:szCs w:val="21"/>
+      </w:rPr>
+    </w:rPrDefault>
+  </w:docDefaults>
+</w:styles>`));
+
+      // 为每个 HTML 部分生成 chunk
+      for (let i = 0; i < htmlParts.length; i++) {
+        const htmlContent = htmlParts[i];
+        const chunkId = `chunk${i}`;
+        chunkIds.push(chunkId);
+
+        console.log(`生成 chunk ${i + 1}/${htmlParts.length}, HTML 长度: ${htmlContent.length}`);
+
+        // 生成单个 chunk 的 Word 文件
+        const chunkBuffer = await generateChunk(htmlContent);
+        
+        // 提取 MHT 内容
+        const chunkZip = new AdmZip(chunkBuffer);
+        const mhtEntry = chunkZip.getEntry('word/afchunk.mht');
+        
+        if (mhtEntry) {
+          // 保存为独立的 MHT 文件
+          zip.addFile(`word/chunk${i}.mht`, mhtEntry.getData());
+        }
       }
+
+      // 构建 document.xml（包含所有 chunks 和分页符）
+      const documentXml = buildWordDocumentXml(chunkIds);
+      zip.addFile('word/document.xml', Buffer.from(documentXml));
+
+      // 构建 document.xml.rels
+      const relsXml = buildRelsXml(chunkIds);
+      zip.addFile('word/_rels/document.xml.rels', Buffer.from(relsXml));
+
+      // 添加 _rels/.rels
+      zip.addFile('_rels/.rels', Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`));
+
+      // 生成最终的 Word 文件
+      const outputBuffer = zip.toBuffer();
+
+      console.log('Word 文档生成成功，总大小:', outputBuffer.length);
+
+      rmSync(tmpDir, { recursive: true, force: true });
 
       return new NextResponse(outputBuffer, {
         status: 200,
@@ -183,12 +276,11 @@ ${htmlContent}
           'Content-Disposition': `attachment; filename="${encodeURIComponent(template.name || '合同模板')}.docx"`,
         },
       });
-    } catch (convertError) {
-      console.error('HTML 转 Word 失败:', convertError);
-      return NextResponse.json({ 
-        success: false, 
-        error: '文档转换失败，请检查文档格式' 
-      }, { status: 500 });
+
+    } catch (processError) {
+      console.error('处理 Word 文档时出错:', processError);
+      rmSync(tmpDir, { recursive: true, force: true });
+      throw processError;
     }
 
   } catch (error) {
