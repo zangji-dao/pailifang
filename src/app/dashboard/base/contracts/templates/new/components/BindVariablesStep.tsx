@@ -278,7 +278,7 @@ export function BindVariablesStep({
       </Card>
 
       {/* 右侧：标记面板 */}
-      <div className="w-80 shrink-0">
+      <div className="w-80 shrink-0 h-full">
         <MarkerPanel
           markers={markers}
           activeDocumentId={activeDocumentId}

@@ -171,8 +171,8 @@ export function MarkerPanel({
 
   return (
     <>
-      <Card className="overflow-hidden">
-        <CardHeader className="py-3 border-b">
+      <Card className="overflow-hidden h-full flex flex-col">
+        <CardHeader className="py-3 border-b shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">标记管理</CardTitle>
             <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
@@ -181,7 +181,7 @@ export function MarkerPanel({
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-0 overflow-auto h-[calc(100%-52px)]">
+        <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
           {/* 提示信息 */}
           <div className="p-4 bg-muted/50 border-b">
             <p className="text-xs text-muted-foreground">
