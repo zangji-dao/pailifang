@@ -103,11 +103,13 @@ export function BindVariablesStep({
   // 获取当前文档的HTML
   const currentDocumentHtml = useMemo(() => {
     if (activeDocumentId === 'main') {
-      return parseResult?.html || '';
+      // 主合同：优先使用编辑后的内容
+      return editedHtml || parseResult?.html || '';
     }
+    // 附件：直接使用附件的 HTML
     const attachment = parseResult?.attachments?.find(a => a.id === activeDocumentId);
     return attachment?.html || '';
-  }, [activeDocumentId, parseResult]);
+  }, [activeDocumentId, parseResult, editedHtml]);
 
   // 获取当前文档的样式
   const currentDocumentStyles = useMemo(() => {
@@ -260,8 +262,8 @@ export function BindVariablesStep({
               }}
               dangerouslySetInnerHTML={{ 
                 __html: currentDocumentStyles 
-                  ? `<style>${currentDocumentStyles}</style>${editedHtml || currentDocumentHtml}`
-                  : editedHtml || currentDocumentHtml
+                  ? `<style>${currentDocumentStyles}</style>${currentDocumentHtml}`
+                  : currentDocumentHtml
               }}
             />
           </div>

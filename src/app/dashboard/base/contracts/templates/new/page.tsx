@@ -121,8 +121,14 @@ function TemplateCreateContent() {
     handleZoomIn,
     handleZoomOut,
     handleZoomReset,
-  } = useEditor(state.parseResult, ((result: ParseResult | null) => {
-    dispatch({ type: 'SET_PARSE_RESULT', payload: result });
+  } = useEditor(state.parseResult, ((result: ParseResult | null | ((prev: ParseResult | null) => ParseResult | null)) => {
+    // 支持函数式更新
+    if (typeof result === 'function') {
+      const newResult = result(state.parseResult);
+      dispatch({ type: 'SET_PARSE_RESULT', payload: newResult });
+    } else {
+      dispatch({ type: 'SET_PARSE_RESULT', payload: result });
+    }
   }) as any, state.editedHtml);
   
   // 同步 useEditor 的 editedHtml 到 Context
