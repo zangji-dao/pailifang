@@ -92,7 +92,7 @@ export function StepNavigation({
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            保存草稿
+            保存
           </Button>
         </div>
         

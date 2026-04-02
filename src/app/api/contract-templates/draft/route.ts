@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (error) {
-          console.error('保存草稿失败:', error);
+          console.error('保存失败:', error);
           return NextResponse.json(
-            { success: false, error: `保存草稿失败: ${error.message}` },
+            { success: false, error: `保存失败: ${error.message}` },
             { status: 500 }
           );
         }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: { id, ...data },
-          message: '草稿已保存',
+          message: '已保存',
         });
       }
     }

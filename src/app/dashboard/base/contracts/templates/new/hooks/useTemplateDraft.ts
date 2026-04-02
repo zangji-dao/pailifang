@@ -91,16 +91,16 @@ export function useTemplateDraft() {
       if (result.success) {
         setIsDraft(true);
         if (!silent) {
-          toast.success("草稿已保存");
+          toast.success("已保存");
         }
         return result.data.id;
       } else {
-        throw new Error(result.error || "保存草稿失败");
+        throw new Error(result.error || "保存失败");
       }
     } catch (error) {
-      console.error("保存草稿失败:", error);
+      console.error("保存失败:", error);
       if (!silent) {
-        toast.error(error instanceof Error ? error.message : "保存草稿失败");
+        toast.error(error instanceof Error ? error.message : "保存失败");
       }
       return null;
     } finally {
