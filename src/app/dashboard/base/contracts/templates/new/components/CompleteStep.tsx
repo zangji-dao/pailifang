@@ -1,19 +1,11 @@
 "use client";
 
-import { Eye, Download, Paperclip, Building2, Loader2, ZoomIn, ZoomOut, RotateCcw, Check } from "lucide-react";
+import { Eye, Download, Building2, Loader2, ZoomIn, ZoomOut, RotateCcw, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { ParseResult, ParsedAttachment } from "@/types/contract-template";
 import type { Base, UploadedAttachment, Binding } from "../types";
@@ -34,14 +26,8 @@ interface CompleteStepProps {
   previewZoom: number;
   editedHtml: string;
   exporting: boolean;
-  attachmentDialogOpen: boolean;
-  selectedExportAttachments: string[];
   onZoomChange: (zoom: number) => void;
   onQuickExport: () => void;
-  onOpenAttachmentDialog: () => void;
-  onExportPDF: () => void;
-  onAttachmentDialogChange: (open: boolean) => void;
-  onToggleExportAttachment: (id: string) => void;
 }
 
 export function CompleteStep({
@@ -57,14 +43,8 @@ export function CompleteStep({
   previewZoom,
   editedHtml,
   exporting,
-  attachmentDialogOpen,
-  selectedExportAttachments,
   onZoomChange,
   onQuickExport,
-  onOpenAttachmentDialog,
-  onExportPDF,
-  onAttachmentDialogChange,
-  onToggleExportAttachment,
 }: CompleteStepProps) {
   const selectedBase = bases.find(b => b.id === baseId);
   
@@ -108,19 +88,8 @@ export function CompleteStep({
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            快速导出PDF
+            导出Word
           </Button>
-          
-          {allAttachments.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={onOpenAttachmentDialog}
-              disabled={exporting}
-            >
-              <Paperclip className="h-4 w-4 mr-2" />
-              导出（含附件）
-            </Button>
-          )}
         </div>
         
         {/* 缩放控制 */}
@@ -306,83 +275,6 @@ export function CompleteStep({
           )}
         </CardContent>
       </Card>
-      
-      {/* 附件选择弹窗 */}
-      <Dialog open={attachmentDialogOpen} onOpenChange={onAttachmentDialogChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Paperclip className="h-5 w-5" />
-              选择导出附件
-            </DialogTitle>
-            <DialogDescription>
-              选择需要包含在PDF中的附件，导出时将作为合同附件列表
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {allAttachments.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Paperclip className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>该合同模板暂无附件</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  {allAttachments.map((attachment) => {
-                    const isSelected = selectedExportAttachments.includes(attachment.id);
-                    return (
-                      <div
-                        key={attachment.id}
-                        className={cn(
-                          "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                          isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                        )}
-                        onClick={() => onToggleExportAttachment(attachment.id)}
-                      >
-                        <Checkbox
-                          id={attachment.id}
-                          checked={isSelected}
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <label
-                            htmlFor={attachment.id}
-                            className="text-sm font-medium cursor-pointer"
-                          >
-                            {attachment.displayName || attachment.name}
-                          </label>
-                        </div>
-                        {isSelected && (
-                          <Check className="h-4 w-4 text-primary" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-4">
-                  已选择 {selectedExportAttachments.length} / {allAttachments.length} 个附件
-                </p>
-              </>
-            )}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onAttachmentDialogChange(false)}
-            >
-              取消
-            </Button>
-            <Button onClick={onExportPDF} disabled={exporting}>
-              {exporting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              导出PDF
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -618,8 +618,6 @@ function TemplateCreateContent() {
             previewZoom={state.previewZoom}
             editedHtml={editedHtml}
             exporting={exporting}
-            attachmentDialogOpen={attachmentDialogOpen}
-            selectedExportAttachments={selectedExportAttachments}
             onZoomChange={(zoom) => dispatch({ type: 'SET_PREVIEW_ZOOM', payload: zoom })}
             onQuickExport={() => handleQuickExport(
               state.templateId || `template-${Date.now()}`,
@@ -630,20 +628,6 @@ function TemplateCreateContent() {
               editedHtml,
               state.parseResult
             )}
-            onOpenAttachmentDialog={() => openAttachmentDialog(state.parseResult, state.uploadedAttachments)}
-            onExportPDF={() => handleExportPDF(
-              state.templateId || `template-${Date.now()}`,
-              state.name,
-              state.description,
-              state.type,
-              activeDocumentId,
-              editedHtml,
-              state.parseResult,
-              selectedExportAttachments,
-              state.uploadedAttachments
-            )}
-            onAttachmentDialogChange={setAttachmentDialogOpen}
-            onToggleExportAttachment={toggleExportAttachment as any}
           />
         )}
       </div>
