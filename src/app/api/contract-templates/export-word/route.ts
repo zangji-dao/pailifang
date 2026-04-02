@@ -170,6 +170,14 @@ export async function POST(request: NextRequest) {
       result = result.replace(/\s*class="variable-marker[^"]*"/g, '');
       result = result.replace(/<span\s+[^>]*style="[^"]*"[^>]*>(\{\{[^}]+\}\})<\/span>/g, '$1');
 
+      // 清理分页样式，避免每行都另起一页
+      // 移除 page-break-before 和 page-break-after 样式
+      result = result.replace(/page-break-before:\s*[^;]+;?/gi, '');
+      result = result.replace(/page-break-after:\s*[^;]+;?/gi, '');
+      result = result.replace(/page-break-inside:\s*[^;]+;?/gi, '');
+      // 清理空的 style 属性
+      result = result.replace(/\s*style="\s*"/g, '');
+
       return result;
     };
 
