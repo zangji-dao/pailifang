@@ -621,9 +621,27 @@ function TemplateCreateContent() {
             attachmentDialogOpen={attachmentDialogOpen}
             selectedExportAttachments={selectedExportAttachments}
             onZoomChange={(zoom) => dispatch({ type: 'SET_PREVIEW_ZOOM', payload: zoom })}
-            onQuickExport={handleQuickExport as any}
-            onOpenAttachmentDialog={openAttachmentDialog as any}
-            onExportPDF={handleExportPDF as any}
+            onQuickExport={() => handleQuickExport(
+              state.templateId || `template-${Date.now()}`,
+              state.name,
+              state.description,
+              state.type,
+              activeDocumentId,
+              editedHtml,
+              state.parseResult
+            )}
+            onOpenAttachmentDialog={() => openAttachmentDialog(state.parseResult, state.uploadedAttachments)}
+            onExportPDF={() => handleExportPDF(
+              state.templateId || `template-${Date.now()}`,
+              state.name,
+              state.description,
+              state.type,
+              activeDocumentId,
+              editedHtml,
+              state.parseResult,
+              selectedExportAttachments,
+              state.uploadedAttachments
+            )}
             onAttachmentDialogChange={setAttachmentDialogOpen}
             onToggleExportAttachment={toggleExportAttachment as any}
           />

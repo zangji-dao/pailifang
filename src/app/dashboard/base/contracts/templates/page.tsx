@@ -103,6 +103,18 @@ interface ContractTemplate {
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
+  // 新模板格式的数据
+  draft_data?: {
+    editedHtml?: string;
+    originalHtml?: string;
+    styles?: string;
+    markers?: any[];
+    selectedVariables?: any[];
+    attachments?: any[];
+    uploadedAttachments?: any[];
+  };
+  source_file_url?: string;
+  source_file_name?: string;
 }
 
 // 模板类型配置

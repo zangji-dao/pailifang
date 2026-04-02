@@ -88,6 +88,18 @@ export interface ContractTemplateData {
   attachments?: ContractAttachment[]; // 合同附件列表
   isDefault: boolean;
   isActive: boolean;
+  // 新模板格式的数据
+  draft_data?: {
+    editedHtml?: string;
+    originalHtml?: string;
+    styles?: string;
+    markers?: any[];
+    selectedVariables?: any[];
+    attachments?: any[];
+    uploadedAttachments?: any[];
+  };
+  source_file_url?: string;
+  source_file_name?: string;
 }
 
 // PDF导出选项
@@ -713,9 +725,156 @@ function getAttachmentContent(attachmentId: string): string {
   
   return attachments[attachmentId] || '';
 }
+
+/**
+ * 创建新模板格式的 HTML（使用 editedHtml）
+ */
+function createNewTemplateHtml(
+  template: ContractTemplateData,
+  options: PdfExportOptions = {}
+): string {
+  const { includeAttachments = false, selectedAttachments = [] } = options;
+  const draftData = template.draft_data;
+  const editedHtml = draftData?.editedHtml || '';
+  const styles = draftData?.styles || '';
+  const attachments = draftData?.attachments || [];
+  const uploadedAttachments = draftData?.uploadedAttachments || [];
+
+  // 合并附件列表
+  const allAttachments = [...attachments];
+  if (uploadedAttachments && uploadedAttachments.length > 0) {
+    uploadedAttachments.forEach((att: any) => {
+      if (!allAttachments.find(a => a.id === att.id)) {
+        allAttachments.push({
+          id: att.id,
+          name: att.name,
+          displayName: att.name.replace(/\.[^/.]+$/, ''),
+          url: att.url,
+          html: '',
+          styles: '',
+          order: allAttachments.length,
+        });
+      }
+    });
+  }
+
+  // 过滤选中的附件
+  const selectedAttachs = includeAttachments && selectedAttachments.length > 0
+    ? allAttachments.filter((att: any) => selectedAttachments.includes(att.id))
+    : [];
+
+  // 构建附件内容
+  const attachmentsHtml = selectedAttachs.map((att: any) => {
+    if (att.html) {
+      return `
+        <div class="force-break-before" style="page-break-before: always;"></div>
+        <div class="content-page">
+          <div class="main-title" style="margin-bottom: 20px;">${att.displayName || att.name}</div>
+          ${att.styles ? `<style>${att.styles}</style>` : ''}
+          <div class="contract-content">${att.html}</div>
+        </div>
+      `;
+    }
+    return '';
+  }).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${template.name}</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        * {
+          box-sizing: border-box;
+        }
+        body {
+          font-family: SimSun, 宋体, serif;
+          font-size: 12pt;
+          line-height: 1.8;
+          color: #000;
+          background: #fff;
+          margin: 0;
+          padding: 0;
+        }
+        /* 孤行/寡行控制 */
+        p, .paragraph {
+          orphans: 3;
+          widows: 3;
+        }
+        /* 内容页 */
+        .content-page {
+          width: 210mm;
+          padding: 2.5cm 2.8cm;
+          background: #fff;
+          min-height: 297mm;
+        }
+        /* 表格样式 */
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 6pt 0;
+        }
+        td, th {
+          vertical-align: middle;
+          text-align: center;
+          padding: 2pt 4pt;
+          border: 1px solid #000;
+        }
+        table[border="0"] td,
+        table[border="0"] th {
+          border: none;
+        }
+        /* 变量标记样式 */
+        .variable-marker {
+          display: inline !important;
+          white-space: nowrap;
+        }
+        .variable-marker.pending {
+          background: #fef3c7;
+          color: #92400e;
+          padding: 1px 4px;
+          border-radius: 3px;
+          border: 1px dashed #f59e0b;
+        }
+        .variable-marker.bound {
+          background: #dcfce7;
+          color: #166534;
+          padding: 1px 4px;
+          border-radius: 3px;
+          border: 1px solid #22c55e;
+        }
+        /* 强制分页 */
+        .force-break-before {
+          page-break-before: always;
+          break-before: page;
+        }
+        /* 避免分页 */
+        .avoid-break {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+      </style>
+      ${styles ? `<style>${styles}</style>` : ''}
+    </head>
+    <body>
+      <div class="content-page">
+        <div class="contract-content">${editedHtml}</div>
+      </div>
+      ${attachmentsHtml}
+    </body>
+    </html>
+  `;
+}
+
 /**
  * 创建合同模板 HTML 内容 - 1:1还原原始PDF样式
  * 支持数据库条款数据或使用默认完整模板
+ * 支持新模板格式（draft_data.editedHtml）
  */
 function createContractTemplateHtml(
   template: ContractTemplateData,
@@ -724,6 +883,15 @@ function createContractTemplateHtml(
   const { includeAttachments = false, selectedAttachments = [] } = options;
   const clauses = template.clauses || [];
   const hasClauses = clauses.length > 0;
+
+  // 检查是否使用新模板格式（draft_data）
+  const draftData = template.draft_data;
+  const hasEditedHtml = draftData?.editedHtml && draftData.editedHtml.trim().length > 0;
+
+  // 如果有编辑后的 HTML，使用新格式导出
+  if (hasEditedHtml) {
+    return createNewTemplateHtml(template, options);
+  }
 
   // 共享的CSS样式
   const sharedStyles = `
