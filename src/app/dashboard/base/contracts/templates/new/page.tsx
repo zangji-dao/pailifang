@@ -698,13 +698,16 @@ export default function NewTemplatePage() {
   
   const handleNext = () => {
     if (currentStep === 1) {
-      // 如果已经有解析结果了（编辑已有模板），直接跳到第二步，不重新解析
-      if (parseResult) {
-        console.log('已有解析结果，直接跳到第二步');
+      // 判断是否是编辑已有模板：有 templateId 并且有 source_file_url
+      const isEditingExistingTemplate = templateId && mainFileUrl;
+      
+      if (isEditingExistingTemplate) {
+        console.log('编辑已有模板，直接跳到第二步', { templateId, mainFileUrl });
         handleSaveDraft(true);
         setCurrentStep(2);
       } else {
         // 否则才需要解析
+        console.log('新建模板，需要解析');
         handleUploadAndParse();
       }
     } else {
