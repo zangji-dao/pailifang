@@ -102,6 +102,7 @@ export interface TemplateState {
   uploading: boolean;
   parsing: boolean;
   parseProgress: number;
+  parseError: string | null;
   
   // 解析结果（使用现有类型）
   parseResult: ParseResult | null;
@@ -148,6 +149,7 @@ export type TemplateAction =
   | { type: 'SET_UPLOADING'; payload: boolean }
   | { type: 'SET_PARSING'; payload: boolean }
   | { type: 'SET_PARSE_PROGRESS'; payload: number }
+  | { type: 'SET_PARSE_ERROR'; payload: string | null }
   
   // 解析结果
   | { type: 'SET_PARSE_RESULT'; payload: ParseResult | null }

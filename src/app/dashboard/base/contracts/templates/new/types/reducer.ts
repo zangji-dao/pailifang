@@ -26,6 +26,7 @@ export const initialState: TemplateState = {
   uploading: false,
   parsing: false,
   parseProgress: 0,
+  parseError: null,
   
   // 解析结果
   parseResult: null,
@@ -99,6 +100,8 @@ export function templateReducer(state: TemplateState, action: TemplateAction): T
       return { ...state, parsing: action.payload };
     case 'SET_PARSE_PROGRESS':
       return { ...state, parseProgress: action.payload };
+    case 'SET_PARSE_ERROR':
+      return { ...state, parseError: action.payload };
     
     // 解析结果
     case 'SET_PARSE_RESULT':

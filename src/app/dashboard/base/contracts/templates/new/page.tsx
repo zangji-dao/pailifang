@@ -260,11 +260,12 @@ function TemplateCreateContent() {
       dispatch({ type: 'SET_PARSE_PROGRESS', payload: 100 });
       toast.success("文档解析成功");
       
-      // 解析完成后自动进入下一步（绑定变量）
-      dispatch({ type: 'SET_STEP', payload: 3 });
+      // 解析完成后自动保存草稿
+      draft.saveDraft(true);
     } catch (err) {
       console.error("上传解析失败:", err);
       toast.error(err instanceof Error ? err.message : "上传解析失败");
+      dispatch({ type: 'SET_PARSE_ERROR', payload: err instanceof Error ? err.message : "上传解析失败" });
     } finally {
       dispatch({ type: 'SET_UPLOADING', payload: false });
       dispatch({ type: 'SET_PARSING', payload: false });
@@ -304,15 +305,15 @@ function TemplateCreateContent() {
       dispatch({ type: 'SET_STEP', payload: 2 });
       
     } else if (state.currentStep === 2) {
-      // 第2步：解析文档 → 开始解析
-      // 如果已经解析过，直接进入下一步
-      if (state.parseResult) {
-        draft.saveDraft(true);
-        dispatch({ type: 'SET_STEP', payload: 3 });
-      } else {
-        // 开始解析
-        handleUploadAndParse();
+      // 第2步：解析文档 → 必须解析完成才能进入下一步
+      if (!state.parseResult) {
+        toast.error("请先点击「开始解析」按钮解析文档");
+        return;
       }
+      
+      // 解析完成，进入绑定变量步骤
+      draft.saveDraft(true);
+      dispatch({ type: 'SET_STEP', payload: 3 });
       
     } else if (state.currentStep === 5) {
       // 最后一步，完成创建
@@ -398,7 +399,11 @@ function TemplateCreateContent() {
   };
   
   const isLastStep = state.currentStep === 5;
-  const canGoNext = !fileUpload.uploading && !state.parsing;
+  
+  // 第2步（解析步骤）只有解析完成后才能点击下一步
+  const canGoNext = !fileUpload.uploading && !state.parsing && !state.saving && (
+    state.currentStep !== 2 || state.parseResult !== null
+  );
   
   // 加载中
   if (state.loadingDraft) {
@@ -455,6 +460,8 @@ function TemplateCreateContent() {
             parsing={state.parsing}
             parseProgress={state.parseProgress}
             parseResult={state.parseResult}
+            parseError={state.parseError}
+            onStartParse={handleUploadAndParse}
           />
         )}
         
