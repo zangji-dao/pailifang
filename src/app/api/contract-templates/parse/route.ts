@@ -104,13 +104,14 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
   
   // 添加打印样式和表格基础样式
   const extraStyles = `
-    /* 表格样式 - 保留 LibreOffice 原始布局 */
+    /* 表格样式 - 文字上下左右居中 */
     table {
       border-collapse: collapse;
     }
     td, th {
       vertical-align: middle;
-      padding: 4pt 6pt;
+      text-align: center;
+      padding: 6pt 8pt;
     }
     /* 只给有边框的表格添加边框样式 */
     table:not([border="0"]) td,
