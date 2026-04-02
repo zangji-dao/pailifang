@@ -286,21 +286,37 @@ function getContextInfo(range: Range): Marker['position']['clickContext'] {
 
 // 辅助函数：获取标记前的文字
 function getBeforeText(element: HTMLElement, maxLength: number): string {
-  const walker = document.createTreeWalker(
-    element.parentElement || document.body,
-    NodeFilter.SHOW_TEXT,
-    null
-  );
-  
   let text = '';
-  let node = walker.currentNode;
+  let current: Node | null = element.previousSibling;
   
-  while (node && text.length < maxLength) {
-    if (node === element) break;
-    if (node.nodeType === Node.TEXT_NODE && !element.contains(node)) {
-      text = node.textContent || '' + text;
+  while (current && text.length < maxLength) {
+    if (current.nodeType === Node.TEXT_NODE) {
+      text = (current.textContent || '') + text;
+    } else if (current.nodeType === Node.ELEMENT_NODE) {
+      text = (current.textContent || '') + text;
     }
-    node = walker.previousNode() || walker.currentNode;
+    current = current.previousSibling;
+  }
+  
+  // 如果还不够，向上查找父节点的兄弟
+  if (text.length < maxLength && element.parentElement) {
+    let parent: HTMLElement | null = element.parentElement;
+    let prevSibling: Node | null = parent?.previousSibling || null;
+    let depth = 0;
+    
+    while (prevSibling && text.length < maxLength && depth < 5) {
+      if (prevSibling.nodeType === Node.TEXT_NODE) {
+        text = (prevSibling.textContent || '') + text;
+      } else if (prevSibling.nodeType === Node.ELEMENT_NODE) {
+        text = (prevSibling.textContent || '').slice(-maxLength) + text;
+      }
+      prevSibling = prevSibling.previousSibling;
+      if (!prevSibling) {
+        parent = parent?.parentElement || null;
+        prevSibling = parent?.previousSibling || null;
+        depth++;
+      }
+    }
   }
   
   return text.slice(-maxLength);
@@ -308,24 +324,37 @@ function getBeforeText(element: HTMLElement, maxLength: number): string {
 
 // 辅助函数：获取标记后的文字
 function getAfterText(element: HTMLElement, maxLength: number): string {
-  const walker = document.createTreeWalker(
-    element.parentElement || document.body,
-    NodeFilter.SHOW_TEXT,
-    null
-  );
-  
   let text = '';
-  let found = false;
-  let node: Node | null = walker.currentNode;
+  let current: Node | null = element.nextSibling;
   
-  while (node) {
-    if (element.contains(node)) {
-      found = true;
-    } else if (found && node.nodeType === Node.TEXT_NODE) {
-      text += node.textContent || '';
-      if (text.length >= maxLength) break;
+  while (current && text.length < maxLength) {
+    if (current.nodeType === Node.TEXT_NODE) {
+      text += current.textContent || '';
+    } else if (current.nodeType === Node.ELEMENT_NODE) {
+      text += current.textContent || '';
     }
-    node = walker.nextNode();
+    current = current.nextSibling;
+  }
+  
+  // 如果还不够，向上查找父节点的兄弟
+  if (text.length < maxLength && element.parentElement) {
+    let parent: HTMLElement | null = element.parentElement;
+    let nextSibling: Node | null = parent?.nextSibling || null;
+    let depth = 0;
+    
+    while (nextSibling && text.length < maxLength && depth < 5) {
+      if (nextSibling.nodeType === Node.TEXT_NODE) {
+        text += nextSibling.textContent || '';
+      } else if (nextSibling.nodeType === Node.ELEMENT_NODE) {
+        text += (nextSibling.textContent || '').slice(0, maxLength);
+      }
+      nextSibling = nextSibling.nextSibling;
+      if (!nextSibling) {
+        parent = parent?.parentElement || null;
+        nextSibling = parent?.nextSibling || null;
+        depth++;
+      }
+    }
   }
   
   return text.slice(0, maxLength);
