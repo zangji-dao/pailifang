@@ -108,21 +108,32 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
     table {
       border-collapse: collapse;
       width: 100%;
-      margin: 6pt 0;
+      margin: 12pt 0;
+      position: relative !important;
+      float: none !important;
+      clear: both;
     }
     td, th {
       vertical-align: middle;
       text-align: center;
-      padding: 2pt 4pt;
+      padding: 4pt 6pt;
       border: 1px solid #000;
+      position: relative !important;
+      float: none !important;
     }
-    
+
     /* 签字处表格 - 无边框但保持布局 */
     table[border="0"] td,
     table[border="0"] th {
       border: none;
     }
-    
+
+    /* 确保表格行不分页 */
+    tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
     /* 打印样式 */
     @media print {
       body {

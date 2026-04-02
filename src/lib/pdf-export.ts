@@ -741,6 +741,40 @@ function cleanVariableMarkersForPdf(html: string): string {
 }
 
 /**
+ * 清理表格的内联定位样式（用于 PDF 导出）
+ */
+function cleanTableStylesForPdf(html: string): string {
+  // 移除表格元素上的 position: absolute/relative/fixed 等定位样式
+  return html
+    // 清理表格的定位样式
+    .replace(
+      /<table([^>]*?)style="([^"]*?)"([^>]*)>/gi,
+      (match, before, style, after) => {
+        const cleanedStyle = style
+          .replace(/position\s*:\s*[^;]+;?/gi, '')
+          .replace(/left\s*:\s*[^;]+;?/gi, '')
+          .replace(/top\s*:\s*[^;]+;?/gi, '')
+          .replace(/float\s*:\s*[^;]+;?/gi, '')
+          .trim();
+        return `<table${before}style="${cleanedStyle}"${after}>`;
+      }
+    )
+    // 清理 td/th 的定位样式
+    .replace(
+      /<t[dh]([^>]*?)style="([^"]*?)"([^>]*)>/gi,
+      (match, before, style, after) => {
+        const cleanedStyle = style
+          .replace(/position\s*:\s*[^;]+;?/gi, '')
+          .replace(/left\s*:\s*[^;]+;?/gi, '')
+          .replace(/top\s*:\s*[^;]+;?/gi, '')
+          .replace(/float\s*:\s*[^;]+;?/gi, '')
+          .trim();
+        return `<t[dh]${before}style="${cleanedStyle}"${after}>`;
+      }
+    );
+}
+
+/**
  * 创建新模板格式的 HTML（使用 editedHtml）
  */
 function createNewTemplateHtml(
@@ -780,8 +814,8 @@ function createNewTemplateHtml(
   // 构建附件内容
   const attachmentsHtml = selectedAttachs.map((att: any) => {
     if (att.html) {
-      // 清理附件中的变量标记样式
-      const cleanedAttachmentHtml = cleanVariableMarkersForPdf(att.html);
+      // 清理附件中的变量标记样式和表格定位样式
+      const cleanedAttachmentHtml = cleanTableStylesForPdf(cleanVariableMarkersForPdf(att.html));
       return `
         <div class="force-break-before" style="page-break-before: always;"></div>
         <div class="content-page">
@@ -794,8 +828,8 @@ function createNewTemplateHtml(
     return '';
   }).join('');
 
-  // 清理变量标记的内联样式，用于 PDF 导出
-  const cleanedHtml = cleanVariableMarkersForPdf(editedHtml);
+  // 清理变量标记和表格的内联样式，用于 PDF 导出
+  const cleanedHtml = cleanTableStylesForPdf(cleanVariableMarkersForPdf(editedHtml));
 
   return `
     <!DOCTYPE html>
@@ -832,21 +866,35 @@ function createNewTemplateHtml(
           background: #fff;
           min-height: 297mm;
         }
-        /* 表格样式 */
+        /* 表格样式 - 重置 LibreOffice 生成的样式 */
         table {
           border-collapse: collapse;
           width: 100%;
-          margin: 6pt 0;
+          margin: 12pt 0;
+          position: relative !important;
+          float: none !important;
+          clear: both;
         }
         td, th {
           vertical-align: middle;
           text-align: center;
-          padding: 2pt 4pt;
+          padding: 4pt 6pt;
           border: 1px solid #000;
+          position: relative !important;
+          float: none !important;
         }
         table[border="0"] td,
         table[border="0"] th {
           border: none;
+        }
+        /* 重置表格相关的 LibreOffice 样式 */
+        table table {
+          margin: 6pt 0;
+        }
+        /* 确保表格行正确显示 */
+        tr {
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         /* 变量标记样式 - PDF导出时显示为下划线空白 */
         .variable-marker {
