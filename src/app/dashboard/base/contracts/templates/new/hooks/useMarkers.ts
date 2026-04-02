@@ -54,14 +54,24 @@ export function useMarkers(
     markerSpan.className = 'variable-marker pending';
     markerSpan.setAttribute('data-marker-id', markerId);
     markerSpan.setAttribute('data-document-id', activeDocumentId);
-    markerSpan.style.cssText = 'background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; border: 2px dashed #f59e0b; font-weight: 500; display: inline-block; margin: 0 2px; cursor: pointer;';
+    // 使用 inline 而不是 inline-block，避免打断文字流
+    markerSpan.style.cssText = 'background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 3px; border: 1px dashed #f59e0b; font-weight: 500; display: inline; margin: 0; cursor: pointer;';
     markerSpan.textContent = '待绑定';
-    markerSpan.onclick = () => {
+    markerSpan.onclick = (e) => {
+      e.stopPropagation();
       setActiveMarkerId(markerId);
       setShowVariablePicker(true);
     };
     
-    // 插入标记
+    // 检查是否有选中内容
+    const selectedText = range.toString();
+    
+    if (selectedText) {
+      // 如果有选中文字，保存选中文字作为占位符显示
+      markerSpan.setAttribute('data-original-text', selectedText);
+    }
+    
+    // 删除选中内容并插入标记
     range.deleteContents();
     range.insertNode(markerSpan);
     
@@ -110,7 +120,8 @@ export function useMarkers(
     const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`) as HTMLElement;
     if (markerEl) {
       markerEl.className = 'variable-marker bound';
-      markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; border: 2px solid #22c55e; font-weight: 500; display: inline-block; margin: 0 2px;';
+      // 使用 inline 而不是 inline-block，避免打断文字流
+      markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 1px 4px; border-radius: 3px; border: 1px solid #22c55e; font-weight: 500; display: inline; margin: 0;';
       markerEl.textContent = `{{${variable.name}}}`;
       syncEditedContent();
     }
@@ -180,7 +191,8 @@ export function useMarkers(
       const markerEl = contentRef.current?.querySelector(`[data-marker-id="${activeMarkerId}"]`) as HTMLElement;
       if (markerEl) {
         markerEl.className = 'variable-marker bound';
-        markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; border: 2px solid #22c55e; font-weight: 500; display: inline-block; margin: 0 2px;';
+        // 使用 inline 而不是 inline-block，避免打断文字流
+        markerEl.style.cssText = 'background: #dcfce7; color: #166534; padding: 1px 4px; border-radius: 3px; border: 1px solid #22c55e; font-weight: 500; display: inline; margin: 0;';
         markerEl.textContent = `{{${customVar.name}}}`;
         syncEditedContent();
       }
