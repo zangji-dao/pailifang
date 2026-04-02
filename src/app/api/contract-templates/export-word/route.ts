@@ -178,6 +178,34 @@ export async function POST(request: NextRequest) {
       // 清理空的 style 属性
       result = result.replace(/\s*style="\s*"/g, '');
 
+      // 修复表格边框 - Word 对 CSS border 支持有限，需要添加 HTML 属性
+      // 为没有 border 属性的 table 添加 border="1" 和 bordercolor
+      result = result.replace(/<table(?![^>]*\sborder\s*=)[^>]*>/gi, (match) => {
+        // 检查是否已有 border 属性
+        if (match.includes('border=')) {
+          return match;
+        }
+        // 添加 border="1" bordercolor="#000000" style="border-collapse: collapse"
+        if (match.includes('style="')) {
+          return match.replace('style="', 'border="1" bordercolor="#000000" style="border-collapse: collapse; ');
+        }
+        return match.replace('<table', '<table border="1" bordercolor="#000000" style="border-collapse: collapse"');
+      });
+
+      // 确保 td/th 有边框样式
+      result = result.replace(/<td(?![^>]*style[^>]*border)[^>]*>/gi, (match) => {
+        if (match.includes('style="')) {
+          return match.replace('style="', 'style="border: 1px solid #000000; ');
+        }
+        return match.replace('<td', '<td style="border: 1px solid #000000"');
+      });
+      result = result.replace(/<th(?![^>]*style[^>]*border)[^>]*>/gi, (match) => {
+        if (match.includes('style="')) {
+          return match.replace('style="', 'style="border: 1px solid #000000; ');
+        }
+        return match.replace('<th', '<th style="border: 1px solid #000000"');
+      });
+
       return result;
     };
 
