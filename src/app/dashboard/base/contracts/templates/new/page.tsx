@@ -698,6 +698,15 @@ export default function NewTemplatePage() {
   
   const handleNext = () => {
     if (currentStep === 1) {
+      // 调试信息：打印关键变量
+      console.log('handleNext - 调试信息:', {
+        currentStep,
+        templateId,
+        mainFileUrl,
+        parseResult: !!parseResult,
+        searchParams_templateId: searchParams.get('templateId'),
+      });
+      
       // 判断是否是编辑已有模板：有 templateId 并且有 source_file_url
       const isEditingExistingTemplate = templateId && mainFileUrl;
       
