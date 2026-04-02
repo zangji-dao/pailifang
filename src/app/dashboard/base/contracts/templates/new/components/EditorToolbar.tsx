@@ -88,7 +88,7 @@ export function EditorToolbar({
   const [tableCols, setTableCols] = useState(3);
 
   return (
-    <div className="relative z-30 flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
+    <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
       {/* 字体选择 */}
       <Select onValueChange={onSetFont}>
         <SelectTrigger className="w-28 h-8">

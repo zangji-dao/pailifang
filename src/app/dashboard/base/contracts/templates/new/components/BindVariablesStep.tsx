@@ -143,7 +143,8 @@ export function BindVariablesStep({
     <div className="flex gap-4 h-[calc(100vh-200px)] min-h-[600px]">
       {/* 左侧：文档编辑区域 */}
       <Card className="flex-1 overflow-hidden flex flex-col">
-        <CardHeader className="py-2.5 border-b">
+        {/* 标题区域 */}
+        <CardHeader className="py-2.5 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">编辑合同文档</CardTitle>
@@ -154,33 +155,35 @@ export function BindVariablesStep({
           </div>
         </CardHeader>
         
-        {/* 工具栏 */}
-        <EditorToolbar
-          zoom={zoom}
-          onBold={onBold}
-          onItalic={onItalic}
-          onUnderline={onUnderline}
-          onStrikethrough={onStrikethrough}
-          onAlign={onAlign}
-          onOrderedList={onOrderedList}
-          onUnorderedList={onUnorderedList}
-          onIndent={onIndent}
-          onOutdent={onOutdent}
-          onSetFont={onSetFont}
-          onSetFontSize={onSetFontSize}
-          onSetLineHeight={onSetLineHeight}
-          onApplyPreset={onApplyPreset}
-          onAddUnderlineFill={onAddUnderlineFill}
-          onInsertTable={onInsertTable}
-          onDeleteRow={onDeleteRow}
-          onDeleteColumn={onDeleteColumn}
-          onPrint={onPrint}
-          onZoomIn={onZoomIn}
-          onZoomOut={onZoomOut}
-          onZoomReset={onZoomReset}
-        />
+        {/* 工具栏 - 固定在标题下方 */}
+        <div className="shrink-0">
+          <EditorToolbar
+            zoom={zoom}
+            onBold={onBold}
+            onItalic={onItalic}
+            onUnderline={onUnderline}
+            onStrikethrough={onStrikethrough}
+            onAlign={onAlign}
+            onOrderedList={onOrderedList}
+            onUnorderedList={onUnorderedList}
+            onIndent={onIndent}
+            onOutdent={onOutdent}
+            onSetFont={onSetFont}
+            onSetFontSize={onSetFontSize}
+            onSetLineHeight={onSetLineHeight}
+            onApplyPreset={onApplyPreset}
+            onAddUnderlineFill={onAddUnderlineFill}
+            onInsertTable={onInsertTable}
+            onDeleteRow={onDeleteRow}
+            onDeleteColumn={onDeleteColumn}
+            onPrint={onPrint}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onZoomReset={onZoomReset}
+          />
+        </div>
         
-        {/* 文档内容区域 */}
+        {/* 文档内容区域 - 单独滚动 */}
         <div className="flex-1 overflow-auto p-4 bg-muted/30">
           <div 
             className="mx-auto bg-white shadow-lg contract-container"
