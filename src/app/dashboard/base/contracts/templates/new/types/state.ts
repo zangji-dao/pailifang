@@ -14,7 +14,7 @@ import type {
 export interface Base {
   id: string;
   name: string;
-  address?: string;
+  address: string | null; // 修改为兼容现有类型
 }
 
 // 附件类型（兼容现有的 AttachmentFile）

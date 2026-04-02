@@ -119,9 +119,9 @@ function TemplateCreateContent() {
     handleZoomIn,
     handleZoomOut,
     handleZoomReset,
-  } = useEditor(state.parseResult, (result: ParseResult | null) => {
+  } = useEditor(state.parseResult, ((result: ParseResult | null) => {
     dispatch({ type: 'SET_PARSE_RESULT', payload: result });
-  });
+  }) as any);
   
   const {
     markers,
@@ -254,11 +254,70 @@ function TemplateCreateContent() {
         
         handleUploadAndParse();
       }
+    } else if (state.currentStep === 4) {
+      // 最后一步，完成创建
+      handleComplete();
     } else {
       draft.saveDraft(true);
       dispatch({ type: 'SET_STEP', payload: state.currentStep + 1 });
     }
   };
+  
+  const handleComplete = async () => {
+    if (!state.templateId) {
+      toast.error("请先上传文档");
+      return;
+    }
+    
+    if (!state.name.trim()) {
+      toast.error("请输入模板名称");
+      return;
+    }
+    
+    if (!state.baseId) {
+      toast.error("请选择所属基地");
+      return;
+    }
+    
+    dispatch({ type: 'SET_SAVING', payload: true });
+    
+    try {
+      const res = await fetch("/api/contract-templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: state.templateId,
+          name: state.name,
+          description: state.description,
+          type: state.type,
+          base_id: state.baseId,
+          is_default: state.isDefault,
+          status: 'published',
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "保存失败");
+      }
+      
+      toast.success("模板创建成功");
+      router.push("/dashboard/base/contracts/templates");
+    } catch (err) {
+      console.error("保存失败:", err);
+      toast.error(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      dispatch({ type: 'SET_SAVING', payload: false });
+    }
+  };
+  
+  const handleSaveDraftClick = async () => {
+    await draft.saveDraft(false);
+  };
+  
+  const isLastStep = state.currentStep === 4;
+  const canGoNext = !fileUpload.uploading && !state.parsing;
   
   // 加载中
   if (state.loadingDraft) {
@@ -311,27 +370,24 @@ function TemplateCreateContent() {
           <BindVariablesStep
             parseResult={state.parseResult}
             editedHtml={editedHtml}
-            setEditedHtml={setEditedHtml}
-            contentRef={contentRef}
-            markers={markers}
-            setMarkers={setMarkers}
-            activeMarkerId={activeMarkerId}
-            setActiveMarkerId={setActiveMarkerId}
-            showVariablePicker={showVariablePicker}
-            setShowVariablePicker={setShowVariablePicker}
-            selectedVariables={selectedVariables}
-            setSelectedVariables={setSelectedVariables}
-            bindings={bindings}
-            insertMarker={insertMarker}
-            handleBindVariable={handleBindVariable}
-            handleRemoveMarker={handleRemoveMarker}
-            handleChangeVariable={handleChangeVariable}
-            addCustomVariable={addCustomVariable}
             activeDocumentId={activeDocumentId}
-            setActiveDocumentId={setActiveDocumentId}
+            markers={markers}
+            activeMarkerId={activeMarkerId}
+            showVariablePicker={showVariablePicker}
+            selectedVariables={selectedVariables}
             zoom={zoom}
-            setZoom={setZoom}
-            syncEditedContent={syncEditedContent}
+            contentRef={contentRef}
+            onEditedHtmlChange={setEditedHtml}
+            onDocumentChange={setActiveDocumentId}
+            onZoomChange={setZoom}
+            onInsertMarker={insertMarker}
+            onBindVariable={handleBindVariable as any}
+            onRemoveMarker={handleRemoveMarker}
+            onChangeVariable={handleChangeVariable as any}
+            onSetActiveMarker={setActiveMarkerId}
+            onShowVariablePicker={setShowVariablePicker}
+            onAddCustomVariable={addCustomVariable as any}
+            onSyncEditedContent={syncEditedContent as any}
             onBold={handleBold}
             onItalic={handleItalic}
             onUnderline={handleUnderline}
@@ -365,11 +421,11 @@ function TemplateCreateContent() {
             isDefault={state.isDefault}
             bases={state.bases}
             loadingBases={state.loadingBases}
-            onNameChange={(value) => dispatch({ type: 'SET_NAME', payload: value })}
-            onDescriptionChange={(value) => dispatch({ type: 'SET_DESCRIPTION', payload: value })}
-            onTypeChange={(value) => dispatch({ type: 'SET_TYPE', payload: value as 'tenant' | 'non_tenant' })}
-            onBaseIdChange={(value) => dispatch({ type: 'SET_BASE_ID', payload: value })}
-            onIsDefaultChange={(value) => dispatch({ type: 'SET_IS_DEFAULT', payload: value })}
+            onNameChange={(value: string) => dispatch({ type: 'SET_NAME', payload: value })}
+            onDescriptionChange={(value: string) => dispatch({ type: 'SET_DESCRIPTION', payload: value })}
+            onTypeChange={(value) => dispatch({ type: 'SET_TYPE', payload: value as any })}
+            onBaseChange={(value: string) => dispatch({ type: 'SET_BASE_ID', payload: value })}
+            onDefaultChange={(value: boolean) => dispatch({ type: 'SET_IS_DEFAULT', payload: value })}
           />
         )}
         
@@ -379,21 +435,22 @@ function TemplateCreateContent() {
             description={state.description}
             type={state.type}
             baseId={state.baseId}
-            isDefault={state.isDefault}
-            parseResult={state.parseResult}
-            editedHtml={editedHtml}
-            markers={markers}
+            bindings={bindings}
             selectedVariables={selectedVariables}
+            parseResult={state.parseResult}
+            uploadedAttachments={state.uploadedAttachments as any}
             bases={state.bases}
+            previewZoom={state.previewZoom}
+            editedHtml={editedHtml}
             exporting={exporting}
             attachmentDialogOpen={attachmentDialogOpen}
-            setAttachmentDialogOpen={setAttachmentDialogOpen}
             selectedExportAttachments={selectedExportAttachments}
-            setSelectedExportAttachments={setSelectedExportAttachments}
-            onOpenAttachmentDialog={openAttachmentDialog}
-            onToggleExportAttachment={toggleExportAttachment}
-            onQuickExport={handleQuickExport}
-            onExportPDF={handleExportPDF}
+            onZoomChange={(zoom) => dispatch({ type: 'SET_PREVIEW_ZOOM', payload: zoom })}
+            onQuickExport={handleQuickExport as any}
+            onOpenAttachmentDialog={openAttachmentDialog as any}
+            onExportPDF={handleExportPDF as any}
+            onAttachmentDialogChange={setAttachmentDialogOpen}
+            onToggleExportAttachment={toggleExportAttachment as any}
           />
         )}
       </div>
@@ -401,9 +458,14 @@ function TemplateCreateContent() {
       <div className="mt-6">
         <StepNavigation
           currentStep={state.currentStep}
+          saving={state.saving}
+          savingDraft={state.savingDraft}
+          canGoNext={canGoNext}
+          isLastStep={isLastStep}
           onPrev={handlePrev}
           onNext={handleNext}
-          isSaving={state.savingDraft}
+          onSaveDraft={handleSaveDraftClick}
+          onComplete={handleComplete}
         />
       </div>
     </div>
