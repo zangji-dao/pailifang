@@ -125,6 +125,13 @@ function TemplateCreateContent() {
     dispatch({ type: 'SET_PARSE_RESULT', payload: result });
   }) as any);
   
+  // 同步 useEditor 的 editedHtml 到 Context
+  useEffect(() => {
+    if (editedHtml && editedHtml !== state.editedHtml) {
+      dispatch({ type: 'SET_EDITED_HTML', payload: editedHtml });
+    }
+  }, [editedHtml]);
+  
   const {
     markers,
     setMarkers,
@@ -143,6 +150,25 @@ function TemplateCreateContent() {
     loadFromTemplate: loadMarkersFromTemplate,
   } = useMarkers(contentRef, syncEditedContent, () => activeDocumentId || 'main');
   
+  // 同步 useMarkers 的 markers 和 selectedVariables 到 Context（使用类型断言）
+  useEffect(() => {
+    if (markers.length > 0 && JSON.stringify(markers) !== JSON.stringify(state.markers)) {
+      dispatch({ type: 'SET_MARKERS', payload: markers as any });
+    }
+  }, [markers]);
+  
+  useEffect(() => {
+    if (selectedVariables.length > 0 && JSON.stringify(selectedVariables) !== JSON.stringify(state.selectedVariables)) {
+      dispatch({ type: 'SET_SELECTED_VARIABLES', payload: selectedVariables as any });
+    }
+  }, [selectedVariables]);
+  
+  useEffect(() => {
+    if (bindings.length > 0 && JSON.stringify(bindings) !== JSON.stringify(state.bindings)) {
+      dispatch({ type: 'SET_BINDINGS', payload: bindings as any });
+    }
+  }, [bindings]);
+
   // 获取基地列表
   useEffect(() => {
     const fetchBases = async () => {
