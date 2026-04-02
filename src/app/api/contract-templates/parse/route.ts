@@ -104,34 +104,22 @@ function parseLibreOfficeHtml(html: string): ParsedHtml {
   
   // 添加打印样式和表格基础样式
   const extraStyles = `
-    /* 表格基础样式 - 确保 LibreOffice 表格正确显示，文字居中 */
+    /* 表格样式 - 保留 LibreOffice 原始布局 */
     table {
       border-collapse: collapse;
-      width: 100%;
-      margin: 12pt 0;
-      position: relative !important;
-      float: none !important;
-      clear: both;
     }
     td, th {
       vertical-align: middle;
-      text-align: center;
-      padding: 4pt 6pt;
-      border: 1px solid #000;
-      position: relative !important;
-      float: none !important;
+      padding: 2pt 4pt;
     }
-
-    /* 签字处表格 - 无边框但保持布局 */
+    /* 只给有边框的表格添加边框样式 */
+    table:not([border="0"]) td,
+    table:not([border="0"]) th {
+      border: 1px solid #000;
+    }
     table[border="0"] td,
     table[border="0"] th {
       border: none;
-    }
-
-    /* 确保表格行不分页 */
-    tr {
-      page-break-inside: avoid;
-      break-inside: avoid;
     }
 
     /* 打印样式 */
