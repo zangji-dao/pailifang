@@ -270,6 +270,7 @@ function TemplateCreateContent() {
         mainFileUrl: state.mainFileUrl,
         mainFile: !!state.mainFile,
         mainFileName: state.mainFileName,
+        parseResult: !!state.parseResult,
         attachments: state.attachments.length,
       });
       
@@ -279,24 +280,22 @@ function TemplateCreateContent() {
         return;
       }
       
-      // 检查是否是编辑已有模板
-      const isEditingExistingTemplate = state.templateId && state.mainFileUrl;
+      // 检查是否已上传文件
+      if (!state.templateId || !state.mainFileUrl) {
+        console.log('未上传文件:', { templateId: state.templateId, mainFileUrl: state.mainFileUrl });
+        toast.error("请先上传文档");
+        return;
+      }
       
-      if (isEditingExistingTemplate) {
-        // 编辑已有模板，直接跳到第二步
-        console.log('编辑已有模板，直接跳到第二步');
+      // 判断是否需要解析：
+      // 1. 如果 parseResult 已存在，说明已经解析过，直接跳到下一步（编辑已有模板或已解析的新模板）
+      // 2. 如果 parseResult 不存在，需要调用解析 API
+      if (state.parseResult) {
+        console.log('已有解析结果，直接跳到第二步');
         draft.saveDraft(true);
         dispatch({ type: 'SET_STEP', payload: 2 });
       } else {
-        // 新建模板
-        // 检查是否已上传文件
-        if (!state.templateId || !state.mainFileUrl) {
-          console.log('未上传文件:', { templateId: state.templateId, mainFileUrl: state.mainFileUrl });
-          toast.error("请先上传文档");
-          return;
-        }
-        
-        // 文件已上传，开始解析
+        // 需要解析文档
         console.log('开始解析文档');
         handleUploadAndParse();
       }
