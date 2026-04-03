@@ -129,8 +129,9 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
   // 匹配各种形式的空分页段落
   // 1. <p ... page-break-before: always ...><br></p>
   result = result.replace(/<p[^>]*page-break-before:\s*always[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, '');
-  // 2. <p ... page-break-before: always ...></p>
-  result = result.replace(/<p[^>]*page-break-before:\s*always[^>]*>\s*<\/p>/gi, '');
+  // 2. <p class=...></p> 或 <p class=...><br></p>（原始文档中的空段落，附件分页符没有 class 属性）
+  result = result.replace(/<p[^>]*class="western"[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, '');
+  result = result.replace(/<p[^>]*class="western"[^>]*>\s*<\/p>/gi, '');
   // 3. 清理非空段落中的 page-break-before 样式（保留内容，只移除分页样式）
   result = result.replace(/(<p[^>]*style="[^"]*?)page-break-before:\s*always;?\s*/gi, '$1');
   
