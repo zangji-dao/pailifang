@@ -130,6 +130,7 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
 
 /**
  * 合并多个 HTML 内容，用分页符分隔
+ * 使用 LibreOffice 能识别的分页方式
  */
 function mergeHtmlParts(parts: string[]): string {
   // 提取第一个文档的样式（避免重复）
@@ -160,9 +161,9 @@ function mergeHtmlParts(parts: string[]): string {
     }
 
     // 如果不是第一个部分，在前面添加分页符
-    // LibreOffice 识别 page-break-before: always
+    // 使用 hr + page-break 组合，LibreOffice 支持更好
     if (index > 0) {
-      content = `<div style="page-break-before: always"></div>${content}`;
+      content = `<hr style="page-break-before: always; visibility: hidden; height: 0; border: none">${content}`;
     }
 
     return content;
