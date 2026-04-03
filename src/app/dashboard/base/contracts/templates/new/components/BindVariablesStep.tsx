@@ -106,18 +106,26 @@ export function BindVariablesStep({
   onZoomOut,
   onZoomReset,
 }: BindVariablesStepProps) {
-  // 监听选区变化，保存选区并更新当前格式显示
+  // 用于防抖保存选区
+  const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 监听选区变化，实时保存选区和更新格式显示
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        // 只有当选区在编辑区域内时才更新
+        // 只有当选区在编辑区域内时才保存和更新
         if (contentRef.current?.contains(range.commonAncestorContainer)) {
-          // 保存当前选区
-          onSaveSelection();
-          // 检测当前格式
-          onDetectCurrentFormat();
+          // 清除之前的定时器
+          if (selectionTimeoutRef.current) {
+            clearTimeout(selectionTimeoutRef.current);
+          }
+          // 延迟保存选区，确保选区已经稳定
+          selectionTimeoutRef.current = setTimeout(() => {
+            onSaveSelection();
+            onDetectCurrentFormat();
+          }, 10);
         }
       }
     };
@@ -125,6 +133,9 @@ export function BindVariablesStep({
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
     };
   }, [onDetectCurrentFormat, onSaveSelection, contentRef]);
 
@@ -283,9 +294,12 @@ export function BindVariablesStep({
               className="contract-content outline-none"
               contentEditable
               suppressContentEditableWarning
-              onClick={(e) => {
-                onSaveSelection();
-                onDetectCurrentFormat();
+              onFocus={(e) => {
+                // 编辑器获得焦点时保存选区
+                setTimeout(() => {
+                  onSaveSelection();
+                  onDetectCurrentFormat();
+                }, 0);
               }}
               onBlur={onSyncEditedContent}
               onKeyDown={(e) => {
