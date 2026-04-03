@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import type { ParseResult } from "@/types/contract-template";
 import { dedupeAndSortAttachments, FONT_OPTIONS, LINE_HEIGHT_OPTIONS, DOCUMENT_PRESETS } from "../types";
+import type { CurrentFormat } from "../components/EditorToolbar";
 
 export function useEditor(
   parseResult: ParseResult | null,
@@ -14,6 +15,16 @@ export function useEditor(
   const [zoom, setZoom] = useState(100);
   // 保存选区
   const savedSelectionRef = useRef<Range | null>(null);
+  // 当前格式状态
+  const [currentFormat, setCurrentFormat] = useState<CurrentFormat>({
+    fontFamily: null,
+    fontSize: null,
+    lineHeight: null,
+    bold: false,
+    italic: false,
+    underline: false,
+    align: null,
+  });
   
   // 当 initialEditedHtml 变化时（比如从草稿加载），更新内部状态
   useEffect(() => {
@@ -22,6 +33,76 @@ export function useEditor(
       setEditedHtml(initialEditedHtml);
     }
   }, [initialEditedHtml]);
+
+  // 检测当前光标位置的格式
+  const detectCurrentFormat = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    let container = range.commonAncestorContainer as HTMLElement;
+    
+    // 如果是文本节点，获取父元素
+    if (container.nodeType === Node.TEXT_NODE) {
+      container = container.parentNode as HTMLElement;
+    }
+    
+    // 向上查找块级元素
+    const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'TD', 'TH', 'LI'];
+    while (container && container !== contentRef.current) {
+      if (blockTags.includes(container.tagName)) {
+        break;
+      }
+      container = container.parentNode as HTMLElement;
+    }
+    
+    if (!container || container === contentRef.current) {
+      return;
+    }
+    
+    const el = container as HTMLElement;
+    const computedStyle = window.getComputedStyle(el);
+    
+    // 检测字体
+    const fontFamily = el.style.fontFamily || computedStyle.fontFamily;
+    
+    // 检测字号
+    const fontSize = el.style.fontSize || computedStyle.fontSize;
+    
+    // 检测行距
+    const lineHeight = el.style.lineHeight || computedStyle.lineHeight;
+    
+    // 检测加粗
+    const fontWeight = el.style.fontWeight || computedStyle.fontWeight;
+    const bold = fontWeight === 'bold' || fontWeight === '700' || parseInt(fontWeight) >= 700;
+    
+    // 检测斜体
+    const fontStyle = el.style.fontStyle || computedStyle.fontStyle;
+    const italic = fontStyle === 'italic';
+    
+    // 检测下划线
+    const textDecoration = el.style.textDecoration || computedStyle.textDecoration;
+    const underline = textDecoration.includes('underline');
+    
+    // 检测对齐方式
+    const textAlign = el.style.textAlign || computedStyle.textAlign;
+    let align: 'left' | 'center' | 'right' | 'justify' | null = null;
+    if (textAlign === 'left' || textAlign === 'center' || textAlign === 'right' || textAlign === 'justify') {
+      align = textAlign;
+    }
+    
+    setCurrentFormat({
+      fontFamily,
+      fontSize,
+      lineHeight,
+      bold,
+      italic,
+      underline,
+      align,
+    });
+  }, []);
 
   // 保存当前选区
   const saveSelection = useCallback(() => {
@@ -531,8 +612,10 @@ export function useEditor(
     setZoom,
     currentDocumentHtml,
     currentDocumentStyles,
+    currentFormat,
     syncEditedContent,
     saveSelection,
+    detectCurrentFormat,
     // 编辑命令
     handleBold,
     handleItalic,

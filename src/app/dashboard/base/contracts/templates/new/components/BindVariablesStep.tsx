@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { EditorToolbar } from "./EditorToolbar";
+import { EditorToolbar, CurrentFormat } from "./EditorToolbar";
 import { MarkerPanel } from "./MarkerPanel";
 import { AttachmentTabs } from "./AttachmentTabs";
 import type { ParseResult } from "@/types/contract-template";
@@ -18,6 +18,7 @@ interface BindVariablesStepProps {
   showVariablePicker: boolean;
   selectedVariables: TemplateVariable[];
   zoom: number;
+  currentFormat: CurrentFormat;
   contentRef: React.RefObject<HTMLDivElement | null>;
   onEditedHtmlChange: (html: string) => void;
   onDocumentChange: (id: string) => void;
@@ -33,6 +34,7 @@ interface BindVariablesStepProps {
   onUpdateCustomVariable?: (key: string, variable: Partial<TemplateVariable>) => boolean;
   onSyncEditedContent: () => void;
   onSaveSelection: () => void;
+  onDetectCurrentFormat: () => void;
   // 编辑器命令
   onBold: () => void;
   onItalic: () => void;
@@ -66,6 +68,7 @@ export function BindVariablesStep({
   showVariablePicker,
   selectedVariables,
   zoom,
+  currentFormat,
   contentRef,
   onDocumentChange,
   onZoomChange,
@@ -80,6 +83,7 @@ export function BindVariablesStep({
   onUpdateCustomVariable,
   onSyncEditedContent,
   onSaveSelection,
+  onDetectCurrentFormat,
   onBold,
   onItalic,
   onUnderline,
@@ -102,6 +106,18 @@ export function BindVariablesStep({
   onZoomOut,
   onZoomReset,
 }: BindVariablesStepProps) {
+  // 监听选区变化，更新当前格式显示
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      onDetectCurrentFormat();
+    };
+    
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [onDetectCurrentFormat]);
+
   // 获取当前文档的HTML
   const currentDocumentHtml = useMemo(() => {
     if (activeDocumentId === 'main') {
@@ -167,6 +183,7 @@ export function BindVariablesStep({
         <div className="shrink-0">
           <EditorToolbar
             zoom={zoom}
+            currentFormat={currentFormat}
             onSaveSelection={onSaveSelection}
             onBold={onBold}
             onItalic={onItalic}
@@ -256,6 +273,7 @@ export function BindVariablesStep({
               className="contract-content outline-none"
               contentEditable
               suppressContentEditableWarning
+              onClick={onDetectCurrentFormat}
               onBlur={onSyncEditedContent}
               onKeyDown={(e) => {
                 // 阻止回车键创建新段落（可选）

@@ -101,6 +101,8 @@ function TemplateCreateContent() {
     setZoom,
     syncEditedContent,
     saveSelection,
+    currentFormat,
+    detectCurrentFormat,
     handleBold,
     handleItalic,
     handleUnderline,
@@ -567,6 +569,7 @@ function TemplateCreateContent() {
             showVariablePicker={showVariablePicker}
             selectedVariables={selectedVariables}
             zoom={zoom}
+            currentFormat={currentFormat}
             contentRef={contentRef}
             onEditedHtmlChange={setEditedHtml}
             onDocumentChange={setActiveDocumentId}
@@ -582,6 +585,7 @@ function TemplateCreateContent() {
             onUpdateCustomVariable={updateCustomVariable}
             onSyncEditedContent={syncEditedContent as any}
             onSaveSelection={saveSelection}
+            onDetectCurrentFormat={detectCurrentFormat}
             onBold={handleBold}
             onItalic={handleItalic}
             onUnderline={handleUnderline}

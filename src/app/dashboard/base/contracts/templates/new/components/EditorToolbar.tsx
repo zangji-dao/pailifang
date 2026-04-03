@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bold,
   Italic,
@@ -33,10 +33,22 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { FONT_OPTIONS, LINE_HEIGHT_OPTIONS, DOCUMENT_PRESETS } from "../types";
+import { FONT_OPTIONS, LINE_HEIGHT_OPTIONS, DOCUMENT_PRESETS, DocumentPreset } from "../types";
+
+// 当前格式状态接口
+export interface CurrentFormat {
+  fontFamily: string | null;
+  fontSize: string | null;
+  lineHeight: string | null;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: 'left' | 'center' | 'right' | 'justify' | null;
+}
 
 interface EditorToolbarProps {
   zoom: number;
+  currentFormat: CurrentFormat;
   onSaveSelection: () => void;
   onBold: () => void;
   onItalic: () => void;
@@ -61,8 +73,58 @@ interface EditorToolbarProps {
   onZoomReset: () => void;
 }
 
+// 根据字体值获取显示标签
+function getFontLabel(value: string | null): string {
+  if (!value) return "字体";
+  const font = FONT_OPTIONS.find(f => f.value === value || value.includes(f.value));
+  return font?.label || value;
+}
+
+// 根据字号值匹配最接近的选项
+function getFontSizeLabel(value: string | null): string {
+  if (!value) return "字号";
+  // 提取数字部分
+  const match = value.match(/(\d+(?:\.\d+)?)/);
+  if (match) {
+    return match[1];
+  }
+  return value;
+}
+
+// 根据行距值匹配最接近的选项
+function getLineHeightLabel(value: string | null): string {
+  if (!value) return "行距";
+  const opt = LINE_HEIGHT_OPTIONS.find(o => o.value === value);
+  if (opt) return opt.label;
+  // 尝试匹配数值
+  const match = value.match(/(\d+(?:\.\d+)?)/);
+  if (match) {
+    return `${match[1]}倍`;
+  }
+  return value;
+}
+
+// 检测当前格式是否匹配某个预设
+function detectPreset(format: CurrentFormat): string | null {
+  for (const preset of DOCUMENT_PRESETS) {
+    if (format.fontFamily?.includes(preset.font) || 
+        (preset.font === 'SimSun' && (format.fontFamily?.includes('宋体') || format.fontFamily?.includes('SimSun'))) ||
+        (preset.font === 'SimHei' && (format.fontFamily?.includes('黑体') || format.fontFamily?.includes('SimHei')))) {
+      // 字体匹配，检查其他属性
+      const fontSizeMatch = format.fontSize?.includes(String(preset.size));
+      const lineHeightMatch = format.lineHeight === preset.lineHeight || 
+                             format.lineHeight?.includes(preset.lineHeight);
+      if (fontSizeMatch && lineHeightMatch) {
+        return preset.key;
+      }
+    }
+  }
+  return null;
+}
+
 export function EditorToolbar({
   zoom,
+  currentFormat,
   onSaveSelection,
   onBold,
   onItalic,
@@ -89,10 +151,24 @@ export function EditorToolbar({
   const [tableRows, setTableRows] = useState(3);
   const [tableCols, setTableCols] = useState(3);
 
+  // 检测当前匹配的预设
+  const currentPresetKey = detectPreset(currentFormat);
+  const currentPreset = DOCUMENT_PRESETS.find(p => p.key === currentPresetKey);
+
   // 包装按钮，在 mousedown 时保存选区
-  const ToolButton = ({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) => (
+  const ToolButton = ({ 
+    onClick, 
+    title, 
+    children, 
+    active = false 
+  }: { 
+    onClick: () => void; 
+    title: string; 
+    children: React.ReactNode;
+    active?: boolean;
+  }) => (
     <Button 
-      variant="ghost" 
+      variant={active ? "secondary" : "ghost"} 
       size="sm" 
       onMouseDown={(e) => {
         e.preventDefault();
@@ -108,9 +184,15 @@ export function EditorToolbar({
   return (
     <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
       {/* 字体选择 */}
-      <Select onValueChange={(v) => { onSaveSelection(); onSetFont(v); }}>
+      <Select 
+        onValueChange={(v) => { onSetFont(v); }}
+        onOpenChange={(open) => { if (open) onSaveSelection(); }}
+        value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
+      >
         <SelectTrigger className="w-28 h-8">
-          <SelectValue placeholder="字体" />
+          <SelectValue placeholder="字体">
+            {getFontLabel(currentFormat.fontFamily)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="z-50">
           {FONT_OPTIONS.map(font => (
@@ -122,9 +204,15 @@ export function EditorToolbar({
       </Select>
 
       {/* 字号选择 */}
-      <Select onValueChange={(v) => { onSaveSelection(); onSetFontSize(Number(v)); }}>
+      <Select 
+        onValueChange={(v) => { onSetFontSize(Number(v)); }}
+        onOpenChange={(open) => { if (open) onSaveSelection(); }}
+        value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
+      >
         <SelectTrigger className="w-16 h-8">
-          <SelectValue placeholder="字号" />
+          <SelectValue placeholder="字号">
+            {getFontSizeLabel(currentFormat.fontSize)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="z-50">
           {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
@@ -138,13 +226,13 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 文本格式 */}
-      <ToolButton onClick={onBold} title="加粗">
+      <ToolButton onClick={onBold} title="加粗" active={currentFormat.bold}>
         <Bold className="h-4 w-4" />
       </ToolButton>
-      <ToolButton onClick={onItalic} title="斜体">
+      <ToolButton onClick={onItalic} title="斜体" active={currentFormat.italic}>
         <Italic className="h-4 w-4" />
       </ToolButton>
-      <ToolButton onClick={onUnderline} title="下划线">
+      <ToolButton onClick={onUnderline} title="下划线" active={currentFormat.underline}>
         <Underline className="h-4 w-4" />
       </ToolButton>
       <ToolButton onClick={onStrikethrough} title="删除线">
@@ -154,16 +242,16 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 对齐 */}
-      <ToolButton onClick={() => onAlign('left')} title="左对齐">
+      <ToolButton onClick={() => onAlign('left')} title="左对齐" active={currentFormat.align === 'left'}>
         <AlignLeft className="h-4 w-4" />
       </ToolButton>
-      <ToolButton onClick={() => onAlign('center')} title="居中">
+      <ToolButton onClick={() => onAlign('center')} title="居中" active={currentFormat.align === 'center'}>
         <AlignCenter className="h-4 w-4" />
       </ToolButton>
-      <ToolButton onClick={() => onAlign('right')} title="右对齐">
+      <ToolButton onClick={() => onAlign('right')} title="右对齐" active={currentFormat.align === 'right'}>
         <AlignRight className="h-4 w-4" />
       </ToolButton>
-      <ToolButton onClick={() => onAlign('justify')} title="两端对齐">
+      <ToolButton onClick={() => onAlign('justify')} title="两端对齐" active={currentFormat.align === 'justify'}>
         <AlignJustify className="h-4 w-4" />
       </ToolButton>
 
@@ -190,9 +278,15 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 行间距 */}
-      <Select onValueChange={(v) => { onSaveSelection(); onSetLineHeight(v); }}>
+      <Select 
+        onValueChange={(v) => { onSetLineHeight(v); }}
+        onOpenChange={(open) => { if (open) onSaveSelection(); }}
+        value={currentFormat.lineHeight || undefined}
+      >
         <SelectTrigger className="w-20 h-8">
-          <SelectValue placeholder="行距" />
+          <SelectValue placeholder="行距">
+            {getLineHeightLabel(currentFormat.lineHeight)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="z-50">
           {LINE_HEIGHT_OPTIONS.map(opt => (
@@ -206,9 +300,15 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 公文格式预设 */}
-      <Select onValueChange={(v) => { onSaveSelection(); onApplyPreset(v); }}>
+      <Select 
+        onValueChange={(v) => { onApplyPreset(v); }}
+        onOpenChange={(open) => { if (open) onSaveSelection(); }}
+        value={currentPresetKey || undefined}
+      >
         <SelectTrigger className="w-32 h-8">
-          <SelectValue placeholder="公文格式" />
+          <SelectValue placeholder="公文格式">
+            {currentPreset ? currentPreset.label : "公文格式"}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="z-50 w-64">
           {DOCUMENT_PRESETS.map(preset => (
