@@ -46,11 +46,78 @@ interface DraftData {
 // LibreOffice 用户配置目录
 const LIBREOFFICE_PROFILE = '/tmp/libreoffice-profile';
 
+// LibreOffice 预热状态
+let libreOfficeWarmedUp = false;
+let warmupPromise: Promise<void> | null = null;
+
+/**
+ * 预热 LibreOffice - 执行一次空转换，加速后续转换
+ */
+async function ensureLibreOfficeWarmedUp(): Promise<void> {
+  if (libreOfficeWarmedUp) return;
+  
+  // 如果正在预热，等待完成
+  if (warmupPromise) {
+    return warmupPromise;
+  }
+  
+  // 开始预热
+  warmupPromise = (async () => {
+    console.log('预热 LibreOffice...');
+    const tmpDir = join('/tmp', `libreoffice-warmup-${Date.now()}`);
+    
+    try {
+      mkdirSync(tmpDir, { recursive: true });
+      
+      // 确保用户配置目录存在
+      if (!existsSync(LIBREOFFICE_PROFILE)) {
+        mkdirSync(LIBREOFFICE_PROFILE, { recursive: true });
+      }
+      
+      // 创建一个简单的测试 HTML
+      const testHtml = '<!DOCTYPE html><html><body><p>test</p></body></html>';
+      const htmlFile = join(tmpDir, 'test.html');
+      writeFileSync(htmlFile, testHtml, 'utf-8');
+      
+      // 执行一次快速转换来预热（转换为 txt 更快）
+      execSync(
+        `libreoffice --headless --nologo --nofirststartwizard --norestore ` +
+        `--infilter="HTML" --convert-to txt --outdir "${tmpDir}" "${htmlFile}" ` +
+        `-env:UserInstallation=file://${LIBREOFFICE_PROFILE}`,
+        {
+          timeout: 60000,
+          env: { ...process.env, HOME: '/tmp' },
+        }
+      );
+      libreOfficeWarmedUp = true;
+      console.log('LibreOffice 预热完成');
+    } catch (e) {
+      console.error('LibreOffice 预热失败:', e);
+      warmupPromise = null; // 允许重试
+    } finally {
+      // 清理
+      try {
+        rmSync(tmpDir, { recursive: true, force: true });
+      } catch {}
+    }
+  })();
+  
+  return warmupPromise;
+}
+
+// 模块加载时启动后台预热（不阻塞）
+ensureLibreOfficeWarmedUp();
+
 /**
  * 使用 LibreOffice 将 HTML 转换为 Word 文档
- * 采用 HTML → ODT → DOCX 两步转换，确保样式完整保留
+ * 直接从 HTML → DOCX，避免中间步骤
  */
-function convertHtmlToDocxWithLibreOffice(html: string, outputDir: string): Buffer {
+async function convertHtmlToDocxWithLibreOffice(html: string, outputDir: string): Promise<Buffer> {
+  const startTime = Date.now();
+  
+  // 等待预热完成
+  await ensureLibreOfficeWarmedUp();
+  
   // 确保用户配置目录存在
   if (!existsSync(LIBREOFFICE_PROFILE)) {
     mkdirSync(LIBREOFFICE_PROFILE, { recursive: true });
@@ -60,40 +127,26 @@ function convertHtmlToDocxWithLibreOffice(html: string, outputDir: string): Buff
   const htmlFile = join(outputDir, 'document.html');
   writeFileSync(htmlFile, html, 'utf-8');
 
-  // 第一步：HTML → ODT
-  console.log('LibreOffice: HTML → ODT');
+  // 直接 HTML → DOCX（一步转换）
+  console.log('LibreOffice: HTML → DOCX');
+  const convertStartTime = Date.now();
   execSync(
     `libreoffice --headless --nologo --nofirststartwizard --norestore ` +
-    `--infilter="HTML" --convert-to odt --outdir "${outputDir}" "${htmlFile}" ` +
+    `--infilter="HTML" --convert-to docx --outdir "${outputDir}" "${htmlFile}" ` +
     `-env:UserInstallation=file://${LIBREOFFICE_PROFILE}`,
     {
       timeout: 60000,
       env: { ...process.env, HOME: '/tmp' },
     }
   );
-
-  const odtFile = join(outputDir, 'document.odt');
-  if (!existsSync(odtFile)) {
-    throw new Error('ODT 文件生成失败');
-  }
-
-  // 第二步：ODT → DOCX
-  console.log('LibreOffice: ODT → DOCX');
-  execSync(
-    `libreoffice --headless --nologo --nofirststartwizard --norestore ` +
-    `--convert-to docx --outdir "${outputDir}" "${odtFile}" ` +
-    `-env:UserInstallation=file://${LIBREOFFICE_PROFILE}`,
-    {
-      timeout: 60000,
-      env: { ...process.env, HOME: '/tmp' },
-    }
-  );
+  console.log(`LibreOffice 转换耗时: ${Date.now() - convertStartTime}ms`);
 
   const docxFile = join(outputDir, 'document.docx');
   if (!existsSync(docxFile)) {
     throw new Error('DOCX 文件生成失败');
   }
 
+  console.log(`LibreOffice 总耗时: ${Date.now() - startTime}ms`);
   return readFileSync(docxFile);
 }
 
@@ -355,7 +408,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // 使用 LibreOffice 转换
-      const docxBuffer = convertHtmlToDocxWithLibreOffice(mergedHtml, tmpDir);
+      const docxBuffer = await convertHtmlToDocxWithLibreOffice(mergedHtml, tmpDir);
 
       console.log('Word 文档生成成功，大小:', docxBuffer.length);
 
