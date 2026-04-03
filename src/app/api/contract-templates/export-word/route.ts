@@ -145,18 +145,30 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
 
 /**
  * 清理内联字体样式，确保字体一致性
- * 移除所有 font-family 内联样式，使用全局样式控制
+ * 移除所有 font-family 和 font-size 内联样式，使用全局样式控制
  */
 function normalizeFontStyles(html: string): string {
-  // 移除内联的 font-family 样式（但不移除其他样式）
-  // 匹配 style 属性中的 font-family: xxx;
-  let result = html.replace(/\s*font-family:\s*[^;"]+;?/gi, '');
+  let result = html;
+  
+  // 移除内联的 font-family 样式
+  result = result.replace(/\s*font-family:\s*[^;"]+;?/gi, '');
+  
+  // 移除内联的 font-size 样式（统一使用全局字号，确保一致性）
+  result = result.replace(/\s*font-size:\s*[^;"]+;?/gi, '');
+  
+  // 移除内联的 line-height 样式（统一使用全局行高）
+  result = result.replace(/\s*line-height:\s*[^;"]+;?/gi, '');
   
   // 清理空的 style 属性
   result = result.replace(/\s*style="\s*"/g, '');
   
   // 清理只有空格的 style 属性
   result = result.replace(/\s*style="\s+"/g, '');
+  
+  // 清理签章区域可能出现的无意义文字模式（如 "处、处"、"处,处"）
+  // 匹配独立的单字重复+顿号/逗号模式
+  result = result.replace(/([^\s])、\1(?=\s|<|$)/g, '');  // 如 "处、处"
+  result = result.replace(/([^\s]),\1(?=\s|<|$)/g, '');   // 如 "处,处"
   
   return result;
 }
@@ -209,10 +221,23 @@ function mergeHtmlParts(parts: string[]): string {
 <meta charset="UTF-8">
 ${styles}
 <style>
-/* 全局字体设置 - 确保所有文本使用统一字体 */
-body, p, td, th, span, div, li { 
+/* 全局字体设置 - 确保所有文本使用统一字体和字号 */
+body { 
   font-family: "SimSun", "宋体", serif; 
+  font-size: 12pt;
+  line-height: 1.5;
 }
+
+p, td, th, span, div, li { 
+  font-family: "SimSun", "宋体", serif; 
+  font-size: 12pt;
+  line-height: 1.5;
+}
+
+/* 标题字号 */
+h1 { font-size: 16pt; }
+h2 { font-size: 14pt; }
+h3 { font-size: 12pt; font-weight: bold; }
 
 /* 确保表格边框显示 */
 table { border-collapse: collapse; }
