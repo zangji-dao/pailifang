@@ -165,11 +165,6 @@ function normalizeFontStyles(html: string): string {
   // 清理只有空格的 style 属性
   result = result.replace(/\s*style="\s+"/g, '');
   
-  // 清理签章区域可能出现的无意义文字模式（如 "处、处"、"处,处"）
-  // 匹配独立的单字重复+顿号/逗号模式
-  result = result.replace(/([^\s])、\1(?=\s|<|$)/g, '');  // 如 "处、处"
-  result = result.replace(/([^\s]),\1(?=\s|<|$)/g, '');   // 如 "处,处"
-  
   return result;
 }
 
