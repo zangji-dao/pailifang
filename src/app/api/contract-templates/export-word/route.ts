@@ -125,18 +125,20 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
   result = result.replace(/\s*class="variable-marker[^"]*"/g, '');
   result = result.replace(/<span\s+[^>]*style="[^"]*"[^>]*>(\{\{[^}]+\}\})<\/span>/g, '$1');
 
-  // 清理原始文档中带分页样式的空段落（这些会导致表格前出现大片空白）
-  // 匹配各种形式的空分页段落
-  // 1. <p ... page-break-before: always ...><br></p>
+  // 清理带分页样式的空段落（这些会导致表格前出现大片空白）
+  // 只清理带 page-break-before: always 的空段落
   result = result.replace(/<p[^>]*page-break-before:\s*always[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, '');
-  // 2. <p class=...></p> 或 <p class=...><br></p>（原始文档中的空段落，附件分页符没有 class 属性）
-  result = result.replace(/<p[^>]*class="western"[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, '');
-  result = result.replace(/<p[^>]*class="western"[^>]*>\s*<\/p>/gi, '');
-  // 3. 清理非空段落中的 page-break-before 样式（保留内容，只移除分页样式）
+  
+  // 清理非空段落中的 page-break-before: always 样式（保留内容，只移除分页样式）
   result = result.replace(/(<p[^>]*style="[^"]*?)page-break-before:\s*always;?\s*/gi, '$1');
   
   // 清理空的 style 属性
   result = result.replace(/\s*style="\s*"/g, '');
+  
+  // 清理文档末尾连续的空段落（超过5个连续空段落才清理，保留正常的段落间距）
+  // 匹配 </table> 或 </p> 后面连续超过5个空段落的情况
+  result = result.replace(/(<\/table>|<\/p>)((?:\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){5,})$/gi, '$1');
+  result = result.replace(/(<\/table>|<\/p>)((?:\s*<p[^>]*>\s*<\/p>\s*){5,})$/gi, '$1');
 
   return result;
 }
