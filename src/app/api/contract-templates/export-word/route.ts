@@ -98,7 +98,7 @@ function convertHtmlToDocxWithLibreOffice(html: string, outputDir: string): Buff
 }
 
 /**
- * 处理变量替换
+ * 处理变量替换和 HTML 清理
  */
 function processVariables(html: string, draftData: DraftData, variableValues?: Record<string, string>): string {
   let result = html;
@@ -124,6 +124,18 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
   result = result.replace(/\s*data-document-id="[^"]*"/g, '');
   result = result.replace(/\s*class="variable-marker[^"]*"/g, '');
   result = result.replace(/<span\s+[^>]*style="[^"]*"[^>]*>(\{\{[^}]+\}\})<\/span>/g, '$1');
+
+  // 清理原始文档中带分页样式的空段落（这些会导致表格前出现大片空白）
+  // 匹配各种形式的空分页段落
+  // 1. <p ... page-break-before: always ...><br></p>
+  result = result.replace(/<p[^>]*page-break-before:\s*always[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, '');
+  // 2. <p ... page-break-before: always ...></p>
+  result = result.replace(/<p[^>]*page-break-before:\s*always[^>]*>\s*<\/p>/gi, '');
+  // 3. 清理非空段落中的 page-break-before 样式（保留内容，只移除分页样式）
+  result = result.replace(/(<p[^>]*style="[^"]*?)page-break-before:\s*always;?\s*/gi, '$1');
+  
+  // 清理空的 style 属性
+  result = result.replace(/\s*style="\s*"/g, '');
 
   return result;
 }
@@ -161,9 +173,9 @@ function mergeHtmlParts(parts: string[]): string {
     }
 
     // 如果不是第一个部分，在前面添加分页符
-    // 使用 hr + page-break 组合，LibreOffice 支持更好
+    // 使用 p 标签 + page-break-before，LibreOffice 对此支持最好
     if (index > 0) {
-      content = `<hr style="page-break-before: always; visibility: hidden; height: 0; border: none">${content}`;
+      content = `<p style="page-break-before: always"></p>${content}`;
     }
 
     return content;
