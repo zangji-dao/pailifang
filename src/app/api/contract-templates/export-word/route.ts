@@ -144,6 +144,24 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
 }
 
 /**
+ * 清理内联字体样式，确保字体一致性
+ * 移除所有 font-family 内联样式，使用全局样式控制
+ */
+function normalizeFontStyles(html: string): string {
+  // 移除内联的 font-family 样式（但不移除其他样式）
+  // 匹配 style 属性中的 font-family: xxx;
+  let result = html.replace(/\s*font-family:\s*[^;"]+;?/gi, '');
+  
+  // 清理空的 style 属性
+  result = result.replace(/\s*style="\s*"/g, '');
+  
+  // 清理只有空格的 style 属性
+  result = result.replace(/\s*style="\s+"/g, '');
+  
+  return result;
+}
+
+/**
  * 合并多个 HTML 内容，用分页符分隔
  * 使用 LibreOffice 能识别的分页方式
  */
@@ -191,6 +209,11 @@ function mergeHtmlParts(parts: string[]): string {
 <meta charset="UTF-8">
 ${styles}
 <style>
+/* 全局字体设置 - 确保所有文本使用统一字体 */
+body, p, td, th, span, div, li { 
+  font-family: "SimSun", "宋体", serif; 
+}
+
 /* 确保表格边框显示 */
 table { border-collapse: collapse; }
 td, th { border: 1px solid black; }
@@ -240,14 +263,18 @@ export async function POST(request: NextRequest) {
 
     // 主文档
     if (draftData.editedHtml) {
-      htmlParts.push(processVariables(draftData.editedHtml, draftData, variableValues));
+      // 处理变量替换，然后清理内联字体样式确保一致性
+      const processedHtml = processVariables(draftData.editedHtml, draftData, variableValues);
+      htmlParts.push(normalizeFontStyles(processedHtml));
     }
 
     // 附件
     if (draftData.attachments && draftData.attachments.length > 0) {
       for (const attachment of draftData.attachments) {
         if (attachment.html) {
-          htmlParts.push(processVariables(attachment.html, draftData, variableValues));
+          // 处理变量替换，然后清理内联字体样式确保一致性
+          const processedHtml = processVariables(attachment.html, draftData, variableValues);
+          htmlParts.push(normalizeFontStyles(processedHtml));
         }
       }
     }
