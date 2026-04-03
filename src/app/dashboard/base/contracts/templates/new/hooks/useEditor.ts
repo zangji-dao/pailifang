@@ -136,10 +136,14 @@ export function useEditor(
     if (savedSelectionRef.current && contentRef.current) {
       const selection = window.getSelection();
       if (selection) {
+        // 先聚焦编辑器
+        contentRef.current.focus();
         selection.removeAllRanges();
         selection.addRange(savedSelectionRef.current);
+        return true;
       }
     }
+    return false;
   }, []);
 
   // 同步编辑后的HTML
@@ -186,12 +190,10 @@ export function useEditor(
 
   // 执行编辑命令
   const execCommand = useCallback((command: string, value?: string) => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    // 恢复之前保存的选区
-    restoreSelection();
     document.execCommand(command, false, value);
     syncEditedContent();
   }, [syncEditedContent, restoreSelection]);
@@ -249,13 +251,10 @@ export function useEditor(
 
   // 设置字体
   const handleSetFont = useCallback((fontFamily: string) => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     // 找到选中的块级元素并设置字体
     const selection = window.getSelection();
@@ -287,13 +286,10 @@ export function useEditor(
 
   // 设置字体大小
   const handleSetFontSize = useCallback((size: number) => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -322,13 +318,10 @@ export function useEditor(
 
   // 设置行间距
   const handleSetLineHeight = useCallback((lineHeight: string) => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -359,13 +352,10 @@ export function useEditor(
     const preset = DOCUMENT_PRESETS.find(p => p.key === presetKey);
     if (!preset) return;
     
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -470,13 +460,10 @@ export function useEditor(
 
   // 添加下划线填充
   const handleAddUnderlineFill = useCallback(() => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -503,13 +490,10 @@ export function useEditor(
 
   // 插入表格
   const handleInsertTable = useCallback((rows: number, cols: number) => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const table = document.createElement('table');
     table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 6pt 0;';
@@ -536,13 +520,10 @@ export function useEditor(
 
   // 删除表格行
   const handleDeleteRow = useCallback(() => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -561,13 +542,10 @@ export function useEditor(
 
   // 删除表格列
   const handleDeleteColumn = useCallback(() => {
-    // 确保编辑区域有焦点
-    if (contentRef.current) {
-      contentRef.current.focus();
+    // 恢复之前保存的选区（包含 focus 操作）
+    if (!restoreSelection()) {
+      return; // 没有保存的选区，不执行操作
     }
-    
-    // 恢复之前保存的选区
-    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
