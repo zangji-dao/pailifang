@@ -280,18 +280,27 @@ export function useEditor(
     // 找到块级父元素
     while (container && container !== contentRef.current) {
       if (container.nodeType === Node.ELEMENT_NODE && 
-          (container.tagName === 'P' || container.tagName === 'DIV' || container.tagName === 'H1' || container.tagName === 'H2' || container.tagName === 'H3')) {
+          (container.tagName === 'P' || container.tagName === 'DIV' || container.tagName === 'H1' || container.tagName === 'H2' || container.tagName === 'H3' || container.tagName === 'TD' || container.tagName === 'TH')) {
         break;
       }
       container = container.parentNode as HTMLElement;
     }
     
     if (container && container !== contentRef.current) {
-      (container as HTMLElement).style.fontFamily = preset.font;
-      (container as HTMLElement).style.fontSize = `${preset.size}pt`;
-      if (presetKey === 'official-title' || presetKey.startsWith('heading')) {
-        (container as HTMLElement).style.fontWeight = 'bold';
-        (container as HTMLElement).style.textAlign = 'center';
+      const el = container as HTMLElement;
+      // 应用字体
+      el.style.fontFamily = preset.font;
+      // 应用字号
+      el.style.fontSize = `${preset.size}pt`;
+      // 应用行距
+      el.style.lineHeight = preset.lineHeight;
+      // 应用加粗
+      if (preset.bold) {
+        el.style.fontWeight = 'bold';
+      }
+      // 应用对齐方式
+      if (preset.align) {
+        el.style.textAlign = preset.align;
       }
     }
     

@@ -207,13 +207,18 @@ export function EditorToolbar({
 
       {/* 公文格式预设 */}
       <Select onValueChange={(v) => { onSaveSelection(); onApplyPreset(v); }}>
-        <SelectTrigger className="w-28 h-8">
-          <SelectValue placeholder="格式" />
+        <SelectTrigger className="w-32 h-8">
+          <SelectValue placeholder="公文格式" />
         </SelectTrigger>
-        <SelectContent className="z-50">
+        <SelectContent className="z-50 w-64">
           {DOCUMENT_PRESETS.map(preset => (
-            <SelectItem key={preset.key} value={preset.key}>
-              {preset.label}
+            <SelectItem key={preset.key} value={preset.key} className="py-2">
+              <div className="flex flex-col items-start">
+                <span className="font-medium">{preset.label}</span>
+                {preset.description && (
+                  <span className="text-xs text-muted-foreground">{preset.description}</span>
+                )}
+              </div>
             </SelectItem>
           ))}
         </SelectContent>

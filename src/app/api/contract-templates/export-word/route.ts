@@ -198,19 +198,18 @@ function processVariables(html: string, draftData: DraftData, variableValues?: R
 
 /**
  * 清理内联字体样式，确保字体一致性
- * 移除所有 font-family 和 font-size 内联样式，使用全局样式控制
+ * 保留用户设置的行距，只统一字体和字号
  */
 function normalizeFontStyles(html: string): string {
   let result = html;
   
-  // 移除内联的 font-family 样式
+  // 移除内联的 font-family 样式（统一使用全局字体）
   result = result.replace(/\s*font-family:\s*[^;"]+;?/gi, '');
   
-  // 移除内联的 font-size 样式（统一使用全局字号，确保一致性）
+  // 移除内联的 font-size 样式（统一使用全局字号）
   result = result.replace(/\s*font-size:\s*[^;"]+;?/gi, '');
   
-  // 移除内联的 line-height 样式（统一使用全局行高）
-  result = result.replace(/\s*line-height:\s*[^;"]+;?/gi, '');
+  // 注意：保留 line-height 样式，因为用户可能在编辑器中主动设置了行距
   
   // 清理空的 style 属性
   result = result.replace(/\s*style="\s*"/g, '');

@@ -84,16 +84,87 @@ export const LINE_HEIGHT_OPTIONS = [
   { value: '3', label: '3倍' },
 ] as const;
 
-// 公文格式预设
-export const DOCUMENT_PRESETS = [
-  { key: 'official-title', label: '公文标题', font: 'SimHei', size: 22 },
-  { key: 'heading1', label: '一级标题', font: 'SimHei', size: 16 },
-  { key: 'heading2', label: '二级标题', font: 'SimHei', size: 14 },
-  { key: 'heading3', label: '三级标题', font: 'SimHei', size: 12 },
-  { key: 'body-normal', label: '正文(三号)', font: 'SimSun', size: 16 },
-  { key: 'body-small', label: '正文(小四)', font: 'SimSun', size: 12 },
-  { key: 'signature', label: '签章区', font: 'SimSun', size: 12 },
-] as const;
+// 公文格式预设（包含完整的样式定义）
+export interface DocumentPreset {
+  key: string;
+  label: string;
+  font: string;
+  size: number;
+  lineHeight: string;
+  bold?: boolean;
+  align?: 'left' | 'center' | 'right' | 'justify';
+  description?: string;
+}
+
+export const DOCUMENT_PRESETS: DocumentPreset[] = [
+  { 
+    key: 'official-title', 
+    label: '公文标题', 
+    font: 'SimHei', 
+    size: 22, 
+    lineHeight: '1.5',
+    bold: true,
+    align: 'center',
+    description: '黑体、二号、居中、1.5倍行距'
+  },
+  { 
+    key: 'heading1', 
+    label: '一级标题', 
+    font: 'SimHei', 
+    size: 16, 
+    lineHeight: '1.5',
+    bold: true,
+    align: 'left',
+    description: '黑体、三号、加粗、1.5倍行距'
+  },
+  { 
+    key: 'heading2', 
+    label: '二级标题', 
+    font: 'SimHei', 
+    size: 14, 
+    lineHeight: '1.5',
+    bold: true,
+    align: 'left',
+    description: '黑体、四号、加粗、1.5倍行距'
+  },
+  { 
+    key: 'heading3', 
+    label: '三级标题', 
+    font: 'SimHei', 
+    size: 12, 
+    lineHeight: '1.5',
+    bold: true,
+    align: 'left',
+    description: '黑体、小四、加粗、1.5倍行距'
+  },
+  { 
+    key: 'body-normal', 
+    label: '正文(三号)', 
+    font: 'SimSun', 
+    size: 16, 
+    lineHeight: '1.5',
+    align: 'justify',
+    description: '宋体、三号、两端对齐、1.5倍行距'
+  },
+  { 
+    key: 'body-small', 
+    label: '正文(小四)', 
+    font: 'SimSun', 
+    size: 12, 
+    lineHeight: '1.5',
+    align: 'justify',
+    description: '宋体、小四、两端对齐、1.5倍行距'
+  },
+  { 
+    key: 'signature', 
+    label: '签章区', 
+    font: 'SimSun', 
+    size: 12, 
+    lineHeight: '1.5',
+    align: 'right',
+    description: '宋体、小四、右对齐、1.5倍行距'
+  },
+];
 
 // 工具函数：格式化文件大小
 export function formatFileSize(bytes: number): string {
