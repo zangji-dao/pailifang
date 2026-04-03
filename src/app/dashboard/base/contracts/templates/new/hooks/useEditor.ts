@@ -153,6 +153,14 @@ export function useEditor(
 
   // 设置字体
   const handleSetFont = useCallback((fontFamily: string) => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     // 找到选中的块级元素并设置字体
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -179,10 +187,18 @@ export function useEditor(
     }
     
     syncEditedContent();
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 设置字体大小
   const handleSetFontSize = useCallback((size: number) => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -206,10 +222,18 @@ export function useEditor(
     }
     
     syncEditedContent();
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 设置行间距
   const handleSetLineHeight = useCallback((lineHeight: string) => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -232,12 +256,20 @@ export function useEditor(
     }
     
     syncEditedContent();
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 应用公文格式预设
   const handleApplyPreset = useCallback((presetKey: string) => {
     const preset = DOCUMENT_PRESETS.find(p => p.key === presetKey);
     if (!preset) return;
+    
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -265,10 +297,18 @@ export function useEditor(
     
     syncEditedContent();
     toast.success(`已应用${preset.label}格式`);
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 添加下划线填充
   const handleAddUnderlineFill = useCallback(() => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -290,10 +330,18 @@ export function useEditor(
     
     range.insertNode(span);
     syncEditedContent();
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 插入表格
   const handleInsertTable = useCallback((rows: number, cols: number) => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     const table = document.createElement('table');
     table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 6pt 0;';
     
@@ -315,10 +363,18 @@ export function useEditor(
     
     syncEditedContent();
     toast.success('已插入表格');
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 删除表格行
   const handleDeleteRow = useCallback(() => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -332,10 +388,18 @@ export function useEditor(
       syncEditedContent();
       toast.success('已删除行');
     }
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 删除表格列
   const handleDeleteColumn = useCallback(() => {
+    // 确保编辑区域有焦点
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+    
+    // 恢复之前保存的选区
+    restoreSelection();
+    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -358,7 +422,7 @@ export function useEditor(
         toast.success('已删除列');
       }
     }
-  }, [syncEditedContent]);
+  }, [syncEditedContent, restoreSelection]);
 
   // 打印
   const handlePrint = useCallback(() => {
