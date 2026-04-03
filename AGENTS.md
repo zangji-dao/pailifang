@@ -182,3 +182,44 @@ PDF导出采用html2canvas + jsPDF方案：
 | `active` | 执行中 | 合同正在执行 |
 | `completed` | 已完成 | 合同执行完毕 |
 | `terminated` | 已终止 | 合同提前终止 |
+
+### Word 导出
+
+Word 导出采用 LibreOffice 双向转换方案（HTML → ODT → DOCX），确保样式完整保留。
+
+**核心处理流程**：
+1. 从 draft_data.editedHtml 获取编辑后的 HTML
+2. 处理变量替换（`processVariables` 函数）
+3. 清理内联字体样式，统一使用宋体 12pt（`normalizeFontStyles` 函数）
+4. 合并主文档和附件 HTML（`mergeHtmlParts` 函数）
+5. 通过 LibreOffice 转换为 DOCX
+
+**样式处理规范**：
+- 移除所有内联 `font-family`、`font-size`、`line-height` 样式
+- 全局使用宋体 12pt、1.5 倍行高
+- 标题分级：h1=16pt, h2=14pt, h3=12pt
+
+**空段落清理**：
+- 清理带 `page-break-before: always` 的空分页段落
+- 清理文档末尾连续超过5个的空段落
+
+### 合同模板调试工具
+
+**调试 API**：`GET /api/contract-templates/debug/[id]`
+- 查看模板详细信息
+- 获取 HTML 内容片段
+- 搜索签章区域匹配
+
+**调试页面**：`/dashboard/base/contracts/templates/debug`
+- 输入模板 ID 查询模板数据
+- 导出处理后的 HTML 进行对比
+- 查看签章区域匹配结果
+
+**调试模式导出**：
+在 Word 导出请求中添加 `debug: true` 参数，返回处理后的 HTML 而非 Word 文件：
+```json
+{
+  "templateId": "xxx",
+  "debug": true
+}
+```

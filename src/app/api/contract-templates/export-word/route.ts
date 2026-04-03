@@ -172,7 +172,7 @@ function normalizeFontStyles(html: string): string {
  * 合并多个 HTML 内容，用分页符分隔
  * 使用 LibreOffice 能识别的分页方式
  */
-function mergeHtmlParts(parts: string[]): string {
+function mergeHtmlParts(parts: string[], debugMode = false): string {
   // 提取第一个文档的样式（避免重复）
   const firstPart = parts[0];
   const styleMatch = firstPart.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
@@ -198,6 +198,12 @@ function mergeHtmlParts(parts: string[]): string {
         .replace(/<body[^>]*>/gi, '')
         .replace(/<\/body>/gi, '')
         .trim();
+    }
+
+    // 调试模式：输出每个部分的内容片段
+    if (debugMode) {
+      console.log(`\n=== HTML Part ${index} (前500字符) ===`);
+      console.log(content.substring(0, 500));
     }
 
     // 如果不是第一个部分，在前面添加分页符
@@ -248,12 +254,13 @@ ${bodyContents.join('\n')}
 /**
  * POST /api/contract-templates/export-word
  * 使用 LibreOffice 双向转换导出 Word 文档
+ * 支持 debug=true 参数，返回处理后的 HTML 而非 Word 文件
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
     const body = await request.json();
-    const { templateId, variableValues } = body;
+    const { templateId, variableValues, debug } = body;
 
     if (!templateId) {
       return NextResponse.json({ success: false, error: '缺少模板ID' }, { status: 400 });
@@ -272,20 +279,45 @@ export async function POST(request: NextRequest) {
     const draftData = (template as any).draft_data as DraftData | null;
 
     if (!draftData) {
-      return NextResponse.json({ success: false, error: '没有找到草稿数据' }, { status: 400 });
+      // 调试：输出模板数据，帮助排查 draft_data 为空的原因
+      console.log('模板数据:', JSON.stringify({
+        id: template.id,
+        name: template.name,
+        status: template.status,
+        hasDraftData: false,
+        source_file_url: (template as any).source_file_url,
+      }, null, 2));
+      return NextResponse.json({ success: false, error: '没有找到草稿数据，请先保存模板' }, { status: 400 });
     }
 
     console.log('开始导出 Word 文档（LibreOffice 双向转换）...');
     console.log('附件数量:', draftData.attachments?.length || 0);
+    console.log('editedHtml 长度:', draftData.editedHtml?.length || 0);
+    console.log('markers 数量:', draftData.markers?.length || 0);
+    console.log('selectedVariables 数量:', draftData.selectedVariables?.length || 0);
 
     // 准备所有 HTML 内容
     const htmlParts: string[] = [];
 
     // 主文档
     if (draftData.editedHtml) {
+      // 调试模式：输出原始 HTML
+      if (debug) {
+        console.log('\n=== 原始 editedHtml (前1000字符) ===');
+        console.log(draftData.editedHtml.substring(0, 1000));
+      }
+      
       // 处理变量替换，然后清理内联字体样式确保一致性
       const processedHtml = processVariables(draftData.editedHtml, draftData, variableValues);
-      htmlParts.push(normalizeFontStyles(processedHtml));
+      const normalizedHtml = normalizeFontStyles(processedHtml);
+      
+      // 调试模式：输出处理后的 HTML
+      if (debug) {
+        console.log('\n=== 处理后 HTML (前1000字符) ===');
+        console.log(normalizedHtml.substring(0, 1000));
+      }
+      
+      htmlParts.push(normalizedHtml);
     }
 
     // 附件
@@ -304,8 +336,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 合并所有 HTML 内容
-    const mergedHtml = mergeHtmlParts(htmlParts);
+    const mergedHtml = mergeHtmlParts(htmlParts, debug);
     console.log('合并后 HTML 大小:', mergedHtml.length);
+
+    // 调试模式：返回 HTML 内容而非 Word 文件
+    if (debug) {
+      return new NextResponse(mergedHtml, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+        },
+      });
+    }
 
     // 创建临时目录
     const tmpDir = join('/tmp', `word-export-${Date.now()}`);
