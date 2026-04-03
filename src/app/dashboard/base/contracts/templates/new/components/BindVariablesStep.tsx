@@ -109,14 +109,21 @@ export function BindVariablesStep({
   // 监听选区变化，更新当前格式显示
   useEffect(() => {
     const handleSelectionChange = () => {
-      onDetectCurrentFormat();
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        // 只有当选区在编辑区域内时才更新
+        if (contentRef.current?.contains(range.commonAncestorContainer)) {
+          onDetectCurrentFormat();
+        }
+      }
     };
     
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [onDetectCurrentFormat]);
+  }, [onDetectCurrentFormat, contentRef]);
 
   // 获取当前文档的HTML
   const currentDocumentHtml = useMemo(() => {
@@ -273,7 +280,10 @@ export function BindVariablesStep({
               className="contract-content outline-none"
               contentEditable
               suppressContentEditableWarning
-              onClick={onDetectCurrentFormat}
+              onClick={(e) => {
+                onSaveSelection();
+                onDetectCurrentFormat();
+              }}
               onBlur={onSyncEditedContent}
               onKeyDown={(e) => {
                 // 阻止回车键创建新段落（可选）

@@ -49,6 +49,21 @@ export function useEditor(
       container = container.parentNode as HTMLElement;
     }
     
+    // 检查选区是否在编辑区域内
+    if (!contentRef.current?.contains(container)) {
+      // 选区不在编辑区域内，重置格式显示
+      setCurrentFormat({
+        fontFamily: null,
+        fontSize: null,
+        lineHeight: null,
+        bold: false,
+        italic: false,
+        underline: false,
+        align: null,
+      });
+      return;
+    }
+    
     // 向上查找块级元素
     const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'TD', 'TH', 'LI'];
     while (container && container !== contentRef.current) {
