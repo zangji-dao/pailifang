@@ -190,8 +190,7 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-28 h-8"
-          onMouseDown={(e) => {
-            // 在鼠标按下时立即保存选区，此时焦点还在编辑器中
+          onPointerDown={(e) => {
             onSaveSelection();
           }}
         >
@@ -215,8 +214,7 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-16 h-8"
-          onMouseDown={(e) => {
-            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+          onPointerDown={(e) => {
             onSaveSelection();
           }}
         >
@@ -294,8 +292,7 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-20 h-8"
-          onMouseDown={(e) => {
-            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+          onPointerDown={(e) => {
             onSaveSelection();
           }}
         >
@@ -321,8 +318,7 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-32 h-8"
-          onMouseDown={(e) => {
-            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+          onPointerDown={(e) => {
             onSaveSelection();
           }}
         >
