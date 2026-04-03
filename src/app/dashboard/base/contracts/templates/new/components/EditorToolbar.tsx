@@ -186,10 +186,15 @@ export function EditorToolbar({
       {/* 字体选择 */}
       <Select 
         onValueChange={(v) => { onSetFont(v); }}
-        onOpenChange={(open) => { if (open) onSaveSelection(); }}
         value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
       >
-        <SelectTrigger className="w-28 h-8">
+        <SelectTrigger 
+          className="w-28 h-8"
+          onMouseDown={(e) => {
+            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+            onSaveSelection();
+          }}
+        >
           <SelectValue placeholder="字体">
             {getFontLabel(currentFormat.fontFamily)}
           </SelectValue>
@@ -206,10 +211,15 @@ export function EditorToolbar({
       {/* 字号选择 */}
       <Select 
         onValueChange={(v) => { onSetFontSize(Number(v)); }}
-        onOpenChange={(open) => { if (open) onSaveSelection(); }}
         value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
       >
-        <SelectTrigger className="w-16 h-8">
+        <SelectTrigger 
+          className="w-16 h-8"
+          onMouseDown={(e) => {
+            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+            onSaveSelection();
+          }}
+        >
           <SelectValue placeholder="字号">
             {getFontSizeLabel(currentFormat.fontSize)}
           </SelectValue>
@@ -280,10 +290,15 @@ export function EditorToolbar({
       {/* 行间距 */}
       <Select 
         onValueChange={(v) => { onSetLineHeight(v); }}
-        onOpenChange={(open) => { if (open) onSaveSelection(); }}
         value={currentFormat.lineHeight || undefined}
       >
-        <SelectTrigger className="w-20 h-8">
+        <SelectTrigger 
+          className="w-20 h-8"
+          onMouseDown={(e) => {
+            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+            onSaveSelection();
+          }}
+        >
           <SelectValue placeholder="行距">
             {getLineHeightLabel(currentFormat.lineHeight)}
           </SelectValue>
@@ -302,10 +317,15 @@ export function EditorToolbar({
       {/* 公文格式预设 */}
       <Select 
         onValueChange={(v) => { onApplyPreset(v); }}
-        onOpenChange={(open) => { if (open) onSaveSelection(); }}
         value={currentPresetKey || undefined}
       >
-        <SelectTrigger className="w-32 h-8">
+        <SelectTrigger 
+          className="w-32 h-8"
+          onMouseDown={(e) => {
+            // 在鼠标按下时保存选区，此时焦点还在编辑器中
+            onSaveSelection();
+          }}
+        >
           <SelectValue placeholder="公文格式">
             {currentPreset ? currentPreset.label : "公文格式"}
           </SelectValue>

@@ -106,7 +106,7 @@ export function BindVariablesStep({
   onZoomOut,
   onZoomReset,
 }: BindVariablesStepProps) {
-  // 监听选区变化，更新当前格式显示
+  // 监听选区变化，保存选区并更新当前格式显示
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
@@ -114,6 +114,9 @@ export function BindVariablesStep({
         const range = selection.getRangeAt(0);
         // 只有当选区在编辑区域内时才更新
         if (contentRef.current?.contains(range.commonAncestorContainer)) {
+          // 保存当前选区
+          onSaveSelection();
+          // 检测当前格式
           onDetectCurrentFormat();
         }
       }
@@ -123,7 +126,7 @@ export function BindVariablesStep({
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [onDetectCurrentFormat, contentRef]);
+  }, [onDetectCurrentFormat, onSaveSelection, contentRef]);
 
   // 获取当前文档的HTML
   const currentDocumentHtml = useMemo(() => {
