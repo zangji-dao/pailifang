@@ -186,12 +186,15 @@ export function EditorToolbar({
       {/* 字体选择 */}
       <div 
         onMouseDown={(e) => {
-          // 在点击时立即保存选区，不阻止冒泡让 Select 正常工作
+          console.log('字体 - div onMouseDown 触发');
           onSaveSelection();
         }}
       >
         <Select 
-          onValueChange={(v) => { onSetFont(v); }}
+          onValueChange={(v) => { 
+            console.log('字体 - onValueChange 触发, value:', v);
+            onSetFont(v); 
+          }}
           value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
         >
           <SelectTrigger className="w-28 h-8">
@@ -212,11 +215,15 @@ export function EditorToolbar({
       {/* 字号选择 */}
       <div 
         onMouseDown={() => {
+          console.log('字号 - div onMouseDown 触发');
           onSaveSelection();
         }}
       >
         <Select 
-          onValueChange={(v) => { onSetFontSize(Number(v)); }}
+          onValueChange={(v) => { 
+            console.log('字号 - onValueChange 触发, value:', v);
+            onSetFontSize(Number(v)); 
+          }}
           value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
         >
           <SelectTrigger className="w-16 h-8">
@@ -291,11 +298,15 @@ export function EditorToolbar({
       {/* 行间距 */}
       <div 
         onMouseDown={() => {
+          console.log('行距 - div onMouseDown 触发');
           onSaveSelection();
         }}
       >
         <Select 
-          onValueChange={(v) => { onSetLineHeight(v); }}
+          onValueChange={(v) => { 
+            console.log('行距 - onValueChange 触发, value:', v);
+            onSetLineHeight(v); 
+          }}
           value={currentFormat.lineHeight || undefined}
         >
           <SelectTrigger className="w-20 h-8">
@@ -318,11 +329,15 @@ export function EditorToolbar({
       {/* 公文格式预设 */}
       <div 
         onMouseDown={() => {
+          console.log('公文格式 - div onMouseDown 触发');
           onSaveSelection();
         }}
       >
         <Select 
-          onValueChange={(v) => { onApplyPreset(v); }}
+          onValueChange={(v) => { 
+            console.log('公文格式 - onValueChange 触发, value:', v);
+            onApplyPreset(v); 
+          }}
           value={currentPresetKey || undefined}
         >
           <SelectTrigger className="w-32 h-8">
