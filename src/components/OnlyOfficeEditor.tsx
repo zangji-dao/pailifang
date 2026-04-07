@@ -130,10 +130,7 @@ export function OnlyOfficeEditor({
   // 加载 OnlyOffice JS API
   const loadOnlyOfficeScript = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
-      console.log(`[OnlyOffice] 开始加载脚本，serverUrl =`, serverUrl);
-
       if (window.DocsAPI && window.DocsAPI.ready) {
-        console.log(`[OnlyOffice] DocsAPI 已存在且就绪`);
         scriptLoadedRef.current = true;
         resolve();
         return;
@@ -142,65 +139,49 @@ export function OnlyOfficeEditor({
       // 检查是否已经存在脚本标签
       const existingScript = document.getElementById("onlyoffice-api-script");
       if (existingScript) {
-        console.log(`[OnlyOffice] 检测到已存在的脚本标签`);
         // 等待脚本加载完成
         const checkReady = setInterval(() => {
-          console.log(`[OnlyOffice] 检查 DocsAPI... DocsAPI =`, !!window.DocsAPI, `ready =`, window.DocsAPI?.ready);
           if (window.DocsAPI && window.DocsAPI.ready) {
             clearInterval(checkReady);
             scriptLoadedRef.current = true;
-            console.log(`[OnlyOffice] DocsAPI 初始化成功（已存在脚本）`);
             resolve();
           }
         }, 100);
 
-        // 超时处理 - 增加到 120 秒
-        console.log(`[OnlyOffice] 等待已存在脚本初始化...`);
+        // 超时处理
         setTimeout(() => {
           clearInterval(checkReady);
-          console.error(`[OnlyOffice] 超时：window.DocsAPI =`, !!window.DocsAPI, `window.DocsAPI.ready =`, window.DocsAPI?.ready);
           reject(new Error("OnlyOffice API 加载超时"));
-        }, 120000);
+        }, 30000);
         return;
       }
 
       // 创建新的脚本标签
-      console.log(`[OnlyOffice] 创建新的脚本标签`);
       const script = document.createElement("script");
       script.id = "onlyoffice-api-script";
       script.src = `${serverUrl}/web-apps/apps/api/documents/api.js`;
       script.async = true;
-      console.log(`[OnlyOffice] 脚本 URL: ${script.src}`);
 
       script.onload = () => {
-        console.log(`[OnlyOffice] 脚本加载完成，开始检查 DocsAPI...`);
         const checkReady = setInterval(() => {
-          const apiReady = window.DocsAPI && window.DocsAPI.ready;
-          console.log(`[OnlyOffice] 检查 DocsAPI... DocsAPI =`, !!window.DocsAPI, `ready =`, window.DocsAPI?.ready);
-          if (apiReady) {
+          if (window.DocsAPI && window.DocsAPI.ready) {
             clearInterval(checkReady);
             scriptLoadedRef.current = true;
-            console.log(`[OnlyOffice] DocsAPI 初始化成功！`);
             resolve();
           }
         }, 100);
 
-        // 增加初始化超时到 120 秒
         setTimeout(() => {
           clearInterval(checkReady);
-          console.error(`[OnlyOffice] 初始化超时：window.DocsAPI =`, !!window.DocsAPI, `window.DocsAPI.ready =`, window.DocsAPI?.ready);
-          console.error(`[OnlyOffice] DocsAPI 对象：`, window.DocsAPI);
           reject(new Error("OnlyOffice API 初始化超时"));
-        }, 120000);
+        }, 30000);
       };
 
       script.onerror = () => {
-        console.error(`[OnlyOffice] 脚本加载失败`);
         reject(new Error("OnlyOffice API 脚本加载失败"));
       };
 
       document.head.appendChild(script);
-      console.log(`[OnlyOffice] 脚本标签已添加到 head`);
     });
   }, [serverUrl]);
 
