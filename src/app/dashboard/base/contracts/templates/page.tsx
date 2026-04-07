@@ -162,17 +162,20 @@ export default function ContractTemplatesPage() {
 
   // 打开模板编辑页面
   const handleEdit = (template: ContractTemplate) => {
-    // 所有模板（草稿和已发布）都跳转到新建页面进行编辑
-    // 已发布的模板会在新建页面中加载现有数据
+    // 草稿跳转到 OnlyOffice 流程
+    // 已发布的模板也跳转到 OnlyOffice 流程
+    const isDraft = template.status === 'draft';
+    const editPath = `/dashboard/base/contracts/templates/new-onlyoffice?templateId=${template.id}`;
+    
     if (tabs) {
       tabs.openTab({
         id: `edit-${template.id}`,
-        label: `编辑: ${template.name}`,
-        path: `/dashboard/base/contracts/templates/new?templateId=${template.id}`,
+        label: `${isDraft ? '编辑草稿' : '编辑'}: ${template.name}`,
+        path: editPath,
         icon: <Settings className="h-3.5 w-3.5" />,
       });
     } else {
-      router.push(`/dashboard/base/contracts/templates/new?templateId=${template.id}`);
+      router.push(editPath);
     }
   };
 
