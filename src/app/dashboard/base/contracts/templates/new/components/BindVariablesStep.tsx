@@ -261,8 +261,8 @@ export function BindVariablesStep({
               className="contract-content outline-none"
               contentEditable
               suppressContentEditableWarning
-              onClick={(e) => {
-                // 点击后保存选区（使用 setTimeout 确保选区已更新）
+              onMouseUp={(e) => {
+                // 鼠标释放时保存选区（用户完成选择）
                 setTimeout(() => onSaveSelection(), 0);
               }}
               onKeyUp={(e) => {
@@ -273,12 +273,6 @@ export function BindVariablesStep({
                 // 失去焦点时先保存选区，再同步内容
                 onSaveSelection();
                 onSyncEditedContent();
-              }}
-              onKeyDown={(e) => {
-                // 阻止回车键创建新段落（可选）
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  // 默认行为
-                }
               }}
               dangerouslySetInnerHTML={{ 
                 __html: currentDocumentStyles 
