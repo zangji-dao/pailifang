@@ -1,13 +1,25 @@
+/**
+ * Quill 编辑器版本 - 绑定变量步骤
+ * 使用 Quill 自带工具栏
+ */
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { EditorToolbar, CurrentFormat } from "./EditorToolbar";
 import { MarkerPanel } from "./MarkerPanel";
 import { AttachmentTabs } from "./AttachmentTabs";
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
 import type { ParseResult } from "@/types/contract-template";
-import type { Marker, Binding } from "../types";
+import type { Marker } from "../types";
 import type { TemplateVariable } from "@/types/template-variable";
+
+// 扩展 Quill 类型
+declare module 'quill' {
+  interface Quill {
+    root: HTMLElement;
+  }
+}
 
 interface BindVariablesStepProps {
   parseResult: ParseResult | null;
@@ -18,7 +30,6 @@ interface BindVariablesStepProps {
   showVariablePicker: boolean;
   selectedVariables: TemplateVariable[];
   zoom: number;
-  currentFormat: CurrentFormat;
   contentRef: React.RefObject<HTMLDivElement | null>;
   onEditedHtmlChange: (html: string) => void;
   onDocumentChange: (id: string) => void;
@@ -33,30 +44,30 @@ interface BindVariablesStepProps {
   onRemoveCustomVariable?: (key: string) => void;
   onUpdateCustomVariable?: (key: string, variable: Partial<TemplateVariable>) => boolean;
   onSyncEditedContent: () => void;
-  onSaveSelection: () => void;
-  onDetectCurrentFormat: () => void;
-  // 编辑器命令
-  onBold: () => void;
-  onItalic: () => void;
-  onUnderline: () => void;
-  onStrikethrough: () => void;
-  onAlign: (alignment: 'left' | 'center' | 'right' | 'justify') => void;
-  onOrderedList: () => void;
-  onUnorderedList: () => void;
-  onIndent: () => void;
-  onOutdent: () => void;
-  onSetFont: (font: string) => void;
-  onSetFontSize: (size: number) => void;
-  onSetLineHeight: (lineHeight: string) => void;
-  onApplyPreset: (preset: string) => void;
-  onAddUnderlineFill: () => void;
-  onInsertTable: (rows: number, cols: number) => void;
-  onDeleteRow: () => void;
-  onDeleteColumn: () => void;
-  onPrint: () => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onZoomReset: () => void;
+  // 保留这些以兼容原有接口，但不再使用
+  onSaveSelection?: () => void;
+  onDetectCurrentFormat?: () => void;
+  onBold?: () => void;
+  onItalic?: () => void;
+  onUnderline?: () => void;
+  onStrikethrough?: () => void;
+  onAlign?: (alignment: 'left' | 'center' | 'right' | 'justify') => void;
+  onOrderedList?: () => void;
+  onUnorderedList?: () => void;
+  onIndent?: () => void;
+  onOutdent?: () => void;
+  onSetFont?: (font: string) => void;
+  onSetFontSize?: (size: number) => void;
+  onSetLineHeight?: (lineHeight: string) => void;
+  onApplyPreset?: (preset: string) => void;
+  onAddUnderlineFill?: () => void;
+  onInsertTable?: (rows: number, cols: number) => void;
+  onDeleteRow?: () => void;
+  onDeleteColumn?: () => void;
+  onPrint?: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onZoomReset?: () => void;
 }
 
 export function BindVariablesStep({
@@ -68,8 +79,8 @@ export function BindVariablesStep({
   showVariablePicker,
   selectedVariables,
   zoom,
-  currentFormat,
   contentRef,
+  onEditedHtmlChange,
   onDocumentChange,
   onZoomChange,
   onInsertMarker,
@@ -82,37 +93,16 @@ export function BindVariablesStep({
   onRemoveCustomVariable,
   onUpdateCustomVariable,
   onSyncEditedContent,
-  onSaveSelection,
-  onDetectCurrentFormat,
-  onBold,
-  onItalic,
-  onUnderline,
-  onStrikethrough,
-  onAlign,
-  onOrderedList,
-  onUnorderedList,
-  onIndent,
-  onOutdent,
-  onSetFont,
-  onSetFontSize,
-  onSetLineHeight,
-  onApplyPreset,
-  onAddUnderlineFill,
-  onInsertTable,
-  onDeleteRow,
-  onDeleteColumn,
-  onPrint,
-  onZoomIn,
-  onZoomOut,
-  onZoomReset,
 }: BindVariablesStepProps) {
+  const quillContainerRef = useRef<HTMLDivElement>(null);
+  const quillRef = useRef<Quill | null>(null);
+  const [isQuillReady, setIsQuillReady] = useState(false);
+
   // 获取当前文档的HTML
   const currentDocumentHtml = useMemo(() => {
     if (activeDocumentId === 'main') {
-      // 主合同：优先使用编辑后的内容
       return editedHtml || parseResult?.html || '';
     }
-    // 附件：直接使用附件的 HTML
     const attachment = parseResult?.attachments?.find(a => a.id === activeDocumentId);
     return attachment?.html || '';
   }, [activeDocumentId, parseResult, editedHtml]);
@@ -126,30 +116,75 @@ export function BindVariablesStep({
     return attachment?.styles || '';
   }, [activeDocumentId, parseResult]);
 
-  // 键盘快捷键
+  // 初始化 Quill
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-          case 'b':
-            e.preventDefault();
-            onBold();
-            break;
-          case 'i':
-            e.preventDefault();
-            onItalic();
-            break;
-          case 'u':
-            e.preventDefault();
-            onAddUnderlineFill();
-            break;
-        }
-      }
-    };
+    if (!quillContainerRef.current || quillRef.current) return;
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBold, onItalic, onAddUnderlineFill]);
+    const quill = new Quill(quillContainerRef.current, {
+      modules: {
+        toolbar: [
+          [{ 'font': [] }],
+          [{ 'size': ['small', false, 'large', 'huge'] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          [{ 'indent': '-1' }, { 'indent': '+1' }],
+          ['link'],
+          ['clean'],
+        ],
+      },
+      placeholder: '请输入合同内容...',
+      theme: 'snow',
+    });
+
+    quillRef.current = quill;
+    setIsQuillReady(true);
+
+    // 监听内容变化
+    quill.on('text-change', () => {
+      const html = quill.root.innerHTML;
+      onEditedHtmlChange(html);
+    });
+
+    return () => {
+      quill.off('text-change');
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 设置初始内容
+  useEffect(() => {
+    if (quillRef.current && currentDocumentHtml && isQuillReady) {
+      const currentContent = quillRef.current.root.innerHTML;
+      // 只在内容真正变化时更新
+      if (currentContent !== currentDocumentHtml) {
+        quillRef.current.root.innerHTML = currentDocumentHtml;
+      }
+    }
+  }, [currentDocumentHtml, isQuillReady]);
+
+  // 同步 contentRef 以便外部使用
+  useEffect(() => {
+    if (quillRef.current && contentRef) {
+      (contentRef as React.MutableRefObject<HTMLDivElement | null>).current = quillRef.current.root;
+    }
+  }, [contentRef, isQuillReady]);
+
+  // 插入变量标记 - 需要适配 Quill
+  const handleInsertMarker = useCallback(() => {
+    if (!quillRef.current) return;
+    
+    const selection = quillRef.current.getSelection();
+    if (!selection) {
+      // 没有选区时，提示用户先定位光标
+      alert('请先将光标定位到要插入变量的位置');
+      return;
+    }
+
+    // 调用原来的插入逻辑
+    onInsertMarker();
+  }, [onInsertMarker]);
 
   return (
     <div className="flex gap-4 h-[calc(100vh-200px)] min-h-[600px]">
@@ -161,43 +196,13 @@ export function BindVariablesStep({
             <div>
               <CardTitle className="text-base">编辑合同文档</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                在文档中定位光标后，点击右侧「插入变量标记」按钮
+                选中文字后使用上方工具栏设置格式，定位光标后点击右侧「插入变量标记」
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         
-        {/* 工具栏 - 固定在标题下方 */}
-        <div className="shrink-0">
-          <EditorToolbar
-            zoom={zoom}
-            currentFormat={currentFormat}
-            onSaveSelection={onSaveSelection}
-            onBold={onBold}
-            onItalic={onItalic}
-            onUnderline={onUnderline}
-            onStrikethrough={onStrikethrough}
-            onAlign={onAlign}
-            onOrderedList={onOrderedList}
-            onUnorderedList={onUnorderedList}
-            onIndent={onIndent}
-            onOutdent={onOutdent}
-            onSetFont={onSetFont}
-            onSetFontSize={onSetFontSize}
-            onSetLineHeight={onSetLineHeight}
-            onApplyPreset={onApplyPreset}
-            onAddUnderlineFill={onAddUnderlineFill}
-            onInsertTable={onInsertTable}
-            onDeleteRow={onDeleteRow}
-            onDeleteColumn={onDeleteColumn}
-            onPrint={onPrint}
-            onZoomIn={onZoomIn}
-            onZoomOut={onZoomOut}
-            onZoomReset={onZoomReset}
-          />
-        </div>
-        
-        {/* 文档内容区域 - 单独滚动 */}
+        {/* Quill 编辑器 - 工具栏由 Quill 自动生成 */}
         <div className="flex-1 overflow-auto p-4 bg-muted/30">
           <div 
             className="mx-auto bg-white shadow-lg contract-container"
@@ -225,7 +230,7 @@ export function BindVariablesStep({
               .contract-container table[border="0"] th {
                 border: none;
               }
-              /* 变量标记样式 - 确保内联显示 */
+              /* 变量标记样式 */
               .contract-container .variable-marker {
                 display: inline !important;
                 white-space: nowrap;
@@ -244,6 +249,19 @@ export function BindVariablesStep({
                 border-radius: 3px;
                 border: 1px solid #22c55e;
               }
+              /* Quill 编辑器样式 */
+              .contract-container .ql-container {
+                font-size: 12pt;
+                font-family: SimSun, serif;
+              }
+              .contract-container .ql-editor {
+                padding: 0;
+                min-height: 100%;
+              }
+              .contract-container .ql-editor.ql-blank::before {
+                font-style: normal;
+                color: #999;
+              }
               @media print {
                 .contract-container {
                   width: 210mm !important;
@@ -256,24 +274,10 @@ export function BindVariablesStep({
                 }
               }
             `}</style>
-            <div
-              ref={contentRef}
-              className="contract-content outline-none"
-              contentEditable
-              suppressContentEditableWarning
-              onMouseUp={(e) => {
-                // 鼠标释放时保存选区（用户完成选择）
-                setTimeout(() => onSaveSelection(), 0);
-              }}
-              onKeyUp={(e) => {
-                // 键盘导航后保存选区
-                setTimeout(() => onSaveSelection(), 0);
-              }}
-              onBlur={() => {
-                // 失去焦点时先保存选区，再同步内容
-                onSaveSelection();
-                onSyncEditedContent();
-              }}
+            
+            {/* Quill 编辑器容器 */}
+            <div 
+              ref={quillContainerRef}
               dangerouslySetInnerHTML={{ 
                 __html: currentDocumentStyles 
                   ? `<style>${currentDocumentStyles}</style>${currentDocumentHtml}`
@@ -297,14 +301,14 @@ export function BindVariablesStep({
           markers={markers}
           activeDocumentId={activeDocumentId}
           activeMarkerId={activeMarkerId}
-          showVariablePicker={showVariablePicker}
-          selectedVariables={selectedVariables}
-          onInsertMarker={onInsertMarker}
-          onBindVariable={onBindVariable}
+          onInsertMarker={handleInsertMarker}
           onRemoveMarker={onRemoveMarker}
           onChangeVariable={onChangeVariable}
           onSetActiveMarker={onSetActiveMarker}
+          showVariablePicker={showVariablePicker}
           onShowVariablePicker={onShowVariablePicker}
+          selectedVariables={selectedVariables}
+          onBindVariable={onBindVariable}
           onAddCustomVariable={onAddCustomVariable}
           onRemoveCustomVariable={onRemoveCustomVariable}
           onUpdateCustomVariable={onUpdateCustomVariable}

@@ -112,27 +112,9 @@ export function useTiptapEditor({ initialContent, onUpdate }: UseTiptapEditorPro
     }
   }, [editor])
 
-  // 设置字号
-  const setFontSize = useCallback((size: string) => {
-    if (!editor) return
-    editor.chain().focus()
-      .updateAttributes('textStyle', { fontSize: `${size}pt` })
-      .run()
-  }, [editor])
-
-  // 设置行高
-  const setLineHeight = useCallback((lineHeight: string) => {
-    if (!editor) return
-    editor.chain().focus()
-      .updateAttributes('paragraph', { lineHeight })
-      .run()
-  }, [editor])
-
   return {
     editor,
     EditorContent,
     handleApplyPreset,
-    setFontSize,
-    setLineHeight,
   }
 }

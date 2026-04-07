@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     },
   },
   // 转译有问题的 ES 模块
-  transpilePackages: ['linkifyjs'],
+  transpilePackages: ['linkifyjs', '@tiptap/react'],
 };
 
 // 禁用 Next.js devtools

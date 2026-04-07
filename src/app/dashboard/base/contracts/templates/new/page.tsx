@@ -569,7 +569,6 @@ function TemplateCreateContent() {
             showVariablePicker={showVariablePicker}
             selectedVariables={selectedVariables}
             zoom={zoom}
-            currentFormat={currentFormat}
             contentRef={contentRef}
             onEditedHtmlChange={setEditedHtml}
             onDocumentChange={setActiveDocumentId}
@@ -584,29 +583,6 @@ function TemplateCreateContent() {
             onRemoveCustomVariable={removeCustomVariable}
             onUpdateCustomVariable={updateCustomVariable}
             onSyncEditedContent={syncEditedContent as any}
-            onSaveSelection={saveSelection}
-            onDetectCurrentFormat={detectCurrentFormat}
-            onBold={handleBold}
-            onItalic={handleItalic}
-            onUnderline={handleUnderline}
-            onStrikethrough={handleStrikethrough}
-            onAlign={handleAlign}
-            onOrderedList={handleOrderedList}
-            onUnorderedList={handleUnorderedList}
-            onIndent={handleIndent}
-            onOutdent={handleOutdent}
-            onSetFont={handleSetFont}
-            onSetFontSize={handleSetFontSize}
-            onSetLineHeight={handleSetLineHeight}
-            onApplyPreset={handleApplyPreset}
-            onAddUnderlineFill={handleAddUnderlineFill}
-            onInsertTable={handleInsertTable}
-            onDeleteRow={handleDeleteRow}
-            onDeleteColumn={handleDeleteColumn}
-            onPrint={handlePrint}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onZoomReset={handleZoomReset}
           />
         )}
         
