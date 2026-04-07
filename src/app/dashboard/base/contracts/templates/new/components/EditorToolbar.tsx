@@ -184,19 +184,13 @@ export function EditorToolbar({
   return (
     <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
       {/* 字体选择 */}
-      <div 
-        onMouseDown={(e) => {
-          console.log('字体 - div onMouseDown 触发');
-          onSaveSelection();
+      <Select 
+        onValueChange={(v) => { 
+          console.log('字体 - onValueChange 触发, value:', v);
+          onSetFont(v); 
         }}
+        value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
       >
-        <Select 
-          onValueChange={(v) => { 
-            console.log('字体 - onValueChange 触发, value:', v);
-            onSetFont(v); 
-          }}
-          value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
-        >
           <SelectTrigger className="w-28 h-8">
             <SelectValue placeholder="字体">
               {getFontLabel(currentFormat.fontFamily)}
@@ -209,37 +203,29 @@ export function EditorToolbar({
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
-      </div>
+      </Select>
 
       {/* 字号选择 */}
-      <div 
-        onMouseDown={() => {
-          console.log('字号 - div onMouseDown 触发');
-          onSaveSelection();
+      <Select 
+        onValueChange={(v) => { 
+          console.log('字号 - onValueChange 触发, value:', v);
+          onSetFontSize(Number(v)); 
         }}
+        value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
       >
-        <Select 
-          onValueChange={(v) => { 
-            console.log('字号 - onValueChange 触发, value:', v);
-            onSetFontSize(Number(v)); 
-          }}
-          value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
-        >
-          <SelectTrigger className="w-16 h-8">
-            <SelectValue placeholder="字号">
-              {getFontSizeLabel(currentFormat.fontSize)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="z-50">
-            {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
-              <SelectItem key={size} value={String(size)}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <SelectTrigger className="w-16 h-8">
+          <SelectValue placeholder="字号">
+            {getFontSizeLabel(currentFormat.fontSize)}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent className="z-50">
+          {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
+            <SelectItem key={size} value={String(size)}>
+              {size}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
@@ -296,69 +282,55 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 行间距 */}
-      <div 
-        onMouseDown={() => {
-          console.log('行距 - div onMouseDown 触发');
-          onSaveSelection();
+      <Select 
+        onValueChange={(v) => { 
+          console.log('行距 - onValueChange 触发, value:', v);
+          onSetLineHeight(v); 
         }}
+        value={currentFormat.lineHeight || undefined}
       >
-        <Select 
-          onValueChange={(v) => { 
-            console.log('行距 - onValueChange 触发, value:', v);
-            onSetLineHeight(v); 
-          }}
-          value={currentFormat.lineHeight || undefined}
-        >
-          <SelectTrigger className="w-20 h-8">
-            <SelectValue placeholder="行距">
-              {getLineHeightLabel(currentFormat.lineHeight)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="z-50">
-            {LINE_HEIGHT_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <SelectTrigger className="w-20 h-8">
+          <SelectValue placeholder="行距">
+            {getLineHeightLabel(currentFormat.lineHeight)}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent className="z-50">
+          {LINE_HEIGHT_OPTIONS.map(opt => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 公文格式预设 */}
-      <div 
-        onMouseDown={() => {
-          console.log('公文格式 - div onMouseDown 触发');
-          onSaveSelection();
+      <Select 
+        onValueChange={(v) => { 
+          console.log('公文格式 - onValueChange 触发, value:', v);
+          onApplyPreset(v); 
         }}
+        value={currentPresetKey || undefined}
       >
-        <Select 
-          onValueChange={(v) => { 
-            console.log('公文格式 - onValueChange 触发, value:', v);
-            onApplyPreset(v); 
-          }}
-          value={currentPresetKey || undefined}
-        >
-          <SelectTrigger className="w-32 h-8">
-            <SelectValue placeholder="公文格式">
-              {currentPreset ? currentPreset.label : "公文格式"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="z-50 w-64">
-            {DOCUMENT_PRESETS.map(preset => (
-              <SelectItem key={preset.key} value={preset.key} className="py-2">
-                <div className="flex flex-col items-start">
-                  <span className="font-medium">{preset.label}</span>
-                  {preset.description && (
-                    <span className="text-xs text-muted-foreground">{preset.description}</span>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <SelectTrigger className="w-32 h-8">
+          <SelectValue placeholder="公文格式">
+            {currentPreset ? currentPreset.label : "公文格式"}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent className="z-50 w-64">
+          {DOCUMENT_PRESETS.map(preset => (
+            <SelectItem key={preset.key} value={preset.key} className="py-2">
+              <div className="flex flex-col items-start">
+                <span className="font-medium">{preset.label}</span>
+                {preset.description && (
+                  <span className="text-xs text-muted-foreground">{preset.description}</span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* 下划线填充 */}
       <ToolButton onClick={onAddUnderlineFill} title="下划线填充">

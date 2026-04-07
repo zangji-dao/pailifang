@@ -141,6 +141,26 @@ export function useEditor(
     }
   }, []);
 
+  // 监听选区变化（实时保存）
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        // 只有当选区在编辑器内且不是空的时才保存
+        if (contentRef.current?.contains(range.commonAncestorContainer) && !range.collapsed) {
+          savedSelectionRef.current = range.cloneRange();
+          console.log('selectionchange - 已保存选区, text:', range.toString().substring(0, 20));
+        }
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
+
   // 恢复选区
   const restoreSelection = useCallback(() => {
     console.log('restoreSelection - savedRange:', savedSelectionRef.current);
