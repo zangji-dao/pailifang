@@ -126,6 +126,8 @@ export async function POST(request: NextRequest) {
           unit: "cm",
           zoom: 100,
         },
+        // documentServerUrl - 告诉编辑器从哪里加载资源
+        documentServerUrl: ONLYOFFICE_URL,
       },
       type: "desktop",
       width: "100%",

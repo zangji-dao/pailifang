@@ -32,6 +32,7 @@ interface EditorConfig {
   editorConfig: {
     mode: string;
     callbackUrl: string;
+    documentServerUrl?: string;  // 文档服务器地址
     lang: string;
     user?: {
       id: string;
@@ -130,72 +131,99 @@ export function OnlyOfficeEditor({
   // 加载 OnlyOffice JS API
   const loadOnlyOfficeScript = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
+      console.log("[OnlyOffice] 尝试加载脚本 from:", serverUrl);
+      
+      // 如果 DocsAPI 已就绪，直接返回
       if (window.DocsAPI && window.DocsAPI.ready) {
+        console.log("[OnlyOffice] DocsAPI 已存在且就绪");
         scriptLoadedRef.current = true;
         resolve();
         return;
       }
 
-      // 检查是否已经存在脚本标签
+      // 先移除任何已存在的脚本标签和 DocsAPI
       const existingScript = document.getElementById("onlyoffice-api-script");
       if (existingScript) {
-        // 等待脚本加载完成
-        const checkReady = setInterval(() => {
-          if (window.DocsAPI && window.DocsAPI.ready) {
-            clearInterval(checkReady);
-            scriptLoadedRef.current = true;
-            resolve();
-          }
-        }, 100);
-
-        // 超时处理
-        setTimeout(() => {
-          clearInterval(checkReady);
-          reject(new Error("OnlyOffice API 加载超时"));
-        }, 30000);
-        return;
+        console.log("[OnlyOffice] 移除旧的脚本标签");
+        existingScript.remove();
       }
+      
+      // 清理旧的 DocsAPI
+      if ((window as unknown as Record<string, unknown>).DocsAPI) {
+        delete (window as unknown as Record<string, unknown>).DocsAPI;
+      }
+      scriptLoadedRef.current = false;
 
       // 创建新的脚本标签
       const script = document.createElement("script");
       script.id = "onlyoffice-api-script";
       script.src = `${serverUrl}/web-apps/apps/api/documents/api.js`;
       script.async = true;
+      
+      console.log("[OnlyOffice] 创建脚本标签:", script.src);
 
       script.onload = () => {
+        console.log("[OnlyOffice] 脚本 onload 触发");
+        console.log("[OnlyOffice] window.DocsAPI:", window.DocsAPI);
+        console.log("[OnlyOffice] window.DocsAPI?.ready:", window.DocsAPI?.ready);
+        console.log("[OnlyOffice] window.DocsAPI 完整对象:", JSON.stringify(Object.keys(window.DocsAPI || {})));
+        
+        // 等待 DocsAPI 初始化
+        let attempts = 0;
+        const maxAttempts = 50;
+        
         const checkReady = setInterval(() => {
+          attempts++;
+          console.log("[OnlyOffice] 检查 DocsAPI:", {
+            exists: !!window.DocsAPI,
+            ready: window.DocsAPI?.ready,
+            keys: window.DocsAPI ? Object.keys(window.DocsAPI) : []
+          });
+          
           if (window.DocsAPI && window.DocsAPI.ready) {
             clearInterval(checkReady);
             scriptLoadedRef.current = true;
+            console.log("[OnlyOffice] DocsAPI 初始化完成");
             resolve();
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkReady);
+            console.error("[OnlyOffice] DocsAPI 初始化超时");
+            console.error("[OnlyOffice] 最终 DocsAPI 状态:", window.DocsAPI);
+            reject(new Error("OnlyOffice API 初始化超时"));
           }
-        }, 100);
-
-        setTimeout(() => {
-          clearInterval(checkReady);
-          reject(new Error("OnlyOffice API 初始化超时"));
-        }, 30000);
+        }, 200);
       };
 
-      script.onerror = () => {
+      script.onerror = (e) => {
+        console.error("[OnlyOffice] 脚本加载失败:", e);
         reject(new Error("OnlyOffice API 脚本加载失败"));
       };
 
       document.head.appendChild(script);
+      console.log("[OnlyOffice] 脚本标签已添加到 head");
     });
   }, [serverUrl]);
 
   // 初始化编辑器
   const initEditor = useCallback(async () => {
-    if (!containerRef.current) return;
+    console.log("[OnlyOffice] initEditor 被调用");
+    console.log("[OnlyOffice] 参数:", { documentId, title, documentUrl, callbackUrl, serverUrl });
+    
+    if (!containerRef.current) {
+      console.log("[OnlyOffice] containerRef.current 为空");
+      return;
+    }
 
     try {
       setIsLoading(true);
       setLoadError(null);
+      console.log("[OnlyOffice] 开始加载脚本...");
       await loadOnlyOfficeScript();
+      console.log("[OnlyOffice] 脚本加载完成，准备创建编辑器...");
 
       // 生成唯一的文档 key（用于区分不同版本的文档）
       const documentKey = `${documentId}-${Date.now()}`;
+      console.log("[OnlyOffice] documentKey:", documentKey);
 
       const config: EditorConfig = {
         document: {
@@ -214,6 +242,7 @@ export function OnlyOfficeEditor({
         editorConfig: {
           mode: "edit",
           callbackUrl,
+          documentServerUrl: serverUrl,  // 文档服务器地址
           lang: "zh-CN",
           user: {
             id: "user-1",
@@ -263,14 +292,17 @@ export function OnlyOfficeEditor({
       }
 
       // 创建新编辑器
+      console.log("[OnlyOffice] 创建 DocEditor，containerId:", containerRef.current.id);
       editorRef.current = new window.DocsAPI.DocEditor(
         containerRef.current.id,
         config
       );
+      console.log("[OnlyOffice] DocEditor 创建完成");
 
       setIsLoading(false);
       onReady?.();
     } catch (error) {
+      console.error("[OnlyOffice] 初始化失败:", error);
       const err = error instanceof Error ? error : new Error(String(error));
       setLoadError(err.message);
       setIsLoading(false);
