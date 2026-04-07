@@ -217,6 +217,12 @@ export default function NewOnlyOfficeTemplatePage() {
         fileType: 'docx',
         order: index,
       }));
+
+      // 调试日志：检查附件数据
+      console.log('📎 前端保存草稿 - 附件数据检查:');
+      console.log('  - attachments 状态:', attachments.length, '个');
+      console.log('  - 有 URL 的附件:', attachments.filter(a => a.url).length, '个');
+      console.log('  - uploadedAttachments 数据:', JSON.stringify(uploadedAttachments, null, 2));
       
       const savePromise = fetch("/api/contract-templates/draft", {
         method: "POST",
@@ -308,31 +314,38 @@ export default function NewOnlyOfficeTemplatePage() {
           
           if (template.draft_data.selectedVariables) {
             setSelectedVariables(template.draft_data.selectedVariables);
-          }
-          
-          if (template.draft_data.uploadedAttachments) {
-            setAttachments(template.draft_data.uploadedAttachments.map((att: any) => ({
-              id: att.id,
-              name: att.name,
-              file: null,
-              url: att.url,
-              size: att.size || 0,
-              uploading: false,
-            })));
+            console.log('📎 从 draft_data.selectedVariables 加载了', template.draft_data.selectedVariables.length, '个变量');
           }
         }
         
-        // 加载附件
-        if (template.attachments && template.attachments.length > 0) {
-          setAttachments(template.attachments.map((att: any) => ({
+        // 加载附件数据
+        // 优先从 draft_data.uploadedAttachments 加载（草稿状态的上传附件）
+        // 其次从 template.attachments 加载（已发布状态的附件）
+        let loadedAttachments: AttachmentFile[] = [];
+        
+        if (template.draft_data?.uploadedAttachments && template.draft_data.uploadedAttachments.length > 0) {
+          loadedAttachments = template.draft_data.uploadedAttachments.map((att: any) => ({
+            id: att.id,
+            name: att.name,
+            file: null,
+            url: att.url,
+            size: att.size || 0,
+            uploading: false,
+          }));
+          console.log('📎 从 draft_data.uploadedAttachments 加载了', loadedAttachments.length, '个附件');
+        } else if (template.attachments && template.attachments.length > 0) {
+          loadedAttachments = template.attachments.map((att: any) => ({
             id: att.id,
             name: att.name,
             file: null,
             url: att.url || '',
             size: 0,
             uploading: false,
-          })));
+          }));
+          console.log('📎 从 template.attachments 加载了', loadedAttachments.length, '个附件');
         }
+        
+        setAttachments(loadedAttachments);
         
         // 加载自定义变量
         if (template.fields && template.fields.length > 0) {
@@ -508,8 +521,6 @@ export default function NewOnlyOfficeTemplatePage() {
               ? { ...a, url: data.url, uploading: false }
               : a
           ));
-          // 上传完成后保存草稿
-          await saveDraft(true);
         } else {
           throw new Error(data.error || "上传失败");
         }
@@ -523,6 +534,9 @@ export default function NewOnlyOfficeTemplatePage() {
         toast.error(`附件 ${att.name} 上传失败`);
       }
     }
+    
+    // 所有附件上传完成后，保存草稿
+    await saveDraft(true);
   };
   
   // 删除附件

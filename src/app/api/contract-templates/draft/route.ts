@@ -41,6 +41,14 @@ export async function POST(request: NextRequest) {
       originalHtml,
     } = body;
 
+    // 调试日志：检查附件数据
+    console.log('📎 草稿保存 - 附件数据检查:');
+    console.log('  - uploadedAttachments:', uploadedAttachments?.length || 0, '个');
+    console.log('  - attachments:', attachments?.length || 0, '个');
+    if (uploadedAttachments && uploadedAttachments.length > 0) {
+      console.log('  - uploadedAttachments 详情:', JSON.stringify(uploadedAttachments, null, 2));
+    }
+
     const now = new Date().toISOString();
 
     // 验证 id 格式（如果提供了 id）
