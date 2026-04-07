@@ -128,6 +128,11 @@ export function useEditor(
       console.log('saveSelection - range:', range, 'collapsed:', range.collapsed, 'text:', range.toString().substring(0, 20));
       // 确保选区在编辑区域内
       if (contentRef.current?.contains(range.commonAncestorContainer)) {
+        // 如果当前选区是空的（collapsed），不要覆盖之前保存的非空选区
+        if (range.collapsed && savedSelectionRef.current && !savedSelectionRef.current.collapsed) {
+          console.log('saveSelection - 当前选区为空，保留之前保存的非空选区');
+          return;
+        }
         savedSelectionRef.current = range.cloneRange();
         console.log('saveSelection - 已保存选区');
       } else {
