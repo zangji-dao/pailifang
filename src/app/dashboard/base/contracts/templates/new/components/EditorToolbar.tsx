@@ -196,7 +196,7 @@ export function EditorToolbar({
               {getFontLabel(currentFormat.fontFamily)}
             </SelectValue>
           </SelectTrigger>
-          <SelectContent className="z-50">
+          <SelectContent className="z-50 select-none" onMouseDown={(e) => e.preventDefault()}>
             {FONT_OPTIONS.map(font => (
               <SelectItem key={font.value} value={font.value}>
                 {font.label}
@@ -218,7 +218,7 @@ export function EditorToolbar({
             {getFontSizeLabel(currentFormat.fontSize)}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="z-50">
+        <SelectContent className="z-50 select-none" onMouseDown={(e) => e.preventDefault()}>
           {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
             <SelectItem key={size} value={String(size)}>
               {size}
@@ -294,7 +294,7 @@ export function EditorToolbar({
             {getLineHeightLabel(currentFormat.lineHeight)}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="z-50">
+        <SelectContent className="z-50 select-none" onMouseDown={(e) => e.preventDefault()}>
           {LINE_HEIGHT_OPTIONS.map(opt => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
@@ -318,7 +318,7 @@ export function EditorToolbar({
             {currentPreset ? currentPreset.label : "公文格式"}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="z-50 w-64">
+        <SelectContent className="z-50 w-64 select-none" onMouseDown={(e) => e.preventDefault()}>
           {DOCUMENT_PRESETS.map(preset => (
             <SelectItem key={preset.key} value={preset.key} className="py-2">
               <div className="flex flex-col items-start">
