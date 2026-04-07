@@ -254,8 +254,12 @@ export default function NewOnlyOfficeTemplatePage() {
   const loadTemplate = async (id: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/contract-templates/${id}`);
+      const res = await fetch(`/api/contract-templates/draft?id=${id}`);
       const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || '加载模板失败');
+      }
       
       if (data.success && data.data) {
         const template = data.data;
@@ -322,7 +326,7 @@ export default function NewOnlyOfficeTemplatePage() {
       }
     } catch (err) {
       console.error("加载模板失败:", err);
-      toast.error("加载模板失败");
+      toast.error(err instanceof Error ? err.message : "加载模板失败");
     } finally {
       setLoading(false);
     }
