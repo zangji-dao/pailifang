@@ -1,0 +1,69 @@
+{
+  "name": "变量绑定",
+  "nameLocale": {
+    "zh-CN": "变量绑定",
+    "en-US": "Variable Binding"
+  },
+  "guid": "asc.{8D6E3F7A-1B2C-4D5E-8F9A-0B1C2D3E4F5A}",
+  "version": "1.0.0",
+  "description": "用于在合同模板中插入和管理变量标记",
+  "descriptionLocale": {
+    "zh-CN": "用于在合同模板中插入和管理变量标记",
+    "en-US": "Insert and manage variable markers in contract templates"
+  },
+  "author": "Enterprise Management System",
+  "authorLocale": {
+    "zh-CN": "企业管理系统",
+    "en-US": "Enterprise Management System"
+  },
+  "homepage": "https://example.com/plugins/variable-binding",
+  "minVersion": "7.0.0",
+  "maxVersion": "",
+  "base": "code.js",
+  "scope": [
+    "document"
+  ],
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "48x48"
+    }
+  ],
+  "variations": [
+    {
+      "description": "变量绑定面板",
+      "descriptionLocale": {
+        "zh-CN": "变量绑定面板",
+        "en-US": "Variable Binding Panel"
+      },
+      "url": "panel.html",
+      "icons": [
+        {
+          "src": "icon.png",
+          "sizes": "48x48"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "插入变量",
+          "textLocale": {
+            "zh-CN": "插入变量",
+            "en-US": "Insert Variable"
+          },
+          "primary": true
+        }
+      ],
+      "initDataType": "none",
+      "initData": "",
+      "updateDataType": "none",
+      "updateData": "",
+      "isUpdateOleOnBlur": false,
+      "isModal": false,
+      "size": [
+        300,
+        400
+      ],
+      "isInsideMode": true
+    }
+  ]
+}

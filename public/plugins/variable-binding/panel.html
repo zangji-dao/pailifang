@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>变量绑定</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      color: #333;
+      background: #f5f5f5;
+      padding: 12px;
+    }
+
+    .header {
+      margin-bottom: 12px;
+    }
+
+    .header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .search-box {
+      margin-bottom: 12px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #4a90d9;
+    }
+
+    .variables-container {
+      max-height: 350px;
+      overflow-y: auto;
+    }
+
+    .variable-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 4px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .variable-item:hover {
+      border-color: #4a90d9;
+      background: #f0f7ff;
+    }
+
+    .variable-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .variable-name {
+      font-weight: 500;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .variable-key {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .insert-btn {
+      padding: 4px 12px;
+      background: #4a90d9;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .insert-btn:hover {
+      background: #357abd;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .category-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      margin: 12px 0 6px;
+      padding: 0 4px;
+    }
+
+    .variable-item[data-category="system"] {
+      border-left: 3px solid #4a90d9;
+    }
+
+    .variable-item[data-category="custom"] {
+      border-left: 3px solid #52c41a;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h3>变量绑定</h3>
+    <p>选择变量插入到文档中</p>
+  </div>
+
+  <div class="search-box">
+    <input
+      type="text"
+      id="search-input"
+      placeholder="搜索变量..."
+      oninput="filterVariables(this.value)"
+    />
+  </div>
+
+  <div id="variables-container" class="variables-container">
+    <div class="empty-state">正在加载变量...</div>
+  </div>
+
+  <script>
+    let allVariables = [];
+
+    // 过滤变量
+    function filterVariables(keyword) {
+      const container = document.getElementById("variables-container");
+      const items = container.querySelectorAll(".variable-item");
+
+      items.forEach(function (item) {
+        const name = item
+          .querySelector(".variable-name")
+          .textContent.toLowerCase();
+        const key = item
+          .querySelector(".variable-key")
+          .textContent.toLowerCase();
+        const searchKey = keyword.toLowerCase();
+
+        if (name.includes(searchKey) || key.includes(searchKey)) {
+          item.style.display = "flex";
+        } else {
+          item.style.display = "none";
+        }
+      });
+    }
+
+    // 接收来自插件的消息
+    window.addEventListener("message", function (event) {
+      console.log("[Panel] Received message:", event.data);
+
+      if (event.data && event.data.type === "variables") {
+        allVariables = event.data.data || [];
+        renderVariables(allVariables);
+      }
+    });
+
+    // 渲染变量列表
+    function renderVariables(variables) {
+      const container = document.getElementById("variables-container");
+      container.innerHTML = "";
+
+      if (variables.length === 0) {
+        container.innerHTML =
+          '<div class="empty-state">暂无变量，请先在系统中创建变量</div>';
+        return;
+      }
+
+      // 按类别分组
+      const systemVars = variables.filter((v) => !v.isCustom);
+      const customVars = variables.filter((v) => v.isCustom);
+
+      if (systemVars.length > 0) {
+        const title = document.createElement("div");
+        title.className = "category-title";
+        title.textContent = "系统变量";
+        container.appendChild(title);
+
+        systemVars.forEach(function (variable) {
+          container.appendChild(createVariableItem(variable));
+        });
+      }
+
+      if (customVars.length > 0) {
+        const title = document.createElement("div");
+        title.className = "category-title";
+        title.textContent = "自定义变量";
+        container.appendChild(title);
+
+        customVars.forEach(function (variable) {
+          container.appendChild(createVariableItem(variable));
+        });
+      }
+    }
+
+    // 创建变量项
+    function createVariableItem(variable) {
+      const item = document.createElement("div");
+      item.className = "variable-item";
+      item.setAttribute("data-key", variable.key || variable.name);
+      item.setAttribute(
+        "data-category",
+        variable.isCustom ? "custom" : "system"
+      );
+
+      item.innerHTML =
+        '<div class="variable-info">' +
+        '<div class="variable-name">' +
+        (variable.name || variable.label) +
+        "</div>" +
+        '<div class="variable-key">' +
+        (variable.key || variable.name) +
+        "</div>" +
+        "</div>" +
+        '<button class="insert-btn">插入</button>';
+
+      // 点击整行插入
+      item.addEventListener("click", function () {
+        insertVariable(variable);
+      });
+
+      // 点击按钮插入（阻止冒泡）
+      item.querySelector(".insert-btn").addEventListener("click", function (e) {
+        e.stopPropagation();
+        insertVariable(variable);
+      });
+
+      return item;
+    }
+
+    // 插入变量
+    function insertVariable(variable) {
+      // 发送消息给父窗口
+      window.parent.postMessage(
+        {
+          type: "insertVariable",
+          data: variable,
+        },
+        "*"
+      );
+
+      // 同时调用 OnlyOffice API（如果在插件环境中）
+      if (window.Asc && window.Asc.plugin) {
+        window.Asc.plugin.executeMethod("InsertAndReplaceContentControls", [
+          {
+            Props: {
+              Id: Math.floor(Math.random() * 1000000),
+              Tag: variable.key || variable.name,
+              Lock: 0,
+              Appearance: 1,
+              Color: {
+                r: 220,
+                g: 253,
+                b: 231,
+              },
+            },
+            Value: "{{" + variable.name + "}}",
+          },
+        ]);
+      }
+    }
+
+    // 初始化 - 请求变量列表
+    window.addEventListener("DOMContentLoaded", function () {
+      window.parent.postMessage({ type: "getVariables" }, "*");
+    });
+  </script>
+</body>
+</html>

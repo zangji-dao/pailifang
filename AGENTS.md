@@ -237,6 +237,42 @@ Word 导出采用 LibreOffice 直接转换方案（HTML → DOCX），确保样�
 **调试页面**：`/dashboard/base/contracts/templates/debug`
 - 输入模板 ID 查询模板数据
 - 导出处理后的 HTML 进行对比
+
+## OnlyOffice 集成
+
+### 概述
+
+系统集成了 OnlyOffice Document Server，用于合同模板的在线编辑。OnlyOffice 提供了完整的 Word 编辑功能，支持中文排版和公文格式。
+
+### 部署要求
+
+详见 [OnlyOffice 部署指南](docs/ONLYOFFICE_DEPLOYMENT.md)
+
+**关键环境变量**：
+- `ONLYOFFICE_URL`: OnlyOffice 服务地址
+- `ONLYOFFICE_JWT_ENABLED`: 是否启用 JWT 认证
+- `ONLYOFFICE_JWT_SECRET`: JWT 密钥
+
+### 核心文件
+
+| 文件 | 说明 |
+|------|------|
+| `src/components/OnlyOfficeEditor.tsx` | OnlyOffice 编辑器组件 |
+| `src/app/api/onlyoffice/config/route.ts` | 编辑器配置 API |
+| `src/app/api/onlyoffice/callback/route.ts` | 文档保存回调 API |
+| `src/app/api/onlyoffice/upload/route.ts` | 文件上传 API |
+| `public/plugins/variable-binding/` | 变量绑定插件 |
+
+### 测试页面
+
+访问 `/dashboard/base/contracts/templates/new/onlyoffice-test` 测试 OnlyOffice 集成。
+
+### 变量绑定插件
+
+OnlyOffice 插件用于在文档中插入变量标记：
+- 使用内容控件（Content Controls）标记变量位置
+- 支持系统变量和自定义变量
+- 插件部署路径：`/var/www/onlyoffice/documentserver/sdkjs-plugins/variable-binding/`
 - 查看签章区域匹配结果
 
 **调试模式导出**：
