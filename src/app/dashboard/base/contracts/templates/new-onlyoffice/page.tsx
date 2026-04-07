@@ -193,7 +193,12 @@ export default function NewOnlyOfficeTemplatePage() {
   
   // 保存草稿
   const saveDraft = useCallback(async (silent = false) => {
-    if (!templateId) return;
+    if (!templateId) {
+      if (!silent) {
+        toast.error("请先上传文档");
+      }
+      return;
+    }
     
     setSavingDraft(true);
     
@@ -227,17 +232,18 @@ export default function NewOnlyOfficeTemplatePage() {
       const data = await res.json();
       
       if (!data.success) {
-        throw new Error(data.error || "保存草稿失败");
+        throw new Error(data.error || "保存失败");
       }
       
       if (!silent) {
-        toast.success("草稿已保存");
+        toast.success("保存成功");
       }
     } catch (err) {
-      console.error("保存草稿失败:", err);
+      console.error("保存失败:", err);
       if (!silent) {
-        toast.error(err instanceof Error ? err.message : "保存草稿失败");
+        toast.error(err instanceof Error ? err.message : "保存失败");
       }
+      throw err; // 抛出错误，让调用方知道保存失败
     } finally {
       setSavingDraft(false);
     }
@@ -1033,11 +1039,16 @@ export default function NewOnlyOfficeTemplatePage() {
             disabled={savingDraft || !templateId}
           >
             {savingDraft ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                保存中...
+              </>
             ) : (
-              <Save className="h-4 w-4 mr-2" />
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                保存
+              </>
             )}
-            保存草稿
           </Button>
           
           <Button
