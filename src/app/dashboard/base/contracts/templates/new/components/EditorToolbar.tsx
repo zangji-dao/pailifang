@@ -195,17 +195,17 @@ export function EditorToolbar({
           value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
         >
           <SelectTrigger className="w-28 h-8">
-          <SelectValue placeholder="字体">
-            {getFontLabel(currentFormat.fontFamily)}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="z-50">
-          {FONT_OPTIONS.map(font => (
-            <SelectItem key={font.value} value={font.value}>
-              {font.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
+            <SelectValue placeholder="字体">
+              {getFontLabel(currentFormat.fontFamily)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-50">
+            {FONT_OPTIONS.map(font => (
+              <SelectItem key={font.value} value={font.value}>
+                {font.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 
@@ -220,17 +220,17 @@ export function EditorToolbar({
           value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
         >
           <SelectTrigger className="w-16 h-8">
-          <SelectValue placeholder="字号">
-            {getFontSizeLabel(currentFormat.fontSize)}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="z-50">
-          {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
-            <SelectItem key={size} value={String(size)}>
-              {size}
-            </SelectItem>
-          ))}
-        </SelectContent>
+            <SelectValue placeholder="字号">
+              {getFontSizeLabel(currentFormat.fontSize)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-50">
+            {[8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map(size => (
+              <SelectItem key={size} value={String(size)}>
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 
