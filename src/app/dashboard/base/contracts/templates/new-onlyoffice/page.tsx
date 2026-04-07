@@ -369,6 +369,11 @@ export default function NewOnlyOfficeTemplatePage() {
       formData.append("file", file);
       formData.append("type", "contract-template");
       
+      // 如果已有 templateId，传入它以更新现有模板
+      if (templateId) {
+        formData.append("templateId", templateId);
+      }
+      
       // 模拟进度
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
@@ -399,26 +404,29 @@ export default function NewOnlyOfficeTemplatePage() {
         const newId = data.data.templateId || '';
         setTemplateId(newId);
         
-        // 更新模板记录的 draft_data
-        if (newId) {
-          await fetch("/api/contract-templates/draft", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: newId,
-              name: name || '未命名模板',
-              description,
-              type,
-              base_id: baseId,
-              currentStep: 2,
-              source_file_url: fileUrl,
-              source_file_name: fileName,
-              source_file_type: data.data.fileType,
-              uploadedAttachments: [],
-            }),
-          });
-          setCurrentStep(2);
-        }
+        // 使用 window.history.replaceState 更新 URL，避免触发重新渲染
+        const url = new URL(window.location.href);
+        url.searchParams.set('templateId', newId);
+        window.history.replaceState({}, '', url);
+        
+        // 更新草稿数据
+        await fetch("/api/contract-templates/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: newId,
+            name: name || '未命名模板',
+            description,
+            type,
+            base_id: baseId,
+            currentStep: 2,
+            source_file_url: fileUrl,
+            source_file_name: fileName,
+            source_file_type: data.data.fileType,
+            uploadedAttachments: [],
+          }),
+        });
+        setCurrentStep(2);
       } else {
         // 更新现有模板的文件信息并保存草稿
         await fetch("/api/contract-templates", {

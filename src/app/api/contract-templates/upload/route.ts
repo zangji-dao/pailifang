@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
  * 
  * 请求格式：multipart/form-data
  * - file: 主合同文档（Word）
+ * - templateId: 现有模板ID（可选），如果传入则更新现有模板，否则创建新模板
  * - attachments[]: 附件文件数组（可选）
  */
 export async function POST(request: NextRequest) {
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
     
     const mainFile = formData.get('file') as File;
     const attachments = formData.getAll('attachments') as File[];
+    const existingTemplateId = formData.get('templateId') as string; // 获取现有的 templateId
     
     if (!mainFile) {
       return NextResponse.json(
@@ -61,15 +63,15 @@ export async function POST(request: NextRequest) {
       ? 'docx' 
       : 'doc';
 
-    // 创建新的模板记录
-    const newTemplateId = randomUUID();
+    // 决定使用现有模板ID还是创建新的
+    const templateId = existingTemplateId || randomUUID();
     const now = new Date().toISOString();
-    const templateName = mainFile.name.replace(/\.[^/.]+$/, '');
+    const isUpdating = !!existingTemplateId; // 是否更新现有模板
 
     // 上传主文件
     const mainFileId = randomUUID();
     const mainFileExt = mainFile.name.split('.').pop() || fileType;
-    const mainStoragePath = `${newTemplateId}/main.${mainFileExt}`;
+    const mainStoragePath = `${templateId}/main.${mainFileExt}`;
     
     const mainFileBuffer = await mainFile.arrayBuffer();
     const { error: mainUploadError } = await supabase.storage
@@ -94,32 +96,57 @@ export async function POST(request: NextRequest) {
 
     const mainFileUrl = mainUrlData.publicUrl;
 
-    // 创建模板记录
-    const { data: templateData, error: templateError } = await supabase
-      .from('contract_templates')
-      .insert({
-        id: newTemplateId,
-        name: templateName,
-        type: 'tenant',
-        status: 'draft', // 新上传的文件标记为草稿状态
-        source_file_url: mainFileUrl,
-        source_file_name: mainFile.name,
-        source_file_type: fileType,
-        parse_status: 'pending',
-        is_active: true,
-        is_default: false,
-        created_at: now,
-        updated_at: now,
-      })
-      .select()
-      .single();
+    let templateData;
+    let templateError;
+
+    if (isUpdating) {
+      // 更新现有模板
+      const result = await supabase
+        .from('contract_templates')
+        .update({
+          source_file_url: mainFileUrl,
+          source_file_name: mainFile.name,
+          source_file_type: fileType,
+          updated_at: now,
+        })
+        .eq('id', templateId)
+        .select()
+        .single();
+      
+      templateData = result.data;
+      templateError = result.error;
+    } else {
+      // 创建新模板
+      const templateName = mainFile.name.replace(/\.[^/.]+$/, '');
+      const result = await supabase
+        .from('contract_templates')
+        .insert({
+          id: templateId,
+          name: templateName,
+          type: 'tenant',
+          status: 'draft',
+          source_file_url: mainFileUrl,
+          source_file_name: mainFile.name,
+          source_file_type: fileType,
+          parse_status: 'pending',
+          is_active: true,
+          is_default: false,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+      
+      templateData = result.data;
+      templateError = result.error;
+    }
 
     if (templateError) {
-      console.error('创建模板失败:', templateError);
+      console.error(isUpdating ? '更新模板失败:' : '创建模板失败:', templateError);
       // 删除已上传的文件
       await supabase.storage.from('contract-templates').remove([mainStoragePath]);
       return NextResponse.json(
-        { success: false, error: '创建模板失败' },
+        { success: false, error: isUpdating ? '更新模板失败' : '创建模板失败' },
         { status: 500 }
       );
     }
@@ -139,7 +166,7 @@ export async function POST(request: NextRequest) {
 
       const attId = randomUUID();
       const attExt = att.name.split('.').pop() || 'bin';
-      const attStoragePath = `${newTemplateId}/attachments/${attId}.${attExt}`;
+      const attStoragePath = `${templateId}/attachments/${attId}.${attExt}`;
       
       const attBuffer = await att.arrayBuffer();
       const { error: attUploadError } = await supabase.storage
@@ -170,7 +197,7 @@ export async function POST(request: NextRequest) {
         .from('contract_attachments')
         .insert({
           id: attId,
-          template_id: newTemplateId,
+          template_id: templateId,
           name: att.name.replace(/\.[^/.]+$/, ''), // 去除扩展名
           source_file_url: attUrlData.publicUrl,
           source_file_name: att.name,
@@ -196,7 +223,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        templateId: newTemplateId,
+        templateId,
         fileUrl: mainFileUrl,
         fileName: mainFile.name,
         fileType,
