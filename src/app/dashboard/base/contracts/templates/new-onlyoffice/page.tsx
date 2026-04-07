@@ -241,14 +241,29 @@ export default function NewOnlyOfficeTemplatePage() {
           uploadedAttachments,
         }),
       });
-      
+
       savingPromiseRef.current = savePromise.then(async (res) => {
+        // 检查响应状态
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('保存草稿失败，HTTP状态:', res.status, errorText);
+          throw new Error(`保存失败 (${res.status}): ${errorText}`);
+        }
+
+        // 检查响应类型是否为 JSON
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const errorText = await res.text();
+          console.error('保存草稿失败，非JSON响应:', errorText);
+          throw new Error(`服务器返回非JSON数据: ${errorText.substring(0, 200)}`);
+        }
+
         const data = await res.json();
-        
+
         if (!data.success) {
           throw new Error(data.error || "保存失败");
         }
-        
+
         // 如果是新创建的草稿，更新 templateId 和 URL
         if (data.data?.id && !templateId) {
           const newId = data.data.id;
@@ -258,11 +273,11 @@ export default function NewOnlyOfficeTemplatePage() {
           url.searchParams.set('templateId', newId);
           window.history.replaceState({}, '', url);
         }
-        
+
         if (!silent) {
           toast.success("保存成功");
         }
-        
+
         return data;
       });
       
@@ -284,12 +299,28 @@ export default function NewOnlyOfficeTemplatePage() {
   const loadTemplate = async (id: string) => {
     // 防止重复加载
     if (loading) return;
-    
+
     setLoading(true);
     try {
       const res = await fetch(`/api/contract-templates/draft?id=${id}`);
+
+      // 检查响应状态
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('加载模板失败，HTTP状态:', res.status, errorText);
+        throw new Error(`加载模板失败 (${res.status}): ${errorText}`);
+      }
+
+      // 检查响应类型是否为 JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const errorText = await res.text();
+        console.error('加载模板失败，非JSON响应:', errorText);
+        throw new Error(`服务器返回非JSON数据: ${errorText.substring(0, 200)}`);
+      }
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || '加载模板失败');
       }
@@ -396,12 +427,27 @@ export default function NewOnlyOfficeTemplatePage() {
         method: "POST",
         body: formData,
       });
-      
+
       clearInterval(progressInterval);
       setUploadProgress(100);
-      
+
+      // 检查响应状态
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('上传主文档失败，HTTP状态:', res.status, errorText);
+        throw new Error(`上传失败 (${res.status}): ${errorText}`);
+      }
+
+      // 检查响应类型是否为 JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const errorText = await res.text();
+        console.error('上传主文档失败，非JSON响应:', errorText);
+        throw new Error(`服务器返回非JSON数据: ${errorText.substring(0, 200)}`);
+      }
+
       const data = await res.json();
-      
+
       if (!data.success) {
         throw new Error(data.error || "上传失败");
       }
@@ -423,7 +469,7 @@ export default function NewOnlyOfficeTemplatePage() {
         window.history.replaceState({}, '', url);
         
         // 更新草稿数据
-        await fetch("/api/contract-templates/draft", {
+        const draftRes = await fetch("/api/contract-templates/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -439,10 +485,16 @@ export default function NewOnlyOfficeTemplatePage() {
             uploadedAttachments: [],
           }),
         });
+
+        if (!draftRes.ok) {
+          const errorText = await draftRes.text();
+          console.error('更新草稿数据失败，HTTP状态:', draftRes.status, errorText);
+        }
+
         setCurrentStep(2);
       } else {
         // 更新现有模板的文件信息并保存草稿
-        await fetch("/api/contract-templates", {
+        const updateRes = await fetch("/api/contract-templates", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -452,8 +504,13 @@ export default function NewOnlyOfficeTemplatePage() {
             source_file_type: data.data.fileType,
           }),
         });
-        
-        await fetch("/api/contract-templates/draft", {
+
+        if (!updateRes.ok) {
+          const errorText = await updateRes.text();
+          console.error('更新模板失败，HTTP状态:', updateRes.status, errorText);
+        }
+
+        const draftRes = await fetch("/api/contract-templates/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -512,12 +569,27 @@ export default function NewOnlyOfficeTemplatePage() {
           method: "POST",
           body: formData,
         });
-        
+
+        // 检查响应状态
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('上传附件失败，HTTP状态:', res.status, errorText);
+          throw new Error(`上传附件失败 (${res.status}): ${errorText}`);
+        }
+
+        // 检查响应类型是否为 JSON
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const errorText = await res.text();
+          console.error('上传附件失败，非JSON响应:', errorText);
+          throw new Error(`服务器返回非JSON数据: ${errorText.substring(0, 200)}`);
+        }
+
         const data = await res.json();
-        
+
         if (data.success) {
-          setAttachments(prev => prev.map(a => 
-            a.id === att.id 
+          setAttachments(prev => prev.map(a =>
+            a.id === att.id
               ? { ...a, url: data.url, uploading: false }
               : a
           ));
@@ -599,7 +671,7 @@ export default function NewOnlyOfficeTemplatePage() {
       const customVariables = data.variables.filter(v => v.category === 'custom');
       
       if (customVariables.length > 0) {
-        await fetch("/api/contract-templates/fields", {
+        const fieldsRes = await fetch("/api/contract-templates/fields", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -613,6 +685,12 @@ export default function NewOnlyOfficeTemplatePage() {
             })),
           }),
         });
+
+        if (!fieldsRes.ok) {
+          const errorText = await fieldsRes.text();
+          console.error('保存字段失败，HTTP状态:', fieldsRes.status, errorText);
+          throw new Error(`保存字段失败 (${fieldsRes.status}): ${errorText}`);
+        }
       }
       
       setSelectedVariables(data.variables);
@@ -674,17 +752,32 @@ export default function NewOnlyOfficeTemplatePage() {
           source_file_type: 'docx',
         }),
       });
-      
+
+      // 检查响应状态
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('保存模板失败，HTTP状态:', res.status, errorText);
+        throw new Error(`保存失败 (${res.status}): ${errorText}`);
+      }
+
+      // 检查响应类型是否为 JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const errorText = await res.text();
+        console.error('保存模板失败，非JSON响应:', errorText);
+        throw new Error(`服务器返回非JSON数据: ${errorText.substring(0, 200)}`);
+      }
+
       const data = await res.json();
-      
+
       if (!data.success) {
         throw new Error(data.error || "保存失败");
       }
-      
+
       // 3. 保存自定义变量
       const customVariables = selectedVariables.filter(v => v.category === 'custom');
       if (customVariables.length > 0) {
-        await fetch("/api/contract-templates/fields", {
+        const fieldsRes = await fetch("/api/contract-templates/fields", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -698,6 +791,12 @@ export default function NewOnlyOfficeTemplatePage() {
             })),
           }),
         });
+
+        if (!fieldsRes.ok) {
+          const errorText = await fieldsRes.text();
+          console.error('保存字段失败，HTTP状态:', fieldsRes.status, errorText);
+          throw new Error(`保存字段失败 (${fieldsRes.status}): ${errorText}`);
+        }
       }
       
       toast.success("模板创建成功");
