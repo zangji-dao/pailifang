@@ -64,9 +64,17 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(attStoragePath);
 
     // 确定文件类型
-    const fileType = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-      ? 'docx' 
+    const fileType = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ? 'docx'
       : 'doc';
+
+    console.log('📎 上传附件成功:', {
+      id: attId,
+      name: file.name,
+      url: urlData.publicUrl,
+      fileType,
+      size: file.size,
+    });
 
     return NextResponse.json({
       success: true,

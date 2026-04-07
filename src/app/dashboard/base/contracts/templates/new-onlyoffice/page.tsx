@@ -597,7 +597,9 @@ export default function NewOnlyOfficeTemplatePage() {
 
         const data = await res.json();
 
-        console.log(`📎 附件上传响应:`, data);
+        console.log(`📎 附件上传响应 (${att.name}):`, data);
+        console.log(`📎 附件上传响应 - success:`, data.success);
+        console.log(`📎 附件上传响应 - data:`, data.data);
 
         if (data.success) {
           const attUrl = data.data.url;
@@ -608,16 +610,17 @@ export default function NewOnlyOfficeTemplatePage() {
               : a
           ));
         } else {
+          console.error(`📎 附件 ${att.name} 上传失败，data.success = false, error:`, data.error);
           throw new Error(data.error || "上传失败");
         }
       } catch (err) {
-        console.error(`上传附件 ${att.name} 失败:`, err);
-        setAttachments(prev => prev.map(a => 
-          a.id === att.id 
+        console.error(`📎 上传附件 ${att.name} 失败，错误详情:`, err);
+        setAttachments(prev => prev.map(a =>
+          a.id === att.id
             ? { ...a, uploading: false }
             : a
         ));
-        toast.error(`附件 ${att.name} 上传失败`);
+        toast.error(`附件 ${att.name} 上传失败: ${err instanceof Error ? err.message : '未知错误'}`);
       }
     }
     
