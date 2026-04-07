@@ -23,6 +23,7 @@ import {
   Plus,
   GripVertical,
   X,
+  Save,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -132,6 +133,7 @@ export default function NewOnlyOfficeTemplatePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   
   // 基本信息
   const [templateId, setTemplateId] = useState<string>(templateIdFromUrl || "");
@@ -189,6 +191,58 @@ export default function NewOnlyOfficeTemplatePage() {
     }
   }, [templateIdFromUrl]);
   
+  // 保存草稿
+  const saveDraft = useCallback(async (silent = false) => {
+    if (!templateId) return;
+    
+    setSavingDraft(true);
+    
+    try {
+      const uploadedAttachments = attachments.filter(a => a.url).map((a, index) => ({
+        id: a.id,
+        name: a.name,
+        url: a.url,
+        fileType: 'docx',
+        order: index,
+      }));
+      
+      const res = await fetch("/api/contract-templates/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: templateId,
+          name: name || '未命名模板',
+          description,
+          type,
+          base_id: baseId,
+          currentStep,
+          selectedVariables,
+          source_file_url: mainFileUrl,
+          source_file_name: mainFileName,
+          source_file_type: 'docx',
+          uploadedAttachments,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "保存草稿失败");
+      }
+      
+      if (!silent) {
+        toast.success("草稿已保存");
+      }
+    } catch (err) {
+      console.error("保存草稿失败:", err);
+      if (!silent) {
+        toast.error(err instanceof Error ? err.message : "保存草稿失败");
+      }
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [templateId, name, description, type, baseId, currentStep, selectedVariables, mainFileUrl, mainFileName, attachments]);
+  
   // 加载模板数据
   const loadTemplate = async (id: string) => {
     setLoading(true);
@@ -205,9 +259,29 @@ export default function NewOnlyOfficeTemplatePage() {
         setIsDefault(template.is_default || false);
         
         // 加载文档 URL
-        if (template.file_url) {
-          setMainFileUrl(template.file_url);
-          setMainFileName(template.file_name || "模板文档.docx");
+        if (template.source_file_url || template.file_url) {
+          setMainFileUrl(template.source_file_url || template.file_url);
+          setMainFileName(template.source_file_name || template.file_name || "模板文档.docx");
+        }
+        
+        // 加载草稿数据
+        if (template.draft_data) {
+          setCurrentStep(template.draft_data.currentStep || 1);
+          
+          if (template.draft_data.selectedVariables) {
+            setSelectedVariables(template.draft_data.selectedVariables);
+          }
+          
+          if (template.draft_data.uploadedAttachments) {
+            setAttachments(template.draft_data.uploadedAttachments.map((att: any) => ({
+              id: att.id,
+              name: att.name,
+              file: null,
+              url: att.url,
+              size: att.size || 0,
+              uploading: false,
+            })));
+          }
         }
         
         // 加载附件
@@ -216,8 +290,8 @@ export default function NewOnlyOfficeTemplatePage() {
             id: att.id,
             name: att.name,
             file: null,
-            url: att.url,
-            size: att.size || 0,
+            url: att.url || '',
+            size: 0,
             uploading: false,
           })));
         }
@@ -232,7 +306,11 @@ export default function NewOnlyOfficeTemplatePage() {
             category: 'custom',
             placeholder: field.placeholder,
           }));
-          setSelectedVariables([...PresetVariables, ...customVariables]);
+          setSelectedVariables(prev => {
+            const existingKeys = new Set(prev.map(v => v.key));
+            const newVars = customVariables.filter(v => !existingKeys.has(v.key));
+            return [...prev, ...newVars];
+          });
         }
       }
     } catch (err) {
@@ -278,34 +356,24 @@ export default function NewOnlyOfficeTemplatePage() {
       
       // 如果是新模板，创建模板记录
       if (!templateId) {
-        const createRes = await fetch("/api/contract-templates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: name || file.name.replace(/\.[^/.]+$/, ""),
-            type,
-            base_id: baseId,
-            file_url: data.url,
-            file_name: file.name,
-            status: "draft",
-          }),
-        });
-        
-        const createData = await createRes.json();
-        if (createData.success) {
-          setTemplateId(createData.data.id);
+        setTemplateId(data.id || '');
+        // 创建成功后保存草稿
+        if (data.id) {
+          await saveDraft(true);
         }
       } else {
-        // 更新文件 URL
+        // 更新文件 URL 并保存草稿
         await fetch("/api/contract-templates", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: templateId,
-            file_url: data.url,
-            file_name: file.name,
+            source_file_url: data.url,
+            source_file_name: file.name,
+            source_file_type: 'docx',
           }),
         });
+        await saveDraft(true);
       }
       
       toast.success("主文档上传成功");
@@ -351,6 +419,8 @@ export default function NewOnlyOfficeTemplatePage() {
               ? { ...a, url: data.url, uploading: false }
               : a
           ));
+          // 上传完成后保存草稿
+          await saveDraft(true);
         } else {
           throw new Error(data.error || "上传失败");
         }
@@ -367,8 +437,10 @@ export default function NewOnlyOfficeTemplatePage() {
   };
   
   // 删除附件
-  const handleRemoveAttachment = (id: string) => {
+  const handleRemoveAttachment = async (id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
+    // 删除完成后保存草稿
+    await saveDraft(true);
   };
   
   // 拖拽排序
@@ -407,6 +479,8 @@ export default function NewOnlyOfficeTemplatePage() {
     
     setDraggedId(null);
     setDragOverId(null);
+    // 排序完成后保存草稿
+    saveDraft(true);
   };
   
   const handleDragEnd = () => {
@@ -439,6 +513,8 @@ export default function NewOnlyOfficeTemplatePage() {
       }
       
       setSelectedVariables(data.variables);
+      // 保存完成后保存草稿
+      await saveDraft(true);
     } catch (err) {
       console.error("保存失败:", err);
       throw err;
@@ -467,12 +543,13 @@ export default function NewOnlyOfficeTemplatePage() {
     setSaving(true);
     
     try {
-      // 1. 保存附件信息到 draft_data
+      // 1. 保存附件信息
       const attachmentsData = attachments.filter(a => a.url).map((a, index) => ({
         id: a.id,
         name: a.name,
         url: a.url,
-        size: a.size,
+        description: '',
+        required: false,
         order: index,
       }));
       
@@ -489,6 +566,9 @@ export default function NewOnlyOfficeTemplatePage() {
           is_default: isDefault,
           status: 'published',
           attachments: attachmentsData,
+          source_file_url: mainFileUrl,
+          source_file_name: mainFileName,
+          source_file_type: 'docx',
         }),
       });
       
@@ -528,11 +608,15 @@ export default function NewOnlyOfficeTemplatePage() {
   };
   
   // 步骤导航
-  const handleNext = () => {
+  const handleNext = async () => {
     // 验证当前步骤
-    if (currentStep === 1 && !name.trim()) {
-      toast.error("请输入模板名称");
-      return;
+    if (currentStep === 1) {
+      if (!name.trim()) {
+        toast.error("请输入模板名称");
+        return;
+      }
+      // 第1步完成后自动保存草稿
+      await saveDraft(true);
     }
     if (currentStep === 2 && !mainFileUrl) {
       toast.error("请上传主文档");
@@ -541,15 +625,24 @@ export default function NewOnlyOfficeTemplatePage() {
     
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
+      // 步骤切换后自动保存草稿
+      await saveDraft(true);
     } else {
       handleComplete();
     }
   };
   
-  const handlePrev = () => {
+  const handlePrev = async () => {
     if (currentStep > 1) {
+      // 返回前一步时自动保存草稿
+      await saveDraft(true);
       setCurrentStep(currentStep - 1);
     }
+  };
+  
+  // 手动保存草稿
+  const handleSaveDraftClick = async () => {
+    await saveDraft(false);
   };
   
   // 加载中
@@ -881,7 +974,7 @@ export default function NewOnlyOfficeTemplatePage() {
       </div>
       
       {/* 步骤导航 */}
-      <div className="flex justify-between mt-6 pt-6 border-t">
+      <div className="flex justify-between items-center mt-6 pt-6 border-t">
         <Button
           variant="outline"
           onClick={handlePrev}
@@ -890,21 +983,36 @@ export default function NewOnlyOfficeTemplatePage() {
           上一步
         </Button>
         
-        <Button
-          onClick={handleNext}
-          disabled={uploading || saving || attachments.some(a => a.uploading)}
-        >
-          {saving ? (
-            <>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={handleSaveDraftClick}
+            disabled={savingDraft || !templateId}
+          >
+            {savingDraft ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              保存中...
-            </>
-          ) : currentStep === 4 ? (
-            "完成"
-          ) : (
-            "下一步"
-          )}
-        </Button>
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            保存草稿
+          </Button>
+          
+          <Button
+            onClick={handleNext}
+            disabled={uploading || saving || attachments.some(a => a.uploading) || savingDraft}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                保存中...
+              </>
+            ) : currentStep === 4 ? (
+              "完成"
+            ) : (
+              "下一步"
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
