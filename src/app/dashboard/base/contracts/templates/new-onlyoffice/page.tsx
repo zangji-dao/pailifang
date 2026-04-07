@@ -193,13 +193,6 @@ export default function NewOnlyOfficeTemplatePage() {
   
   // 保存草稿
   const saveDraft = useCallback(async (silent = false) => {
-    if (!templateId) {
-      if (!silent) {
-        toast.error("请先上传文档");
-      }
-      return;
-    }
-    
     setSavingDraft(true);
     
     try {
@@ -215,7 +208,7 @@ export default function NewOnlyOfficeTemplatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: templateId,
+          id: templateId || undefined,
           name: name || '未命名模板',
           description,
           type,
@@ -235,6 +228,14 @@ export default function NewOnlyOfficeTemplatePage() {
         throw new Error(data.error || "保存失败");
       }
       
+      // 如果是新创建的草稿，更新 templateId
+      if (data.data?.id && !templateId) {
+        setTemplateId(data.data.id);
+        const url = new URL(window.location.href);
+        url.searchParams.set('id', data.data.id);
+        window.history.replaceState({}, '', url);
+      }
+      
       if (!silent) {
         toast.success("保存成功");
       }
@@ -243,7 +244,7 @@ export default function NewOnlyOfficeTemplatePage() {
       if (!silent) {
         toast.error(err instanceof Error ? err.message : "保存失败");
       }
-      throw err; // 抛出错误，让调用方知道保存失败
+      throw err;
     } finally {
       setSavingDraft(false);
     }
@@ -1036,7 +1037,7 @@ export default function NewOnlyOfficeTemplatePage() {
           <Button
             variant="ghost"
             onClick={handleSaveDraftClick}
-            disabled={savingDraft || !templateId}
+            disabled={savingDraft}
           >
             {savingDraft ? (
               <>
