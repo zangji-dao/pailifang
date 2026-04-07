@@ -3,17 +3,27 @@
  * 
  * 新流程（简化版）：
  * 1. 基本信息 - 填写模板名称、类型、所属基地
- * 2. 上传文档 - 上传 Word 文件
+ * 2. 上传文档 - 上传 Word 文件（主文档 + 附件）
  * 3. OnlyOffice 编辑 - 直接在 OnlyOffice 中编辑文档，绑定变量
  * 4. 完成 - 保存模板
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Check, FileText, Upload, Edit, CheckCircle } from "lucide-react";
+import { 
+  Loader2, 
+  Check, 
+  FileText, 
+  Upload, 
+  Edit, 
+  CheckCircle,
+  Plus,
+  GripVertical,
+  X,
+} from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 import { OnlyOfficeEditStep } from "../new/components/OnlyOfficeEditStep";
 import type { TemplateVariable } from "@/types/template-variable";
@@ -93,6 +104,25 @@ interface Base {
   address: string | null;
 }
 
+// 附件类型
+interface AttachmentFile {
+  id: string;
+  name: string;
+  file: File | null;
+  url: string;
+  size: number;
+  uploading: boolean;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 export default function NewOnlyOfficeTemplatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -120,8 +150,17 @@ export default function NewOnlyOfficeTemplatePage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   
+  // 附件
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  
   // 变量
   const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([...PresetVariables]);
+  
+  // Refs
+  const mainFileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   
   // 加载基地列表
   useEffect(() => {
@@ -171,6 +210,18 @@ export default function NewOnlyOfficeTemplatePage() {
           setMainFileName(template.file_name || "模板文档.docx");
         }
         
+        // 加载附件
+        if (template.attachments && template.attachments.length > 0) {
+          setAttachments(template.attachments.map((att: any) => ({
+            id: att.id,
+            name: att.name,
+            file: null,
+            url: att.url,
+            size: att.size || 0,
+            uploading: false,
+          })));
+        }
+        
         // 加载自定义变量
         if (template.fields && template.fields.length > 0) {
           const customVariables: TemplateVariable[] = template.fields.map((field: any) => ({
@@ -180,7 +231,6 @@ export default function NewOnlyOfficeTemplatePage() {
             type: field.type || 'text',
             category: 'custom',
             placeholder: field.placeholder,
-            isCustom: true,
           }));
           setSelectedVariables([...PresetVariables, ...customVariables]);
         }
@@ -193,8 +243,8 @@ export default function NewOnlyOfficeTemplatePage() {
     }
   };
   
-  // 上传文件
-  const handleFileUpload = async (file: File) => {
+  // 上传主文档
+  const handleMainFileSelect = async (file: File) => {
     setUploading(true);
     setUploadProgress(0);
     
@@ -258,7 +308,7 @@ export default function NewOnlyOfficeTemplatePage() {
         });
       }
       
-      toast.success("文件上传成功");
+      toast.success("主文档上传成功");
     } catch (err) {
       console.error("上传失败:", err);
       toast.error(err instanceof Error ? err.message : "上传失败");
@@ -266,6 +316,102 @@ export default function NewOnlyOfficeTemplatePage() {
       setUploading(false);
       setUploadProgress(0);
     }
+  };
+  
+  // 添加附件
+  const handleAttachmentsSelect = async (files: FileList) => {
+    const newAttachments: AttachmentFile[] = Array.from(files).map(file => ({
+      id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: file.name,
+      file,
+      url: '',
+      size: file.size,
+      uploading: true,
+    }));
+    
+    setAttachments(prev => [...prev, ...newAttachments]);
+    
+    // 逐个上传附件
+    for (const att of newAttachments) {
+      try {
+        const formData = new FormData();
+        formData.append("file", att.file!);
+        formData.append("type", "contract-attachment");
+        
+        const res = await fetch("/api/contract-templates/upload-attachment", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          setAttachments(prev => prev.map(a => 
+            a.id === att.id 
+              ? { ...a, url: data.url, uploading: false }
+              : a
+          ));
+        } else {
+          throw new Error(data.error || "上传失败");
+        }
+      } catch (err) {
+        console.error(`上传附件 ${att.name} 失败:`, err);
+        setAttachments(prev => prev.map(a => 
+          a.id === att.id 
+            ? { ...a, uploading: false }
+            : a
+        ));
+        toast.error(`附件 ${att.name} 上传失败`);
+      }
+    }
+  };
+  
+  // 删除附件
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+  
+  // 拖拽排序
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== id) {
+      setDragOverId(id);
+    }
+  };
+  
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+  
+  const handleDrop = (e: React.DragEvent, dropId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === dropId) return;
+    
+    setAttachments(prev => {
+      const items = [...prev];
+      const dragIndex = items.findIndex(i => i.id === draggedId);
+      const dropIndex = items.findIndex(i => i.id === dropId);
+      
+      if (dragIndex !== -1 && dropIndex !== -1) {
+        const [draggedItem] = items.splice(dragIndex, 1);
+        items.splice(dropIndex, 0, draggedItem);
+      }
+      
+      return items;
+    });
+    
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
   };
   
   // 保存文档和变量
@@ -321,6 +467,16 @@ export default function NewOnlyOfficeTemplatePage() {
     setSaving(true);
     
     try {
+      // 1. 保存附件信息到 draft_data
+      const attachmentsData = attachments.filter(a => a.url).map((a, index) => ({
+        id: a.id,
+        name: a.name,
+        url: a.url,
+        size: a.size,
+        order: index,
+      }));
+      
+      // 2. 更新模板基本信息
       const res = await fetch("/api/contract-templates", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -332,6 +488,7 @@ export default function NewOnlyOfficeTemplatePage() {
           base_id: baseId,
           is_default: isDefault,
           status: 'published',
+          attachments: attachmentsData,
         }),
       });
       
@@ -339,6 +496,25 @@ export default function NewOnlyOfficeTemplatePage() {
       
       if (!data.success) {
         throw new Error(data.error || "保存失败");
+      }
+      
+      // 3. 保存自定义变量
+      const customVariables = selectedVariables.filter(v => v.category === 'custom');
+      if (customVariables.length > 0) {
+        await fetch("/api/contract-templates/fields", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            templateId,
+            fields: customVariables.map(v => ({
+              key: v.key,
+              label: v.name,
+              type: v.type || 'text',
+              required: true,
+              placeholder: v.placeholder,
+            })),
+          }),
+        });
       }
       
       toast.success("模板创建成功");
@@ -359,7 +535,7 @@ export default function NewOnlyOfficeTemplatePage() {
       return;
     }
     if (currentStep === 2 && !mainFileUrl) {
-      toast.error("请上传文档");
+      toast.error("请上传主文档");
       return;
     }
     
@@ -478,69 +654,167 @@ export default function NewOnlyOfficeTemplatePage() {
         
         {/* 步骤 2：上传文档 */}
         {currentStep === 2 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>上传文档</CardTitle>
-              <CardDescription>上传 Word 文档作为模板</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>选择文档文件</Label>
-                <div className="border-2 border-dashed rounded-lg p-8 text-center">
+          <div className="space-y-6">
+            {/* 主文档上传 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>合同主文档</CardTitle>
+                <CardDescription>上传合同主文档，支持 .doc、.docx 格式</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => mainFileInputRef.current?.click()}
+                >
                   <input
+                    ref={mainFileInputRef}
                     type="file"
-                    id="file-upload"
-                    accept=".docx,.doc"
-                    className="hidden"
+                    accept=".doc,.docx"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
+                      if (file) handleMainFileSelect(file);
                     }}
+                    className="hidden"
                     disabled={uploading}
                   />
                   
                   {mainFileUrl ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-center gap-2 text-primary">
-                        <CheckCircle className="h-8 w-8" />
-                        <span className="font-medium">{mainFileName}</span>
+                    <div className="flex items-center justify-center gap-3">
+                      <FileText className="h-8 w-8 text-blue-500" />
+                      <div className="text-left">
+                        <p className="font-medium">{mainFileName}</p>
+                        <p className="text-sm text-green-500">已上传</p>
                       </div>
                       <Button
-                        variant="outline"
-                        onClick={() => document.getElementById("file-upload")?.click()}
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          mainFileInputRef.current?.click();
+                        }}
+                        className="text-muted-foreground hover:text-foreground shrink-0"
                         disabled={uploading}
                       >
-                        更换文件
+                        <Upload className="h-4 w-4 mr-1" />
+                        重新上传
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <div>
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById("file-upload")?.click()}
-                          disabled={uploading}
-                        >
-                          {uploading ? "上传中..." : "选择文件"}
-                        </Button>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        支持 .docx, .doc 格式，最大 10MB
-                      </p>
-                    </div>
-                  )}
-                  
-                  {uploading && (
-                    <div className="mt-4 space-y-2">
-                      <Progress value={uploadProgress} />
-                      <p className="text-sm text-muted-foreground">上传中...</p>
-                    </div>
+                    <>
+                      <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-lg font-medium mb-2">点击上传合同文档</p>
+                      <p className="text-sm text-muted-foreground">支持 .doc、.docx 格式</p>
+                    </>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                
+                {/* 上传进度 */}
+                {uploading && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>正在上传...</span>
+                    </div>
+                    <Progress value={uploadProgress} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 附件上传 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>合同附件</CardTitle>
+                    <CardDescription>附件将与主合同合并展示，支持绑定变量</CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => attachmentInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    添加附件
+                  </Button>
+                  <input
+                    ref={attachmentInputRef}
+                    type="file"
+                    accept=".doc,.docx"
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        handleAttachmentsSelect(e.target.files);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {attachments.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">点击"添加附件"上传附件文件</p>
+                    <p className="text-xs mt-1">仅支持 Word 格式，将合并到主合同预览</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attachments.map((att, index) => (
+                      <div
+                        key={att.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, att.id)}
+                        onDragOver={(e) => handleDragOver(e, att.id)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, att.id)}
+                        onDragEnd={handleDragEnd}
+                        className={cn(
+                          "flex items-center gap-3 p-3 bg-muted/50 rounded-lg transition-all cursor-move",
+                          draggedId === att.id && "opacity-50 scale-[0.98]",
+                          dragOverId === att.id && "border-2 border-amber-500 bg-amber-50/50"
+                        )}
+                      >
+                        <div className="text-muted-foreground hover:text-foreground transition-colors">
+                          <GripVertical className="h-5 w-5" />
+                        </div>
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-medium shrink-0">
+                          {index + 1}
+                        </div>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{att.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {att.uploading ? (
+                                <span className="text-amber-500">上传中...</span>
+                              ) : att.size > 0 ? (
+                                formatFileSize(att.size)
+                              ) : att.url ? (
+                                <span className="text-green-500">已上传</span>
+                              ) : (
+                                '待上传'
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveAttachment(att.id); }}
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground text-center pt-2">拖拽附件可调整顺序</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
         
         {/* 步骤 3：OnlyOffice 编辑 */}
@@ -587,6 +861,10 @@ export default function NewOnlyOfficeTemplatePage() {
                   <span className="font-medium">{mainFileName}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">附件数量</span>
+                  <span className="font-medium">{attachments.length} 个</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">变量数量</span>
                   <span className="font-medium">{selectedVariables.length} 个</span>
                 </div>
@@ -614,7 +892,7 @@ export default function NewOnlyOfficeTemplatePage() {
         
         <Button
           onClick={handleNext}
-          disabled={uploading || saving}
+          disabled={uploading || saving || attachments.some(a => a.uploading)}
         >
           {saving ? (
             <>
