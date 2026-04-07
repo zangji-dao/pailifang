@@ -15,6 +15,10 @@ export function useEditor(
   const [zoom, setZoom] = useState(100);
   // 保存选区
   const savedSelectionRef = useRef<Range | null>(null);
+  // 保存选区时的文本内容（用于调试和验证）
+  const savedSelectionTextRef = useRef<string>('');
+  // 保存选区时的时间戳（用于调试）
+  const savedSelectionTimeRef = useRef<number>(0);
   // 当前格式状态
   const [currentFormat, setCurrentFormat] = useState<CurrentFormat>({
     fontFamily: null,
@@ -126,8 +130,11 @@ export function useEditor(
       const range = selection.getRangeAt(0);
       // 确保选区在编辑区域内且非空
       if (contentRef.current?.contains(range.commonAncestorContainer) && !range.collapsed) {
+        const text = range.toString();
         savedSelectionRef.current = range.cloneRange();
-        console.log('saveSelection - 已保存选区, text:', range.toString().substring(0, 20));
+        savedSelectionTextRef.current = text;
+        savedSelectionTimeRef.current = Date.now();
+        console.log('saveSelection - 已保存选区, text:', text.substring(0, 20), 'time:', savedSelectionTimeRef.current);
       }
     }
   }, []);
@@ -140,8 +147,11 @@ export function useEditor(
         const range = selection.getRangeAt(0);
         // 只有当选区在编辑器内且不是空的时才保存
         if (contentRef.current?.contains(range.commonAncestorContainer) && !range.collapsed) {
+          const text = range.toString();
           savedSelectionRef.current = range.cloneRange();
-          console.log('selectionchange - 已保存选区, text:', range.toString().substring(0, 20));
+          savedSelectionTextRef.current = text;
+          savedSelectionTimeRef.current = Date.now();
+          console.log('selectionchange - 已保存选区, text:', text.substring(0, 20), 'time:', savedSelectionTimeRef.current);
         }
       }
     };
@@ -164,11 +174,53 @@ export function useEditor(
       return false;
     }
     
+    // 检查保存的 Range 是否仍然有效
+    let savedRange = savedSelectionRef.current;
+    const rangeText = savedRange.toString();
+    const isValidRange = rangeText.length > 0 && 
+                         contentRef.current.contains(savedRange.commonAncestorContainer);
+    
+    if (!isValidRange) {
+      console.log('restoreSelection - Range 已失效, 原文本:', savedSelectionTextRef.current.substring(0, 20), 
+                  '当前 Range 文本:', rangeText.substring(0, 20),
+                  '保存时间:', savedSelectionTimeRef.current);
+      
+      // 尝试通过保存的文本内容重新定位选区
+      const editTextarea = contentRef.current;
+      const walker = document.createTreeWalker(editTextarea, NodeFilter.SHOW_TEXT, null);
+      let foundNode: Text | null = null;
+      let foundOffset = -1;
+      
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        const nodeText = node.textContent || '';
+        const index = nodeText.indexOf(savedSelectionTextRef.current);
+        if (index !== -1) {
+          foundNode = node;
+          foundOffset = index;
+          break;
+        }
+      }
+      
+      if (foundNode && foundOffset >= 0) {
+        // 创建新的 Range
+        const newRange = document.createRange();
+        newRange.setStart(foundNode, foundOffset);
+        newRange.setEnd(foundNode, foundOffset + savedSelectionTextRef.current.length);
+        savedRange = newRange;
+        savedSelectionRef.current = newRange;
+        console.log('restoreSelection - 通过文本重新定位成功');
+      } else {
+        console.log('restoreSelection - 无法重新定位选区');
+        return false;
+      }
+    }
+    
     // 先聚焦编辑器，再恢复选区
     contentRef.current.focus();
     selection.removeAllRanges();
-    selection.addRange(savedSelectionRef.current);
-    console.log('restoreSelection - 已恢复选区, text:', savedSelectionRef.current.toString().substring(0, 20));
+    selection.addRange(savedRange);
+    console.log('restoreSelection - 已恢复选区, text:', savedRange.toString().substring(0, 20));
     return true;
   }, []);
 
