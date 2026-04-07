@@ -191,7 +191,7 @@ export function EditorToolbar({
         }}
         value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
       >
-          <SelectTrigger className="w-28 h-8">
+          <SelectTrigger className="w-28 h-8" onMouseDown={(e) => e.preventDefault()}>
             <SelectValue placeholder="字体">
               {getFontLabel(currentFormat.fontFamily)}
             </SelectValue>
@@ -213,7 +213,7 @@ export function EditorToolbar({
         }}
         value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
       >
-        <SelectTrigger className="w-16 h-8">
+        <SelectTrigger className="w-16 h-8" onMouseDown={(e) => e.preventDefault()}>
           <SelectValue placeholder="字号">
             {getFontSizeLabel(currentFormat.fontSize)}
           </SelectValue>
@@ -289,7 +289,7 @@ export function EditorToolbar({
         }}
         value={currentFormat.lineHeight || undefined}
       >
-        <SelectTrigger className="w-20 h-8">
+        <SelectTrigger className="w-20 h-8" onMouseDown={(e) => e.preventDefault()}>
           <SelectValue placeholder="行距">
             {getLineHeightLabel(currentFormat.lineHeight)}
           </SelectValue>
@@ -313,7 +313,7 @@ export function EditorToolbar({
         }}
         value={currentPresetKey || undefined}
       >
-        <SelectTrigger className="w-32 h-8">
+        <SelectTrigger className="w-32 h-8" onMouseDown={(e) => e.preventDefault()}>
           <SelectValue placeholder="公文格式">
             {currentPreset ? currentPreset.label : "公文格式"}
           </SelectValue>
