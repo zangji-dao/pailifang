@@ -597,10 +597,14 @@ export default function NewOnlyOfficeTemplatePage() {
 
         const data = await res.json();
 
+        console.log(`📎 附件上传响应:`, data);
+
         if (data.success) {
+          const attUrl = data.data.url;
+          console.log(`📎 附件 ${att.name} 上传成功，URL:`, attUrl);
           setAttachments(prev => prev.map(a =>
             a.id === att.id
-              ? { ...a, url: data.url, uploading: false }
+              ? { ...a, url: attUrl, uploading: false }
               : a
           ));
         } else {
