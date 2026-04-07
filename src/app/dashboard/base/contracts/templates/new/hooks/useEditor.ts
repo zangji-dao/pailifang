@@ -122,23 +122,31 @@ export function useEditor(
   // 保存当前选区
   const saveSelection = useCallback(() => {
     const selection = window.getSelection();
+    console.log('saveSelection - selection:', selection, 'rangeCount:', selection?.rangeCount);
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
+      console.log('saveSelection - range:', range, 'collapsed:', range.collapsed, 'text:', range.toString().substring(0, 20));
       // 确保选区在编辑区域内
       if (contentRef.current?.contains(range.commonAncestorContainer)) {
         savedSelectionRef.current = range.cloneRange();
+        console.log('saveSelection - 已保存选区');
+      } else {
+        console.log('saveSelection - 选区不在编辑区域内');
       }
     }
   }, []);
 
   // 恢复选区
   const restoreSelection = useCallback(() => {
+    console.log('restoreSelection - savedRange:', savedSelectionRef.current);
     if (!savedSelectionRef.current || !contentRef.current) {
+      console.log('restoreSelection - 没有保存的选区或 contentRef');
       return false;
     }
     
     const selection = window.getSelection();
     if (!selection) {
+      console.log('restoreSelection - 没有 selection');
       return false;
     }
     
@@ -146,6 +154,7 @@ export function useEditor(
     contentRef.current.focus();
     selection.removeAllRanges();
     selection.addRange(savedSelectionRef.current);
+    console.log('restoreSelection - 已恢复选区');
     return true;
   }, []);
 
@@ -256,17 +265,31 @@ export function useEditor(
 
   // 设置字体
   const handleSetFont = useCallback((fontFamily: string) => {
+    console.log('handleSetFont - fontFamily:', fontFamily);
+    
     // 先聚焦编辑器
     if (contentRef.current) {
       contentRef.current.focus();
     }
     
     // 恢复之前保存的选区
-    restoreSelection();
+    const restored = restoreSelection();
+    console.log('handleSetFont - restoreSelection result:', restored);
     
-    // 使用 execCommand 设置字体
-    document.execCommand('fontName', false, fontFamily);
-    syncEditedContent();
+    // 使用 setTimeout 确保选区恢复后再执行
+    setTimeout(() => {
+      // 再次检查选区
+      const selection = window.getSelection();
+      console.log('handleSetFont - setTimeout - selection:', selection, 'rangeCount:', selection?.rangeCount);
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        console.log('handleSetFont - setTimeout - range.collapsed:', range.collapsed, 'text:', range.toString().substring(0, 20));
+      }
+      
+      // 使用 execCommand 设置字体
+      document.execCommand('fontName', false, fontFamily);
+      syncEditedContent();
+    }, 0);
   }, [syncEditedContent, restoreSelection]);
 
   // 设置字体大小
@@ -279,33 +302,36 @@ export function useEditor(
     // 恢复之前保存的选区
     restoreSelection();
     
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    
-    if (range.collapsed) {
-      // 没有选中内容，设置当前所在块级元素的字体大小
-      let container = range.commonAncestorContainer as HTMLElement;
-      while (container && container !== contentRef.current) {
-        if (container.nodeType === Node.ELEMENT_NODE && 
-            (container.tagName === 'P' || container.tagName === 'DIV' || container.tagName === 'SPAN')) {
-          (container as HTMLElement).style.fontSize = `${size}pt`;
-          break;
+    // 使用 setTimeout 确保选区恢复后再执行
+    setTimeout(() => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      
+      if (range.collapsed) {
+        // 没有选中内容，设置当前所在块级元素的字体大小
+        let container = range.commonAncestorContainer as HTMLElement;
+        while (container && container !== contentRef.current) {
+          if (container.nodeType === Node.ELEMENT_NODE && 
+              (container.tagName === 'P' || container.tagName === 'DIV' || container.tagName === 'SPAN')) {
+            (container as HTMLElement).style.fontSize = `${size}pt`;
+            break;
+          }
+          container = container.parentNode as HTMLElement;
         }
-        container = container.parentNode as HTMLElement;
+      } else {
+        // 有选中内容，使用 CSS 类方式设置
+        // 提取选中内容，包裹在 span 中
+        const fragment = range.extractContents();
+        const span = document.createElement('span');
+        span.style.fontSize = `${size}pt`;
+        span.appendChild(fragment);
+        range.insertNode(span);
       }
-    } else {
-      // 有选中内容，使用 CSS 类方式设置
-      // 提取选中内容，包裹在 span 中
-      const fragment = range.extractContents();
-      const span = document.createElement('span');
-      span.style.fontSize = `${size}pt`;
-      span.appendChild(fragment);
-      range.insertNode(span);
-    }
-    
-    syncEditedContent();
+      
+      syncEditedContent();
+    }, 0);
   }, [syncEditedContent, restoreSelection]);
 
   // 设置行间距
@@ -318,32 +344,36 @@ export function useEditor(
     // 恢复之前保存的选区
     restoreSelection();
     
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    let container = range.commonAncestorContainer as HTMLElement;
-    
-    // 找到块级父元素
-    const blockTags = ['P', 'DIV', 'LI', 'TD', 'TH', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BODY'];
-    while (container && container !== contentRef.current) {
-      if (container.nodeType === Node.ELEMENT_NODE && blockTags.includes(container.tagName)) {
-        break;
+    // 使用 setTimeout 确保选区恢复后再执行
+    setTimeout(() => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      let container = range.commonAncestorContainer as HTMLElement;
+      
+      // 找到块级父元素
+      const blockTags = ['P', 'DIV', 'LI', 'TD', 'TH', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BODY'];
+      while (container && container !== contentRef.current) {
+        if (container.nodeType === Node.ELEMENT_NODE && blockTags.includes(container.tagName)) {
+          break;
+        }
+        container = container.parentNode as HTMLElement;
       }
-      container = container.parentNode as HTMLElement;
-    }
-    
-    if (container && container !== contentRef.current) {
-      (container as HTMLElement).style.lineHeight = lineHeight;
-    } else if (contentRef.current) {
-      contentRef.current.style.lineHeight = lineHeight;
-    }
-    
-    syncEditedContent();
+      
+      if (container && container !== contentRef.current) {
+        (container as HTMLElement).style.lineHeight = lineHeight;
+      } else if (contentRef.current) {
+        contentRef.current.style.lineHeight = lineHeight;
+      }
+      
+      syncEditedContent();
+    }, 0);
   }, [syncEditedContent, restoreSelection]);
 
   // 应用公文格式预设
   const handleApplyPreset = useCallback((presetKey: string) => {
+    console.log('handleApplyPreset - presetKey:', presetKey);
     const preset = DOCUMENT_PRESETS.find(p => p.key === presetKey);
     if (!preset) return;
     
@@ -353,65 +383,74 @@ export function useEditor(
     }
     
     // 恢复之前保存的选区
-    restoreSelection();
+    const restored = restoreSelection();
+    console.log('handleApplyPreset - restoreSelection result:', restored);
     
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    
-    // 找到所在的块级元素（用于设置行距和对齐方式）
-    const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH'];
-    let blockElement: HTMLElement | null = null;
-    let container = range.commonAncestorContainer as HTMLElement;
-    
-    while (container && container !== contentRef.current) {
-      if (container.nodeType === Node.ELEMENT_NODE && blockTags.includes(container.tagName)) {
-        blockElement = container;
-        break;
+    // 使用 setTimeout 确保选区恢复后再执行
+    setTimeout(() => {
+      const selection = window.getSelection();
+      console.log('handleApplyPreset - setTimeout - selection:', selection, 'rangeCount:', selection?.rangeCount);
+      if (!selection || selection.rangeCount === 0) {
+        console.log('handleApplyPreset - setTimeout - 没有选区');
+        return;
       }
-      container = container.parentNode as HTMLElement;
-    }
-    
-    if (range.collapsed) {
-      // 光标折叠状态（没有选中文字），只设置当前所在的段落
-      if (blockElement) {
-        blockElement.style.fontFamily = preset.font;
-        blockElement.style.fontSize = `${preset.size}pt`;
-        blockElement.style.lineHeight = preset.lineHeight;
+      
+      const range = selection.getRangeAt(0);
+      console.log('handleApplyPreset - setTimeout - range.collapsed:', range.collapsed, 'text:', range.toString().substring(0, 20));
+      
+      // 找到所在的块级元素（用于设置行距和对齐方式）
+      const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH'];
+      let blockElement: HTMLElement | null = null;
+      let container = range.commonAncestorContainer as HTMLElement;
+      
+      while (container && container !== contentRef.current) {
+        if (container.nodeType === Node.ELEMENT_NODE && blockTags.includes(container.tagName)) {
+          blockElement = container;
+          break;
+        }
+        container = container.parentNode as HTMLElement;
+      }
+      
+      if (range.collapsed) {
+        // 光标折叠状态（没有选中文字），只设置当前所在的段落
+        if (blockElement) {
+          blockElement.style.fontFamily = preset.font;
+          blockElement.style.fontSize = `${preset.size}pt`;
+          blockElement.style.lineHeight = preset.lineHeight;
+          if (preset.bold) {
+            blockElement.style.fontWeight = 'bold';
+          }
+          if (preset.align) {
+            blockElement.style.textAlign = preset.align;
+          }
+          syncEditedContent();
+          toast.success(`已应用${preset.label}格式`);
+        }
+      } else {
+        // 有选中内容，对选中文字应用字体、字号、加粗，对所在段落应用行距和对齐
+        // 使用 extractContents + span 包裹的方式
+        const fragment = range.extractContents();
+        const span = document.createElement('span');
+        span.style.fontFamily = preset.font;
+        span.style.fontSize = `${preset.size}pt`;
         if (preset.bold) {
-          blockElement.style.fontWeight = 'bold';
+          span.style.fontWeight = 'bold';
         }
-        if (preset.align) {
-          blockElement.style.textAlign = preset.align;
+        span.appendChild(fragment);
+        range.insertNode(span);
+        
+        // 行距和对齐方式应用到块级元素
+        if (blockElement) {
+          blockElement.style.lineHeight = preset.lineHeight;
+          if (preset.align) {
+            blockElement.style.textAlign = preset.align;
+          }
         }
+        
         syncEditedContent();
         toast.success(`已应用${preset.label}格式`);
       }
-    } else {
-      // 有选中内容，对选中文字应用字体、字号、加粗，对所在段落应用行距和对齐
-      // 使用 extractContents + span 包裹的方式
-      const fragment = range.extractContents();
-      const span = document.createElement('span');
-      span.style.fontFamily = preset.font;
-      span.style.fontSize = `${preset.size}pt`;
-      if (preset.bold) {
-        span.style.fontWeight = 'bold';
-      }
-      span.appendChild(fragment);
-      range.insertNode(span);
-      
-      // 行距和对齐方式应用到块级元素
-      if (blockElement) {
-        blockElement.style.lineHeight = preset.lineHeight;
-        if (preset.align) {
-          blockElement.style.textAlign = preset.align;
-        }
-      }
-      
-      syncEditedContent();
-      toast.success(`已应用${preset.label}格式`);
-    }
+    }, 0);
   }, [syncEditedContent, restoreSelection]);
 
   // 添加下划线填充

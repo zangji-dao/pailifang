@@ -184,18 +184,17 @@ export function EditorToolbar({
   return (
     <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
       {/* 字体选择 */}
-      <Select 
-        onValueChange={(v) => { onSetFont(v); }}
-        value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
+      <div 
+        onMouseDown={(e) => {
+          // 在点击时立即保存选区，不阻止冒泡让 Select 正常工作
+          onSaveSelection();
+        }}
       >
-        <SelectTrigger 
-          className="w-28 h-8"
-          onMouseDown={(e) => {
-            // 阻止默认行为，防止选区被清除
-            e.preventDefault();
-            onSaveSelection();
-          }}
+        <Select 
+          onValueChange={(v) => { onSetFont(v); }}
+          value={currentFormat.fontFamily?.split(',')[0]?.replace(/["']/g, '') || undefined}
         >
+          <SelectTrigger className="w-28 h-8">
           <SelectValue placeholder="字体">
             {getFontLabel(currentFormat.fontFamily)}
           </SelectValue>
@@ -207,20 +206,20 @@ export function EditorToolbar({
             </SelectItem>
           ))}
         </SelectContent>
-      </Select>
+        </Select>
+      </div>
 
       {/* 字号选择 */}
-      <Select 
-        onValueChange={(v) => { onSetFontSize(Number(v)); }}
-        value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
+      <div 
+        onMouseDown={() => {
+          onSaveSelection();
+        }}
       >
-        <SelectTrigger 
-          className="w-16 h-8"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onSaveSelection();
-          }}
+        <Select 
+          onValueChange={(v) => { onSetFontSize(Number(v)); }}
+          value={currentFormat.fontSize ? getFontSizeLabel(currentFormat.fontSize) : undefined}
         >
+          <SelectTrigger className="w-16 h-8">
           <SelectValue placeholder="字号">
             {getFontSizeLabel(currentFormat.fontSize)}
           </SelectValue>
@@ -232,7 +231,8 @@ export function EditorToolbar({
             </SelectItem>
           ))}
         </SelectContent>
-      </Select>
+        </Select>
+      </div>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
@@ -289,61 +289,61 @@ export function EditorToolbar({
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 行间距 */}
-      <Select 
-        onValueChange={(v) => { onSetLineHeight(v); }}
-        value={currentFormat.lineHeight || undefined}
+      <div 
+        onMouseDown={() => {
+          onSaveSelection();
+        }}
       >
-        <SelectTrigger 
-          className="w-20 h-8"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onSaveSelection();
-          }}
+        <Select 
+          onValueChange={(v) => { onSetLineHeight(v); }}
+          value={currentFormat.lineHeight || undefined}
         >
-          <SelectValue placeholder="行距">
-            {getLineHeightLabel(currentFormat.lineHeight)}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="z-50">
-          {LINE_HEIGHT_OPTIONS.map(opt => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger className="w-20 h-8">
+            <SelectValue placeholder="行距">
+              {getLineHeightLabel(currentFormat.lineHeight)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-50">
+            {LINE_HEIGHT_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 公文格式预设 */}
-      <Select 
-        onValueChange={(v) => { onApplyPreset(v); }}
-        value={currentPresetKey || undefined}
+      <div 
+        onMouseDown={() => {
+          onSaveSelection();
+        }}
       >
-        <SelectTrigger 
-          className="w-32 h-8"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onSaveSelection();
-          }}
+        <Select 
+          onValueChange={(v) => { onApplyPreset(v); }}
+          value={currentPresetKey || undefined}
         >
-          <SelectValue placeholder="公文格式">
-            {currentPreset ? currentPreset.label : "公文格式"}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="z-50 w-64">
-          {DOCUMENT_PRESETS.map(preset => (
-            <SelectItem key={preset.key} value={preset.key} className="py-2">
-              <div className="flex flex-col items-start">
-                <span className="font-medium">{preset.label}</span>
-                {preset.description && (
-                  <span className="text-xs text-muted-foreground">{preset.description}</span>
-                )}
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger className="w-32 h-8">
+            <SelectValue placeholder="公文格式">
+              {currentPreset ? currentPreset.label : "公文格式"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-50 w-64">
+            {DOCUMENT_PRESETS.map(preset => (
+              <SelectItem key={preset.key} value={preset.key} className="py-2">
+                <div className="flex flex-col items-start">
+                  <span className="font-medium">{preset.label}</span>
+                  {preset.description && (
+                    <span className="text-xs text-muted-foreground">{preset.description}</span>
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* 下划线填充 */}
       <ToolButton onClick={onAddUnderlineFill} title="下划线填充">
