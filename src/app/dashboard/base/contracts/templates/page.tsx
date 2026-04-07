@@ -18,6 +18,7 @@ import {
   Edit3,
   FileCheck,
   Pencil,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/app/dashboard/tabs-context";
@@ -180,6 +187,20 @@ export default function ContractTemplatesPage() {
       });
     } else {
       router.push("/dashboard/base/contracts/templates/new");
+    }
+  };
+
+  // 使用 OnlyOffice 创建新模板
+  const handleCreateWithOnlyOffice = () => {
+    if (tabs) {
+      tabs.openTab({
+        id: "new-template-onlyoffice",
+        label: "新建模板 (OnlyOffice)",
+        path: "/dashboard/base/contracts/templates/new-onlyoffice",
+        icon: <FileText className="h-3.5 w-3.5" />,
+      });
+    } else {
+      router.push("/dashboard/base/contracts/templates/new-onlyoffice");
     }
   };
 
@@ -362,10 +383,25 @@ export default function ContractTemplatesPage() {
             <p className="text-sm text-muted-foreground">管理合同模板，配置样式和变量绑定</p>
           </div>
         </div>
-        <Button onClick={handleCreate} className="bg-amber-600 hover:bg-amber-700">
-          <Plus className="h-4 w-4 mr-2" />
-          新建模板
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="h-4 w-4 mr-2" />
+              新建模板
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleCreateWithOnlyOffice}>
+              <FileText className="h-4 w-4 mr-2" />
+              OnlyOffice 编辑器（推荐）
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleCreate}>
+              <Edit3 className="h-4 w-4 mr-2" />
+              传统编辑器
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* 分割线 */}

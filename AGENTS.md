@@ -267,6 +267,20 @@ Word 导出采用 LibreOffice 直接转换方案（HTML → DOCX），确保样�
 
 访问 `/dashboard/base/contracts/templates/new/onlyoffice-test` 测试 OnlyOffice 集成。
 
+### 新建模板流程
+
+系统提供两种模板创建方式：
+
+**方式一：OnlyOffice 编辑器（推荐）**
+- 路径：`/dashboard/base/contracts/templates/new-onlyoffice`
+- 流程：基本信息 → 上传文档 → OnlyOffice 编辑 → 完成
+- 特点：原生 Word 编辑体验，支持内容控件绑定变量
+
+**方式二：传统编辑器**
+- 路径：`/dashboard/base/contracts/templates/new`
+- 流程：基本信息 → 上传文档 → 解析文档 → 绑定变量 → 完成
+- 特点：基于 HTML 编辑，需要解析 Word 文档
+
 ### 变量绑定插件
 
 OnlyOffice 插件用于在文档中插入变量标记：
