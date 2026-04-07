@@ -186,10 +186,20 @@ export default function NewOnlyOfficeTemplatePage() {
   
   // 加载现有模板（编辑模式）
   useEffect(() => {
-    if (templateIdFromUrl) {
-      loadTemplate(templateIdFromUrl);
+    if (templateId && templateId !== templateIdFromUrl) {
+      // templateId 更新了（比如保存后），重新加载数据
+      loadTemplate(templateId);
     }
-  }, [templateIdFromUrl]);
+  }, [templateId]);
+  
+  // 初始加载（从 URL 参数加载）
+  useEffect(() => {
+    if (templateIdFromUrl && !templateId) {
+      // URL 中有 id，但 templateId 为空，说明是初次加载
+      loadTemplate(templateIdFromUrl);
+      setTemplateId(templateIdFromUrl);
+    }
+  }, []); // 只在组件挂载时执行一次
   
   // 保存草稿
   const saveDraft = useCallback(async (silent = false) => {
@@ -228,12 +238,14 @@ export default function NewOnlyOfficeTemplatePage() {
         throw new Error(data.error || "保存失败");
       }
       
-      // 如果是新创建的草稿，更新 templateId
+      // 如果是新创建的草稿，更新 templateId 和 URL
       if (data.data?.id && !templateId) {
-        setTemplateId(data.data.id);
-        const url = new URL(window.location.href);
-        url.searchParams.set('id', data.data.id);
-        window.history.replaceState({}, '', url);
+        const newId = data.data.id;
+        setTemplateId(newId);
+        // 使用 router.replace 更新 URL，这样会触发重新渲染
+        router.replace(`/dashboard/base/contracts/templates/new-onlyoffice?id=${newId}`, {
+          scroll: false,
+        });
       }
       
       if (!silent) {
