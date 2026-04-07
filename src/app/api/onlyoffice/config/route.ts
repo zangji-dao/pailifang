@@ -79,10 +79,12 @@ export async function POST(request: NextRequest) {
     // OnlyOffice 会根据 key 缓存文档，所以需要确保唯一性
     const documentKey = `${documentId}-${Date.now()}`;
 
-    // 构建回调 URL
-    const host = request.headers.get("host") || "localhost:5000";
-    const protocol = request.headers.get("x-forwarded-proto") || "http";
-    const callbackUrl = `${protocol}://${host}/api/onlyoffice/callback`;
+    // 构建回调 URL - 使用公网地址供 OnlyOffice 云服务器回调
+    // 本地开发使用 localhost，生产环境使用 COZE_PROJECT_DOMAIN_DEFAULT
+    const publicUrl = process.env.COZE_PROJECT_DOMAIN_DEFAULT 
+      ? process.env.COZE_PROJECT_DOMAIN_DEFAULT  // 直接使用域名，已包含协议
+      : "http://localhost:5000";
+    const callbackUrl = `${publicUrl}/api/onlyoffice/callback`;
 
     const config: EditorConfig = {
       document: {

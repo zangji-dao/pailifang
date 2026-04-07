@@ -296,7 +296,7 @@ export function OnlyOfficeEditStep({
               title={documentTitle}
               documentUrl={documentUrl}
               serverUrl={editorConfig.serverUrl}
-              callbackUrl={`${window.location.origin}/api/onlyoffice/callback?templateId=${templateId}`}
+              callbackUrl={editorConfig.config.editorConfig.callbackUrl}
               onReady={() => setIsEditorReady(true)}
               onError={(err) => {
                 setEditorError(err.message);
