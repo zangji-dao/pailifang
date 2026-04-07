@@ -135,6 +135,9 @@ export default function NewOnlyOfficeTemplatePage() {
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   
+  // 使用 ref 防止重复保存
+  const savingPromiseRef = useRef<Promise<void> | null>(null);
+  
   // 基本信息
   const [templateId, setTemplateId] = useState<string>(templateIdFromUrl || "");
   const [name, setName] = useState("");
@@ -195,6 +198,15 @@ export default function NewOnlyOfficeTemplatePage() {
   
   // 保存草稿
   const saveDraft = useCallback(async (silent = false) => {
+    // 如果有正在进行的保存，等待它完成
+    if (savingPromiseRef.current) {
+      try {
+        await savingPromiseRef.current;
+      } catch (err) {
+        // 忽略之前的错误
+      }
+    }
+    
     setSavingDraft(true);
     
     try {
@@ -206,7 +218,7 @@ export default function NewOnlyOfficeTemplatePage() {
         order: index,
       }));
       
-      const res = await fetch("/api/contract-templates/draft", {
+      const savePromise = fetch("/api/contract-templates/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -224,25 +236,32 @@ export default function NewOnlyOfficeTemplatePage() {
         }),
       });
       
-      const data = await res.json();
+      savingPromiseRef.current = savePromise.then(async (res) => {
+        const data = await res.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || "保存失败");
+        }
+        
+        // 如果是新创建的草稿，更新 templateId 和 URL
+        if (data.data?.id && !templateId) {
+          const newId = data.data.id;
+          setTemplateId(newId);
+          // 使用 window.history.replaceState 更新 URL，避免触发重新渲染
+          const url = new URL(window.location.href);
+          url.searchParams.set('templateId', newId);
+          window.history.replaceState({}, '', url);
+        }
+        
+        if (!silent) {
+          toast.success("保存成功");
+        }
+        
+        return data;
+      });
       
-      if (!data.success) {
-        throw new Error(data.error || "保存失败");
-      }
+      await savingPromiseRef.current;
       
-      // 如果是新创建的草稿，更新 templateId 和 URL
-      if (data.data?.id && !templateId) {
-        const newId = data.data.id;
-        setTemplateId(newId);
-        // 使用 window.history.replaceState 更新 URL，避免触发重新渲染
-        const url = new URL(window.location.href);
-        url.searchParams.set('templateId', newId);
-        window.history.replaceState({}, '', url);
-      }
-      
-      if (!silent) {
-        toast.success("保存成功");
-      }
     } catch (err) {
       console.error("保存失败:", err);
       if (!silent) {
@@ -251,11 +270,15 @@ export default function NewOnlyOfficeTemplatePage() {
       throw err;
     } finally {
       setSavingDraft(false);
+      savingPromiseRef.current = null;
     }
   }, [templateId, name, description, type, baseId, currentStep, selectedVariables, mainFileUrl, mainFileName, attachments]);
   
   // 加载模板数据
   const loadTemplate = async (id: string) => {
+    // 防止重复加载
+    if (loading) return;
+    
     setLoading(true);
     try {
       const res = await fetch(`/api/contract-templates/draft?id=${id}`);
