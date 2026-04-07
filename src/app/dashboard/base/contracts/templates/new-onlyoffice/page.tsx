@@ -157,6 +157,13 @@ export default function NewOnlyOfficeTemplatePage() {
   
   // 附件
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const attachmentsRef = useRef<AttachmentFile[]>([]);
+
+  // 同步 attachments 到 ref
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   
@@ -208,9 +215,10 @@ export default function NewOnlyOfficeTemplatePage() {
     }
     
     setSavingDraft(true);
-    
+
     try {
-      const uploadedAttachments = attachments.filter(a => a.url).map((a, index) => ({
+      // 从 ref 获取最新的附件数据，避免闭包问题
+      const uploadedAttachments = attachmentsRef.current.filter(a => a.url).map((a, index) => ({
         id: a.id,
         name: a.name,
         url: a.url,
@@ -220,8 +228,8 @@ export default function NewOnlyOfficeTemplatePage() {
 
       // 调试日志：检查附件数据
       console.log('📎 前端保存草稿 - 附件数据检查:');
-      console.log('  - attachments 状态:', attachments.length, '个');
-      console.log('  - 有 URL 的附件:', attachments.filter(a => a.url).length, '个');
+      console.log('  - attachmentsRef.current:', attachmentsRef.current.length, '个');
+      console.log('  - 有 URL 的附件:', attachmentsRef.current.filter(a => a.url).length, '个');
       console.log('  - uploadedAttachments 数据:', JSON.stringify(uploadedAttachments, null, 2));
       
       const savePromise = fetch("/api/contract-templates/draft", {
@@ -293,7 +301,7 @@ export default function NewOnlyOfficeTemplatePage() {
       setSavingDraft(false);
       savingPromiseRef.current = null;
     }
-  }, [templateId, name, description, type, baseId, currentStep, selectedVariables, mainFileUrl, mainFileName, attachments]);
+  }, [templateId, name, description, type, baseId, currentStep, selectedVariables, mainFileUrl, mainFileName]);
   
   // 加载模板数据
   const loadTemplate = async (id: string) => {
@@ -468,7 +476,6 @@ export default function NewOnlyOfficeTemplatePage() {
         url.searchParams.set('templateId', newId);
         window.history.replaceState({}, '', url);
         
-        // 更新草稿数据
         const draftRes = await fetch("/api/contract-templates/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -510,6 +517,15 @@ export default function NewOnlyOfficeTemplatePage() {
           console.error('更新模板失败，HTTP状态:', updateRes.status, errorText);
         }
 
+        // 从 ref 获取最新的附件数据
+        const currentAttachments = attachmentsRef.current.filter(a => a.url).map((a, index) => ({
+          id: a.id,
+          name: a.name,
+          url: a.url,
+          fileType: 'docx',
+          order: index,
+        }));
+
         const draftRes = await fetch("/api/contract-templates/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -523,18 +539,12 @@ export default function NewOnlyOfficeTemplatePage() {
             source_file_url: fileUrl,
             source_file_name: fileName,
             source_file_type: data.data.fileType,
-            uploadedAttachments: attachments.filter(a => a.url).map((a, index) => ({
-              id: a.id,
-              name: a.name,
-              url: a.url,
-              fileType: 'docx',
-              order: index,
-            })),
+            uploadedAttachments: currentAttachments,
           }),
         });
         setCurrentStep(2);
       }
-      
+
       toast.success("主文档上传成功");
     } catch (err) {
       console.error("上传失败:", err);
@@ -724,8 +734,8 @@ export default function NewOnlyOfficeTemplatePage() {
     setSaving(true);
     
     try {
-      // 1. 保存附件信息
-      const attachmentsData = attachments.filter(a => a.url).map((a, index) => ({
+      // 1. 保存附件信息 - 从 ref 获取最新的附件数据
+      const currentAttachments = attachmentsRef.current.filter(a => a.url).map((a, index) => ({
         id: a.id,
         name: a.name,
         url: a.url,
@@ -746,7 +756,7 @@ export default function NewOnlyOfficeTemplatePage() {
           base_id: baseId,
           is_default: isDefault,
           status: 'published',
-          attachments: attachmentsData,
+          attachments: currentAttachments,
           source_file_url: mainFileUrl,
           source_file_name: mainFileName,
           source_file_type: 'docx',
