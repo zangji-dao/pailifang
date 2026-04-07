@@ -673,8 +673,6 @@ export default function NewOnlyOfficeTemplatePage() {
         toast.error("请输入模板名称");
         return;
       }
-      // 第1步完成后自动保存草稿
-      await saveDraft(true);
     }
     if (currentStep === 2 && !mainFileUrl) {
       toast.error("请上传主文档");
