@@ -351,29 +351,72 @@ export default function NewOnlyOfficeTemplatePage() {
       }
       
       setMainFile(file);
-      setMainFileUrl(data.url);
-      setMainFileName(file.name);
+      const fileUrl = data.data.fileUrl;
+      const fileName = data.data.fileName;
+      setMainFileUrl(fileUrl);
+      setMainFileName(fileName);
       
-      // 如果是新模板，创建模板记录
+      // 如果是新模板，创建模板记录并更新草稿数据
       if (!templateId) {
-        setTemplateId(data.id || '');
-        // 创建成功后保存草稿
-        if (data.id) {
-          await saveDraft(true);
+        const newId = data.data.templateId || '';
+        setTemplateId(newId);
+        
+        // 更新模板记录的 draft_data
+        if (newId) {
+          await fetch("/api/contract-templates/draft", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: newId,
+              name: name || '未命名模板',
+              description,
+              type,
+              base_id: baseId,
+              currentStep: 2,
+              source_file_url: fileUrl,
+              source_file_name: fileName,
+              source_file_type: data.data.fileType,
+              uploadedAttachments: [],
+            }),
+          });
+          setCurrentStep(2);
         }
       } else {
-        // 更新文件 URL 并保存草稿
+        // 更新现有模板的文件信息并保存草稿
         await fetch("/api/contract-templates", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: templateId,
-            source_file_url: data.url,
-            source_file_name: file.name,
-            source_file_type: 'docx',
+            source_file_url: fileUrl,
+            source_file_name: fileName,
+            source_file_type: data.data.fileType,
           }),
         });
-        await saveDraft(true);
+        
+        await fetch("/api/contract-templates/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: templateId,
+            name: name || '未命名模板',
+            description,
+            type,
+            base_id: baseId,
+            currentStep: 2,
+            source_file_url: fileUrl,
+            source_file_name: fileName,
+            source_file_type: data.data.fileType,
+            uploadedAttachments: attachments.filter(a => a.url).map((a, index) => ({
+              id: a.id,
+              name: a.name,
+              url: a.url,
+              fileType: 'docx',
+              order: index,
+            })),
+          }),
+        });
+        setCurrentStep(2);
       }
       
       toast.success("主文档上传成功");
