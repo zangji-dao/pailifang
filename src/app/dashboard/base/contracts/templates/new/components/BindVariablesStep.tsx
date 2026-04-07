@@ -269,7 +269,11 @@ export function BindVariablesStep({
                 // 键盘导航后保存选区
                 setTimeout(() => onSaveSelection(), 0);
               }}
-              onBlur={onSyncEditedContent}
+              onBlur={() => {
+                // 失去焦点时先保存选区，再同步内容
+                onSaveSelection();
+                onSyncEditedContent();
+              }}
               onKeyDown={(e) => {
                 // 阻止回车键创建新段落（可选）
                 if (e.key === 'Enter' && !e.shiftKey) {

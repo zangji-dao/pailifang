@@ -190,7 +190,9 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-28 h-8"
-          onPointerDown={(e) => {
+          onMouseDown={(e) => {
+            // 阻止默认行为，防止选区被清除
+            e.preventDefault();
             onSaveSelection();
           }}
         >
@@ -214,7 +216,8 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-16 h-8"
-          onPointerDown={(e) => {
+          onMouseDown={(e) => {
+            e.preventDefault();
             onSaveSelection();
           }}
         >
@@ -292,7 +295,8 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-20 h-8"
-          onPointerDown={(e) => {
+          onMouseDown={(e) => {
+            e.preventDefault();
             onSaveSelection();
           }}
         >
@@ -318,7 +322,8 @@ export function EditorToolbar({
       >
         <SelectTrigger 
           className="w-32 h-8"
-          onPointerDown={(e) => {
+          onMouseDown={(e) => {
+            e.preventDefault();
             onSaveSelection();
           }}
         >
