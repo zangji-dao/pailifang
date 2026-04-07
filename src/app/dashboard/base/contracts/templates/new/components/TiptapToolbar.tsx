@@ -140,7 +140,7 @@ export function TiptapToolbar({ editor, onApplyPreset, zoom = 100, onZoomChange 
   const handleZoomReset = () => onZoomChange?.(100)
 
   return (
-    <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
+    <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap" onMouseDown={(e) => e.preventDefault()}>
       {/* 字体选择 */}
       <Select value={currentFont} onValueChange={handleSetFont}>
         <SelectTrigger className="w-28 h-8">

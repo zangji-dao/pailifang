@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb',
     },
   },
+  // 转译有问题的 ES 模块
+  transpilePackages: ['linkifyjs'],
 };
 
 // 禁用 Next.js devtools
