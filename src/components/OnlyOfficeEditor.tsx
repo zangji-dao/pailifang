@@ -128,10 +128,12 @@ export function OnlyOfficeEditor({
   const [loadError, setLoadError] = useState<string | null>(null);
   const scriptLoadedRef = useRef(false);
 
-  // 加载 OnlyOffice JS API
+  // 加载 OnlyOffice JS API (使用本地 SDK，兼容 9.x)
   const loadOnlyOfficeScript = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
-      console.log("[OnlyOffice] 尝试加载脚本 from:", serverUrl);
+      // 使用本地 SDK（已修改为指向云服务器）
+      const localSdkUrl = '/onlyoffice-sdk/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c/web-apps/apps/api/documents/api.js';
+      console.log("[OnlyOffice] 尝试从本地加载 SDK:", localSdkUrl);
       
       // 如果 DocsAPI 已就绪，直接返回
       if (window.DocsAPI && window.DocsAPI.ready) {
@@ -154,10 +156,10 @@ export function OnlyOfficeEditor({
       }
       scriptLoadedRef.current = false;
 
-      // 创建新的脚本标签
+      // 创建新的脚本标签（从本地加载）
       const script = document.createElement("script");
       script.id = "onlyoffice-api-script";
-      script.src = `${serverUrl}/web-apps/apps/api/documents/api.js`;
+      script.src = localSdkUrl;
       script.async = true;
       
       console.log("[OnlyOffice] 创建脚本标签:", script.src);
