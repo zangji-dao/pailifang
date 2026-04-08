@@ -443,7 +443,8 @@ export function OnlyOfficeEditStep({
                 </button>
                 {(['enterprise', 'contract', 'location', 'date', 'custom'] as const).map((cat) => {
                   const count = selectedVariables.filter(v => v.category === cat).length;
-                  if (count === 0) return null;
+                  // 自定义变量标签始终显示，其他类别有变量才显示
+                  if (cat !== 'custom' && count === 0) return null;
                   return (
                     <button
                       key={cat}
@@ -455,6 +456,9 @@ export function OnlyOfficeEditStep({
                       }`}
                     >
                       {VariableCategoryLabels[cat]}
+                      {count > 0 && (
+                        <span className="ml-1 opacity-60">({count})</span>
+                      )}
                     </button>
                   );
                 })}
