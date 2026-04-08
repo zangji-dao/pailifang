@@ -267,15 +267,13 @@ export function OnlyOfficeEditor({
             unit: "cm",
             zoom: 100,
           },
-          // 插件配置 - 加载变量绑定插件
-          plugins: {
-            autostart: ["asc.{8D6E3F7A-1B2C-4D5E-8F9A-0B1C2D3E4F5A}"],
-            pluginsData: [
-              // 插件 manifest URL（需要部署到 OnlyOffice 服务器）
-              // 本地开发时，可以将插件放到 OnlyOffice 的插件目录
-              `${serverUrl}/plugins/variable-binding/manifest.json`,
-            ],
-          },
+          // 插件配置 - 暂时禁用，待插件部署后再启用
+          // plugins: {
+          //   autostart: ["asc.{8D6E3F7A-1B2C-4D5E-8F9A-0B1C2D3E4F5A}"],
+          //   pluginsData: [
+          //     `${serverUrl}/plugins/variable-binding/manifest.json`,
+          //   ],
+          // },
         },
         type: "desktop",
         width: "100%",
