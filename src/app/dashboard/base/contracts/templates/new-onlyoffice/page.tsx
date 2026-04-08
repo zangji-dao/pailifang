@@ -872,9 +872,9 @@ export default function NewOnlyOfficeTemplatePage() {
   }
   
   return (
-    <div className={`flex flex-col ${currentStep === 3 ? 'min-h-0' : 'h-[calc(100vh-80px)]'}`}>
-      {/* 顶部标题和步骤指示器 */}
-      <div className="px-6 py-4 border-b bg-card shrink-0">
+    <div className="flex flex-col min-h-0">
+      {/* 顶部标题和步骤指示器 - 步骤3时sticky */}
+      <div className={`px-6 py-4 border-b bg-card shrink-0 ${currentStep === 3 ? 'sticky top-0 z-20' : ''}`}>
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-xl font-bold">
@@ -906,8 +906,8 @@ export default function NewOnlyOfficeTemplatePage() {
         <StepIndicator currentStep={currentStep} />
       </div>
       
-      {/* 步骤内容 - 步骤3时编辑器使用更大的固定高度，页面可滚动 */}
-      <div className={`flex-1 ${currentStep === 3 ? '' : 'overflow-hidden p-6'}`}>
+      {/* 步骤内容 - 步骤3时允许滚动，其他步骤固定高度 */}
+      <div className={`${currentStep === 3 ? '' : 'h-[calc(100vh-180px)] overflow-hidden p-6'}`}>
         {/* 步骤 1：基本信息 */}
         {currentStep === 1 && (
           <Card className="max-w-2xl mx-auto">
