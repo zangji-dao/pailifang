@@ -271,8 +271,9 @@ export function OnlyOfficeEditor({
             toolbarNoTabs: false,
             unit: "cm",
             zoom: zoomLevel,
-            // 主题设置：theme-light（浅色，默认橙色）或 theme-dark（深色）
+            // 主题设置：theme-light（浅色橙色）、theme-dark（深色）
             // 注意：OnlyOffice 默认的橙色是品牌色，要完全改变需要服务器端配置
+            // 如需自定义品牌色，需要在 OnlyOffice 服务器上修改 /etc/onlyoffice/documentserver/local.json
             uiTheme: "theme-light",
           },
           // 插件配置 - 暂时禁用，待插件部署后再启用
