@@ -38,6 +38,8 @@ import {
   ZoomOut,
   PanelLeft,
   File,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
@@ -99,6 +101,10 @@ interface OnlyOfficeEditStepProps {
   onExportWord?: () => void;
   /** 是否正在保存 */
   saving?: boolean;
+  /** 返回上一步 */
+  onBack?: () => void;
+  /** 进入下一步 */
+  onNext?: () => void;
 }
 
 /**
@@ -121,6 +127,8 @@ export function OnlyOfficeEditStep({
   onSave,
   onExportWord,
   saving = false,
+  onBack,
+  onNext,
 }: OnlyOfficeEditStepProps) {
   // 当前编辑的文档索引（0=主文档，1,2,3...=附件）
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
@@ -293,6 +301,19 @@ export function OnlyOfficeEditStep({
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-4 py-2 border rounded-lg bg-card shrink-0">
         <div className="flex items-center gap-3">
+          {/* 上一步按钮 */}
+          {onBack && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+              className="gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              上一步
+            </Button>
+          )}
+          
           <Button
             variant="ghost"
             size="sm"
@@ -300,8 +321,9 @@ export function OnlyOfficeEditStep({
             className="gap-1"
           >
             <PanelLeft className="h-4 w-4" />
-            {panelCollapsed ? '展开面板' : '收起面板'}
+            {panelCollapsed ? '展开' : '收起'}
           </Button>
+          
           <div className="flex items-center gap-2 text-muted-foreground">
             <FileText className="h-4 w-4" />
             <span className="text-sm">{currentDocument?.name}</span>
@@ -345,6 +367,19 @@ export function OnlyOfficeEditStep({
             )}
             保存
           </Button>
+          
+          {/* 下一步按钮 */}
+          {onNext && (
+            <Button
+              size="sm"
+              onClick={onNext}
+              disabled={!isEditorReady}
+              className="gap-1"
+            >
+              下一步
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
       

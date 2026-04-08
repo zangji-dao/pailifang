@@ -1161,6 +1161,8 @@ export default function NewOnlyOfficeTemplatePage() {
             selectedVariables={selectedVariables}
             onSave={handleSaveDocument}
             saving={saving}
+            onBack={() => setCurrentStep(2)}
+            onNext={() => setCurrentStep(4)}
           />
         )}
         
@@ -1215,52 +1217,54 @@ export default function NewOnlyOfficeTemplatePage() {
         )}
       </div>
       
-      {/* 步骤导航 */}
-      <div className="flex justify-between items-center mt-6 pt-6 border-t">
-        <Button
-          variant="outline"
-          onClick={handlePrev}
-          disabled={currentStep === 1}
-        >
-          上一步
-        </Button>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              onClick={handleSaveDraftClick}
-              disabled={savingDraft}
-            >
-              {savingDraft ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  保存中...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  保存
-                </>
-              )}
-            </Button>
+      {/* 步骤导航 - 步骤3时隐藏，导航已集成到编辑器顶部 */}
+      {currentStep !== 3 && (
+        <div className="flex justify-between items-center mt-6 pt-6 border-t">
+          <Button
+            variant="outline"
+            onClick={handlePrev}
+            disabled={currentStep === 1}
+          >
+            上一步
+          </Button>
             
-            <Button
-              onClick={handleNext}
-              disabled={uploading || saving || attachments.some(a => a.uploading) || savingDraft}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  保存中...
-                </>
-              ) : currentStep === 4 ? (
-                "完成"
-              ) : (
-                "下一步"
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={handleSaveDraftClick}
+                disabled={savingDraft}
+              >
+                {savingDraft ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    保存
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={handleNext}
+                disabled={uploading || saving || attachments.some(a => a.uploading) || savingDraft}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    保存中...
+                  </>
+                ) : currentStep === 4 ? (
+                  "完成"
+                ) : (
+                  "下一步"
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+      )}
     </div>
   );
 }
