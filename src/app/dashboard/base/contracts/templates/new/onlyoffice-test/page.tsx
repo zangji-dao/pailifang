@@ -4,14 +4,14 @@
  */
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, ExternalLink, ArrowLeft } from "lucide-react";
+import { AlertCircle, CheckCircle, ExternalLink, Loader2 } from "lucide-react";
 
 interface EditorConfig {
   document: {
@@ -55,7 +55,6 @@ export default function OnlyOfficeTestPage() {
   const [serverUrl, setServerUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
 
   // 获取编辑器配置
   const handleGetConfig = useCallback(async () => {
@@ -80,7 +79,6 @@ export default function OnlyOfficeTestPage() {
 
       setEditorConfig(data.config);
       setServerUrl(data.serverUrl);
-      setShowEditor(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "获取配置失败");
     } finally {
@@ -120,112 +118,61 @@ export default function OnlyOfficeTestPage() {
     }
   }, [config.documentId]);
 
-  // 全屏编辑模式
-  if (showEditor && editorConfig) {
-    return (
-      <div className="fixed inset-0 z-40 bg-background flex flex-col">
-        {/* 顶部工具栏 */}
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-background">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowEditor(false)}
-              className="gap-1"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              返回配置
-            </Button>
-            <span className="text-sm font-medium">{config.title}</span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(JSON.stringify(editorConfig, null, 2));
-            }}
-          >
-            复制配置
-          </Button>
-        </div>
-        
-        {/* 编辑器 */}
-        <div className="flex-1">
-          <OnlyOfficeEditor
-            documentId={config.documentId}
-            title={config.title}
-            documentUrl={config.documentUrl}
-            fileType={config.fileType}
-            callbackUrl={editorConfig.editorConfig.callbackUrl}
-            serverUrl={serverUrl}
-            token={editorConfig.token}
-            onReady={() => console.log("Editor ready")}
-            onError={(err) => {
-              setError(err.message);
-              setShowEditor(false);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="space-y-4">
+      {/* 标题 */}
       <div>
         <h1 className="text-2xl font-bold">OnlyOffice 编辑器测试</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           测试 OnlyOffice Document Server 集成
         </p>
       </div>
-
-      {/* 配置卡片 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>编辑器配置</CardTitle>
-          <CardDescription>
-            配置 OnlyOffice 编辑器参数
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="documentId">文档 ID</Label>
-              <Input
-                id="documentId"
-                value={config.documentId}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, documentId: e.target.value }))
-                }
-                placeholder="test-doc-001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="title">文档标题</Label>
-              <Input
-                id="title"
-                value={config.title}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, title: e.target.value }))
-                }
-                placeholder="合同模板.docx"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="documentUrl">文档 URL</Label>
-            <div className="flex gap-2">
-              <Input
-                id="documentUrl"
-                value={config.documentUrl}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, documentUrl: e.target.value }))
-                }
-                placeholder="OnlyOffice 服务可访问的文档 URL"
-                className="flex-1"
-              />
-              <div className="flex items-center">
+      
+      <div className="flex gap-4 h-[calc(100vh-160px)]">
+        {/* 左侧：配置面板 */}
+        <div className="w-72 shrink-0 space-y-4 overflow-y-auto">
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">编辑器配置</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="documentId" className="text-xs">文档 ID</Label>
+                <Input
+                  id="documentId"
+                  value={config.documentId}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, documentId: e.target.value }))
+                  }
+                  placeholder="test-doc-001"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="title" className="text-xs">文档标题</Label>
+                <Input
+                  id="title"
+                  value={config.title}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  placeholder="合同模板.docx"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="documentUrl" className="text-xs">文档 URL</Label>
+                <Input
+                  id="documentUrl"
+                  value={config.documentUrl}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, documentUrl: e.target.value }))
+                  }
+                  placeholder="文档 URL"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
                 <input
                   type="file"
                   id="file-upload"
@@ -238,136 +185,101 @@ export default function OnlyOfficeTestPage() {
                 />
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => document.getElementById("file-upload")?.click()}
                   disabled={isLoading}
+                  className="flex-1"
                 >
                   上传文件
                 </Button>
               </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              输入 OnlyOffice 服务可以访问的文档 URL，或上传本地文件
-            </p>
-          </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+              {error && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                size="sm"
+                onClick={handleGetConfig}
+                disabled={isLoading || !config.documentUrl}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    加载中...
+                  </>
+                ) : (
+                  "加载编辑器"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* 状态信息 */}
+          {editorConfig && (
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  配置已生成
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">服务地址：</span>
+                  <p className="font-mono break-all">{serverUrl}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">JWT：</span>
+                  <span>{editorConfig.token ? `已生成 (${editorConfig.token.length}字符)` : "未生成"}</span>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          <Button
-            onClick={handleGetConfig}
-            disabled={isLoading || !config.documentUrl}
-          >
-            {isLoading ? "加载中..." : "生成配置并加载编辑器"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* 部署状态提示 */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>重要：</strong>使用前请确保已部署 OnlyOffice Document Server。
-          请参考{" "}
-          <a
-            href="/docs/ONLYOFFICE_DEPLOYMENT.md"
-            target="_blank"
-            className="underline inline-flex items-center gap-1"
-          >
-            部署文档
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </AlertDescription>
-      </Alert>
-
-      {/* 编辑器配置预览 */}
-      {editorConfig && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              编辑器配置已生成
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm text-muted-foreground">
-                  OnlyOffice 服务地址
-                </Label>
-                <p className="font-mono text-sm mt-1">
-                  {serverUrl}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">
-                  JWT Token
-                </Label>
-                <p className="font-mono text-xs mt-1 break-all">
-                  {editorConfig.token ? "已生成 (长度: " + editorConfig.token.length + ")" : "未生成"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">
-                  编辑器配置（JSON）
-                </Label>
-                <pre className="mt-2 p-4 bg-muted rounded-lg overflow-auto text-xs">
-                  {JSON.stringify(editorConfig, null, 2)}
-                </pre>
+          <Alert className="py-3">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              <strong>提示：</strong>确保 OnlyOffice 已部署。
+              <a
+                href="/docs/ONLYOFFICE_DEPLOYMENT.md"
+                target="_blank"
+                className="underline ml-1"
+              >
+                查看文档
+                <ExternalLink className="h-3 w-3 inline ml-0.5" />
+              </a>
+            </AlertDescription>
+          </Alert>
+        </div>
+        
+        {/* 右侧：编辑器 */}
+        <div className="flex-1 border rounded-lg overflow-hidden bg-muted/20">
+          {editorConfig ? (
+            <OnlyOfficeEditor
+              documentId={config.documentId}
+              title={config.title}
+              documentUrl={config.documentUrl}
+              fileType={config.fileType}
+              callbackUrl={editorConfig.editorConfig.callbackUrl}
+              serverUrl={serverUrl}
+              token={editorConfig.token}
+              onReady={() => console.log("Editor ready")}
+              onError={(err) => setError(err.message)}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <p className="text-sm">请先配置文档 URL 并点击「加载编辑器」</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 编辑器区域 */}
-      {editorConfig && (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="h-[600px]">
-              <OnlyOfficeEditor
-                documentId={config.documentId}
-                title={config.title}
-                documentUrl={config.documentUrl}
-                fileType={config.fileType}
-                callbackUrl={editorConfig.editorConfig.callbackUrl}
-                serverUrl={serverUrl}
-                token={editorConfig.token}
-                onReady={() => console.log("Editor ready")}
-                onError={(err) => setError(err.message)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 使用说明 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>使用说明</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>确保 OnlyOffice Document Server 已部署并运行</li>
-            <li>设置环境变量 ONLYOFFICE_URL 指向服务器地址</li>
-            <li>如果启用了 JWT，设置 ONLYOFFICE_JWT_SECRET</li>
-            <li>上传一个 .docx 文件或输入文档 URL</li>
-            <li>点击"生成配置并加载编辑器"</li>
-          </ol>
-
-          <div className="border-t pt-4">
-            <h4 className="font-medium mb-2">环境变量示例：</h4>
-            <pre className="p-4 bg-muted rounded-lg text-xs">
-              {`ONLYOFFICE_URL=http://localhost:8080
-ONLYOFFICE_JWT_ENABLED=true
-ONLYOFFICE_JWT_SECRET=your_secret_key`}
-            </pre>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

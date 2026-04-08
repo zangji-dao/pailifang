@@ -28,16 +28,12 @@ import {
 } from "@/components/ui/select";
 import { 
   Save, 
-  Download, 
   Plus, 
   Search,
   FileText,
   Loader2,
-  ExternalLink,
   Info,
   Variable,
-  PanelRightClose,
-  PanelRightOpen,
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
@@ -45,7 +41,6 @@ import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
 import type { TemplateVariable, VariableCategory } from "@/types/template-variable";
 import { PresetVariables, VariableCategoryLabels } from "@/types/template-variable";
-import { cn } from "@/lib/utils";
 
 // OnlyOffice 配置接口
 interface OnlyOfficeConfig {
@@ -129,7 +124,6 @@ export function OnlyOfficeEditStep({
   } | null>(null);
   
   // 变量面板状态
-  const [showVariablePanel, setShowVariablePanel] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -260,158 +254,62 @@ export function OnlyOfficeEditStep({
   };
 
   return (
-    <div className="relative h-screen">
-      {/* 主编辑区域 - 全宽 */}
-      <div className={cn(
-        "absolute inset-0 transition-all duration-300",
-        showVariablePanel && "mr-80"
-      )}>
-        <Card className="h-full overflow-hidden flex flex-col border-0 shadow-none rounded-none">
-          {/* 顶部工具栏 */}
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex items-center gap-3">
-              {onBack && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onBack}
-                  className="gap-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  返回
-                </Button>
-              )}
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{documentTitle}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowVariablePanel(!showVariablePanel)}
-                className="gap-1"
-              >
-                {showVariablePanel ? (
-                  <>
-                    <PanelRightClose className="h-4 w-4" />
-                    隐藏变量
-                  </>
-                ) : (
-                  <>
-                    <PanelRightOpen className="h-4 w-4" />
-                    显示变量
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSave}
-                disabled={saving || !isEditorReady}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                ) : (
-                  <Save className="h-4 w-4 mr-1" />
-                )}
-                保存
-              </Button>
-              {onExportWord && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onExportWord}
-                  disabled={!isEditorReady}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  导出
-                </Button>
-              )}
-              {onNext && (
-                <Button
-                  size="sm"
-                  onClick={onNext}
-                  disabled={!isEditorReady}
-                  className="gap-1"
-                >
-                  继续
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+    <div className="flex flex-col h-[calc(100vh-120px)]">
+      {/* 顶部工具栏 */}
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-card shrink-0">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              返回
+            </Button>
+          )}
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{documentTitle}</span>
           </div>
-          
-          {/* 编辑器内容区 */}
-          <div className="flex-1 relative">
-            {/* 错误提示 */}
-            {editorError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/95 z-20">
-                <Card className="max-w-md">
-                  <CardHeader>
-                    <CardTitle className="text-destructive">编辑器加载失败</CardTitle>
-                    <CardDescription>{editorError}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-                      <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                      <div className="text-sm text-muted-foreground">
-                        <p className="font-medium mb-1">请确保：</p>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li>OnlyOffice 服务已部署并运行</li>
-                          <li>环境变量 ONLYOFFICE_URL 已正确配置</li>
-                          <li>文档 URL 可被 OnlyOffice 访问</li>
-                        </ol>
-                      </div>
-                    </div>
-                    <Button onClick={fetchEditorConfig} className="w-full">
-                      重试
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || !isEditorReady}
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Save className="h-4 w-4 mr-1" />
             )}
-            
-            {/* OnlyOffice 编辑器 */}
-            {editorConfig && (
-              <OnlyOfficeEditor
-                documentId={templateId}
-                title={documentTitle}
-                documentUrl={documentUrl}
-                serverUrl={editorConfig.serverUrl}
-                callbackUrl={editorConfig.config.editorConfig.callbackUrl}
-                onReady={() => setIsEditorReady(true)}
-                onError={(err) => {
-                  setEditorError(err.message);
-                  setIsEditorReady(false);
-                }}
-                variables={selectedVariables}
-              />
-            )}
-            
-            {/* 未加载提示 */}
-            {!editorConfig && !editorError && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">正在加载编辑器...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
+            保存
+          </Button>
+          {onNext && (
+            <Button
+              size="sm"
+              onClick={onNext}
+              disabled={!isEditorReady}
+              className="gap-1"
+            >
+              下一步
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
-
-      {/* 右侧变量面板 - 滑动抽屉 */}
-      <div className={cn(
-        "absolute top-0 right-0 bottom-0 w-80 border-l bg-background shadow-lg transition-transform duration-300 z-10",
-        showVariablePanel ? "translate-x-0" : "translate-x-full"
-      )}>
-        <div className="flex flex-col h-full">
-          {/* 面板标题 */}
-          <div className="flex items-center justify-between px-4 py-3 border-b">
+      
+      {/* 主体区域：左侧变量面板 + 右侧编辑器 */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 左侧变量面板 */}
+        <div className="w-64 border-r bg-card shrink-0 flex flex-col">
+          <div className="px-3 py-2 border-b flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <Variable className="h-4 w-4" />
-              <span className="font-medium text-sm">变量列表</span>
+              <span className="font-medium text-sm">变量</span>
               <Badge variant="secondary" className="text-xs">
                 {selectedVariables.length}
               </Badge>
@@ -420,96 +318,131 @@ export function OnlyOfficeEditStep({
               variant="ghost"
               size="sm"
               onClick={() => setShowAddDialog(true)}
-              className="h-7"
+              className="h-6 w-6 p-0"
             >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              添加
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
           
-          {/* 搜索和筛选 */}
-          <div className="px-3 py-2 border-b space-y-2">
+          {/* 搜索 */}
+          <div className="px-2 py-2 border-b shrink-0">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="搜索变量..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-8 text-sm"
+                className="pl-7 h-8 text-sm"
               />
             </div>
-            <Select
-              value={activeCategory}
-              onValueChange={(value) => setActiveCategory(value as VariableCategory | 'all')}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="选择类别" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部类别</SelectItem>
-                {Object.entries(VariableCategoryLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           
           {/* 变量列表 */}
           <ScrollArea className="flex-1">
-            <div className="p-3 space-y-3">
+            <div className="p-2 space-y-2">
               {Object.entries(groupedVariables).map(([category, variables]) => (
                 <div key={category}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {VariableCategoryLabels[category as VariableCategory] || category}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      ({variables.length})
-                    </span>
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    {VariableCategoryLabels[category as VariableCategory] || category} ({variables.length})
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {variables.map((variable) => (
-                      <div
+                      <button
                         key={variable.id}
-                        className="flex items-center justify-between p-2 rounded border hover:bg-muted/50 cursor-pointer group"
-                        title="点击复制变量标识符"
+                        className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
                         onClick={() => {
+                          // 复制变量标识符
                           navigator.clipboard.writeText(`{{${variable.key}}}`);
-                          toast.success(`已复制: {{${variable.key}}}`);
+                          toast.success(`已复制 {{${variable.key}}}，请在编辑器中粘贴`);
                         }}
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">
-                            {variable.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground font-mono">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{variable.name}</div>
+                          <div className="text-xs text-muted-foreground font-mono truncate">
                             {`{{${variable.key}}}`}
                           </div>
                         </div>
-                      </div>
+                        <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                          点击复制
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
               ))}
               
               {filteredVariables.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  {searchTerm || activeCategory !== 'all' 
-                    ? "没有找到匹配的变量" 
-                    : "暂无变量，点击上方按钮添加"}
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  {searchTerm ? "没有匹配的变量" : "暂无变量"}
                 </div>
               )}
             </div>
           </ScrollArea>
           
-          {/* 底部提示 */}
-          <div className="px-3 py-2 border-t bg-muted/30">
-            <p className="text-xs text-muted-foreground">
-              点击变量可复制标识符，在编辑器中粘贴使用
+          {/* 使用提示 */}
+          <div className="p-2 border-t bg-muted/30 shrink-0">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              点击变量复制标识符，在编辑器中粘贴使用。格式：<code className="bg-muted px-1 rounded">{'{{变量名}}'}</code>
             </p>
           </div>
+        </div>
+        
+        {/* 右侧编辑器 */}
+        <div className="flex-1 relative bg-muted/20">
+          {/* 错误提示 */}
+          {editorError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/95 z-20">
+              <Card className="max-w-md">
+                <CardHeader>
+                  <CardTitle className="text-destructive">编辑器加载失败</CardTitle>
+                  <CardDescription>{editorError}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+                    <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium mb-1">请确保：</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        <li>OnlyOffice 服务已部署并运行</li>
+                        <li>环境变量 ONLYOFFICE_URL 已正确配置</li>
+                        <li>文档 URL 可被 OnlyOffice 访问</li>
+                      </ol>
+                    </div>
+                  </div>
+                  <Button onClick={fetchEditorConfig} className="w-full">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
+          {/* OnlyOffice 编辑器 */}
+          {editorConfig && (
+            <OnlyOfficeEditor
+              documentId={templateId}
+              title={documentTitle}
+              documentUrl={documentUrl}
+              serverUrl={editorConfig.serverUrl}
+              callbackUrl={editorConfig.config.editorConfig.callbackUrl}
+              onReady={() => setIsEditorReady(true)}
+              onError={(err) => {
+                setEditorError(err.message);
+                setIsEditorReady(false);
+              }}
+              variables={selectedVariables}
+            />
+          )}
+          
+          {/* 未加载提示 */}
+          {!editorConfig && !editorError && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">正在加载编辑器...</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

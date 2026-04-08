@@ -871,26 +871,8 @@ export default function NewOnlyOfficeTemplatePage() {
     );
   }
   
-  // 步骤 3：OnlyOffice 编辑 - 全屏模式
-  if (currentStep === 3 && mainFileUrl) {
-    return (
-      <div className="fixed inset-0 z-40 bg-background">
-        <OnlyOfficeEditStep
-          templateId={templateId}
-          documentUrl={mainFileUrl}
-          documentTitle={mainFileName}
-          selectedVariables={selectedVariables}
-          onSave={handleSaveDocument}
-          saving={saving}
-          onBack={() => setCurrentStep(2)}
-          onNext={() => setCurrentStep(4)}
-        />
-      </div>
-    );
-  }
-  
   return (
-    <div className="container mx-auto py-6 max-w-6xl">
+    <div className="container mx-auto py-4 max-w-7xl">
       {/* 标题 */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold">
