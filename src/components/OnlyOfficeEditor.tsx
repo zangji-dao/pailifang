@@ -267,7 +267,7 @@ export function OnlyOfficeEditor({
             hideRulers: false,
             reviewDisplay: "markup",
             showReviewChanges: false,
-            spellcheck: true,
+            spellcheck: false,
             toolbarNoTabs: false,
             unit: "cm",
             zoom: zoomLevel,
