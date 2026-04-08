@@ -871,42 +871,46 @@ export default function NewOnlyOfficeTemplatePage() {
     );
   }
   
-  // 步骤 3：编辑文档 - 特殊布局（最大化编辑空间）
-  if (currentStep === 3 && mainFileUrl) {
-    return (
-      <OnlyOfficeEditStep
-        templateId={templateId}
-        documentUrl={mainFileUrl}
-        documentTitle={mainFileName}
-        selectedVariables={selectedVariables}
-        onSave={handleSaveDocument}
-        saving={saving}
-        onBack={() => setCurrentStep(2)}
-        onNext={() => setCurrentStep(4)}
-      />
-    );
-  }
-  
   return (
-    <div className="container mx-auto py-4 max-w-7xl">
-      {/* 标题 */}
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold">
-          {templateId ? '编辑合同模板' : '创建合同模板'}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          基于 OnlyOffice 的合同模板编辑，支持原生 Word 格式
-        </p>
+    <div className="flex flex-col h-[calc(100vh-80px)]">
+      {/* 顶部标题和步骤指示器 */}
+      <div className="px-6 py-4 border-b bg-card shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-xl font-bold">
+              {templateId ? '编辑合同模板' : '创建合同模板'}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              基于 OnlyOffice 的合同模板编辑
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSaveDraftClick}
+            disabled={savingDraft}
+          >
+            {savingDraft ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                保存草稿
+              </>
+            )}
+          </Button>
+        </div>
+        <StepIndicator currentStep={currentStep} />
       </div>
       
-      {/* 步骤指示器 */}
-      <StepIndicator currentStep={currentStep} />
-      
-      {/* 步骤内容 */}
-      <div className="mt-6">
+      {/* 步骤内容 - 填充剩余空间 */}
+      <div className="flex-1 overflow-hidden p-6">
         {/* 步骤 1：基本信息 */}
         {currentStep === 1 && (
-          <Card>
+          <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
               <CardDescription>填写模板的基本信息</CardDescription>
@@ -1152,12 +1156,14 @@ export default function NewOnlyOfficeTemplatePage() {
             selectedVariables={selectedVariables}
             onSave={handleSaveDocument}
             saving={saving}
+            onBack={() => setCurrentStep(2)}
+            onNext={() => setCurrentStep(4)}
           />
         )}
         
         {/* 步骤 4：完成 */}
         {currentStep === 4 && (
-          <Card>
+          <Card className="max-w-xl mx-auto">
             <CardHeader>
               <CardTitle>确认信息</CardTitle>
               <CardDescription>检查模板信息并完成创建</CardDescription>
@@ -1206,52 +1212,54 @@ export default function NewOnlyOfficeTemplatePage() {
         )}
       </div>
       
-      {/* 步骤导航 */}
-      <div className="flex justify-between items-center mt-6 pt-6 border-t">
-        <Button
-          variant="outline"
-          onClick={handlePrev}
-          disabled={currentStep === 1}
-        >
-          上一步
-        </Button>
-        
-        <div className="flex items-center gap-2">
+      {/* 步骤导航 - 步骤3时隐藏，因为OnlyOfficeEditStep自带导航 */}
+      {currentStep !== 3 && (
+        <div className="flex justify-between items-center mt-6 pt-6 border-t">
           <Button
-            variant="ghost"
-            onClick={handleSaveDraftClick}
-            disabled={savingDraft}
+            variant="outline"
+            onClick={handlePrev}
+            disabled={currentStep === 1}
           >
-            {savingDraft ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                保存中...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                保存
-              </>
-            )}
+            上一步
           </Button>
           
-          <Button
-            onClick={handleNext}
-            disabled={uploading || saving || attachments.some(a => a.uploading) || savingDraft}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                保存中...
-              </>
-            ) : currentStep === 4 ? (
-              "完成"
-            ) : (
-              "下一步"
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={handleSaveDraftClick}
+              disabled={savingDraft}
+            >
+              {savingDraft ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  保存中...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  保存
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={handleNext}
+              disabled={uploading || saving || attachments.some(a => a.uploading) || savingDraft}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  保存中...
+                </>
+              ) : currentStep === 4 ? (
+                "完成"
+              ) : (
+                "下一步"
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
