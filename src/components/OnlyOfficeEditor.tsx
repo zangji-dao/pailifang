@@ -55,6 +55,8 @@ interface EditorConfig {
       toolbarNoTabs: boolean;
       unit: string;
       zoom: number;
+      uiTheme?: "theme-light" | "theme-dark" | "theme-contrast-dark";
+      [key: string]: unknown;
     };
     plugins?: {
       autostart?: string[];
@@ -266,6 +268,9 @@ export function OnlyOfficeEditor({
             toolbarNoTabs: false,
             unit: "cm",
             zoom: 100,
+            // 主题设置：theme-light（浅色，默认橙色）或 theme-dark（深色）
+            // 注意：OnlyOffice 默认的橙色是品牌色，要完全改变需要服务器端配置
+            uiTheme: "theme-light",
           },
           // 插件配置 - 暂时禁用，待插件部署后再启用
           // plugins: {

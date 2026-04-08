@@ -871,14 +871,30 @@ export default function NewOnlyOfficeTemplatePage() {
     );
   }
   
+  // 步骤 3：编辑文档 - 特殊布局（最大化编辑空间）
+  if (currentStep === 3 && mainFileUrl) {
+    return (
+      <OnlyOfficeEditStep
+        templateId={templateId}
+        documentUrl={mainFileUrl}
+        documentTitle={mainFileName}
+        selectedVariables={selectedVariables}
+        onSave={handleSaveDocument}
+        saving={saving}
+        onBack={() => setCurrentStep(2)}
+        onNext={() => setCurrentStep(4)}
+      />
+    );
+  }
+  
   return (
     <div className="container mx-auto py-4 max-w-7xl">
       {/* 标题 */}
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold">
           {templateId ? '编辑合同模板' : '创建合同模板'}
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           基于 OnlyOffice 的合同模板编辑，支持原生 Word 格式
         </p>
       </div>
