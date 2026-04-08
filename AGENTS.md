@@ -287,6 +287,21 @@ OnlyOffice 插件用于在文档中插入变量标记：
 - 使用内容控件（Content Controls）标记变量位置
 - 支持系统变量和自定义变量
 - 插件部署路径：`/var/www/onlyoffice/documentserver/sdkjs-plugins/variable-binding/`
+
+### SDK 重定向机制
+
+由于沙箱环境无法直接访问 OnlyOffice 云服务器，SDK 使用重定向机制：
+
+1. **本地 SDK**：将 OnlyOffice SDK (`public/onlyoffice-sdk/`) 部署到沙箱
+2. **云服务器**：OnlyOffice Document Server 部署在云服务器，通过 Cloudflare Tunnel 提供 HTTPS 访问
+3. **重定向逻辑**：修改 SDK 的 `extendAppPath` 函数，将本地 SDK 请求重定向到云服务器
+
+**修改的 SDK 文件**：
+```
+public/onlyoffice-sdk/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c/web-apps/apps/api/documents/api.js
+```
+
+**云服务器地址**：`https://journal-bowl-novelty-worthy.trycloudflare.com`
 - 查看签章区域匹配结果
 
 **调试模式导出**：

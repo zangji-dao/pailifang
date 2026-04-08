@@ -135,9 +135,9 @@ export function OnlyOfficeEditor({
       const localSdkUrl = '/onlyoffice-sdk/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c/web-apps/apps/api/documents/api.js';
       console.log("[OnlyOffice] 尝试从本地加载 SDK:", localSdkUrl);
       
-      // 如果 DocsAPI 已就绪，直接返回
-      if (window.DocsAPI && window.DocsAPI.ready) {
-        console.log("[OnlyOffice] DocsAPI 已存在且就绪");
+      // 如果 DocsAPI 已存在，直接返回（9.x 不需要 ready 检查）
+      if (window.DocsAPI) {
+        console.log("[OnlyOffice] DocsAPI 已存在");
         scriptLoadedRef.current = true;
         resolve();
         return;
@@ -167,33 +167,17 @@ export function OnlyOfficeEditor({
       script.onload = () => {
         console.log("[OnlyOffice] 脚本 onload 触发");
         console.log("[OnlyOffice] window.DocsAPI:", window.DocsAPI);
-        console.log("[OnlyOffice] window.DocsAPI?.ready:", window.DocsAPI?.ready);
         console.log("[OnlyOffice] window.DocsAPI 完整对象:", JSON.stringify(Object.keys(window.DocsAPI || {})));
         
-        // 等待 DocsAPI 初始化
-        let attempts = 0;
-        const maxAttempts = 50;
-        
-        const checkReady = setInterval(() => {
-          attempts++;
-          console.log("[OnlyOffice] 检查 DocsAPI:", {
-            exists: !!window.DocsAPI,
-            ready: window.DocsAPI?.ready,
-            keys: window.DocsAPI ? Object.keys(window.DocsAPI) : []
-          });
-          
-          if (window.DocsAPI && window.DocsAPI.ready) {
-            clearInterval(checkReady);
-            scriptLoadedRef.current = true;
-            console.log("[OnlyOffice] DocsAPI 初始化完成");
-            resolve();
-          } else if (attempts >= maxAttempts) {
-            clearInterval(checkReady);
-            console.error("[OnlyOffice] DocsAPI 初始化超时");
-            console.error("[OnlyOffice] 最终 DocsAPI 状态:", window.DocsAPI);
-            reject(new Error("OnlyOffice API 初始化超时"));
-          }
-        }, 200);
+        // OnlyOffice 9.x: api.js 加载完成即可使用，不需要 ready 检查
+        if (window.DocsAPI && window.DocsAPI.DocEditor) {
+          scriptLoadedRef.current = true;
+          console.log("[OnlyOffice] DocsAPI 加载完成");
+          resolve();
+        } else {
+          console.error("[OnlyOffice] DocsAPI.DocEditor 不存在");
+          reject(new Error("OnlyOffice API 加载失败"));
+        }
       };
 
       script.onerror = (e) => {
@@ -210,10 +194,25 @@ export function OnlyOfficeEditor({
   const initEditor = useCallback(async () => {
     console.log("[OnlyOffice] initEditor 被调用");
     console.log("[OnlyOffice] 参数:", { documentId, title, documentUrl, callbackUrl, serverUrl });
-    
+
+    // 检查容器是否存在
     if (!containerRef.current) {
-      console.log("[OnlyOffice] containerRef.current 为空");
-      return;
+      console.log("[OnlyOffice] containerRef.current 为空，等待挂载...");
+      // 延迟等待容器挂载
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!containerRef.current) {
+        console.error("[OnlyOffice] 容器仍未挂载");
+        return;
+      }
+    }
+
+    // 清空容器，确保 OnlyOffice 可以正确插入 iframe
+    const containerId = `onlyoffice-editor-${documentId}`;
+    containerRef.current.innerHTML = '';
+    
+    // 验证容器 ID
+    if (containerRef.current.id !== containerId) {
+      containerRef.current.id = containerId;
     }
 
     try {
@@ -291,14 +290,13 @@ export function OnlyOfficeEditor({
       // 销毁旧编辑器
       if (editorRef.current) {
         editorRef.current.destroyEditor();
+        editorRef.current = null;
       }
 
       // 创建新编辑器
-      console.log("[OnlyOffice] 创建 DocEditor，containerId:", containerRef.current.id);
-      editorRef.current = new window.DocsAPI.DocEditor(
-        containerRef.current.id,
-        config
-      );
+      console.log("[OnlyOffice] 创建 DocEditor，containerId:", containerId);
+      const editorInstance = new window.DocsAPI.DocEditor(containerId, config);
+      editorRef.current = editorInstance;
       console.log("[OnlyOffice] DocEditor 创建完成");
 
       setIsLoading(false);
@@ -352,7 +350,14 @@ export function OnlyOfficeEditor({
 
   return (
     <div className="relative w-full h-full">
-      {/* 加载状态 */}
+      {/* OnlyOffice 容器 - 必须是干净的容器 */}
+      <div
+        ref={containerRef}
+        id={`onlyoffice-editor-${documentId}`}
+        className="w-full h-full"
+      />
+      
+      {/* 加载状态 overlay */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
           <div className="flex flex-col items-center gap-4">
@@ -362,7 +367,7 @@ export function OnlyOfficeEditor({
         </div>
       )}
 
-      {/* 错误状态 */}
+      {/* 错误状态 overlay */}
       {loadError && (
         <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
           <Card className="max-w-md">
@@ -378,13 +383,6 @@ export function OnlyOfficeEditor({
           </Card>
         </div>
       )}
-
-      {/* OnlyOffice 容器 */}
-      <div
-        ref={containerRef}
-        id={`onlyoffice-editor-${documentId}`}
-        className="w-full h-full"
-      />
     </div>
   );
 }

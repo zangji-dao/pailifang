@@ -1307,16 +1307,25 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
         return dest;
     }
 
-    function extendAppPath(config,  path) {
+    function extendAppPath(config, path) {
         // 使用云服务器地址（沙箱 SDK 修改版）
         const CLOUD_SERVER = 'https://journal-bowl-novelty-worthy.trycloudflare.com';
         const ver = '/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c';
-        if ( !config.isLocalFile ) {
-            if ( ver.lastIndexOf('{{') < 0 && path.indexOf(ver) < 0 ) {
-                // 返回云服务器地址 + 版本目录 + 剩余路径
-                const webAppsPos = path.indexOf('/web-apps');
-                if ( webAppsPos > 0 )
-                    return CLOUD_SERVER + ver + path.substring(webAppsPos);
+        const LOCAL_SDK_PATH = '/onlyoffice-sdk/';
+        
+        // 检查是否是本地 SDK 路径（包含 /onlyoffice-sdk/）
+        if (path.indexOf(LOCAL_SDK_PATH) >= 0) {
+            // 无论 isLocalFile 是什么，都重定向本地 SDK 请求到云服务器
+            const webAppsPos = path.indexOf('/web-apps');
+            if (webAppsPos > 0) {
+                return CLOUD_SERVER + ver + path.substring(webAppsPos);
+            }
+        }
+        // 原始逻辑：处理不带版本号的路径
+        if (ver.lastIndexOf('{{') < 0 && path.indexOf(ver) < 0) {
+            const webAppsPos = path.indexOf('/web-apps');
+            if (webAppsPos > 0) {
+                return CLOUD_SERVER + ver + path.substring(webAppsPos);
             }
         }
         return path;
