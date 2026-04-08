@@ -135,12 +135,12 @@ export async function POST(request: NextRequest) {
     };
 
     // 如果启用了 JWT，生成 token
-    // OnlyOffice JWT payload 只接受特定的字段
+    // OnlyOffice JWT payload 格式参考官方文档
     if (JWT_ENABLED && JWT_SECRET) {
       const tokenPayload = {
         document: config.document,
+        documentType: config.documentType,
         editorConfig: config.editorConfig,
-        documentServerUrl: ONLYOFFICE_URL,
       };
       config.token = jwt.sign(tokenPayload, JWT_SECRET, { algorithm: "HS256" });
     }
