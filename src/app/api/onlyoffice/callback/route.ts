@@ -49,14 +49,41 @@ export async function POST(request: NextRequest) {
 
     // 如果启用了 JWT，验证 token
     if (JWT_ENABLED && JWT_SECRET) {
-      const authHeader = request.headers.get("Authorization");
-      if (!authHeader?.startsWith("Bearer ")) {
+      // OnlyOffice 可能从 Authorization header 或 body.token 发送 token
+      const authHeader = request.headers.get("authorization");
+      let token: string | undefined;
+      
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      } else {
+        // 从 body 中获取 token
+        const bodyText = await request.text();
+        const bodyJson = JSON.parse(bodyText);
+        token = bodyJson.token;
+        
+        if (token) {
+          // 移除 token 后重新解析 body
+          delete bodyJson.token;
+          body = bodyJson as CallbackBody;
+        } else {
+          return NextResponse.json({ error: 1 }, { status: 401 });
+        }
+        
+        if (token) {
+          try {
+            jwt.verify(token, JWT_SECRET);
+          } catch {
+            return NextResponse.json({ error: 1 }, { status: 401 });
+          }
+        }
+      }
+      
+      if (!token) {
         return NextResponse.json({ error: 1 }, { status: 401 });
       }
-
-      const token = authHeader.substring(7);
+      
       try {
-        body = jwt.verify(token, JWT_SECRET) as CallbackBody;
+        jwt.verify(token, JWT_SECRET);
       } catch {
         return NextResponse.json({ error: 1 }, { status: 401 });
       }
