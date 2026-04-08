@@ -42,6 +42,37 @@ import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
 import type { TemplateVariable, VariableCategory } from "@/types/template-variable";
 import { PresetVariables, VariableCategoryLabels } from "@/types/template-variable";
 
+// OnlyOffice 配置接口
+interface OnlyOfficeConfig {
+  document: {
+    fileType: string;
+    key: string;
+    title: string;
+    url: string;
+    permissions: {
+      edit: boolean;
+      download: boolean;
+      print: boolean;
+      review: boolean;
+    };
+  };
+  documentType: string;
+  editorConfig: {
+    mode: string;
+    callbackUrl: string;
+    lang: string;
+    user: {
+      id: string;
+      name: string;
+    };
+    customization: Record<string, unknown>;
+  };
+  type: string;
+  width: string;
+  height: string;
+  token?: string;
+}
+
 interface OnlyOfficeEditStepProps {
   /** 模板 ID */
   templateId: string;
@@ -82,7 +113,7 @@ export function OnlyOfficeEditStep({
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [editorConfig, setEditorConfig] = useState<{
-    config: Record<string, unknown>;
+    config: OnlyOfficeConfig;
     serverUrl: string;
   } | null>(null);
   

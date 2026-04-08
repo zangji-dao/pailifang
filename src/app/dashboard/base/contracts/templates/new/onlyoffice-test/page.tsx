@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,37 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle, ExternalLink } from "lucide-react";
 
+interface EditorConfig {
+  document: {
+    fileType: string;
+    key: string;
+    title: string;
+    url: string;
+    permissions: {
+      edit: boolean;
+      download: boolean;
+      print: boolean;
+      review: boolean;
+    };
+  };
+  documentType: string;
+  editorConfig: {
+    mode: string;
+    callbackUrl: string;
+    lang: string;
+    user: {
+      id: string;
+      name: string;
+    };
+    customization: Record<string, unknown>;
+    documentServerUrl?: string;
+  };
+  type: string;
+  width: string;
+  height: string;
+  token?: string;
+}
+
 export default function OnlyOfficeTestPage() {
   const [config, setConfig] = useState({
     documentId: "test-doc-001",
@@ -20,10 +51,8 @@ export default function OnlyOfficeTestPage() {
     documentUrl: "",
     fileType: "docx",
   });
-  const [editorConfig, setEditorConfig] = useState<{
-    config: Record<string, unknown>;
-    serverUrl: string;
-  } | null>(null);
+  const [editorConfig, setEditorConfig] = useState<EditorConfig | null>(null);
+  const [serverUrl, setServerUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,7 +77,8 @@ export default function OnlyOfficeTestPage() {
         throw new Error(data.error || "获取配置失败");
       }
 
-      setEditorConfig(data);
+      setEditorConfig(data.config);
+      setServerUrl(data.serverUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "获取配置失败");
     } finally {
@@ -217,7 +247,15 @@ export default function OnlyOfficeTestPage() {
                   OnlyOffice 服务地址
                 </Label>
                 <p className="font-mono text-sm mt-1">
-                  {editorConfig.serverUrl}
+                  {serverUrl}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">
+                  JWT Token
+                </Label>
+                <p className="font-mono text-xs mt-1 break-all">
+                  {editorConfig.token ? "已生成 (长度: " + editorConfig.token.length + ")" : "未生成"}
                 </p>
               </div>
               <div>
@@ -225,7 +263,7 @@ export default function OnlyOfficeTestPage() {
                   编辑器配置（JSON）
                 </Label>
                 <pre className="mt-2 p-4 bg-muted rounded-lg overflow-auto text-xs">
-                  {JSON.stringify(editorConfig.config, null, 2)}
+                  {JSON.stringify(editorConfig, null, 2)}
                 </pre>
               </div>
             </div>
@@ -243,8 +281,9 @@ export default function OnlyOfficeTestPage() {
                 title={config.title}
                 documentUrl={config.documentUrl}
                 fileType={config.fileType}
-                callbackUrl={`${window.location.origin}/api/onlyoffice/callback`}
-                serverUrl={editorConfig.serverUrl}
+                callbackUrl={editorConfig.editorConfig.callbackUrl}
+                serverUrl={serverUrl}
+                token={editorConfig.token}
                 onReady={() => console.log("Editor ready")}
                 onError={(err) => setError(err.message)}
               />
