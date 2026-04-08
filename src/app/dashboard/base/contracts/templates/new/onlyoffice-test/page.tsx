@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, ExternalLink } from "lucide-react";
+import { AlertCircle, CheckCircle, ExternalLink, ArrowLeft } from "lucide-react";
 
 interface EditorConfig {
   document: {
@@ -55,6 +55,7 @@ export default function OnlyOfficeTestPage() {
   const [serverUrl, setServerUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   // 获取编辑器配置
   const handleGetConfig = useCallback(async () => {
@@ -79,6 +80,7 @@ export default function OnlyOfficeTestPage() {
 
       setEditorConfig(data.config);
       setServerUrl(data.serverUrl);
+      setShowEditor(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "获取配置失败");
     } finally {
@@ -117,6 +119,56 @@ export default function OnlyOfficeTestPage() {
       setIsLoading(false);
     }
   }, [config.documentId]);
+
+  // 全屏编辑模式
+  if (showEditor && editorConfig) {
+    return (
+      <div className="fixed inset-0 z-40 bg-background flex flex-col">
+        {/* 顶部工具栏 */}
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-background">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowEditor(false)}
+              className="gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              返回配置
+            </Button>
+            <span className="text-sm font-medium">{config.title}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(JSON.stringify(editorConfig, null, 2));
+            }}
+          >
+            复制配置
+          </Button>
+        </div>
+        
+        {/* 编辑器 */}
+        <div className="flex-1">
+          <OnlyOfficeEditor
+            documentId={config.documentId}
+            title={config.title}
+            documentUrl={config.documentUrl}
+            fileType={config.fileType}
+            callbackUrl={editorConfig.editorConfig.callbackUrl}
+            serverUrl={serverUrl}
+            token={editorConfig.token}
+            onReady={() => console.log("Editor ready")}
+            onError={(err) => {
+              setError(err.message);
+              setShowEditor(false);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">
