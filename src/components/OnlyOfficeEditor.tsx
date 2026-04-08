@@ -127,6 +127,15 @@ export function OnlyOfficeEditor({
   activeVariable,
   zoomLevel = 100,
 }: OnlyOfficeEditorProps) {
+  // 使用 ref 存储 onReady 回调，避免依赖变化导致重新初始化
+  const onReadyRef = useRef(onReady);
+  const onErrorRef = useRef(onError);
+  
+  useEffect(() => {
+    onReadyRef.current = onReady;
+    onErrorRef.current = onError;
+  }, [onReady, onError]);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,6 +218,17 @@ export function OnlyOfficeEditor({
         console.error("[OnlyOffice] 容器仍未挂载");
         return;
       }
+    }
+
+    // 销毁旧的编辑器实例
+    if (editorRef.current) {
+      console.log("[OnlyOffice] 销毁旧的编辑器实例");
+      try {
+        editorRef.current.destroyEditor();
+      } catch (e) {
+        console.warn("[OnlyOffice] 销毁编辑器时出错:", e);
+      }
+      editorRef.current = null;
     }
 
     // 清空容器，确保 OnlyOffice 可以正确插入 iframe
@@ -294,12 +314,6 @@ export function OnlyOfficeEditor({
         config.token = token;
       }
 
-      // 销毁旧编辑器
-      if (editorRef.current) {
-        editorRef.current.destroyEditor();
-        editorRef.current = null;
-      }
-
       // 创建新编辑器
       console.log("[OnlyOffice] 创建 DocEditor，containerId:", containerId);
       const editorInstance = new window.DocsAPI.DocEditor(containerId, config);
@@ -307,13 +321,13 @@ export function OnlyOfficeEditor({
       console.log("[OnlyOffice] DocEditor 创建完成");
 
       setIsLoading(false);
-      onReady?.();
+      onReadyRef.current?.();
     } catch (error) {
       console.error("[OnlyOffice] 初始化失败:", error);
       const err = error instanceof Error ? error : new Error(String(error));
       setLoadError(err.message);
       setIsLoading(false);
-      onError?.(err);
+      onErrorRef.current?.(err);
     }
   }, [
     documentId,
@@ -324,8 +338,6 @@ export function OnlyOfficeEditor({
     token,
     height,
     loadOnlyOfficeScript,
-    onReady,
-    onError,
   ]);
 
   // 插入变量（内容控件）

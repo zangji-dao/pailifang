@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,10 +125,13 @@ export function OnlyOfficeEditStep({
   // 当前编辑的文档索引（0=主文档，1,2,3...=附件）
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   
-  // 当前文档信息
-  const currentDocument = currentDocIndex === 0 
-    ? { id: 'main', name: documentTitle, url: documentUrl }
-    : attachments[currentDocIndex - 1];
+  // 当前文档信息 - 使用 useMemo 避免每次渲染创建新对象
+  const currentDocument = useMemo(() => {
+    if (currentDocIndex === 0) {
+      return { id: 'main', name: documentTitle, url: documentUrl };
+    }
+    return attachments[currentDocIndex - 1] || null;
+  }, [currentDocIndex, documentTitle, documentUrl, attachments]);
     
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
@@ -171,9 +174,13 @@ export function OnlyOfficeEditStep({
     }
   }, [showAddDialog, selectedVariables]);
 
+  // 当前文档的 URL 和名称（用于依赖）
+  const currentDocUrl = currentDocument?.url;
+  const currentDocName = currentDocument?.name;
+  
   // 获取编辑器配置
   const fetchEditorConfig = useCallback(async () => {
-    if (!currentDocument?.url) return;
+    if (!currentDocUrl) return;
     
     // 切换文档时重置状态
     setIsEditorReady(false);
@@ -186,8 +193,8 @@ export function OnlyOfficeEditStep({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentId: `${templateId}_${currentDocIndex}`, // 不同文档使用不同ID
-          title: currentDocument.name,
-          documentUrl: currentDocument.url,
+          title: currentDocName || "文档",
+          documentUrl: currentDocUrl,
           fileType: "docx",
         }),
       });
@@ -204,14 +211,14 @@ export function OnlyOfficeEditStep({
       setEditorError(err.message);
       toast.error(err.message);
     }
-  }, [templateId, currentDocument, currentDocIndex]);
+  }, [templateId, currentDocUrl, currentDocName, currentDocIndex]);
 
   // 初始化时获取配置
   useEffect(() => {
-    if (templateId && currentDocument?.url) {
+    if (templateId && currentDocUrl) {
       fetchEditorConfig();
     }
-  }, [templateId, currentDocument?.url, currentDocIndex, fetchEditorConfig]);
+  }, [templateId, currentDocUrl, currentDocIndex, fetchEditorConfig]);
 
   // 过滤变量
   const filteredVariables = selectedVariables.filter(variable => {
