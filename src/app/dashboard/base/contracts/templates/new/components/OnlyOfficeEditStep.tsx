@@ -37,6 +37,7 @@ import {
   ZoomIn,
   ZoomOut,
   PanelLeft,
+  File,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
@@ -74,13 +75,22 @@ interface OnlyOfficeConfig {
   token?: string;
 }
 
+// 附件文档接口
+interface AttachmentDocument {
+  id: string;
+  name: string;
+  url: string;
+}
+
 interface OnlyOfficeEditStepProps {
   /** 模板 ID */
   templateId: string;
-  /** 文档 URL（OnlyOffice 可访问的地址） */
+  /** 主文档 URL（OnlyOffice 可访问的地址） */
   documentUrl: string;
-  /** 文档标题 */
+  /** 主文档标题 */
   documentTitle: string;
+  /** 附件列表 */
+  attachments?: AttachmentDocument[];
   /** 已选变量列表 */
   selectedVariables: TemplateVariable[];
   /** 保存回调 */
@@ -106,11 +116,20 @@ export function OnlyOfficeEditStep({
   templateId,
   documentUrl,
   documentTitle,
+  attachments = [],
   selectedVariables,
   onSave,
   onExportWord,
   saving = false,
 }: OnlyOfficeEditStepProps) {
+  // 当前编辑的文档索引（0=主文档，1,2,3...=附件）
+  const [currentDocIndex, setCurrentDocIndex] = useState(0);
+  
+  // 当前文档信息
+  const currentDocument = currentDocIndex === 0 
+    ? { id: 'main', name: documentTitle, url: documentUrl }
+    : attachments[currentDocIndex - 1];
+    
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [editorConfig, setEditorConfig] = useState<{
@@ -154,14 +173,21 @@ export function OnlyOfficeEditStep({
 
   // 获取编辑器配置
   const fetchEditorConfig = useCallback(async () => {
+    if (!currentDocument?.url) return;
+    
+    // 切换文档时重置状态
+    setIsEditorReady(false);
+    setEditorError(null);
+    setEditorConfig(null);
+    
     try {
       const response = await fetch("/api/onlyoffice/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          documentId: templateId,
-          title: documentTitle,
-          documentUrl,
+          documentId: `${templateId}_${currentDocIndex}`, // 不同文档使用不同ID
+          title: currentDocument.name,
+          documentUrl: currentDocument.url,
           fileType: "docx",
         }),
       });
@@ -178,14 +204,14 @@ export function OnlyOfficeEditStep({
       setEditorError(err.message);
       toast.error(err.message);
     }
-  }, [templateId, documentTitle, documentUrl]);
+  }, [templateId, currentDocument, currentDocIndex]);
 
   // 初始化时获取配置
   useEffect(() => {
-    if (templateId && documentUrl) {
+    if (templateId && currentDocument?.url) {
       fetchEditorConfig();
     }
-  }, [templateId, documentUrl, fetchEditorConfig]);
+  }, [templateId, currentDocument?.url, currentDocIndex, fetchEditorConfig]);
 
   // 过滤变量
   const filteredVariables = selectedVariables.filter(variable => {
@@ -232,7 +258,9 @@ export function OnlyOfficeEditStep({
 
     // 更新变量列表
     const updatedVariables = [...selectedVariables, variable];
-    onSave({ documentUrl, variables: updatedVariables });
+    if (currentDocument) {
+      onSave({ documentUrl: currentDocument.url, variables: updatedVariables });
+    }
     
     setShowAddDialog(false);
     setNewVariable({
@@ -248,7 +276,8 @@ export function OnlyOfficeEditStep({
 
   // 保存文档
   const handleSave = async () => {
-    await onSave({ documentUrl, variables: selectedVariables });
+    if (!currentDocument) return;
+    await onSave({ documentUrl: currentDocument.url, variables: selectedVariables });
     toast.success("保存成功");
   };
 
@@ -268,7 +297,7 @@ export function OnlyOfficeEditStep({
           </Button>
           <div className="flex items-center gap-2 text-muted-foreground">
             <FileText className="h-4 w-4" />
-            <span className="text-sm">{documentTitle}</span>
+            <span className="text-sm">{currentDocument?.name}</span>
           </div>
         </div>
         
@@ -311,6 +340,37 @@ export function OnlyOfficeEditStep({
           </Button>
         </div>
       </div>
+      
+      {/* 文档切换 Tab */}
+      {(attachments.length > 0) && (
+        <div className="flex items-center gap-1 px-1 shrink-0">
+          <button
+            onClick={() => setCurrentDocIndex(0)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+              currentDocIndex === 0 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted hover:bg-muted/80'
+            }`}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            主文档
+          </button>
+          {attachments.map((att, idx) => (
+            <button
+              key={att.id}
+              onClick={() => setCurrentDocIndex(idx + 1)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                currentDocIndex === idx + 1 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted hover:bg-muted/80'
+              }`}
+            >
+              <File className="h-3.5 w-3.5" />
+              {att.name}
+            </button>
+          ))}
+        </div>
+      )}
       
       {/* 主体区域：左侧变量面板 + 右侧编辑器 */}
       <div className="flex flex-1 overflow-hidden gap-4">
@@ -429,11 +489,11 @@ export function OnlyOfficeEditStep({
           )}
           
           {/* OnlyOffice 编辑器 */}
-          {editorConfig && (
+          {editorConfig && currentDocument && (
             <OnlyOfficeEditor
-              documentId={templateId}
-              title={documentTitle}
-              documentUrl={documentUrl}
+              documentId={`${templateId}_${currentDocIndex}`}
+              title={currentDocument.name}
+              documentUrl={currentDocument.url}
               serverUrl={editorConfig.serverUrl}
               callbackUrl={editorConfig.config.editorConfig.callbackUrl}
               onReady={() => setIsEditorReady(true)}

@@ -1153,6 +1153,11 @@ export default function NewOnlyOfficeTemplatePage() {
             templateId={templateId}
             documentUrl={mainFileUrl}
             documentTitle={mainFileName}
+            attachments={attachments.filter(a => a.url).map(a => ({
+              id: a.id,
+              name: a.name,
+              url: a.url,
+            }))}
             selectedVariables={selectedVariables}
             onSave={handleSaveDocument}
             saving={saving}
