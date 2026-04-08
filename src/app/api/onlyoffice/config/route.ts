@@ -138,9 +138,16 @@ export async function POST(request: NextRequest) {
     // OnlyOffice JWT payload 格式参考官方文档
     if (JWT_ENABLED && JWT_SECRET) {
       const tokenPayload = {
-        document: config.document,
+        document: {
+          fileType: config.document.fileType,
+          key: config.document.key,
+          title: config.document.title,
+          url: config.document.url,
+        },
         documentType: config.documentType,
-        editorConfig: config.editorConfig,
+        editorConfig: {
+          callbackUrl: config.editorConfig.callbackUrl,
+        },
       };
       config.token = jwt.sign(tokenPayload, JWT_SECRET, { algorithm: "HS256" });
     }
