@@ -67,6 +67,11 @@ interface EditorConfig {
   width: string;
   height: string;
   token?: string;
+  events?: {
+    onAppReady?: () => void;
+    onDocumentReady?: () => void;
+    onError?: (event: { data: { errorCode: number; errorDescription: string } }) => void;
+  };
 }
 
 interface OnlyOfficeEditorProps {
@@ -138,6 +143,7 @@ export function OnlyOfficeEditor({
   
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const scriptLoadedRef = useRef(false);
@@ -204,6 +210,81 @@ export function OnlyOfficeEditor({
     });
   }, [serverUrl]);
 
+  // 获取 OnlyOffice iframe 引用
+  const getIframe = useCallback(() => {
+    if (iframeRef.current) {
+      return iframeRef.current;
+    }
+    // OnlyOffice iframe 通常在容器内
+    const container = containerRef.current;
+    if (container) {
+      const iframe = container.querySelector('iframe');
+      if (iframe) {
+        iframeRef.current = iframe;
+        return iframe;
+      }
+    }
+    return null;
+  }, []);
+
+  // 插入变量（内容控件）- 通过 postMessage 与 OnlyOffice 通信
+  const insertVariable = useCallback((variable: TemplateVariable) => {
+    console.log("[OnlyOffice] 尝试插入变量:", variable);
+    
+    const iframe = getIframe();
+    if (!iframe || !iframe.contentWindow) {
+      console.warn("[OnlyOffice] 找不到 iframe，无法插入变量");
+      return false;
+    }
+
+    // 构建内容控件数据
+    const contentControlData = {
+      type: "onExternalPluginMessage",
+      data: {
+        type: "insertVariable",
+        data: {
+          key: variable.key,
+          name: variable.name,
+          type: variable.type || 'text',
+          category: variable.category,
+        }
+      }
+    };
+
+    // 发送消息到 OnlyOffice iframe
+    iframe.contentWindow.postMessage(contentControlData, "*");
+    console.log("[OnlyOffice] 已发送插入变量消息:", contentControlData);
+    
+    return true;
+  }, [getIframe]);
+
+  // 监听激活的变量变化
+  useEffect(() => {
+    if (activeVariable && !isLoading) {
+      insertVariable(activeVariable);
+    }
+  }, [activeVariable, isLoading, insertVariable]);
+
+  // 监听来自 OnlyOffice 的消息
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // 只处理来自 OnlyOffice 的消息
+      if (event.data && event.data.type) {
+        console.log("[OnlyOffice] 收到消息:", event.data);
+        
+        // 处理变量插入回调
+        if (event.data.type === "onExternalPluginMessageCallback") {
+          console.log("[OnlyOffice] 插件回调:", event.data);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, []);
+
   // 初始化编辑器
   const initEditor = useCallback(async () => {
     console.log("[OnlyOffice] initEditor 被调用");
@@ -229,6 +310,7 @@ export function OnlyOfficeEditor({
         console.warn("[OnlyOffice] 销毁编辑器时出错:", e);
       }
       editorRef.current = null;
+      iframeRef.current = null;
     }
 
     // 清空容器，确保 OnlyOffice 可以正确插入 iframe
@@ -291,22 +373,30 @@ export function OnlyOfficeEditor({
             toolbarNoTabs: false,
             unit: "cm",
             zoom: zoomLevel,
-            // 主题设置：theme-light（浅色橙色）、theme-dark（深色）
-            // 注意：OnlyOffice 默认的橙色是品牌色，要完全改变需要服务器端配置
-            // 如需自定义品牌色，需要在 OnlyOffice 服务器上修改 /etc/onlyoffice/documentserver/local.json
             uiTheme: "theme-light",
           },
-          // 插件配置 - 暂时禁用，待插件部署后再启用
-          // plugins: {
-          //   autostart: ["asc.{8D6E3F7A-1B2C-4D5E-8F9A-0B1C2D3E4F5A}"],
-          //   pluginsData: [
-          //     `${serverUrl}/plugins/variable-binding/manifest.json`,
-          //   ],
-          // },
+          // 启用变量绑定插件（如果服务器上已部署）
+          plugins: {
+            autostart: ["asc.{8D6E3F7A-1B2C-4D5E-8F9A-0B1C2D3E4F5A}"],
+          },
         },
         type: "desktop",
         width: "100%",
         height: height,
+        events: {
+          onAppReady: () => {
+            console.log("[OnlyOffice] onAppReady 触发");
+            setIsLoading(false);
+            onReadyRef.current?.();
+          },
+          onError: (event) => {
+            console.error("[OnlyOffice] onError 触发:", event);
+            const errorMsg = `编辑器错误: ${event.data.errorCode} - ${event.data.errorDescription}`;
+            setLoadError(errorMsg);
+            setIsLoading(false);
+            onErrorRef.current?.(new Error(errorMsg));
+          },
+        },
       };
 
       // 如果提供了 JWT token
@@ -320,8 +410,15 @@ export function OnlyOfficeEditor({
       editorRef.current = editorInstance;
       console.log("[OnlyOffice] DocEditor 创建完成");
 
-      setIsLoading(false);
-      onReadyRef.current?.();
+      // 延迟查找 iframe（等待 OnlyOffice 创建）
+      setTimeout(() => {
+        const iframe = containerRef.current?.querySelector('iframe');
+        if (iframe) {
+          iframeRef.current = iframe;
+          console.log("[OnlyOffice] 找到 iframe:", iframe.src);
+        }
+      }, 2000);
+
     } catch (error) {
       console.error("[OnlyOffice] 初始化失败:", error);
       const err = error instanceof Error ? error : new Error(String(error));
@@ -338,22 +435,9 @@ export function OnlyOfficeEditor({
     token,
     height,
     loadOnlyOfficeScript,
+    serverUrl,
+    zoomLevel,
   ]);
-
-  // 插入变量（内容控件）
-  const insertVariable = useCallback((variable: TemplateVariable) => {
-    // OnlyOffice 通过插件实现内容控件
-    // 这里需要调用 OnlyOffice 的插件 API
-    console.log("插入变量:", variable);
-    // TODO: 实现 OnlyOffice 插件调用
-  }, []);
-
-  // 监听激活的变量变化
-  useEffect(() => {
-    if (activeVariable && !isLoading) {
-      insertVariable(activeVariable);
-    }
-  }, [activeVariable, isLoading, insertVariable]);
 
   // 初始化
   useEffect(() => {
@@ -366,6 +450,15 @@ export function OnlyOfficeEditor({
       }
     };
   }, [initEditor]);
+
+  // 暴露 insertVariable 方法给父组件（通过外层容器）
+  useEffect(() => {
+    const container = containerRef.current?.parentElement;
+    if (container) {
+      (container as any).insertVariable = insertVariable;
+      console.log("[OnlyOffice] 已将 insertVariable 方法挂载到父容器");
+    }
+  }, [insertVariable]);
 
   return (
     <div className="relative w-full h-full">

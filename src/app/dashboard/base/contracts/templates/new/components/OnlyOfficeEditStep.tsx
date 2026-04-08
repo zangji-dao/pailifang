@@ -163,6 +163,9 @@ export function OnlyOfficeEditStep({
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
   
+  // 编辑器容器引用（用于调用 insertVariable）
+  const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  
   // 获取环境变量
   const onlyofficeUrl = process.env.NEXT_PUBLIC_ONLYOFFICE_URL || "http://localhost:8080";
   
@@ -486,8 +489,21 @@ export function OnlyOfficeEditStep({
                     key={variable.id}
                     className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
                     onClick={() => {
-                      navigator.clipboard.writeText(`{{${variable.key}}}`);
-                      toast.success(`已复制 {{${variable.key}}}`);
+                      // 尝试插入变量到 OnlyOffice
+                      if (editorContainerRef.current && (editorContainerRef.current as any).insertVariable) {
+                        const success = (editorContainerRef.current as any).insertVariable(variable);
+                        if (success) {
+                          toast.success(`已插入变量: ${variable.name}`);
+                        } else {
+                          // 如果插入失败，回退到复制模式
+                          navigator.clipboard.writeText(`{{${variable.key}}}`);
+                          toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
+                        }
+                      } else {
+                        // 如果编辑器未就绪，回退到复制模式
+                        navigator.clipboard.writeText(`{{${variable.key}}}`);
+                        toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
+                      }
                     }}
                   >
                     <div className="flex-1 min-w-0">
@@ -497,7 +513,7 @@ export function OnlyOfficeEditStep({
                       </div>
                     </div>
                     <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      复制
+                      插入
                     </Badge>
                   </button>
                 ))}
@@ -513,7 +529,7 @@ export function OnlyOfficeEditStep({
             {/* 使用提示 */}
             <div className="p-2 border-t bg-muted/30 shrink-0">
               <p className="text-[11px] text-muted-foreground">
-                点击变量复制 <code className="bg-muted px-1 rounded">{'{{变量名}}'}</code>
+                点击变量插入到文档中
               </p>
             </div>
           </div>
@@ -551,20 +567,22 @@ export function OnlyOfficeEditStep({
           
           {/* OnlyOffice 编辑器 */}
           {editorConfig && currentDocument && (
-            <OnlyOfficeEditor
-              documentId={`${templateId}_${currentDocIndex}`}
-              title={currentDocument.name}
-              documentUrl={currentDocument.url}
-              serverUrl={editorConfig.serverUrl}
-              callbackUrl={editorConfig.config.editorConfig.callbackUrl}
-              onReady={() => setIsEditorReady(true)}
-              onError={(err) => {
-                setEditorError(err.message);
-                setIsEditorReady(false);
-              }}
-              variables={selectedVariables}
-              zoomLevel={zoomLevel}
-            />
+            <div ref={editorContainerRef} className="w-full h-full">
+              <OnlyOfficeEditor
+                documentId={`${templateId}_${currentDocIndex}`}
+                title={currentDocument.name}
+                documentUrl={currentDocument.url}
+                serverUrl={editorConfig.serverUrl}
+                callbackUrl={editorConfig.config.editorConfig.callbackUrl}
+                onReady={() => setIsEditorReady(true)}
+                onError={(err) => {
+                  setEditorError(err.message);
+                  setIsEditorReady(false);
+                }}
+                variables={selectedVariables}
+                zoomLevel={zoomLevel}
+              />
+            </div>
           )}
           
           {/* 未加载提示 */}
