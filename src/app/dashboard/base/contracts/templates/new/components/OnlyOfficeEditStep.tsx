@@ -297,7 +297,7 @@ export function OnlyOfficeEditStep({
   };
 
   return (
-    <div className="flex flex-col gap-4 p-6" style={{ height: '1000px', minHeight: '800px' }}>
+    <div className="flex flex-col gap-4 p-6" style={{ height: '1200px', minHeight: '1000px' }}>
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-4 py-2 border rounded-lg bg-card shrink-0">
         <div className="flex items-center gap-3">
