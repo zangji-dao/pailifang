@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { 
   Dialog,
   DialogContent,
@@ -239,16 +238,6 @@ export function OnlyOfficeEditStep({
     return matchesSearch && matchesCategory;
   });
 
-  // 按类别分组
-  const groupedVariables = filteredVariables.reduce((acc, variable) => {
-    const category = variable.category;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(variable);
-    return acc;
-  }, {} as Record<string, TemplateVariable[]>);
-
   // 添加自定义变量
   const handleAddVariable = () => {
     if (!newVariable.name?.trim()) {
@@ -418,7 +407,8 @@ export function OnlyOfficeEditStep({
       <div className="flex flex-1 overflow-hidden gap-4">
         {/* 左侧变量面板 - 可折叠 */}
         {!panelCollapsed && (
-          <div className="w-64 border rounded-lg bg-card shrink-0 flex flex-col overflow-hidden">
+          <div className="w-72 border rounded-lg bg-card shrink-0 flex flex-col overflow-hidden">
+            {/* 标题栏 */}
             <div className="px-3 py-2 border-b flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Variable className="h-4 w-4" />
@@ -432,12 +422,46 @@ export function OnlyOfficeEditStep({
                 size="sm"
                 onClick={() => setShowAddDialog(true)}
                 className="h-6 w-6 p-0"
+                title="添加自定义变量"
               >
                 <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
             
-            {/* 搜索 */}
+            {/* 类别选择标签 */}
+            <div className="px-2 py-2 border-b shrink-0">
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => setActiveCategory('all')}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    activeCategory === 'all' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  全部
+                </button>
+                {(['enterprise', 'contract', 'location', 'date', 'custom'] as const).map((cat) => {
+                  const count = selectedVariables.filter(v => v.category === cat).length;
+                  if (count === 0) return null;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        activeCategory === cat 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      {VariableCategoryLabels[cat]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* 搜索框 */}
             <div className="px-2 py-2 border-b shrink-0">
               <div className="relative">
                 <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -450,37 +474,28 @@ export function OnlyOfficeEditStep({
               </div>
             </div>
             
-            {/* 变量列表 */}
+            {/* 变量列表 - 可滚动 */}
             <ScrollArea className="flex-1">
-              <div className="p-2 space-y-2">
-                {Object.entries(groupedVariables).map(([category, variables]) => (
-                  <div key={category}>
-                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                      {VariableCategoryLabels[category as VariableCategory] || category} ({variables.length})
+              <div className="p-2 space-y-1">
+                {filteredVariables.map((variable) => (
+                  <button
+                    key={variable.id}
+                    className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`{{${variable.key}}}`);
+                      toast.success(`已复制 {{${variable.key}}}`);
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{variable.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono truncate">
+                        {`{{${variable.key}}}`}
+                      </div>
                     </div>
-                    <div className="space-y-0.5">
-                      {variables.map((variable) => (
-                        <button
-                          key={variable.id}
-                          className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`{{${variable.key}}}`);
-                            toast.success(`已复制 {{${variable.key}}}`);
-                          }}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{variable.name}</div>
-                            <div className="text-xs text-muted-foreground font-mono truncate">
-                              {`{{${variable.key}}}`}
-                            </div>
-                          </div>
-                          <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
-                            复制
-                          </Badge>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      复制
+                    </Badge>
+                  </button>
                 ))}
                 
                 {filteredVariables.length === 0 && (
@@ -493,8 +508,8 @@ export function OnlyOfficeEditStep({
             
             {/* 使用提示 */}
             <div className="p-2 border-t bg-muted/30 shrink-0">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                点击变量复制标识符，格式：<code className="bg-muted px-1 rounded">{'{{变量名}}'}</code>
+              <p className="text-[11px] text-muted-foreground">
+                点击变量复制 <code className="bg-muted px-1 rounded">{'{{变量名}}'}</code>
               </p>
             </div>
           </div>
