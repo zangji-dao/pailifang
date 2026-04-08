@@ -906,8 +906,8 @@ export default function NewOnlyOfficeTemplatePage() {
         <StepIndicator currentStep={currentStep} />
       </div>
       
-      {/* 步骤内容 - 填充剩余空间 */}
-      <div className="flex-1 overflow-hidden p-6">
+      {/* 步骤内容 - 步骤3时移除padding让编辑区最大化 */}
+      <div className={`flex-1 overflow-hidden ${currentStep === 3 ? '' : 'p-6'}`}>
         {/* 步骤 1：基本信息 */}
         {currentStep === 1 && (
           <Card className="max-w-2xl mx-auto">
