@@ -98,6 +98,8 @@ interface OnlyOfficeEditorProps {
   activeVariable?: TemplateVariable | null;
   /** 插入变量回调 */
   onInsertVariable?: (variable: TemplateVariable) => void;
+  /** 缩放级别（百分比） */
+  zoomLevel?: number;
 }
 
 // 声明全局 DocsAPI
@@ -123,6 +125,7 @@ export function OnlyOfficeEditor({
   onError,
   variables = [],
   activeVariable,
+  zoomLevel = 100,
 }: OnlyOfficeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
@@ -267,7 +270,7 @@ export function OnlyOfficeEditor({
             spellcheck: true,
             toolbarNoTabs: false,
             unit: "cm",
-            zoom: 100,
+            zoom: zoomLevel,
             // 主题设置：theme-light（浅色，默认橙色）或 theme-dark（深色）
             // 注意：OnlyOffice 默认的橙色是品牌色，要完全改变需要服务器端配置
             uiTheme: "theme-light",

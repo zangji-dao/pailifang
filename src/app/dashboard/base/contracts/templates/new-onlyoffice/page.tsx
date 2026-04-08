@@ -1156,8 +1156,6 @@ export default function NewOnlyOfficeTemplatePage() {
             selectedVariables={selectedVariables}
             onSave={handleSaveDocument}
             saving={saving}
-            onBack={() => setCurrentStep(2)}
-            onNext={() => setCurrentStep(4)}
           />
         )}
         
@@ -1212,16 +1210,15 @@ export default function NewOnlyOfficeTemplatePage() {
         )}
       </div>
       
-      {/* 步骤导航 - 步骤3时隐藏，因为OnlyOfficeEditStep自带导航 */}
-      {currentStep !== 3 && (
-        <div className="flex justify-between items-center mt-6 pt-6 border-t">
-          <Button
-            variant="outline"
-            onClick={handlePrev}
-            disabled={currentStep === 1}
-          >
-            上一步
-          </Button>
+      {/* 步骤导航 */}
+      <div className="flex justify-between items-center mt-6 pt-6 border-t">
+        <Button
+          variant="outline"
+          onClick={handlePrev}
+          disabled={currentStep === 1}
+        >
+          上一步
+        </Button>
           
           <div className="flex items-center gap-2">
             <Button
@@ -1259,7 +1256,6 @@ export default function NewOnlyOfficeTemplatePage() {
             </Button>
           </div>
         </div>
-      )}
     </div>
   );
 }

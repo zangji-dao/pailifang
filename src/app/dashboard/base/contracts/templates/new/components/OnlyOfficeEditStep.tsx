@@ -34,8 +34,9 @@ import {
   Loader2,
   Info,
   Variable,
-  ArrowLeft,
-  ArrowRight,
+  ZoomIn,
+  ZoomOut,
+  PanelLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
@@ -88,10 +89,6 @@ interface OnlyOfficeEditStepProps {
   onExportWord?: () => void;
   /** 是否正在保存 */
   saving?: boolean;
-  /** 返回上一步（全屏模式时显示） */
-  onBack?: () => void;
-  /** 进入下一步（全屏模式时显示） */
-  onNext?: () => void;
 }
 
 /**
@@ -113,8 +110,6 @@ export function OnlyOfficeEditStep({
   onSave,
   onExportWord,
   saving = false,
-  onBack,
-  onNext,
 }: OnlyOfficeEditStepProps) {
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
@@ -134,6 +129,10 @@ export function OnlyOfficeEditStep({
     category: 'custom',
     placeholder: '',
   });
+  
+  // 布局状态
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
   
   // 获取环境变量
   const onlyofficeUrl = process.env.NEXT_PUBLIC_ONLYOFFICE_URL || "http://localhost:8080";
@@ -254,27 +253,49 @@ export function OnlyOfficeEditStep({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="h-full flex flex-col gap-4">
       {/* 顶部工具栏 */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-card shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 border rounded-lg bg-card shrink-0">
         <div className="flex items-center gap-3">
-          {onBack && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPanelCollapsed(!panelCollapsed)}
+            className="gap-1"
+          >
+            <PanelLeft className="h-4 w-4" />
+            {panelCollapsed ? '展开面板' : '收起面板'}
+          </Button>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <FileText className="h-4 w-4" />
+            <span className="text-sm">{documentTitle}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* 缩放控制 */}
+          <div className="flex items-center gap-1 border rounded-md px-2 py-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={onBack}
-              className="gap-1"
+              className="h-6 w-6 p-0"
+              onClick={() => setZoomLevel(Math.max(50, zoomLevel - 25))}
+              disabled={zoomLevel <= 50}
             >
-              <ArrowLeft className="h-4 w-4" />
-              返回
+              <ZoomOut className="h-3.5 w-3.5" />
             </Button>
-          )}
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{documentTitle}</span>
+            <span className="text-xs w-12 text-center font-medium">{zoomLevel}%</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setZoomLevel(Math.min(200, zoomLevel + 25))}
+              disabled={zoomLevel >= 200}
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
+          
           <Button
             variant="outline"
             size="sm"
@@ -288,107 +309,97 @@ export function OnlyOfficeEditStep({
             )}
             保存
           </Button>
-          {onNext && (
-            <Button
-              size="sm"
-              onClick={onNext}
-              disabled={!isEditorReady}
-              className="gap-1"
-            >
-              下一步
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
       
       {/* 主体区域：左侧变量面板 + 右侧编辑器 */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 左侧变量面板 */}
-        <div className="w-64 border-r bg-card shrink-0 flex flex-col">
-          <div className="px-3 py-2 border-b flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <Variable className="h-4 w-4" />
-              <span className="font-medium text-sm">变量</span>
-              <Badge variant="secondary" className="text-xs">
-                {selectedVariables.length}
-              </Badge>
+      <div className="flex flex-1 overflow-hidden gap-4">
+        {/* 左侧变量面板 - 可折叠 */}
+        {!panelCollapsed && (
+          <div className="w-64 border rounded-lg bg-card shrink-0 flex flex-col overflow-hidden">
+            <div className="px-3 py-2 border-b flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <Variable className="h-4 w-4" />
+                <span className="font-medium text-sm">变量</span>
+                <Badge variant="secondary" className="text-xs">
+                  {selectedVariables.length}
+                </Badge>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAddDialog(true)}
+                className="h-6 w-6 p-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAddDialog(true)}
-              className="h-6 w-6 p-0"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          
-          {/* 搜索 */}
-          <div className="px-2 py-2 border-b shrink-0">
-            <div className="relative">
-              <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="搜索变量..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-7 h-8 text-sm"
-              />
+            
+            {/* 搜索 */}
+            <div className="px-2 py-2 border-b shrink-0">
+              <div className="relative">
+                <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="搜索变量..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-7 h-8 text-sm"
+                />
+              </div>
             </div>
-          </div>
-          
-          {/* 变量列表 */}
-          <ScrollArea className="flex-1">
-            <div className="p-2 space-y-2">
-              {Object.entries(groupedVariables).map(([category, variables]) => (
-                <div key={category}>
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                    {VariableCategoryLabels[category as VariableCategory] || category} ({variables.length})
-                  </div>
-                  <div className="space-y-0.5">
-                    {variables.map((variable) => (
-                      <button
-                        key={variable.id}
-                        className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
-                        onClick={() => {
-                          // 复制变量标识符
-                          navigator.clipboard.writeText(`{{${variable.key}}}`);
-                          toast.success(`已复制 {{${variable.key}}}，请在编辑器中粘贴`);
-                        }}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{variable.name}</div>
-                          <div className="text-xs text-muted-foreground font-mono truncate">
-                            {`{{${variable.key}}}`}
+            
+            {/* 变量列表 */}
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-2">
+                {Object.entries(groupedVariables).map(([category, variables]) => (
+                  <div key={category}>
+                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                      {VariableCategoryLabels[category as VariableCategory] || category} ({variables.length})
+                    </div>
+                    <div className="space-y-0.5">
+                      {variables.map((variable) => (
+                        <button
+                          key={variable.id}
+                          className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`{{${variable.key}}}`);
+                            toast.success(`已复制 {{${variable.key}}}`);
+                          }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{variable.name}</div>
+                            <div className="text-xs text-muted-foreground font-mono truncate">
+                              {`{{${variable.key}}}`}
+                            </div>
                           </div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
-                          点击复制
-                        </Badge>
-                      </button>
-                    ))}
+                          <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                            复制
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-              
-              {filteredVariables.length === 0 && (
-                <div className="text-center py-6 text-muted-foreground text-sm">
-                  {searchTerm ? "没有匹配的变量" : "暂无变量"}
-                </div>
-              )}
+                ))}
+                
+                {filteredVariables.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground text-sm">
+                    {searchTerm ? "没有匹配的变量" : "暂无变量"}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+            
+            {/* 使用提示 */}
+            <div className="p-2 border-t bg-muted/30 shrink-0">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                点击变量复制标识符，格式：<code className="bg-muted px-1 rounded">{'{{变量名}}'}</code>
+              </p>
             </div>
-          </ScrollArea>
-          
-          {/* 使用提示 */}
-          <div className="p-2 border-t bg-muted/30 shrink-0">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              点击变量复制标识符，在编辑器中粘贴使用。格式：<code className="bg-muted px-1 rounded">{'{{变量名}}'}</code>
-            </p>
           </div>
-        </div>
+        )}
         
         {/* 右侧编辑器 */}
-        <div className="flex-1 relative bg-muted/20">
+        <div className="flex-1 border rounded-lg overflow-hidden relative bg-muted/20">
           {/* 错误提示 */}
           {editorError && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/95 z-20">
@@ -431,6 +442,7 @@ export function OnlyOfficeEditStep({
                 setIsEditorReady(false);
               }}
               variables={selectedVariables}
+              zoomLevel={zoomLevel}
             />
           )}
           
