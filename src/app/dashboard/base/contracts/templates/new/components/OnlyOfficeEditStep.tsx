@@ -270,6 +270,7 @@ export function OnlyOfficeEditStep({
       setNewVariable(prev => ({
         ...prev,
         key: autoKey,
+        category: activeCategory !== 'all' ? activeCategory : (prev.category || 'custom'),
       }));
     }
   }, [showAddDialog, selectedVariables]);
@@ -365,7 +366,7 @@ export function OnlyOfficeEditStep({
       name: newVariable.name.trim(),
       key: newVariable.key || generateVariableKey(selectedVariables.map(v => v.key)),
       type: newVariable.type || 'text',
-      category: 'custom',
+      category: newVariable.category || 'custom',
       placeholder: newVariable.placeholder,
     };
 
@@ -386,9 +387,14 @@ export function OnlyOfficeEditStep({
       name: '',
       key: '',
       type: 'text',
-      category: 'custom',
+      category: activeCategory !== 'all' ? activeCategory : 'custom',
       placeholder: '',
     });
+    
+    // 切换到变量所在类别，让用户立即看到
+    if (variable.category) {
+      setActiveCategory(variable.category);
+    }
     
     toast.success("变量已添加");
   };
