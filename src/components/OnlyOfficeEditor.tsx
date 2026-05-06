@@ -142,6 +142,8 @@ export function OnlyOfficeEditor({
   const onReadyRef = useRef(onReady);
   const onErrorRef = useRef(onError);
   const onDocumentKeyChangeRef = useRef(onDocumentKeyChange);
+  const retryCountRef = useRef(0);
+  const MAX_RETRY = 2;
   
   useEffect(() => {
     onReadyRef.current = onReady;
@@ -431,11 +433,37 @@ export function OnlyOfficeEditor({
           onAppReady: () => {
             console.log("[OnlyOffice] onAppReady 触发");
             setIsLoading(false);
+            retryCountRef.current = 0; // 重置重试计数
             onReadyRef.current?.();
           },
           onError: (event) => {
             console.error("[OnlyOffice] onError 触发:", event);
-            const errorMsg = `编辑器错误: ${event.data.errorCode} - ${event.data.errorDescription}`;
+            // OnlyOffice 错误格式可能不同，做防御性处理
+            const rawData = event?.data || event;
+            const errorData = rawData as Record<string, unknown>;
+            const errorCode = (errorData?.errorCode as number) ?? (errorData?.error as number) ?? -1;
+            const errorDescription = (errorData?.errorDescription as string) ?? (errorData?.message as string) ?? JSON.stringify(errorData);
+            console.error("[OnlyOffice] 错误详情 - code:", errorCode, "desc:", errorDescription);
+
+            // -4: 下载失败（临时性错误），自动重试
+            if (errorCode === -4 && retryCountRef.current < MAX_RETRY) {
+              retryCountRef.current += 1;
+              console.log(`[OnlyOffice] 下载失败，3秒后自动重试 (${retryCountRef.current}/${MAX_RETRY})...`);
+              setTimeout(() => {
+                if (editorRef.current) {
+                  try {
+                    editorRef.current.destroyEditor();
+                    editorRef.current = null;
+                  } catch {
+                    // ignore
+                  }
+                }
+                initEditor();
+              }, 3000);
+              return;
+            }
+
+            const errorMsg = `编辑器错误 (${errorCode}): ${errorDescription}`;
             setLoadError(errorMsg);
             setIsLoading(false);
             onErrorRef.current?.(new Error(errorMsg));
