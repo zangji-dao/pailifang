@@ -597,35 +597,34 @@ export function OnlyOfficeEditStep({
             </div>
             
             {/* 类别选择标签 */}
-            <div className="px-2 py-2 border-b shrink-0">
+            <div className="px-2 py-1.5 border-b shrink-0">
               <div className="flex flex-wrap gap-1">
                 <button
                   onClick={() => setActiveCategory('all')}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                  className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
                     activeCategory === 'all' 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted hover:bg-muted/80'
+                      : 'bg-muted/60 hover:bg-muted text-muted-foreground'
                   }`}
                 >
                   全部
                 </button>
                 {(['enterprise', 'contract', 'location', 'date', 'custom'] as const).map((cat) => {
                   const count = selectedVariables.filter(v => v.category === cat).length;
-                  // 自定义变量标签始终显示，其他类别有变量才显示
                   if (cat !== 'custom' && count === 0) return null;
                   return (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                      className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
                         activeCategory === cat 
                           ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted hover:bg-muted/80'
+                          : 'bg-muted/60 hover:bg-muted text-muted-foreground'
                       }`}
                     >
                       {VariableCategoryLabels[cat]}
                       {count > 0 && (
-                        <span className="ml-1 opacity-60">({count})</span>
+                        <span className="ml-0.5 opacity-70">{count}</span>
                       )}
                     </button>
                   );
@@ -649,66 +648,62 @@ export function OnlyOfficeEditStep({
             {/* 变量列表 - 可滚动 */}
             <div className="flex-1 min-h-0">
               <ScrollArea className="h-full">
-                <div className="p-2 space-y-1">
+                <div className="p-2 space-y-0.5">
                   {filteredVariables.map((variable) => (
                   <div
                     key={variable.id}
-                    className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
-                  >
-                    <button
-                      className="flex-1 min-w-0"
-                      onClick={() => {
-                        // 尝试插入变量到 OnlyOffice
-                        if (insertVariableFnRef.current) {
-                          const success = insertVariableFnRef.current(variable);
-                          if (success) {
-                            toast.success(`已插入变量: ${variable.name}`);
-                          } else {
-                            // 如果插入失败，回退到复制模式
-                            navigator.clipboard.writeText(`{{${variable.key}}}`);
-                            toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
-                          }
+                    className="group relative flex items-start gap-2 px-2.5 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      // 尝试插入变量到 OnlyOffice
+                      if (insertVariableFnRef.current) {
+                        const success = insertVariableFnRef.current(variable);
+                        if (success) {
+                          toast.success(`已插入变量: ${variable.name}`);
                         } else {
-                          // 如果编辑器未就绪，回退到复制模式
                           navigator.clipboard.writeText(`{{${variable.key}}}`);
                           toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
                         }
-                      }}
-                    >
-                      <div className="text-sm font-medium truncate">{variable.name}</div>
+                      } else {
+                        navigator.clipboard.writeText(`{{${variable.key}}}`);
+                        toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
+                      }
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="text-[10px] shrink-0 px-1 py-0">
+                        <span className="text-sm font-medium truncate">{variable.name}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0 px-1 py-0 leading-tight">
                           {VariableTypeLabels[variable.type]}
                         </Badge>
-                        <span className="text-xs text-muted-foreground font-mono truncate">
-                          {`{{${variable.key}}}`}
-                        </span>
                       </div>
-                    </button>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditDialog(variable);
-                            }}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteVariable(variable);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <span className="text-[11px] text-muted-foreground/70 font-mono mt-0.5 block truncate">
+                        {`{{${variable.key}}}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditDialog(variable);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteVariable(variable);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 
