@@ -488,6 +488,31 @@ export function OnlyOfficeEditor({
         if (iframe) {
           iframeRef.current = iframe;
           console.log("[OnlyOffice] 找到 iframe:", iframe.src);
+
+          // 防止 OnlyOffice iframe 抢占焦点
+          // 当外部输入框获得焦点时，阻止 iframe 抢回焦点
+          const handleIframeFocus = (e: FocusEvent) => {
+            // 检查是否有外部输入框正在获得焦点
+            const activeElement = document.activeElement;
+            const isExternalInput = activeElement instanceof HTMLElement
+              && (activeElement.tagName === 'INPUT'
+                || activeElement.tagName === 'TEXTAREA'
+                || activeElement.tagName === 'SELECT'
+                || activeElement.isContentEditable);
+
+            if (isExternalInput && activeElement !== iframe) {
+              // 将焦点还给外部输入框
+              requestAnimationFrame(() => {
+                activeElement?.focus();
+              });
+            }
+          };
+
+          iframe.addEventListener('focus', handleIframeFocus);
+          // 保存清理函数
+          (iframe as HTMLIFrameElement & { _cleanupFocusListener?: () => void })._cleanupFocusListener = () => {
+            iframe.removeEventListener('focus', handleIframeFocus);
+          };
         }
       }, 2000);
 
@@ -512,6 +537,11 @@ export function OnlyOfficeEditor({
 
     return () => {
       if (editorRef.current) {
+        // 清理 iframe 焦点监听
+        const iframe = iframeRef.current;
+        if (iframe && (iframe as HTMLIFrameElement & { _cleanupFocusListener?: () => void })._cleanupFocusListener) {
+          (iframe as HTMLIFrameElement & { _cleanupFocusListener?: () => void })._cleanupFocusListener?.();
+        }
         editorRef.current.destroyEditor();
         editorRef.current = null;
       }
