@@ -489,30 +489,39 @@ export function OnlyOfficeEditor({
           iframeRef.current = iframe;
           console.log("[OnlyOffice] 找到 iframe:", iframe.src);
 
-          // 防止 OnlyOffice iframe 抢占焦点
-          // 当外部输入框获得焦点时，阻止 iframe 抢回焦点
-          const handleIframeFocus = (e: FocusEvent) => {
-            // 检查是否有外部输入框正在获得焦点
-            const activeElement = document.activeElement;
-            const isExternalInput = activeElement instanceof HTMLElement
-              && (activeElement.tagName === 'INPUT'
-                || activeElement.tagName === 'TEXTAREA'
-                || activeElement.tagName === 'SELECT'
-                || activeElement.isContentEditable);
+      // 追踪最后一个获得焦点的外部输入框
+      const lastExternalInputRef = { current: null as HTMLElement | null };
 
-            if (isExternalInput && activeElement !== iframe) {
-              // 将焦点还给外部输入框
-              requestAnimationFrame(() => {
-                activeElement?.focus();
-              });
-            }
-          };
+      const handleDocumentFocusIn = (e: FocusEvent) => {
+        const target = e.target as HTMLElement;
+        if (target
+          && target !== iframe
+          && !iframe?.contains(target)
+          && (target.tagName === 'INPUT'
+            || target.tagName === 'TEXTAREA'
+            || target.tagName === 'SELECT'
+            || target.isContentEditable)) {
+          lastExternalInputRef.current = target;
+        }
+      };
+      document.addEventListener('focusin', handleDocumentFocusIn, true);
 
-          iframe.addEventListener('focus', handleIframeFocus);
-          // 保存清理函数
-          (iframe as HTMLIFrameElement & { _cleanupFocusListener?: () => void })._cleanupFocusListener = () => {
-            iframe.removeEventListener('focus', handleIframeFocus);
-          };
+      // 防止 OnlyOffice iframe 抢占焦点
+      const handleIframeFocus = () => {
+        // 如果有外部输入框刚获得过焦点（500ms 内），把焦点还回去
+        const lastInput = lastExternalInputRef.current;
+        if (lastInput && document.contains(lastInput)) {
+          requestAnimationFrame(() => {
+            lastInput.focus();
+          });
+        }
+      };
+      iframe.addEventListener('focus', handleIframeFocus);
+      // 保存清理函数
+      (iframe as HTMLIFrameElement & { _cleanupFocusListener?: () => void })._cleanupFocusListener = () => {
+        iframe.removeEventListener('focus', handleIframeFocus);
+        document.removeEventListener('focusin', handleDocumentFocusIn, true);
+      };
         }
       }, 2000);
 
