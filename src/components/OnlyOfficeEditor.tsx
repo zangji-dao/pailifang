@@ -13,6 +13,7 @@ import type { TemplateVariable } from "@/types/template-variable";
 // OnlyOffice 类型定义
 interface DocEditor {
   destroyEditor: () => void;
+  executeMethod: (method: string, args?: unknown[], callback?: (result: unknown) => void) => void;
 }
 
 interface EditorConfig {
@@ -109,6 +110,8 @@ interface OnlyOfficeEditorProps {
   onDocumentKeyChange?: (key: string) => void;
   /** 插入变量函数就绪回调 */
   onInsertVariableReady?: (fn: (variable: TemplateVariable) => boolean) => void;
+  /** 扫描文档中已插入的变量（内容控件），回调返回内容控件的 Tag 列表 */
+  onScanVariables?: (insertedKeys: string[]) => void;
 }
 
 // 声明全局 DocsAPI
@@ -137,6 +140,7 @@ export function OnlyOfficeEditor({
   zoomLevel = 100,
   onDocumentKeyChange,
   onInsertVariableReady,
+  onScanVariables,
 }: OnlyOfficeEditorProps) {
   // 使用 ref 存储 onReady 回调，避免依赖变化导致重新初始化
   const onReadyRef = useRef(onReady);
@@ -177,6 +181,7 @@ export function OnlyOfficeEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const initEditorRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const scriptLoadedRef = useRef(false);
@@ -290,6 +295,50 @@ export function OnlyOfficeEditor({
     
     return true;
   }, [getIframe]);
+
+  // 扫描文档中已插入的变量（内容控件）
+  const scanInsertedVariables = useCallback(() => {
+    if (!editorRef.current) {
+      console.warn("[OnlyOffice] 编辑器未就绪，无法扫描变量");
+      return;
+    }
+
+    try {
+      editorRef.current.executeMethod("GetAllContentControls", [], (result: unknown) => {
+        console.log("[OnlyOffice] GetAllContentControls 结果:", result);
+        
+        const insertedKeys: string[] = [];
+        
+        // 解析返回的内容控件列表
+        if (Array.isArray(result)) {
+          for (const control of result) {
+            const controlObj = control as Record<string, unknown>;
+            // 内容控件的 Tag 存储了变量 key
+            const tag = controlObj.Tag as string || controlObj.tag as string;
+            if (tag) {
+              insertedKeys.push(tag);
+            }
+          }
+        }
+        
+        console.log("[OnlyOffice] 扫描到已插入的变量 keys:", insertedKeys);
+        onScanVariables?.(insertedKeys);
+      });
+    } catch (e) {
+      console.warn("[OnlyOffice] 扫描变量失败:", e);
+    }
+  }, [onScanVariables]);
+
+  // 暴露 scanInsertedVariables 方法给父组件
+  useEffect(() => {
+    if (onScanVariables && !isLoading && editorRef.current) {
+      // 编辑器就绪后自动扫描一次
+      const timer = setTimeout(() => {
+        scanInsertedVariables();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [onScanVariables, isLoading, scanInsertedVariables]);
 
   // 监听激活的变量变化
   useEffect(() => {
@@ -469,7 +518,7 @@ export function OnlyOfficeEditor({
                     // ignore
                   }
                 }
-                initEditor();
+                initEditorRef.current();
               }, 3000);
               return;
             }
@@ -516,6 +565,11 @@ export function OnlyOfficeEditor({
     loadOnlyOfficeScript,
     // 其他配置项通过 ref 读取，不触发重建
   ]);
+
+  // 保持 ref 指向最新的 initEditor，供重试等场景使用
+  useEffect(() => {
+    initEditorRef.current = initEditor;
+  }, [initEditor]);
 
   // 初始化
   useEffect(() => {

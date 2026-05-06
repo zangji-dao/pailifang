@@ -872,6 +872,14 @@ export function OnlyOfficeEditStep({
                 }}
                 onDocumentKeyChange={(key) => setDocumentKey(key)}
                 onInsertVariableReady={(fn) => { insertVariableFnRef.current = fn; }}
+                onScanVariables={(insertedKeys) => {
+                  // 根据文档中实际存在的内容控件更新变量的 inserted 状态
+                  const updatedVars = selectedVariables.map(v => ({
+                    ...v,
+                    inserted: insertedKeys.includes(v.key),
+                  }));
+                  onSave({ documentUrl: currentDocument.url, variables: updatedVars }).catch(() => {});
+                }}
                 variables={selectedVariables}
                 zoomLevel={zoomLevel}
               />
