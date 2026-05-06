@@ -19,6 +19,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -45,7 +55,7 @@ import {
 import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
 import type { TemplateVariable, VariableCategory } from "@/types/template-variable";
-import { PresetVariables, VariableCategoryLabels } from "@/types/template-variable";
+import { PresetVariables, VariableCategoryLabels, VariableTypeLabels } from "@/types/template-variable";
 
 // OnlyOffice 配置接口
 interface OnlyOfficeConfig {
@@ -362,13 +372,31 @@ export function OnlyOfficeEditStep({
     toast.success("变量已更新");
   };
 
-  // 删除自定义变量
+  // 删除变量
+  const [deleteConfirm, setDeleteConfirm] = useState<TemplateVariable | null>(null);
+
   const handleDeleteVariable = (variable: TemplateVariable) => {
+    // 预设变量需要确认
+    if (variable.category !== 'custom') {
+      setDeleteConfirm(variable);
+      return;
+    }
+    // 自定义变量直接删除
     const updatedVariables = selectedVariables.filter(v => v.id !== variable.id);
     if (currentDocument) {
       onSave({ documentUrl: currentDocument.url, variables: updatedVariables });
     }
     toast.success(`已删除变量: ${variable.name}`);
+  };
+
+  const confirmDeleteVariable = () => {
+    if (!deleteConfirm) return;
+    const updatedVariables = selectedVariables.filter(v => v.id !== deleteConfirm.id);
+    if (currentDocument) {
+      onSave({ documentUrl: currentDocument.url, variables: updatedVariables });
+    }
+    toast.success(`已删除变量: ${deleteConfirm.name}`);
+    setDeleteConfirm(null);
   };
 
   // 打开编辑对话框
@@ -647,13 +675,16 @@ export function OnlyOfficeEditStep({
                       }}
                     >
                       <div className="text-sm font-medium truncate">{variable.name}</div>
-                      <div className="text-xs text-muted-foreground font-mono truncate">
-                        {`{{${variable.key}}}`}
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] shrink-0 px-1 py-0">
+                          {VariableTypeLabels[variable.type]}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground font-mono truncate">
+                          {`{{${variable.key}}}`}
+                        </span>
                       </div>
                     </button>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      {variable.category === 'custom' && (
-                        <>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -676,12 +707,7 @@ export function OnlyOfficeEditStep({
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
-                        </>
-                      )}
-                      <Badge variant="outline" className="text-[10px] shrink-0">
-                        插入
-                      </Badge>
-                    </div>
+                        </div>
                   </div>
                 ))}
                 
@@ -810,6 +836,7 @@ export function OnlyOfficeEditStep({
                   <SelectItem value="text">文本</SelectItem>
                   <SelectItem value="number">数字</SelectItem>
                   <SelectItem value="date">日期</SelectItem>
+                  <SelectItem value="money">金额</SelectItem>
                   <SelectItem value="select">下拉选择</SelectItem>
                 </SelectContent>
               </Select>
@@ -847,7 +874,7 @@ export function OnlyOfficeEditStep({
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑自定义变量</DialogTitle>
+            <DialogTitle>编辑变量</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -887,6 +914,7 @@ export function OnlyOfficeEditStep({
                   <SelectItem value="text">文本</SelectItem>
                   <SelectItem value="number">数字</SelectItem>
                   <SelectItem value="date">日期</SelectItem>
+                  <SelectItem value="money">金额</SelectItem>
                   <SelectItem value="select">下拉选择</SelectItem>
                 </SelectContent>
               </Select>
@@ -917,6 +945,29 @@ export function OnlyOfficeEditStep({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除变量</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除变量「{deleteConfirm?.name}」吗？
+              {deleteConfirm?.category !== 'custom' && (
+                <span className="block mt-2 text-destructive font-medium">
+                  这是系统预设变量，删除后如需恢复可重新添加。
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteVariable} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
