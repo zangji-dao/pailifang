@@ -155,6 +155,23 @@ export function OnlyOfficeEditor({
     onInsertVariableReadyRef.current = onInsertVariableReady;
   }, [onInsertVariableReady]);
   
+  // 使用 ref 存储非身份相关的配置项，避免变化时重建编辑器
+  const titleRef = useRef(title);
+  const fileTypeRef = useRef(fileType);
+  const tokenRef = useRef(token);
+  const heightRef = useRef(height);
+  const serverUrlRef = useRef(serverUrl);
+  const zoomLevelRef = useRef(zoomLevel);
+
+  useEffect(() => {
+    titleRef.current = title;
+    fileTypeRef.current = fileType;
+    tokenRef.current = token;
+    heightRef.current = height;
+    serverUrlRef.current = serverUrl;
+    zoomLevelRef.current = zoomLevel;
+  }, [title, fileType, token, height, serverUrl, zoomLevel]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -222,7 +239,7 @@ export function OnlyOfficeEditor({
       document.head.appendChild(script);
       console.log("[OnlyOffice] 脚本标签已添加到 head");
     });
-  }, [serverUrl]);
+  }, []);
 
   // 获取 OnlyOffice iframe 引用
   const getIframe = useCallback(() => {
@@ -300,9 +317,11 @@ export function OnlyOfficeEditor({
   }, []);
 
   // 初始化编辑器
+  // 只在文档身份变化时重建：documentId、documentUrl、callbackUrl
+  // 其他配置项（title, zoomLevel, height 等）通过 ref 读取，不会触发重建
   const initEditor = useCallback(async () => {
     console.log("[OnlyOffice] initEditor 被调用");
-    console.log("[OnlyOffice] 参数:", { documentId, title, documentUrl, callbackUrl, serverUrl });
+    console.log("[OnlyOffice] 参数:", { documentId, documentUrl, callbackUrl });
 
     // 检查容器是否存在
     if (!containerRef.current) {
@@ -350,11 +369,19 @@ export function OnlyOfficeEditor({
       // 通知父组件当前文档 key（用于强制保存等操作）
       onDocumentKeyChangeRef.current?.(documentKey);
 
+      // 从 ref 读取配置项，避免因为配置变化重建编辑器
+      const currentTitle = titleRef.current;
+      const currentFileType = fileTypeRef.current;
+      const currentToken = tokenRef.current;
+      const currentHeight = heightRef.current;
+      const currentServerUrl = serverUrlRef.current;
+      const currentZoomLevel = zoomLevelRef.current;
+
       const config: EditorConfig = {
         document: {
-          fileType,
+          fileType: currentFileType,
           key: documentKey,
-          title: title,
+          title: currentTitle,
           url: documentUrl,
           permissions: {
             edit: true,
@@ -367,7 +394,7 @@ export function OnlyOfficeEditor({
         editorConfig: {
           mode: "edit",
           callbackUrl,
-          documentServerUrl: serverUrl,  // 文档服务器地址
+          documentServerUrl: currentServerUrl,
           lang: "zh-CN",
           user: {
             id: "user-1",
@@ -389,7 +416,7 @@ export function OnlyOfficeEditor({
             spellcheck: false,
             toolbarNoTabs: false,
             unit: "cm",
-            zoom: zoomLevel,
+            zoom: currentZoomLevel,
             uiTheme: "theme-light",
           },
           // 启用变量绑定插件（如果服务器上已部署）
@@ -399,7 +426,7 @@ export function OnlyOfficeEditor({
         },
         type: "desktop",
         width: "100%",
-        height: height,
+        height: currentHeight,
         events: {
           onAppReady: () => {
             console.log("[OnlyOffice] onAppReady 触发");
@@ -417,8 +444,8 @@ export function OnlyOfficeEditor({
       };
 
       // 如果提供了 JWT token
-      if (token) {
-        config.token = token;
+      if (currentToken) {
+        config.token = currentToken;
       }
 
       // 创建新编辑器
@@ -445,16 +472,10 @@ export function OnlyOfficeEditor({
     }
   }, [
     documentId,
-    title,
     documentUrl,
-    fileType,
     callbackUrl,
-    token,
-    height,
     loadOnlyOfficeScript,
-    serverUrl,
-    zoomLevel,
-    // onDocumentKeyChange 通过 ref 读取，不需要加入依赖
+    // 其他配置项通过 ref 读取，不触发重建
   ]);
 
   // 初始化

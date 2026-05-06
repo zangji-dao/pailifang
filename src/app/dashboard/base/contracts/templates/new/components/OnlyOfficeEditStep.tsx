@@ -132,13 +132,18 @@ export function OnlyOfficeEditStep({
   // 当前编辑的文档索引（0=主文档，1,2,3...=附件）
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   
-  // 当前文档信息 - 使用 useMemo 避免每次渲染创建新对象
+  // 使用 ref 缓存 attachments，避免父组件重渲染导致新数组引用触发编辑器重建
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
+
+  // 当前文档信息 - 只依赖 currentDocIndex、documentTitle、documentUrl
+  // attachments 通过 ref 读取，避免引用变化触发重建
   const currentDocument = useMemo(() => {
     if (currentDocIndex === 0) {
       return { id: 'main', name: documentTitle, url: documentUrl };
     }
-    return attachments[currentDocIndex - 1] || null;
-  }, [currentDocIndex, documentTitle, documentUrl, attachments]);
+    return attachmentsRef.current[currentDocIndex - 1] || null;
+  }, [currentDocIndex, documentTitle, documentUrl]);
     
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
@@ -207,7 +212,7 @@ export function OnlyOfficeEditStep({
       // 确定 storagePath：主文档用 {templateId}/main.docx，附件用 {templateId}/attachments/{attId}.docx
       let storagePath = `${templateId}/main.docx`;
       if (currentDocIndex > 0) {
-        const attachment = attachments[currentDocIndex - 1];
+        const attachment = attachmentsRef.current[currentDocIndex - 1];
         if (attachment) {
           // 从附件 URL 提取存储路径
           try {
@@ -248,7 +253,7 @@ export function OnlyOfficeEditStep({
       setEditorError(err.message);
       toast.error(err.message);
     }
-  }, [templateId, currentDocUrl, currentDocName, currentDocIndex, attachments]);
+  }, [templateId, currentDocUrl, currentDocName, currentDocIndex]);
 
   // 初始化时获取配置
   useEffect(() => {
