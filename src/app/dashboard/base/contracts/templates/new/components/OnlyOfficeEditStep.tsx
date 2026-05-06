@@ -647,9 +647,10 @@ export function OnlyOfficeEditStep({
             </div>
             
             {/* 变量列表 - 可滚动 */}
-            <ScrollArea className="flex-1">
-              <div className="p-2 space-y-1">
-                {filteredVariables.map((variable) => (
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-1">
+                  {filteredVariables.map((variable) => (
                   <div
                     key={variable.id}
                     className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
@@ -718,6 +719,7 @@ export function OnlyOfficeEditStep({
                 )}
               </div>
             </ScrollArea>
+            </div>
             
             {/* 使用提示 */}
             <div className="p-2 border-t bg-muted/30 shrink-0">
