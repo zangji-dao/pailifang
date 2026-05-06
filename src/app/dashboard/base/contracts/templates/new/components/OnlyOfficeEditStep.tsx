@@ -39,6 +39,8 @@ import {
   File,
   ArrowLeft,
   ArrowRight,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
@@ -159,6 +161,15 @@ export function OnlyOfficeEditStep({
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingVariable, setEditingVariable] = useState<TemplateVariable | null>(null);
+  const [editVariableForm, setEditVariableForm] = useState<Partial<TemplateVariable>>({
+    name: '',
+    key: '',
+    type: 'text',
+    category: 'custom',
+    placeholder: '',
+  });
   const [newVariable, setNewVariable] = useState<Partial<TemplateVariable>>({
     name: '',
     key: '',
@@ -311,6 +322,66 @@ export function OnlyOfficeEditStep({
     });
     
     toast.success("变量已添加");
+  };
+
+  // 编辑自定义变量
+  const handleEditVariable = () => {
+    if (!editingVariable) return;
+    if (!editVariableForm.name?.trim()) {
+      toast.error("请输入变量名称");
+      return;
+    }
+
+    const updatedKey = editVariableForm.key || editingVariable.key;
+
+    // 检查 key 是否重复（排除自身）
+    if (selectedVariables.some(v => v.key === updatedKey && v.id !== editingVariable.id)) {
+      toast.error("变量标识符已存在");
+      return;
+    }
+
+    const updatedVariables = selectedVariables.map(v =>
+      v.id === editingVariable.id
+        ? {
+            ...v,
+            name: editVariableForm.name!.trim(),
+            key: updatedKey,
+            type: editVariableForm.type || v.type,
+            placeholder: editVariableForm.placeholder,
+          }
+        : v
+    );
+
+    if (currentDocument) {
+      onSave({ documentUrl: currentDocument.url, variables: updatedVariables });
+    }
+
+    setShowEditDialog(false);
+    setEditingVariable(null);
+    setEditVariableForm({ name: '', key: '', type: 'text', category: 'custom', placeholder: '' });
+    toast.success("变量已更新");
+  };
+
+  // 删除自定义变量
+  const handleDeleteVariable = (variable: TemplateVariable) => {
+    const updatedVariables = selectedVariables.filter(v => v.id !== variable.id);
+    if (currentDocument) {
+      onSave({ documentUrl: currentDocument.url, variables: updatedVariables });
+    }
+    toast.success(`已删除变量: ${variable.name}`);
+  };
+
+  // 打开编辑对话框
+  const openEditDialog = (variable: TemplateVariable) => {
+    setEditingVariable(variable);
+    setEditVariableForm({
+      name: variable.name,
+      key: variable.key,
+      type: variable.type,
+      category: variable.category,
+      placeholder: variable.placeholder,
+    });
+    setShowEditDialog(true);
   };
 
   // 保存文档
@@ -551,37 +622,67 @@ export function OnlyOfficeEditStep({
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
                 {filteredVariables.map((variable) => (
-                  <button
+                  <div
                     key={variable.id}
                     className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
-                    onClick={() => {
-                      // 尝试插入变量到 OnlyOffice
-                      if (insertVariableFnRef.current) {
-                        const success = insertVariableFnRef.current(variable);
-                        if (success) {
-                          toast.success(`已插入变量: ${variable.name}`);
+                  >
+                    <button
+                      className="flex-1 min-w-0"
+                      onClick={() => {
+                        // 尝试插入变量到 OnlyOffice
+                        if (insertVariableFnRef.current) {
+                          const success = insertVariableFnRef.current(variable);
+                          if (success) {
+                            toast.success(`已插入变量: ${variable.name}`);
+                          } else {
+                            // 如果插入失败，回退到复制模式
+                            navigator.clipboard.writeText(`{{${variable.key}}}`);
+                            toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
+                          }
                         } else {
-                          // 如果插入失败，回退到复制模式
+                          // 如果编辑器未就绪，回退到复制模式
                           navigator.clipboard.writeText(`{{${variable.key}}}`);
                           toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
                         }
-                      } else {
-                        // 如果编辑器未就绪，回退到复制模式
-                        navigator.clipboard.writeText(`{{${variable.key}}}`);
-                        toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
-                      }
-                    }}
-                  >
-                    <div className="flex-1 min-w-0">
+                      }}
+                    >
                       <div className="text-sm font-medium truncate">{variable.name}</div>
                       <div className="text-xs text-muted-foreground font-mono truncate">
                         {`{{${variable.key}}}`}
                       </div>
+                    </button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      {variable.category === 'custom' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditDialog(variable);
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteVariable(variable);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        插入
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      插入
-                    </Badge>
-                  </button>
+                  </div>
                 ))}
                 
                 {filteredVariables.length === 0 && (
@@ -731,6 +832,87 @@ export function OnlyOfficeEditStep({
             </Button>
             <Button onClick={handleAddVariable}>
               添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑变量对话框 */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) {
+          setEditingVariable(null);
+          setEditVariableForm({ name: '', key: '', type: 'text', category: 'custom', placeholder: '' });
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑自定义变量</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-var-name">变量名称 *</Label>
+              <Input
+                id="edit-var-name"
+                placeholder="如：签订日期"
+                value={editVariableForm.name || ''}
+                onChange={(e) => setEditVariableForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-var-key">变量标识符</Label>
+              <Input
+                id="edit-var-key"
+                placeholder="如：sign_date"
+                value={editVariableForm.key || ''}
+                onChange={(e) => setEditVariableForm(prev => ({ ...prev, key: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                修改变量标识符后，文档中已插入的旧标识符不会自动更新
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-var-type">字段类型</Label>
+              <Select
+                value={editVariableForm.type || 'text'}
+                onValueChange={(value) => setEditVariableForm(prev => ({ ...prev, type: value as TemplateVariable['type'] }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">文本</SelectItem>
+                  <SelectItem value="number">数字</SelectItem>
+                  <SelectItem value="date">日期</SelectItem>
+                  <SelectItem value="select">下拉选择</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-var-placeholder">占位提示</Label>
+              <Input
+                id="edit-var-placeholder"
+                placeholder="如：请输入签订日期"
+                value={editVariableForm.placeholder || ''}
+                onChange={(e) => setEditVariableForm(prev => ({ ...prev, placeholder: e.target.value }))}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowEditDialog(false);
+              setEditingVariable(null);
+              setEditVariableForm({ name: '', key: '', type: 'text', category: 'custom', placeholder: '' });
+            }}>
+              取消
+            </Button>
+            <Button onClick={handleEditVariable}>
+              保存
             </Button>
           </DialogFooter>
         </DialogContent>
