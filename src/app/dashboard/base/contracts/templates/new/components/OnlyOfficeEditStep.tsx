@@ -236,10 +236,6 @@ export function OnlyOfficeEditStep({
   
   // 删除分类
   const handleDeleteCategory = useCallback((cat: VariableCategoryDef) => {
-    if (cat.preset) {
-      toast.error('预设分类不可删除');
-      return;
-    }
     // 检查是否有变量使用此分类
     const varsInCat = selectedVariables.filter(v => v.category === cat.key);
     if (varsInCat.length > 0) {
@@ -691,15 +687,13 @@ export function OnlyOfficeEditStep({
                           <span className="ml-0.5 opacity-70">{count}</span>
                         )}
                       </button>
-                      {!cat.preset && (
-                        <button
+                      <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat); }}
                           className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
                           title="删除分类"
                         >
                           <X className="h-2.5 w-2.5" />
                         </button>
-                      )}
                     </div>
                   );
                 })}
