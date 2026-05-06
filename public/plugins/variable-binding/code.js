@@ -9,11 +9,31 @@ let activeVariable = null;
 
 // 初始化插件
 window.Asc.plugin.init = function () {
-  // 插件初始化逻辑
   console.log("[VariableBinding] Plugin initialized");
 
-  // 发送消息给父窗口请求变量列表
-  window.Asc.plugin.sendToPlugin("getVariables");
+  // 监听外部 window message
+  window.addEventListener("message", function(event) {
+    console.log("[VariableBinding] Window message received:", event.data);
+    
+    if (event.data && event.data.type === "onExternalPluginMessage") {
+      var pluginData = event.data.data;
+      if (pluginData) {
+        if (pluginData.type === "insertVariable") {
+          insertVariableToDocument(pluginData.data);
+        } else if (pluginData.type === "scanVariables") {
+          scanDocumentVariables();
+        }
+      }
+    }
+  });
+
+  // 文档加载完成后自动扫描内容控件
+  window.Asc.plugin.onDocumentReady = function() {
+    console.log("[VariableBinding] Document ready, scanning content controls...");
+    setTimeout(function() {
+      scanDocumentVariables();
+    }, 1000);
+  };
 };
 
 // 接收消息
@@ -41,6 +61,11 @@ window.Asc.plugin.onMessage = function (data) {
         highlightVariableInDocument(message.data);
         break;
 
+      case "scanVariables":
+        // 扫描文档中所有内容控件
+        scanDocumentVariables();
+        break;
+
       default:
         console.warn("[VariableBinding] Unknown message type:", message.type);
     }
@@ -48,6 +73,38 @@ window.Asc.plugin.onMessage = function (data) {
     console.error("[VariableBinding] Error parsing message:", error);
   }
 };
+
+// 扫描文档中所有内容控件，返回 Tag 列表
+function scanDocumentVariables() {
+  console.log("[VariableBinding] Scanning document for content controls...");
+  
+  window.Asc.plugin.executeMethod("GetAllContentControls", null, function(result) {
+    console.log("[VariableBinding] GetAllContentControls result:", result);
+    
+    const keys = [];
+    
+    if (Array.isArray(result)) {
+      for (var i = 0; i < result.length; i++) {
+        var control = result[i];
+        var tag = control.Tag || control.tag || "";
+        if (tag) {
+          keys.push(tag);
+        }
+      }
+    }
+    
+    console.log("[VariableBinding] Found content control tags:", keys);
+    
+    // 通过 postMessage 将结果发送回父窗口
+    window.parent.postMessage({
+      type: "scanVariablesResult",
+      data: {
+        keys: keys,
+        count: keys.length
+      }
+    }, "*");
+  });
+}
 
 // 插入变量到文档
 function insertVariableToDocument(variable) {

@@ -168,6 +168,7 @@ export function OnlyOfficeEditor({
   const heightRef = useRef(height);
   const serverUrlRef = useRef(serverUrl);
   const zoomLevelRef = useRef(zoomLevel);
+  const documentUrlRef = useRef(documentUrl);
 
   useEffect(() => {
     titleRef.current = title;
@@ -176,7 +177,8 @@ export function OnlyOfficeEditor({
     heightRef.current = height;
     serverUrlRef.current = serverUrl;
     zoomLevelRef.current = zoomLevel;
-  }, [title, fileType, token, height, serverUrl, zoomLevel]);
+    documentUrlRef.current = documentUrl;
+  }, [title, fileType, token, height, serverUrl, zoomLevel, documentUrl]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
@@ -296,46 +298,47 @@ export function OnlyOfficeEditor({
     return true;
   }, [getIframe]);
 
-  // 扫描文档中已插入的变量（内容控件）
-  const scanInsertedVariables = useCallback(() => {
-    if (!editorRef.current) {
-      console.warn("[OnlyOffice] 编辑器未就绪，无法扫描变量");
-      return;
-    }
-
+  // 扫描文档中已插入的变量（内容控件）- 通过服务端解析 docx
+  const scanInsertedVariables = useCallback(async () => {
     try {
-      editorRef.current.executeMethod("GetAllContentControls", [], (result: unknown) => {
-        console.log("[OnlyOffice] GetAllContentControls 结果:", result);
-        
-        const insertedKeys: string[] = [];
-        
-        // 解析返回的内容控件列表
-        if (Array.isArray(result)) {
-          for (const control of result) {
-            const controlObj = control as Record<string, unknown>;
-            // 内容控件的 Tag 存储了变量 key
-            const tag = controlObj.Tag as string || controlObj.tag as string;
-            if (tag) {
-              insertedKeys.push(tag);
-            }
-          }
-        }
-        
-        console.log("[OnlyOffice] 扫描到已插入的变量 keys:", insertedKeys);
-        onScanVariables?.(insertedKeys);
+      // 获取当前文档的下载 URL
+      const docUrl = documentUrlRef.current;
+      if (!docUrl) {
+        console.warn("[OnlyOffice] 文档 URL 为空，无法扫描变量");
+        onScanVariables?.([]);
+        return;
+      }
+
+      console.log("[OnlyOffice] 开始扫描文档变量，URL:", docUrl);
+
+      const response = await fetch('/api/onlyoffice/scan-variables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileUrl: docUrl }),
       });
-    } catch (e) {
-      console.warn("[OnlyOffice] 扫描变量失败:", e);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[OnlyOffice] 扫描变量 API 失败:", errorData);
+        onScanVariables?.([]);
+        return;
+      }
+
+      const data = await response.json() as { keys: string[]; count: number };
+      console.log("[OnlyOffice] 扫描结果:", data.keys, "共", data.count, "个");
+      onScanVariables?.(data.keys || []);
+    } catch (error) {
+      console.error("[OnlyOffice] 扫描变量异常:", error);
+      onScanVariables?.([]);
     }
   }, [onScanVariables]);
 
-  // 暴露 scanInsertedVariables 方法给父组件
+  // 编辑器就绪后自动扫描一次
   useEffect(() => {
-    if (onScanVariables && !isLoading && editorRef.current) {
-      // 编辑器就绪后自动扫描一次
+    if (onScanVariables && !isLoading) {
       const timer = setTimeout(() => {
         scanInsertedVariables();
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [onScanVariables, isLoading, scanInsertedVariables]);
