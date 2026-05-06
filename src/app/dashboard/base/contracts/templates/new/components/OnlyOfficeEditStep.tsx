@@ -750,6 +750,13 @@ export function OnlyOfficeEditStep({
                         const success = insertVariableFnRef.current(variable);
                         if (success) {
                           toast.success(`已插入变量: ${variable.name}`);
+                          // 标记变量为已插入
+                          if (!variable.inserted) {
+                            const updated = selectedVariables.map(v =>
+                              v.id === variable.id ? { ...v, inserted: true } : v
+                            );
+                            onSave({ documentUrl: currentDocument?.url || '', variables: updated });
+                          }
                         } else {
                           navigator.clipboard.writeText(`{{${variable.key}}}`);
                           toast.info(`已复制 {{${variable.key}}}，请手动粘贴`);
@@ -762,6 +769,9 @@ export function OnlyOfficeEditStep({
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
+                        {variable.inserted && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                        )}
                         <span className="text-sm font-medium truncate">{variable.name}</span>
                         <Badge variant="outline" className="text-[10px] shrink-0 px-1 py-0 leading-tight">
                           {VariableTypeLabels[variable.type]}

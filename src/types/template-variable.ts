@@ -77,6 +77,7 @@ export interface TemplateVariable {
   placeholder?: string;      // 输入提示
   required?: boolean;        // 是否必填
   computed?: ComputedConfig; // 计算型变量配置（仅 type=computed 时有效）
+  inserted?: boolean;       // 是否已插入到文档中
 }
 
 /** 变量绑定位置 */

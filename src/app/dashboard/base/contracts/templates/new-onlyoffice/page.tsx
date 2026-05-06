@@ -1197,7 +1197,7 @@ export default function NewOnlyOfficeTemplatePage() {
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">变量数量</span>
-                  <span className="font-medium">{selectedVariables.length} 个</span>
+                  <span className="font-medium">{selectedVariables.filter(v => v.inserted).length} 个（已插入）</span>
                 </div>
               </div>
               
