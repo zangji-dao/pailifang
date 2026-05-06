@@ -126,12 +126,21 @@ interface OnlyOfficeEditStepProps {
 /**
  * 生成变量标识符
  */
-function generateVariableKey(existingKeys: string[]): string {
+function generateVariableKey(existingKeys: string[], category: string = 'custom'): string {
+  // 从分类生成前缀：enterprise → enterprise, 自定义 → custom, 中文分类 → 拼音或 custom
+  const prefixMap: Record<string, string> = {
+    enterprise: 'enterprise',
+    contract: 'contract',
+    location: 'location',
+    date: 'date',
+    custom: 'custom',
+  };
+  const prefix = prefixMap[category] || category.replace(/[^a-zA-Z0-9]/g, '') || 'custom';
   let index = 1;
-  while (existingKeys.includes(`custom_${index}`)) {
+  while (existingKeys.includes(`${prefix}_${index}`)) {
     index++;
   }
-  return `custom_${index}`;
+  return `${prefix}_${index}`;
 }
 
 export function OnlyOfficeEditStep({
@@ -266,14 +275,15 @@ export function OnlyOfficeEditStep({
         ...selectedVariables.map(v => v.key),
         ...PresetVariables.map(v => v.key),
       ];
-      const autoKey = generateVariableKey(existingKeys);
+      const categoryForGen = activeCategory !== 'all' ? activeCategory : (newVariable.category || 'custom');
+      const autoKey = generateVariableKey(existingKeys, categoryForGen);
       setNewVariable(prev => ({
         ...prev,
         key: autoKey,
         category: activeCategory !== 'all' ? activeCategory : (prev.category || 'custom'),
       }));
     }
-  }, [showAddDialog, selectedVariables]);
+  }, [showAddDialog, selectedVariables, activeCategory]);
 
   // 当前文档的 URL 和名称（用于依赖）
   const currentDocUrl = currentDocument?.url;
@@ -364,7 +374,7 @@ export function OnlyOfficeEditStep({
     const variable: TemplateVariable = {
       id: `var_${Date.now()}`,
       name: newVariable.name.trim(),
-      key: newVariable.key || generateVariableKey(selectedVariables.map(v => v.key)),
+      key: newVariable.key || generateVariableKey(selectedVariables.map(v => v.key), newVariable.category || 'custom'),
       type: newVariable.type || 'text',
       category: newVariable.category || 'custom',
       placeholder: newVariable.placeholder,

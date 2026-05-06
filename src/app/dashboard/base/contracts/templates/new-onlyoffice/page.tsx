@@ -690,21 +690,25 @@ export default function NewOnlyOfficeTemplatePage() {
   const handleSaveDocument = async (data: { documentUrl: string; variables: TemplateVariable[] }) => {
     setSaving(true);
     try {
-      // 保存变量
-      const customVariables = data.variables.filter(v => v.category === 'custom');
+      // 先更新内存中的变量列表，确保 UI 立即反映变化
+      setSelectedVariables(data.variables);
       
-      if (customVariables.length > 0) {
+      // 保存所有用户添加的变量（非预设变量，或自定义分类的变量）到 fields API
+      const userVariables = data.variables.filter(v => !PresetVariables.some(p => p.key === v.key));
+      
+      if (userVariables.length > 0) {
         const fieldsRes = await fetch("/api/contract-templates/fields", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             templateId,
-            fields: customVariables.map(v => ({
+            fields: userVariables.map(v => ({
               key: v.key,
               label: v.name,
               type: v.type || 'text',
               required: true,
               placeholder: v.placeholder,
+              category: v.category || 'custom',
             })),
           }),
         });
@@ -712,11 +716,11 @@ export default function NewOnlyOfficeTemplatePage() {
         if (!fieldsRes.ok) {
           const errorText = await fieldsRes.text();
           console.error('保存字段失败，HTTP状态:', fieldsRes.status, errorText);
-          throw new Error(`保存字段失败 (${fieldsRes.status}): ${errorText}`);
+          // 不抛出错误，变量已经在内存中更新了
+          toast.error("变量已添加，但持久化保存失败");
         }
       }
       
-      setSelectedVariables(data.variables);
       // 保存完成后保存草稿
       await saveDraft(true);
     } catch (err) {
