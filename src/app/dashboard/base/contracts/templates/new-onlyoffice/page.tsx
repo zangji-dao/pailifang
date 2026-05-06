@@ -43,7 +43,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 import { OnlyOfficeEditStep } from "../new/components/OnlyOfficeEditStep";
-import type { TemplateVariable } from "@/types/template-variable";
+import type { TemplateVariable, VariableCategoryDef } from "@/types/template-variable";
 import { PresetVariables } from "@/types/template-variable";
 
 // 步骤配置
@@ -169,7 +169,8 @@ export default function NewOnlyOfficeTemplatePage() {
   
   // 变量
   const [selectedVariables, setSelectedVariables] = useState<TemplateVariable[]>([...PresetVariables]);
-  
+  const [categories, setCategories] = useState<VariableCategoryDef[] | undefined>(undefined);
+
   // Refs
   const mainFileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +244,7 @@ export default function NewOnlyOfficeTemplatePage() {
           base_id: baseId,
           currentStep,
           selectedVariables,
+          categories,
           source_file_url: mainFileUrl,
           source_file_name: mainFileName,
           source_file_type: 'docx',
@@ -354,6 +356,10 @@ export default function NewOnlyOfficeTemplatePage() {
           if (template.draft_data.selectedVariables) {
             setSelectedVariables(template.draft_data.selectedVariables);
             console.log('📎 从 draft_data.selectedVariables 加载了', template.draft_data.selectedVariables.length, '个变量');
+          }
+          
+          if (template.draft_data.categories) {
+            setCategories(template.draft_data.categories);
           }
         }
         
@@ -1159,6 +1165,8 @@ export default function NewOnlyOfficeTemplatePage() {
               url: a.url,
             }))}
             selectedVariables={selectedVariables}
+            categories={categories}
+            onCategoriesChange={setCategories}
             onSave={handleSaveDocument}
             saving={saving}
             onBack={() => setCurrentStep(2)}

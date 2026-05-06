@@ -7,17 +7,27 @@
 /** 变量数据类型 */
 export type VariableType = 'text' | 'number' | 'date' | 'money' | 'select' | 'computed';
 
-/** 变量分类 */
-export type VariableCategory = 'enterprise' | 'contract' | 'location' | 'date' | 'custom';
+/** 变量分类 - 支持自定义类别 */
+export type VariableCategory = string;
 
-/** 变量分类标签 */
-export const VariableCategoryLabels: Record<VariableCategory, string> = {
+/** 预设变量分类 key（不可删除，但可重命名） */
+export const PresetCategoryKeys = ['enterprise', 'contract', 'location', 'date', 'custom'] as const;
+
+/** 默认分类标签映射（首次创建模板时使用） */
+export const DefaultCategoryLabels: Record<string, string> = {
   enterprise: '企业信息',
   contract: '合同信息',
   location: '场地信息',
   date: '日期时间',
   custom: '自定义变量',
 };
+
+/** 变量分类定义（存储在模板数据中，支持自定义） */
+export interface VariableCategoryDef {
+  key: string;        // 唯一标识
+  label: string;      // 显示名称
+  preset?: boolean;   // 是否为预设分类（不可删除）
+}
 
 /** 变量类型标签 */
 export const VariableTypeLabels: Record<VariableType, string> = {

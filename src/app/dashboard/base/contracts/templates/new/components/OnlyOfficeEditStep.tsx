@@ -51,11 +51,12 @@ import {
   ArrowRight,
   Pencil,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OnlyOfficeEditor } from "@/components/OnlyOfficeEditor";
 import type { TemplateVariable, VariableCategory } from "@/types/template-variable";
-import { PresetVariables, VariableCategoryLabels, VariableTypeLabels } from "@/types/template-variable";
+import { PresetVariables, DefaultCategoryLabels, VariableTypeLabels, VariableCategoryDef, PresetCategoryKeys } from "@/types/template-variable";
 
 // OnlyOffice 配置接口
 interface OnlyOfficeConfig {
@@ -106,6 +107,10 @@ interface OnlyOfficeEditStepProps {
   attachments?: AttachmentDocument[];
   /** 已选变量列表 */
   selectedVariables: TemplateVariable[];
+  /** 变量分类列表 */
+  categories?: VariableCategoryDef[];
+  /** 分类变更回调 */
+  onCategoriesChange?: (categories: VariableCategoryDef[]) => void;
   /** 保存回调 */
   onSave: (data: { documentUrl: string; variables: TemplateVariable[] }) => Promise<void>;
   /** 导出 Word 回调 */
@@ -135,6 +140,8 @@ export function OnlyOfficeEditStep({
   documentTitle,
   attachments = [],
   selectedVariables,
+  categories: categoriesProp,
+  onCategoriesChange,
   onSave,
   onExportWord,
   saving = false,
@@ -187,6 +194,62 @@ export function OnlyOfficeEditStep({
     category: 'custom',
     placeholder: '',
   });
+  
+  // 分类管理
+  const [categories, setCategories] = useState<VariableCategoryDef[]>(() => {
+    if (categoriesProp && categoriesProp.length > 0) return categoriesProp;
+    // 默认分类
+    return PresetCategoryKeys.map(key => ({
+      key,
+      label: DefaultCategoryLabels[key],
+      preset: true,
+    }));
+  });
+  const [showAddCategoryDialog, setShowAddCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  
+  // 同步外部 categories 变化
+  useEffect(() => {
+    if (categoriesProp && categoriesProp.length > 0) {
+      setCategories(categoriesProp);
+    }
+  }, [categoriesProp]);
+  
+  // 通知外部分类变更
+  const updateCategories = useCallback((newCategories: VariableCategoryDef[]) => {
+    setCategories(newCategories);
+    onCategoriesChange?.(newCategories);
+  }, [onCategoriesChange]);
+  
+  // 添加分类
+  const handleAddCategory = useCallback(() => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    // 生成 key：用拼音或简单编码
+    const key = `cat_${Date.now()}`;
+    const newCat: VariableCategoryDef = { key, label: name, preset: false };
+    updateCategories([...categories, newCat]);
+    setNewCategoryName('');
+    setShowAddCategoryDialog(false);
+    toast.success(`已添加分类「${name}」`);
+  }, [newCategoryName, categories, updateCategories]);
+  
+  // 删除分类
+  const handleDeleteCategory = useCallback((cat: VariableCategoryDef) => {
+    if (cat.preset) {
+      toast.error('预设分类不可删除');
+      return;
+    }
+    // 检查是否有变量使用此分类
+    const varsInCat = selectedVariables.filter(v => v.category === cat.key);
+    if (varsInCat.length > 0) {
+      toast.error(`分类「${cat.label}」下还有 ${varsInCat.length} 个变量，请先移动或删除变量`);
+      return;
+    }
+    updateCategories(categories.filter(c => c.key !== cat.key));
+    if (activeCategory === cat.key) setActiveCategory('all');
+    toast.success(`已删除分类「${cat.label}」`);
+  }, [categories, activeCategory, selectedVariables, updateCategories]);
   
   // 布局状态
   const [panelCollapsed, setPanelCollapsed] = useState(false);
@@ -598,7 +661,7 @@ export function OnlyOfficeEditStep({
             
             {/* 类别选择标签 */}
             <div className="px-2 py-1.5 border-b shrink-0">
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 items-center">
                 <button
                   onClick={() => setActiveCategory('all')}
                   className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
@@ -609,26 +672,44 @@ export function OnlyOfficeEditStep({
                 >
                   全部
                 </button>
-                {(['enterprise', 'contract', 'location', 'date', 'custom'] as const).map((cat) => {
-                  const count = selectedVariables.filter(v => v.category === cat).length;
-                  if (cat !== 'custom' && count === 0) return null;
+                {categories.map((cat) => {
+                  const count = selectedVariables.filter(v => v.category === cat.key).length;
+                  // 自定义空分类也显示，预设空分类隐藏
+                  if (cat.preset && cat.key !== 'custom' && count === 0) return null;
                   return (
-                    <button
-                      key={cat}
-                      onClick={() => setActiveCategory(cat)}
-                      className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
-                        activeCategory === cat 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted/60 hover:bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {VariableCategoryLabels[cat]}
-                      {count > 0 && (
-                        <span className="ml-0.5 opacity-70">{count}</span>
+                    <div key={cat.key} className="group relative inline-flex">
+                      <button
+                        onClick={() => setActiveCategory(cat.key)}
+                        className={`px-2 py-0.5 text-xs rounded-full transition-colors pr-1 ${
+                          activeCategory === cat.key 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted/60 hover:bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {cat.label}
+                        {count > 0 && (
+                          <span className="ml-0.5 opacity-70">{count}</span>
+                        )}
+                      </button>
+                      {!cat.preset && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat); }}
+                          className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
+                          title="删除分类"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
+                <button
+                  onClick={() => { setNewCategoryName(''); setShowAddCategoryDialog(true); }}
+                  className="px-1.5 py-0.5 text-xs rounded-full bg-muted/40 hover:bg-muted text-muted-foreground transition-colors"
+                  title="添加分类"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
               </div>
             </div>
             
@@ -840,6 +921,23 @@ export function OnlyOfficeEditStep({
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="var-category">所属分类</Label>
+              <Select
+                value={newVariable.category || 'custom'}
+                onValueChange={(value) => setNewVariable(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.key} value={cat.key}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="var-placeholder">占位提示</Label>
               <Input
                 id="var-placeholder"
@@ -918,6 +1016,23 @@ export function OnlyOfficeEditStep({
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="edit-var-category">所属分类</Label>
+              <Select
+                value={editVariableForm.category || 'custom'}
+                onValueChange={(value) => setEditVariableForm(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.key} value={cat.key}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="edit-var-placeholder">占位提示</Label>
               <Input
                 id="edit-var-placeholder"
@@ -965,6 +1080,36 @@ export function OnlyOfficeEditStep({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 添加分类对话框 */}
+      <Dialog open={showAddCategoryDialog} onOpenChange={setShowAddCategoryDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>添加变量分类</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cat-name">分类名称 *</Label>
+              <Input
+                id="cat-name"
+                placeholder="如：费用明细"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddCategoryDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()}>
+              添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -25,7 +25,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { Marker } from "../types";
 import type { TemplateVariable, VariableCategory } from "@/types/template-variable";
-import { PresetVariables, VariableCategoryLabels } from "@/types/template-variable";
+import { PresetVariables, DefaultCategoryLabels } from "@/types/template-variable";
 
 interface MarkerPanelProps {
   markers: Marker[];
@@ -327,7 +327,7 @@ export function MarkerPanel({
               >
                 全部
               </Button>
-              {Object.entries(VariableCategoryLabels).map(([key, label]) => (
+              {Object.entries(DefaultCategoryLabels).map(([key, label]) => (
                 <Button
                   key={key}
                   variant={activeCategory === key ? 'default' : 'outline'}
