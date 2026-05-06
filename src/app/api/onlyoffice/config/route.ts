@@ -14,6 +14,9 @@ interface ConfigRequest {
   title: string;
   documentUrl: string;
   fileType?: string;
+  templateId?: string;
+  docIndex?: number;
+  storagePath?: string;
 }
 
 interface EditorConfig {
@@ -56,6 +59,10 @@ interface EditorConfig {
       unit: string;
       zoom: number;
     };
+    plugins?: {
+      autostart?: string[];
+      pluginsData?: string[];
+    };
   };
   type: string;
   width: string;
@@ -66,7 +73,15 @@ interface EditorConfig {
 export async function POST(request: NextRequest) {
   try {
     const body: ConfigRequest = await request.json();
-    const { documentId, title, documentUrl, fileType = "docx" } = body;
+    const {
+      documentId,
+      title,
+      documentUrl,
+      fileType = "docx",
+      templateId,
+      docIndex = 0,
+      storagePath,
+    } = body;
 
     if (!documentId || !documentUrl) {
       return NextResponse.json(
@@ -76,15 +91,28 @@ export async function POST(request: NextRequest) {
     }
 
     // 生成文档 key（用于区分文档版本）
-    // OnlyOffice 会根据 key 缓存文档，所以需要确保唯一性
     const documentKey = `${documentId}-${Date.now()}`;
 
     // 构建回调 URL - 使用公网地址供 OnlyOffice 云服务器回调
-    // 本地开发使用 localhost，生产环境使用 COZE_PROJECT_DOMAIN_DEFAULT
-    const publicUrl = process.env.COZE_PROJECT_DOMAIN_DEFAULT 
-      ? process.env.COZE_PROJECT_DOMAIN_DEFAULT  // 直接使用域名，已包含协议
+    const publicUrl = process.env.COZE_PROJECT_DOMAIN_DEFAULT
+      ? process.env.COZE_PROJECT_DOMAIN_DEFAULT
       : "http://localhost:5000";
-    const callbackUrl = `${publicUrl}/api/onlyoffice/callback`;
+
+    // 将模板信息附加到回调 URL 的查询参数中
+    // 这样 callback API 就能知道该把文档保存到哪个模板
+    const callbackParams = new URLSearchParams();
+    if (templateId) {
+      callbackParams.set("templateId", templateId);
+    }
+    callbackParams.set("docIndex", String(docIndex));
+    if (storagePath) {
+      callbackParams.set("storagePath", storagePath);
+    }
+
+    const callbackUrl = `${publicUrl}/api/onlyoffice/callback?${callbackParams.toString()}`;
+
+    console.log(`[OnlyOffice Config] templateId: ${templateId}, docIndex: ${docIndex}, storagePath: ${storagePath}`);
+    console.log(`[OnlyOffice Config] callbackUrl: ${callbackUrl}`);
 
     const config: EditorConfig = {
       document: {
@@ -126,6 +154,10 @@ export async function POST(request: NextRequest) {
           unit: "cm",
           zoom: 100,
         },
+        // 启用变量绑定插件
+        plugins: {
+          autostart: ["asc.{8D6E3F7A-1B2C-4D5E-8F9A-0B1C2D3E4F5A}"],
+        },
       },
       type: "desktop",
       width: "100%",
@@ -133,7 +165,6 @@ export async function POST(request: NextRequest) {
     };
 
     // 如果启用了 JWT，生成 token
-    // OnlyOffice JWT payload 格式参考官方文档
     if (JWT_ENABLED && JWT_SECRET) {
       const tokenPayload = {
         document: {

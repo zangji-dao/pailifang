@@ -13,6 +13,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { createClient } from "@/lib/supabase/server";
 
 const JWT_SECRET = process.env.ONLYOFFICE_JWT_SECRET || "";
 const JWT_ENABLED = process.env.ONLYOFFICE_JWT_ENABLED === "true";
@@ -37,69 +38,153 @@ interface CallbackBody {
   lastsave?: string;
   notmodified?: boolean;
   forcesavetype?: number;
-  token?: string; // OnlyOffice 可能从 body 发送 token
+  token?: string;
 }
 
-// 存储文档保存状态的内存缓存
-// 生产环境应该使用 Redis 或数据库
-const documentCache = new Map<string, { url: string; savedAt: number }>();
+/**
+ * 从回调 URL 的查询参数中提取模板信息
+ * callbackUrl 格式: /api/onlyoffice/callback?templateId=xxx&docIndex=0&storagePath=xxx
+ */
+function extractTemplateInfo(request: NextRequest): {
+  templateId: string | null;
+  docIndex: number;
+  storagePath: string | null;
+} {
+  const url = request.url;
+  try {
+    const parsedUrl = new URL(url);
+    return {
+      templateId: parsedUrl.searchParams.get("templateId"),
+      docIndex: parseInt(parsedUrl.searchParams.get("docIndex") || "0", 10),
+      storagePath: parsedUrl.searchParams.get("storagePath"),
+    };
+  } catch {
+    return { templateId: null, docIndex: 0, storagePath: null };
+  }
+}
+
+/**
+ * 从 OnlyOffice URL 下载文档并保存到 Supabase 存储
+ */
+async function downloadAndSaveToStorage(
+  downloadUrl: string,
+  templateId: string,
+  docIndex: number,
+  storagePath?: string | null
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    console.log(`[OnlyOffice Callback] 下载文档: ${downloadUrl}`);
+    console.log(`[OnlyOffice Callback] 模板ID: ${templateId}, 文档索引: ${docIndex}, 存储路径: ${storagePath}`);
+
+    // 从 OnlyOffice 下载文档
+    const downloadResponse = await fetch(downloadUrl);
+    if (!downloadResponse.ok) {
+      throw new Error(`下载文档失败: HTTP ${downloadResponse.status}`);
+    }
+
+    const documentBuffer = Buffer.from(await downloadResponse.arrayBuffer());
+    console.log(`[OnlyOffice Callback] 文档大小: ${documentBuffer.length} bytes`);
+
+    const supabase = createClient();
+
+    // 确定存储路径
+    const targetPath = storagePath || `${templateId}/main.docx`;
+
+    // 上传到 Supabase 存储（upsert 覆盖原文件）
+    const { error: uploadError } = await supabase.storage
+      .from("contract-templates")
+      .upload(targetPath, documentBuffer, {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("[OnlyOffice Callback] 上传到 Supabase 失败:", uploadError);
+      throw new Error(`上传失败: ${uploadError.message}`);
+    }
+
+    // 获取公开 URL
+    const { data: urlData } = supabase.storage
+      .from("contract-templates")
+      .getPublicUrl(targetPath);
+
+    const publicUrl = urlData.publicUrl;
+    console.log(`[OnlyOffice Callback] 文档已保存到: ${publicUrl}`);
+
+    // 更新数据库中的模板记录（仅主文档）
+    if (docIndex === 0 && templateId) {
+      const now = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from("contract_templates")
+        .update({
+          source_file_url: publicUrl,
+          updated_at: now,
+        })
+        .eq("id", templateId);
+
+      if (updateError) {
+        console.error("[OnlyOffice Callback] 更新模板记录失败:", updateError);
+        // 不抛出异常，文件已保存成功
+      } else {
+        console.log("[OnlyOffice Callback] 模板记录已更新");
+      }
+    }
+
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("[OnlyOffice Callback] 下载并保存文档失败:", errMsg);
+    return { success: false, error: errMsg };
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     let body: CallbackBody;
     let token: string | undefined;
 
+    // 提取模板信息（从回调 URL 的查询参数）
+    const { templateId, docIndex, storagePath } = extractTemplateInfo(request);
+
     // 如果启用了 JWT，验证 token
     if (JWT_ENABLED && JWT_SECRET) {
-      // OnlyOffice 可能从 Authorization header 或 body.token 发送 token
       const authHeader = request.headers.get("authorization");
-      
-      // 尝试从 Authorization header 获取 token
+
       if (authHeader?.startsWith("Bearer ")) {
         token = authHeader.substring(7);
       }
-      
-      // 如果没有从 header 获取，尝试从 body 获取
+
       if (!token) {
         const bodyText = await request.text();
         let bodyJson: Record<string, unknown>;
-        
+
         try {
           bodyJson = JSON.parse(bodyText);
         } catch {
-          // 如果无法解析 JSON，返回错误
           console.error("[OnlyOffice Callback] Invalid JSON body");
           return NextResponse.json({ error: 1 }, { status: 400 });
         }
-        
-        // 尝试从 body.token 获取
+
         if (typeof bodyJson.token === "string") {
           token = bodyJson.token;
         }
-        
-        // 从 body 中移除 token 用于后续处理
+
         delete bodyJson.token;
         body = bodyJson as unknown as CallbackBody;
       } else {
-        // 从 header 获取了 token，需要解析 body
         body = await request.json();
       }
-      
-      // 如果启用了 JWT 但没有提供 token，可能是配置问题
-      // 但为了兼容性，我们仍然处理回调
+
       if (!token) {
         console.warn("[OnlyOffice Callback] No token provided, but JWT is enabled");
-        // 继续处理，但不验证 token
       } else {
-        // 验证 token
         try {
           const decoded = jwt.verify(token, JWT_SECRET) as Record<string, unknown>;
           console.log("[OnlyOffice Callback] Token verified successfully");
           console.log("[OnlyOffice Callback] Decoded payload:", JSON.stringify(decoded));
         } catch (err) {
           console.error("[OnlyOffice Callback] Token verification failed:", err);
-          // 即使验证失败，也继续处理回调（为了兼容性）
-          // 在生产环境中，可以选择返回 401
         }
       }
     } else {
@@ -108,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     const { key, status, url } = body;
 
-    console.log(`[OnlyOffice Callback] Key: ${key}, Status: ${status}`);
+    console.log(`[OnlyOffice Callback] Key: ${key}, Status: ${status}, TemplateId: ${templateId}, DocIndex: ${docIndex}`);
 
     switch (status) {
       case 0:
@@ -120,21 +205,27 @@ export async function POST(request: NextRequest) {
         console.log(`[OnlyOffice] Document ${key} is being saved`);
         break;
 
-      case 2:
-        // 文档准备保存
-        if (url) {
-          // 缓存文档 URL
-          documentCache.set(key, {
-            url,
-            savedAt: Date.now(),
-          });
-          console.log(`[OnlyOffice] Document ${key} saved to: ${url}`);
-
-          // TODO: 这里应该将文档保存到对象存储或数据库
-          // 可以通过 url 下载最新版本的文档
-          // 例如：fetch(url).then(r => r.arrayBuffer()).then(saveToStorage)
+      case 2: {
+        // 文档准备保存（用户关闭编辑器或手动保存）
+        if (url && templateId) {
+          console.log(`[OnlyOffice] Document ${key} saving, URL: ${url}`);
+          // 异步下载并保存到 Supabase 存储
+          downloadAndSaveToStorage(url, templateId, docIndex, storagePath)
+            .then((result) => {
+              if (result.success) {
+                console.log(`[OnlyOffice] Document ${key} saved to storage: ${result.url}`);
+              } else {
+                console.error(`[OnlyOffice] Failed to save document ${key}: ${result.error}`);
+              }
+            })
+            .catch((err) => {
+              console.error(`[OnlyOffice] Error saving document ${key}:`, err);
+            });
+        } else if (url) {
+          console.warn(`[OnlyOffice] Document ${key} saved but no templateId, URL: ${url}`);
         }
         break;
+      }
 
       case 3:
         // 文档保存错误
@@ -146,16 +237,27 @@ export async function POST(request: NextRequest) {
         console.log(`[OnlyOffice] Document ${key} closed without changes`);
         break;
 
-      case 6:
-        // 强制保存
-        if (url) {
-          documentCache.set(key, {
-            url,
-            savedAt: Date.now(),
-          });
-          console.log(`[OnlyOffice] Document ${key} force saved to: ${url}`);
+      case 6: {
+        // 强制保存（自动保存触发）
+        if (url && templateId) {
+          console.log(`[OnlyOffice] Document ${key} force saving, URL: ${url}`);
+          // 异步下载并保存到 Supabase 存储
+          downloadAndSaveToStorage(url, templateId, docIndex, storagePath)
+            .then((result) => {
+              if (result.success) {
+                console.log(`[OnlyOffice] Document ${key} force saved to storage: ${result.url}`);
+              } else {
+                console.error(`[OnlyOffice] Failed to force save document ${key}: ${result.error}`);
+              }
+            })
+            .catch((err) => {
+              console.error(`[OnlyOffice] Error force saving document ${key}:`, err);
+            });
+        } else if (url) {
+          console.warn(`[OnlyOffice] Document ${key} force saved but no templateId, URL: ${url}`);
         }
         break;
+      }
 
       case 7:
         // 强制保存错误
@@ -174,7 +276,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 获取已保存的文档 URL
+// 获取已保存的文档 URL（调试用）
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key");
 
@@ -185,17 +287,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const cached = documentCache.get(key);
-  if (!cached) {
-    return NextResponse.json(
-      { error: "文档未找到或未保存" },
-      { status: 404 }
-    );
-  }
-
   return NextResponse.json({
     success: true,
-    url: cached.url,
-    savedAt: cached.savedAt,
+    message: "文档保存信息请查看日志，文档已通过回调自动保存到 Supabase 存储",
   });
 }

@@ -147,6 +147,9 @@ export function OnlyOfficeEditStep({
     serverUrl: string;
   } | null>(null);
   
+  // 当前文档的 OnlyOffice documentKey（用于强制保存）
+  const [documentKey, setDocumentKey] = useState<string | null>(null);
+  
   // 变量面板状态
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<VariableCategory | 'all'>('all');
@@ -165,6 +168,8 @@ export function OnlyOfficeEditStep({
   
   // 编辑器容器引用（用于调用 insertVariable）
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  // insertVariable 函数引用（由 OnlyOfficeEditor 通过回调提供）
+  const insertVariableFnRef = useRef<((variable: TemplateVariable) => boolean) | null>(null);
   
   // 获取环境变量
   const onlyofficeUrl = process.env.NEXT_PUBLIC_ONLYOFFICE_URL || "http://localhost:8080";
@@ -196,8 +201,27 @@ export function OnlyOfficeEditStep({
     setIsEditorReady(false);
     setEditorError(null);
     setEditorConfig(null);
+    setDocumentKey(null);
     
     try {
+      // 确定 storagePath：主文档用 {templateId}/main.docx，附件用 {templateId}/attachments/{attId}.docx
+      let storagePath = `${templateId}/main.docx`;
+      if (currentDocIndex > 0) {
+        const attachment = attachments[currentDocIndex - 1];
+        if (attachment) {
+          // 从附件 URL 提取存储路径
+          try {
+            const urlObj = new URL(attachment.url);
+            const pathParts = urlObj.pathname.split('/contract-templates/');
+            if (pathParts.length > 1) {
+              storagePath = pathParts[1];
+            }
+          } catch {
+            storagePath = `${templateId}/attachments/${attachment.id}.docx`;
+          }
+        }
+      }
+
       const response = await fetch("/api/onlyoffice/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,6 +230,9 @@ export function OnlyOfficeEditStep({
           title: currentDocName || "文档",
           documentUrl: currentDocUrl,
           fileType: "docx",
+          templateId,
+          docIndex: currentDocIndex,
+          storagePath,
         }),
       });
 
@@ -221,7 +248,7 @@ export function OnlyOfficeEditStep({
       setEditorError(err.message);
       toast.error(err.message);
     }
-  }, [templateId, currentDocUrl, currentDocName, currentDocIndex]);
+  }, [templateId, currentDocUrl, currentDocName, currentDocIndex, attachments]);
 
   // 初始化时获取配置
   useEffect(() => {
@@ -284,8 +311,35 @@ export function OnlyOfficeEditStep({
   // 保存文档
   const handleSave = async () => {
     if (!currentDocument) return;
-    await onSave({ documentUrl: currentDocument.url, variables: selectedVariables });
-    toast.success("保存成功");
+    
+    try {
+      // 1. 先保存变量
+      await onSave({ documentUrl: currentDocument.url, variables: selectedVariables });
+      
+      // 2. 触发 OnlyOffice 强制保存（将文档保存到 Supabase）
+      if (documentKey) {
+        const forceSaveRes = await fetch("/api/onlyoffice/forcesave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: documentKey }),
+        });
+        
+        const forceSaveData = await forceSaveRes.json();
+        if (forceSaveData.success) {
+          console.log("[OnlyOffice] Force save command sent");
+          // 强制保存命令已发送，OnlyOffice 会通过回调保存文档
+          // 给回调一些时间完成保存
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          console.warn("[OnlyOffice] Force save failed:", forceSaveData.error);
+        }
+      }
+      
+      toast.success("保存成功");
+    } catch (err) {
+      console.error("保存失败:", err);
+      toast.error(err instanceof Error ? err.message : "保存失败");
+    }
   };
 
   return (
@@ -490,8 +544,8 @@ export function OnlyOfficeEditStep({
                     className="w-full flex items-center gap-2 p-2 rounded text-left hover:bg-muted/50 transition-colors group"
                     onClick={() => {
                       // 尝试插入变量到 OnlyOffice
-                      if (editorContainerRef.current && (editorContainerRef.current as any).insertVariable) {
-                        const success = (editorContainerRef.current as any).insertVariable(variable);
+                      if (insertVariableFnRef.current) {
+                        const success = insertVariableFnRef.current(variable);
                         if (success) {
                           toast.success(`已插入变量: ${variable.name}`);
                         } else {
@@ -579,6 +633,8 @@ export function OnlyOfficeEditStep({
                   setEditorError(err.message);
                   setIsEditorReady(false);
                 }}
+                onDocumentKeyChange={(key) => setDocumentKey(key)}
+                onInsertVariableReady={(fn) => { insertVariableFnRef.current = fn; }}
                 variables={selectedVariables}
                 zoomLevel={zoomLevel}
               />

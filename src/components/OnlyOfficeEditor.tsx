@@ -105,6 +105,10 @@ interface OnlyOfficeEditorProps {
   onInsertVariable?: (variable: TemplateVariable) => void;
   /** 缩放级别（百分比） */
   zoomLevel?: number;
+  /** 文档 Key 变化回调（用于强制保存等操作） */
+  onDocumentKeyChange?: (key: string) => void;
+  /** 插入变量函数就绪回调 */
+  onInsertVariableReady?: (fn: (variable: TemplateVariable) => boolean) => void;
 }
 
 // 声明全局 DocsAPI
@@ -131,15 +135,25 @@ export function OnlyOfficeEditor({
   variables = [],
   activeVariable,
   zoomLevel = 100,
+  onDocumentKeyChange,
+  onInsertVariableReady,
 }: OnlyOfficeEditorProps) {
   // 使用 ref 存储 onReady 回调，避免依赖变化导致重新初始化
   const onReadyRef = useRef(onReady);
   const onErrorRef = useRef(onError);
+  const onDocumentKeyChangeRef = useRef(onDocumentKeyChange);
   
   useEffect(() => {
     onReadyRef.current = onReady;
     onErrorRef.current = onError;
-  }, [onReady, onError]);
+    onDocumentKeyChangeRef.current = onDocumentKeyChange;
+  }, [onReady, onError, onDocumentKeyChange]);
+
+  // 用 ref 存储 onInsertVariableReady，避免循环依赖
+  const onInsertVariableReadyRef = useRef(onInsertVariableReady);
+  useEffect(() => {
+    onInsertVariableReadyRef.current = onInsertVariableReady;
+  }, [onInsertVariableReady]);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<DocEditor | null>(null);
@@ -332,6 +346,9 @@ export function OnlyOfficeEditor({
       // 生成唯一的文档 key（用于区分不同版本的文档）
       const documentKey = `${documentId}-${Date.now()}`;
       console.log("[OnlyOffice] documentKey:", documentKey);
+      
+      // 通知父组件当前文档 key（用于强制保存等操作）
+      onDocumentKeyChangeRef.current?.(documentKey);
 
       const config: EditorConfig = {
         document: {
@@ -437,6 +454,7 @@ export function OnlyOfficeEditor({
     loadOnlyOfficeScript,
     serverUrl,
     zoomLevel,
+    // onDocumentKeyChange 通过 ref 读取，不需要加入依赖
   ]);
 
   // 初始化
@@ -451,13 +469,9 @@ export function OnlyOfficeEditor({
     };
   }, [initEditor]);
 
-  // 暴露 insertVariable 方法给父组件（通过外层容器）
+  // 通知父组件 insertVariable 方法已就绪
   useEffect(() => {
-    const container = containerRef.current?.parentElement;
-    if (container) {
-      (container as any).insertVariable = insertVariable;
-      console.log("[OnlyOffice] 已将 insertVariable 方法挂载到父容器");
-    }
+    onInsertVariableReadyRef.current?.(insertVariable);
   }, [insertVariable]);
 
   return (
