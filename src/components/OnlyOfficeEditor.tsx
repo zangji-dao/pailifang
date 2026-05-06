@@ -435,6 +435,17 @@ export function OnlyOfficeEditor({
             setIsLoading(false);
             retryCountRef.current = 0; // 重置重试计数
             onReadyRef.current?.();
+            // 编辑器就绪后，让 iframe 获得焦点以确保键盘输入正常
+            setTimeout(() => {
+              const iframe = containerRef.current?.querySelector('iframe');
+              if (iframe?.contentWindow) {
+                try {
+                  iframe.contentWindow.focus();
+                } catch {
+                  // 跨域无法 focus，忽略
+                }
+              }
+            }, 500);
           },
           onError: (event) => {
             console.error("[OnlyOffice] onError 触发:", event);
