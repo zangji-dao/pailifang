@@ -894,24 +894,6 @@ export default function NewOnlyOfficeTemplatePage() {
               基于 OnlyOffice 的合同模板编辑
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSaveDraftClick}
-            disabled={savingDraft}
-          >
-            {savingDraft ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                保存中...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                保存草稿
-              </>
-            )}
-          </Button>
         </div>
         <StepIndicator currentStep={currentStep} />
       </div>
