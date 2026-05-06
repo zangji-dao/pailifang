@@ -418,12 +418,19 @@ export function OnlyOfficeEditStep({
           {onNext && (
             <Button
               size="sm"
-              onClick={onNext}
-              disabled={!isEditorReady}
+              onClick={async () => {
+                await handleSave();
+                onNext();
+              }}
+              disabled={!isEditorReady || saving}
               className="gap-1"
             >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowRight className="h-4 w-4" />
+              )}
               下一步
-              <ArrowRight className="h-4 w-4" />
             </Button>
           )}
         </div>
