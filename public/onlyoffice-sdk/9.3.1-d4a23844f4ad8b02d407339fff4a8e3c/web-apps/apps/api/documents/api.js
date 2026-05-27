@@ -1309,7 +1309,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
 
     function extendAppPath(config, path) {
         // 使用云服务器地址（沙箱 SDK 修改版）
-        const CLOUD_SERVER = 'https://www.pailifang.com';
+        const CLOUD_SERVER = 'https://www.pilifang.com';
         const ver = '/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c';
         const LOCAL_SDK_PATH = '/onlyoffice-sdk/';
         
