@@ -93,9 +93,26 @@ export async function POST(request: NextRequest) {
     // 生成文档 key（用于区分文档版本）
     const documentKey = `${documentId}-${Date.now()}`;
 
-    // 构建回调 URL - 使用公网地址供 OnlyOffice 服务器回调
+    // 构建公网基础 URL
     const rawDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || "http://localhost:5000";
     const publicUrl = rawDomain.startsWith("http") ? rawDomain : `https://${rawDomain}`;
+
+    // 将文档 URL 改为通过主站代理下载
+    // OnlyOffice 服务器可能无法直接访问 S3 内网地址，需要通过主站中转
+    let proxyDocumentUrl = documentUrl;
+    if (storagePath) {
+      // 如果有 storagePath，使用下载代理
+      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?storagePath=${encodeURIComponent(storagePath)}`;
+    } else if (templateId) {
+      // 如果有 templateId，使用模板下载代理
+      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?templateId=${encodeURIComponent(templateId)}`;
+    } else if (documentUrl.includes("integration.coze.cn") || documentUrl.includes("localhost")) {
+      // 如果原始 URL 是内网地址，也通过代理
+      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?url=${encodeURIComponent(documentUrl)}`;
+    }
+
+    console.log(`[OnlyOffice Config] originalUrl: ${documentUrl.substring(0, 100)}...`);
+    console.log(`[OnlyOffice Config] proxyUrl: ${proxyDocumentUrl.substring(0, 100)}...`);
 
     // 将模板信息附加到回调 URL 的查询参数中
     // 这样 callback API 就能知道该把文档保存到哪个模板
@@ -118,7 +135,7 @@ export async function POST(request: NextRequest) {
         fileType,
         key: documentKey,
         title: title || "合同模板.docx",
-        url: documentUrl,
+        url: proxyDocumentUrl,
         permissions: {
           edit: true,
           download: true,
