@@ -93,10 +93,9 @@ export async function POST(request: NextRequest) {
     // 生成文档 key（用于区分文档版本）
     const documentKey = `${documentId}-${Date.now()}`;
 
-    // 构建回调 URL - 使用公网地址供 OnlyOffice 云服务器回调
-    const publicUrl = process.env.COZE_PROJECT_DOMAIN_DEFAULT
-      ? process.env.COZE_PROJECT_DOMAIN_DEFAULT
-      : "http://localhost:5000";
+    // 构建回调 URL - 使用公网地址供 OnlyOffice 服务器回调
+    const rawDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || "http://localhost:5000";
+    const publicUrl = rawDomain.startsWith("http") ? rawDomain : `https://${rawDomain}`;
 
     // 将模板信息附加到回调 URL 的查询参数中
     // 这样 callback API 就能知道该把文档保存到哪个模板
