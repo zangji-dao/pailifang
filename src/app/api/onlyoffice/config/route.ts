@@ -97,18 +97,18 @@ export async function POST(request: NextRequest) {
     const rawDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || "http://localhost:5000";
     const publicUrl = rawDomain.startsWith("http") ? rawDomain : `https://${rawDomain}`;
 
-    // 将文档 URL 改为通过主站代理下载
-    // OnlyOffice 服务器可能无法直接访问 S3 内网地址，需要通过主站中转
+    // 如果文档 URL 是内网地址（Coze S3 代理或 localhost），通过主站代理下载
+    // Supabase 公开存储链接可以直接访问，不需要代理
     let proxyDocumentUrl = documentUrl;
-    if (storagePath) {
-      // 如果有 storagePath，使用下载代理
-      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?storagePath=${encodeURIComponent(storagePath)}`;
-    } else if (templateId) {
-      // 如果有 templateId，使用模板下载代理
-      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?templateId=${encodeURIComponent(templateId)}`;
-    } else if (documentUrl.includes("integration.coze.cn") || documentUrl.includes("localhost")) {
-      // 如果原始 URL 是内网地址，也通过代理
-      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?url=${encodeURIComponent(documentUrl)}`;
+    if (documentUrl.includes("integration.coze.cn") || documentUrl.includes("localhost") || documentUrl.includes("127.0.0.1")) {
+      // 内网地址，使用下载代理
+      if (storagePath) {
+        proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?storagePath=${encodeURIComponent(storagePath)}`;
+      } else if (templateId) {
+        proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?templateId=${encodeURIComponent(templateId)}`;
+      } else {
+        proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?url=${encodeURIComponent(documentUrl)}`;
+      }
     }
 
     console.log(`[OnlyOffice Config] originalUrl: ${documentUrl.substring(0, 100)}...`);
