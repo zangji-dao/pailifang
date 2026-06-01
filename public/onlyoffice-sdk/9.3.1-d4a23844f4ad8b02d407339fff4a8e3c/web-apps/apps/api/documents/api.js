@@ -1308,24 +1308,24 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
     }
 
     function extendAppPath(config, path) {
-        // 使用云服务器地址（沙箱 SDK 修改版）
-        const CLOUD_SERVER = 'https://www.pilifang.com';
-        const ver = '/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c';
+        // 重定向到 OnlyOffice 云服务器（doc.pilifang.com）
+        // OnlyOffice 服务器上的路径格式: https://doc.pilifang.com/web-apps/...
+        // 不带版本号前缀（版本号仅用于本地 SDK 缓存）
+        const CLOUD_SERVER = 'https://doc.pilifang.com';
         const LOCAL_SDK_PATH = '/onlyoffice-sdk/';
         
         // 检查是否是本地 SDK 路径（包含 /onlyoffice-sdk/）
         if (path.indexOf(LOCAL_SDK_PATH) >= 0) {
-            // 无论 isLocalFile 是什么，都重定向本地 SDK 请求到云服务器
             const webAppsPos = path.indexOf('/web-apps');
             if (webAppsPos > 0) {
-                return CLOUD_SERVER + ver + path.substring(webAppsPos);
+                return CLOUD_SERVER + path.substring(webAppsPos);
             }
         }
-        // 原始逻辑：处理不带版本号的路径
-        if (ver.lastIndexOf('{{') < 0 && path.indexOf(ver) < 0) {
+        // 其他本地路径也重定向到云服务器
+        if (path.indexOf('/web-apps') >= 0 && path.indexOf(CLOUD_SERVER) < 0) {
             const webAppsPos = path.indexOf('/web-apps');
-            if (webAppsPos > 0) {
-                return CLOUD_SERVER + ver + path.substring(webAppsPos);
+            if (webAppsPos >= 0) {
+                return CLOUD_SERVER + path.substring(webAppsPos);
             }
         }
         return path;
