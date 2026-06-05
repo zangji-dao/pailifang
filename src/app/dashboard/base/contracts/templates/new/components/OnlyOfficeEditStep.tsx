@@ -94,6 +94,7 @@ interface AttachmentDocument {
   id: string;
   name: string;
   url: string;
+  storageKey?: string;
 }
 
 interface OnlyOfficeEditStepProps {
@@ -300,20 +301,25 @@ export function OnlyOfficeEditStep({
     setDocumentKey(null);
     
     try {
-      // 确定 storagePath：主文档用 {templateId}/main.docx，附件用 {templateId}/attachments/{attId}.docx
-      let storagePath = `${templateId}/main.docx`;
+      // 确定 storagePath：主文档用 contract-templates/{templateId}/main.docx，附件用 contract-templates/{templateId}/attachments/{attId}.docx
+      let storagePath = `contract-templates/${templateId}/main.docx`;
       if (currentDocIndex > 0) {
         const attachment = attachmentsRef.current[currentDocIndex - 1];
         if (attachment) {
-          // 从附件 URL 提取存储路径
-          try {
-            const urlObj = new URL(attachment.url);
-            const pathParts = urlObj.pathname.split('/contract-templates/');
-            if (pathParts.length > 1) {
-              storagePath = pathParts[1];
+          // 优先使用附件的 storageKey
+          if (attachment.storageKey) {
+            storagePath = attachment.storageKey;
+          } else {
+            // 从附件 URL 提取存储路径
+            try {
+              const urlObj = new URL(attachment.url);
+              const pathParts = urlObj.pathname.split('/contract-templates/');
+              if (pathParts.length > 1) {
+                storagePath = `contract-templates/${pathParts[1]}`;
+              }
+            } catch {
+              storagePath = `contract-templates/${templateId}/attachments/${attachment.id}.docx`;
             }
-          } catch {
-            storagePath = `${templateId}/attachments/${attachment.id}.docx`;
           }
         }
       }

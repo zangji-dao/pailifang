@@ -85,40 +85,43 @@ async function downloadAndSaveToStorage(
     const documentBuffer = Buffer.from(await downloadResponse.arrayBuffer());
     console.log(`[OnlyOffice Callback] 文档大小: ${documentBuffer.length} bytes`);
 
-    const supabase = createClient();
-
     // 确定存储路径
-    const targetPath = storagePath || `${templateId}/main.docx`;
+    const targetPath = storagePath || `contract-templates/${templateId}/main.docx`;
 
-    // 上传到 Supabase 存储（upsert 覆盖原文件）
-    const { error: uploadError } = await supabase.storage
-      .from("contract-templates")
-      .upload(targetPath, documentBuffer, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        upsert: true,
-      });
+    // 上传到后端 COS 存储
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:4001";
+    const uploadFormData = new FormData();
+    const blob = new Blob([new Uint8Array(documentBuffer)], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    uploadFormData.append("file", blob, "main.docx");
+    uploadFormData.append("type", "contract");
+    uploadFormData.append("key", targetPath);
 
-    if (uploadError) {
-      console.error("[OnlyOffice Callback] 上传到 Supabase 失败:", uploadError);
-      throw new Error(`上传失败: ${uploadError.message}`);
+    const uploadResponse = await fetch(`${backendUrl}/api/storage/upload`, {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    const uploadResult = await uploadResponse.json();
+
+    if (!uploadResult.success) {
+      console.error("[OnlyOffice Callback] 上传到 COS 失败:", uploadResult.error);
+      throw new Error(`上传失败: ${uploadResult.error}`);
     }
 
-    // 获取公开 URL
-    const { data: urlData } = supabase.storage
-      .from("contract-templates")
-      .getPublicUrl(targetPath);
-
-    const publicUrl = urlData.publicUrl;
-    console.log(`[OnlyOffice Callback] 文档已保存到: ${publicUrl}`);
+    const savedUrl = uploadResult.data.url;
+    console.log(`[OnlyOffice Callback] 文档已保存到 COS: ${targetPath}`);
 
     // 更新数据库中的模板记录（仅主文档）
     if (docIndex === 0 && templateId) {
+      const supabase = createClient();
       const now = new Date().toISOString();
       const { error: updateError } = await supabase
         .from("contract_templates")
         .update({
-          source_file_url: publicUrl,
+          source_file_url: savedUrl,
+          storage_key: targetPath,
           updated_at: now,
         })
         .eq("id", templateId);
@@ -131,7 +134,7 @@ async function downloadAndSaveToStorage(
       }
     }
 
-    return { success: true, url: publicUrl };
+    return { success: true, url: savedUrl };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("[OnlyOffice Callback] 下载并保存文档失败:", errMsg);

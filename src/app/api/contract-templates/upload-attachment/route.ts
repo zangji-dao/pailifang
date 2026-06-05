@@ -1,6 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
 
 /**
  * POST /api/contract-templates/upload-attachment
@@ -11,7 +12,6 @@ import { randomUUID } from 'crypto';
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
     const formData = await request.formData();
     
     const file = formData.get('file') as File;
@@ -39,39 +39,29 @@ export async function POST(request: NextRequest) {
     // 生成唯一ID和存储路径
     const attId = randomUUID();
     const attExt = file.name.split('.').pop() || 'docx';
-    const attStoragePath = `temp-attachments/${attId}.${attExt}`;
+    const attStorageKey = `contract-templates/temp-attachments/${attId}.${attExt}`;
     
-    // 上传文件
+    // 上传文件到后端 COS
     const attBuffer = await file.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
-      .from('contract-templates')
-      .upload(attStoragePath, attBuffer, {
-        contentType: file.type,
-        upsert: false,
-      });
+    const uploadResult = await uploadToBackend(attStorageKey, Buffer.from(attBuffer), file.name, file.type, 'contract');
 
-    if (uploadError) {
-      console.error('上传附件失败:', uploadError);
+    if (!uploadResult.success) {
+      console.error('上传附件失败:', uploadResult.error);
       return NextResponse.json(
-        { success: false, error: `上传附件失败: ${uploadError.message}` },
+        { success: false, error: `上传附件失败: ${uploadResult.error}` },
         { status: 500 }
       );
     }
-
-    // 获取公开URL
-    const { data: urlData } = supabase.storage
-      .from('contract-templates')
-      .getPublicUrl(attStoragePath);
 
     // 确定文件类型
     const fileType = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ? 'docx'
       : 'doc';
 
-    console.log('📎 上传附件成功:', {
+    console.log('上传附件成功:', {
       id: attId,
       name: file.name,
-      url: urlData.publicUrl,
+      url: uploadResult.url,
       fileType,
       size: file.size,
     });
@@ -81,7 +71,8 @@ export async function POST(request: NextRequest) {
       data: {
         id: attId,
         name: file.name,
-        url: urlData.publicUrl,
+        url: uploadResult.url,
+        storageKey: attStorageKey,
         fileType,
         size: file.size,
       },
@@ -92,5 +83,49 @@ export async function POST(request: NextRequest) {
       { success: false, error: '上传附件失败' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * 上传文件到后端 COS 存储
+ */
+async function uploadToBackend(
+  key: string,
+  buffer: Buffer,
+  filename: string,
+  contentType: string,
+  type: string = 'document'
+): Promise<{ success: boolean; url?: string; key?: string; error?: string }> {
+  try {
+    const formData = new FormData();
+    const blob = new Blob([new Uint8Array(buffer)], { type: contentType });
+    formData.append('file', blob, filename);
+    formData.append('type', type);
+    formData.append('key', key);
+
+    const response = await fetch(`${BACKEND_URL}/api/storage/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      return {
+        success: true,
+        url: result.data.url,
+        key: result.data.key,
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || '上传失败',
+      };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || '上传请求失败',
+    };
   }
 }

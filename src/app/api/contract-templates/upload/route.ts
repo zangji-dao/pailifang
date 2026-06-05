@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
+
 /**
  * POST /api/contract-templates/upload
  * 上传合同文档和附件
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest) {
     
     const mainFile = formData.get('file') as File;
     const attachments = formData.getAll('attachments') as File[];
-    const existingTemplateId = formData.get('templateId') as string; // 获取现有的 templateId
+    const existingTemplateId = formData.get('templateId') as string;
     
     if (!mainFile) {
       return NextResponse.json(
@@ -66,35 +68,25 @@ export async function POST(request: NextRequest) {
     // 决定使用现有模板ID还是创建新的
     const templateId = existingTemplateId || randomUUID();
     const now = new Date().toISOString();
-    const isUpdating = !!existingTemplateId; // 是否更新现有模板
+    const isUpdating = !!existingTemplateId;
 
-    // 上传主文件
-    const mainFileId = randomUUID();
-    const mainFileExt = mainFile.name.split('.').pop() || fileType;
-    const mainStoragePath = `${templateId}/main.${mainFileExt}`;
-    
+    // 上传主文件到后端 COS 存储
     const mainFileBuffer = await mainFile.arrayBuffer();
-    const { error: mainUploadError } = await supabase.storage
-      .from('contract-templates')
-      .upload(mainStoragePath, mainFileBuffer, {
-        contentType: mainFile.type,
-        upsert: false,
-      });
+    const mainFileExt = mainFile.name.split('.').pop() || fileType;
+    const mainStorageKey = `contract-templates/${templateId}/main.${mainFileExt}`;
 
-    if (mainUploadError) {
-      console.error('上传主文件失败:', mainUploadError);
+    const mainUploadResult = await uploadToBackend(mainStorageKey, Buffer.from(mainFileBuffer), mainFile.name, mainFile.type, 'contract');
+
+    if (!mainUploadResult.success) {
+      console.error('上传主文件失败:', mainUploadResult.error);
       return NextResponse.json(
-        { success: false, error: `上传合同文档失败: ${mainUploadError.message}` },
+        { success: false, error: `上传合同文档失败: ${mainUploadResult.error}` },
         { status: 500 }
       );
     }
 
-    // 获取主文件公开URL
-    const { data: mainUrlData } = supabase.storage
-      .from('contract-templates')
-      .getPublicUrl(mainStoragePath);
-
-    const mainFileUrl = mainUrlData.publicUrl;
+    // 获取主文件下载 URL
+    const mainFileUrl = mainUploadResult.url!;
 
     let templateData;
     let templateError;
@@ -107,6 +99,7 @@ export async function POST(request: NextRequest) {
           source_file_url: mainFileUrl,
           source_file_name: mainFile.name,
           source_file_type: fileType,
+          storage_key: mainStorageKey,
           updated_at: now,
         })
         .eq('id', templateId)
@@ -128,6 +121,7 @@ export async function POST(request: NextRequest) {
           source_file_url: mainFileUrl,
           source_file_name: mainFile.name,
           source_file_type: fileType,
+          storage_key: mainStorageKey,
           parse_status: 'pending',
           is_active: true,
           is_default: false,
@@ -144,7 +138,7 @@ export async function POST(request: NextRequest) {
     if (templateError) {
       console.error(isUpdating ? '更新模板失败:' : '创建模板失败:', templateError);
       // 删除已上传的文件
-      await supabase.storage.from('contract-templates').remove([mainStoragePath]);
+      await deleteFromBackend(mainStorageKey);
       return NextResponse.json(
         { success: false, error: isUpdating ? '更新模板失败' : '创建模板失败' },
         { status: 500 }
@@ -166,25 +160,15 @@ export async function POST(request: NextRequest) {
 
       const attId = randomUUID();
       const attExt = att.name.split('.').pop() || 'bin';
-      const attStoragePath = `${templateId}/attachments/${attId}.${attExt}`;
+      const attStorageKey = `contract-templates/${templateId}/attachments/${attId}.${attExt}`;
       
       const attBuffer = await att.arrayBuffer();
-      const { error: attUploadError } = await supabase.storage
-        .from('contract-templates')
-        .upload(attStoragePath, attBuffer, {
-          contentType: att.type,
-          upsert: false,
-        });
+      const attUploadResult = await uploadToBackend(attStorageKey, Buffer.from(attBuffer), att.name, att.type, 'contract');
 
-      if (attUploadError) {
-        console.error(`上传附件 ${att.name} 失败:`, attUploadError);
+      if (!attUploadResult.success) {
+        console.error(`上传附件 ${att.name} 失败:`, attUploadResult.error);
         continue;
       }
-
-      // 获取附件公开URL
-      const { data: attUrlData } = supabase.storage
-        .from('contract-templates')
-        .getPublicUrl(attStoragePath);
 
       // 确定附件文件类型
       let attFileType = 'other';
@@ -198,9 +182,10 @@ export async function POST(request: NextRequest) {
         .insert({
           id: attId,
           template_id: templateId,
-          name: att.name.replace(/\.[^/.]+$/, ''), // 去除扩展名
-          source_file_url: attUrlData.publicUrl,
+          name: att.name.replace(/\.[^/.]+$/, ''),
+          source_file_url: attUploadResult.url,
           source_file_name: att.name,
+          storage_key: attStorageKey,
           required: false,
           order: i + 1,
         })
@@ -213,7 +198,7 @@ export async function POST(request: NextRequest) {
         uploadedAttachments.push({
           id: attId,
           name: att.name,
-          url: attUrlData.publicUrl,
+          url: attUploadResult.url!,
           fileType: attFileType,
           size: att.size,
         });
@@ -225,6 +210,7 @@ export async function POST(request: NextRequest) {
       data: {
         templateId,
         fileUrl: mainFileUrl,
+        storageKey: mainStorageKey,
         fileName: mainFile.name,
         fileType,
         template: templateData,
@@ -237,5 +223,64 @@ export async function POST(request: NextRequest) {
       { success: false, error: '上传文档失败' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * 上传文件到后端 COS 存储
+ */
+async function uploadToBackend(
+  key: string,
+  buffer: Buffer,
+  filename: string,
+  contentType: string,
+  type: string = 'document'
+): Promise<{ success: boolean; url?: string; key?: string; error?: string }> {
+  try {
+    const formData = new FormData();
+    const blob = new Blob([new Uint8Array(buffer)], { type: contentType });
+    formData.append('file', blob, filename);
+    formData.append('type', type);
+    formData.append('key', key);
+
+    const response = await fetch(`${BACKEND_URL}/api/storage/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      return {
+        success: true,
+        url: result.data.url,
+        key: result.data.key,
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || '上传失败',
+      };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || '上传请求失败',
+    };
+  }
+}
+
+/**
+ * 从后端 COS 存储删除文件
+ */
+async function deleteFromBackend(key: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/storage/files/${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+    });
+    const result = await response.json();
+    return result.success;
+  } catch {
+    return false;
   }
 }

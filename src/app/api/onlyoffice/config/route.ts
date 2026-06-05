@@ -97,19 +97,22 @@ export async function POST(request: NextRequest) {
     const rawDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || "http://localhost:5000";
     const publicUrl = rawDomain.startsWith("http") ? rawDomain : `https://${rawDomain}`;
 
-    // 如果文档 URL 是内网地址（Coze S3 代理或 localhost），通过主站代理下载
-    // Supabase 公开存储链接可以直接访问，不需要代理
+    // 如果有 storagePath，优先通过下载代理（确保 URL 不会过期）
+    // COS 签名 URL 有过期时间，通过代理实时获取最新签名 URL
+    // 内网地址（Coze S3 代理、localhost）也必须走代理
     let proxyDocumentUrl = documentUrl;
-    if (documentUrl.includes("integration.coze.cn") || documentUrl.includes("localhost") || documentUrl.includes("127.0.0.1")) {
+    if (storagePath) {
+      // 有 storageKey，使用下载代理获取实时签名 URL
+      proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?storagePath=${encodeURIComponent(storagePath)}`;
+    } else if (documentUrl.includes("integration.coze.cn") || documentUrl.includes("localhost") || documentUrl.includes("127.0.0.1")) {
       // 内网地址，使用下载代理
-      if (storagePath) {
-        proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?storagePath=${encodeURIComponent(storagePath)}`;
-      } else if (templateId) {
+      if (templateId) {
         proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?templateId=${encodeURIComponent(templateId)}`;
       } else {
         proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?url=${encodeURIComponent(documentUrl)}`;
       }
     }
+    // COS 签名 URL（含 cos.ap-beijing.myqcloud.com）可直接访问，不走代理
 
     console.log(`[OnlyOffice Config] originalUrl: ${documentUrl.substring(0, 100)}...`);
     console.log(`[OnlyOffice Config] proxyUrl: ${proxyDocumentUrl.substring(0, 100)}...`);

@@ -3,14 +3,12 @@
  * 用于上传模板文件并获取可访问的 URL
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { nanoid } from "nanoid";
 
-const BUCKET_NAME = "contract-templates";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:4001";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const templateId = formData.get("templateId") as string;
@@ -31,33 +29,37 @@ export async function POST(request: NextRequest) {
 
     // 生成文件路径
     const fileExt = file.name.split(".").pop() || "docx";
-    const fileName = `${templateId}/${nanoid()}.${fileExt}`;
+    const storageKey = `contract-templates/${templateId}/${nanoid()}.${fileExt}`;
 
-    // 上传到 Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, file, {
-        contentType: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        upsert: true,
-      });
+    // 上传到后端 COS 存储
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const uploadFormData = new FormData();
+    const blob = new Blob([buffer], {
+      type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    uploadFormData.append("file", blob, file.name);
+    uploadFormData.append("type", "contract");
+    uploadFormData.append("key", storageKey);
 
-    if (error) {
-      console.error("Upload error:", error);
+    const uploadResponse = await fetch(`${BACKEND_URL}/api/storage/upload`, {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    const uploadResult = await uploadResponse.json();
+
+    if (!uploadResult.success) {
+      console.error("Upload error:", uploadResult.error);
       return NextResponse.json(
         { error: "文件上传失败" },
         { status: 500 }
       );
     }
 
-    // 获取公开访问 URL
-    const { data: urlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(data.path);
-
     return NextResponse.json({
       success: true,
-      path: data.path,
-      url: urlData.publicUrl,
+      path: storageKey,
+      url: uploadResult.data.url,
     });
   } catch (error) {
     console.error("Upload error:", error);
@@ -80,14 +82,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createClient();
-    // 创建临时签名 URL（有效期 1 小时）
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .createSignedUrl(path, 3600);
+    // 从后端获取签名下载 URL
+    const response = await fetch(
+      `${BACKEND_URL}/api/storage/files/${encodeURIComponent(path)}?expiresIn=3600`
+    );
+    const result = await response.json();
 
-    if (error) {
-      console.error("Get signed URL error:", error);
+    if (!result.success) {
+      console.error("Get signed URL error:", result.error);
       return NextResponse.json(
         { error: "获取文件 URL 失败" },
         { status: 500 }
@@ -96,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      url: data.signedUrl,
+      url: result.data.url,
     });
   } catch (error) {
     console.error("Get signed URL error:", error);
