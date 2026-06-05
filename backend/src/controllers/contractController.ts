@@ -75,7 +75,7 @@ export const contractController = {
       // 获取关联的申请信息
       const application = await db.select()
         .from(settlementApplications)
-        .where(eq(settlementApplications.id, contract.applicationId));
+        .where(eq(settlementApplications.id, contract.applicationId!));
 
       res.json({
         success: true,

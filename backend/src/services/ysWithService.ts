@@ -32,14 +32,14 @@ export async function getAccessToken(): Promise<string> {
     }),
   });
 
-  const result = await response.json();
+  const result: any = await response.json();
   
   if (result.code !== '200' || !result.data) {
     throw new Error(result.msg || '获取AccessToken失败');
   }
 
-  cachedToken = result.data.accessToken;
-  tokenExpireTime = result.data.expireTime;
+  cachedToken = result.data.accessToken as string;
+  tokenExpireTime = result.data.expireTime as number;
   
   return cachedToken;
 }
@@ -104,7 +104,7 @@ export async function getDeviceList(): Promise<DeviceInfo[]> {
     }),
   });
 
-  const result = await response.json();
+  const result: any = await response.json();
   
   if (result.code !== '200') {
     throw new Error(result.msg || '获取设备列表失败');
@@ -131,7 +131,7 @@ export async function getCameraList(): Promise<CameraInfo[]> {
     }),
   });
 
-  const result = await response.json();
+  const result: any = await response.json();
   
   if (result.code !== '200') {
     throw new Error(result.msg || '获取摄像头列表失败');
@@ -157,7 +157,7 @@ export async function openLive(deviceSerial: string, cameraNo: number = 1): Prom
     }),
   });
 
-  const result = await response.json();
+  const result: any = await response.json();
   
   if (result.code !== '200' && result.code !== '20013') {
     // 20013 表示已经开通
@@ -182,7 +182,7 @@ export async function closeLive(deviceSerial: string, cameraNo: number = 1): Pro
     }),
   });
 
-  const result = await response.json();
+  const result: any = await response.json();
   
   // 关闭直播，忽略错误
   console.log(`关闭直播 ${deviceSerial}:${cameraNo}`, result.msg || '成功');
@@ -217,7 +217,7 @@ export async function getLiveAddress(
     }),
   });
 
-  const result = await response.json();
+  const result: any = await response.json();
   
   if (result.code !== '200' || !result.data || result.data.length === 0) {
     throw new Error(result.msg || '获取直播地址失败');

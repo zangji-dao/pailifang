@@ -174,14 +174,35 @@ export class CozeS3StorageService implements IStorageService {
 }
 
 // 存储服务单例
-let storageInstance: CozeS3StorageService | null = null;
+let storageInstance: IStorageService | null = null;
+
+/**
+ * 重置存储服务实例（用于测试）
+ */
+export function resetStorageService(): void {
+  storageInstance = null;
+}
 
 /**
  * 获取存储服务实例
+ * 生产环境（配置了 S3_ACCESS_KEY_ID）使用腾讯云 COS
+ * 开发环境使用 Coze 平台 S3
  */
-export function getStorageService(): CozeS3StorageService {
+export function getStorageService(): IStorageService {
   if (!storageInstance) {
-    storageInstance = new CozeS3StorageService();
+    const useCOS = process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY && process.env.S3_BUCKET;
+    if (useCOS) {
+      const { S3StorageService } = require('./s3');
+      storageInstance = new S3StorageService({
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+        bucket: process.env.S3_BUCKET!,
+        region: process.env.S3_REGION || 'ap-beijing',
+        endpoint: process.env.S3_ENDPOINT || 'https://cos.ap-beijing.myqcloud.com',
+      });
+    } else {
+      storageInstance = new CozeS3StorageService();
+    }
   }
-  return storageInstance;
+  return storageInstance!;
 }
