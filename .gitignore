@@ -106,3 +106,6 @@ Desktop.ini
 .coze-logs
 .env.production
 .cozeproj/reduction
+
+# Preview files
+.preview
