@@ -110,3 +110,5 @@ Desktop.ini
 # Preview files
 .preview
 .codegraph
+assets/SecretKey.csv
+assets/man.pem
