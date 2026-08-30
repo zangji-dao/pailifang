@@ -21,9 +21,10 @@ module.exports = {
     },
     {
       name: 'pi-frontend',
-      script: 'pnpm',
-      args: 'start:web',
+      script: path.join(__dirname, 'node_modules', 'next', 'dist', 'bin', 'next'),
+      args: 'start --port 4000',
       cwd: __dirname,
+      interpreter: 'node',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
