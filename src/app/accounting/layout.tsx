@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ToastProvider } from "@/hooks/use-toast";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 
 export default function AccountingLayout({
   children,
@@ -22,5 +23,9 @@ export default function AccountingLayout({
     }
   }, [router]);
 
-  return <ToastProvider>{children}</ToastProvider>;
+  return (
+    <ConfirmProvider>
+      <ToastProvider>{children}</ToastProvider>
+    </ConfirmProvider>
+  );
 }

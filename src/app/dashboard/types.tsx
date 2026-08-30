@@ -10,6 +10,28 @@ export interface User {
   email: string;
   role: string;
   avatar?: string;
+  phone?: string | null;
+  activeOrganizationId?: string | null;
+  activeOrganization?: OrganizationMembership | null;
+  memberships?: OrganizationMembership[];
+  permissions?: string[];
+}
+
+export interface OrganizationRole {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface OrganizationMembership {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  organizationCode: string;
+  organizationType: string;
+  isOwner: boolean;
+  roles: OrganizationRole[];
+  permissions: string[];
 }
 
 /**
@@ -58,11 +80,6 @@ export interface NavItem {
   expandable?: boolean;
   children?: NavChildItem[];
 }
-
-/**
- * 展开菜单状态类型
- */
-export type ExpandedMenusState = Record<string, boolean>;
 
 /**
  * 角色名称映射类型

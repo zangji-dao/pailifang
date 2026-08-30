@@ -51,6 +51,7 @@ const SETTLEMENT_TAB_CONFIGS: Record<string, TabConfig> = {
  * 基地管理标签页配置
  */
 const BASE_TAB_CONFIGS: Record<string, TabConfig> = {
+  metrics: { id: "base-metrics", label: "经营数据", icon: <BarChart3 className="h-3.5 w-3.5" />, group: "base" },
   sites: { id: "base-sites", label: "基地管理", icon: <Building className="h-3.5 w-3.5" />, group: "base" },
   addresses: { id: "base-addresses", label: "地址管理", icon: <MapPin className="h-3.5 w-3.5" />, group: "base" },
   finances: { id: "base-finances", label: "资金管理", icon: <Receipt className="h-3.5 w-3.5" />, group: "base" },
@@ -85,7 +86,7 @@ const HR_TAB_CONFIGS: Record<string, TabConfig> = {
  * 销售中心标签页配置
  */
 const SALES_TAB_CONFIGS: Record<string, TabConfig> = {
-  overview: { id: "sales-overview", label: "营销概览", icon: <TrendingUp className="h-3.5 w-3.5" />, group: "sales" },
+  overview: { id: "sales-overview", label: "销售业务看板", icon: <TrendingUp className="h-3.5 w-3.5" />, group: "sales" },
   leads: { id: "sales-leads", label: "线索中心", icon: <Users className="h-3.5 w-3.5" />, group: "sales" },
   channels: { id: "sales-channels", label: "渠道管理", icon: <Store className="h-3.5 w-3.5" />, group: "sales" },
   pool: { id: "sales-pool", label: "客户公海", icon: <Inbox className="h-3.5 w-3.5" />, group: "sales" },
@@ -101,6 +102,27 @@ const SALES_TAB_CONFIGS: Record<string, TabConfig> = {
  * @returns 标签页配置，如果没有匹配则返回 null
  */
 export function getTabConfig(path: string): Tab | null {
+  if (path === "/dashboard/access-control") {
+    return {
+      id: "access-control",
+      label: "账号与权限",
+      path,
+      icon: <UserCheck className="h-3.5 w-3.5" />,
+      closable: true,
+    };
+  }
+
+  if (path === "/dashboard/base") {
+    return {
+      id: "base-overview",
+      label: "基地业务看板",
+      path,
+      icon: <BarChart3 className="h-3.5 w-3.5" />,
+      closable: true,
+      group: "base",
+    };
+  }
+
   // 入驻管理（优先匹配，因为路径仍在 /dashboard/base/ 下）
   if (path === "/dashboard/base/applications" || path === "/dashboard/base/processes") {
     const pathMatch = path.match(/^\/dashboard\/base\/([^/]+)$/);
@@ -249,7 +271,7 @@ export function getTabConfig(path: string): Tab | null {
   if (path === "/dashboard/orders") {
     return {
       id: "orders",
-      label: "工单大厅",
+      label: "工单业务看板",
       path: path,
       icon: <ClipboardList className="h-3.5 w-3.5" />,
       closable: true,
@@ -285,6 +307,17 @@ export function getTabConfig(path: string): Tab | null {
   }
 
   // 人力资源
+  if (path === "/dashboard/hr") {
+    return {
+      id: "hr-overview",
+      label: "人力业务看板",
+      path,
+      icon: <BarChart3 className="h-3.5 w-3.5" />,
+      closable: true,
+      group: "hr",
+    };
+  }
+
   if (path.startsWith("/dashboard/hr/")) {
     const hrMatch = path.match(/^\/dashboard\/hr\/([^/]+)$/);
     if (hrMatch) {

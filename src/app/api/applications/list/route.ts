@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDatabaseClient } from '@/storage/database/server-client';
 
 /**
  * GET /api/applications/list
@@ -7,7 +7,7 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
  */
 export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
     const searchParams = request.nextUrl.searchParams;
     
     // 可选的状态筛选

@@ -414,7 +414,7 @@ enum WorkOrderType {
 | 销售小程序 | 微信小程序原生 / Taro |
 | 客户端 H5 | Next.js / Vue 3 |
 | 后端 API | Express + TypeScript |
-| 数据库 | PostgreSQL + Supabase |
+| 数据库 | PostgreSQL + Drizzle ORM |
 | ORM | Drizzle |
 
 ---

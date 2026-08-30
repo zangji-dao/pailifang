@@ -57,7 +57,7 @@
           ▼                    ▼                    ▼
     ┌──────────┐         ┌──────────┐         ┌──────────┐
     │ PostgreSQL│         │   S3     │         │ 第三方API │
-    │ (Supabase)│         │  对象存储 │         │ (支付宝等) │
+    │(PostgreSQL)│        │  对象存储 │         │ (支付宝等) │
     └──────────┘         └──────────┘         └──────────┘
 ```
 
@@ -78,7 +78,7 @@
 |------|------|------|
 | **前端** | Next.js 16 + React 19 + TypeScript 5 | 5000 |
 | **BFF** | Express.js + TypeScript | 4001 |
-| **数据库** | PostgreSQL (Supabase) + Drizzle ORM | - |
+| **数据库** | PostgreSQL + Drizzle ORM | - |
 | **存储** | S3 兼容对象存储 | - |
 | **包管理** | pnpm (禁止 npm/yarn) | - |
 
@@ -106,7 +106,7 @@
 │       └── database/         # 数据库客户端
 ├── public/                    # 静态资源
 ├── MEMORY.md                  # 项目记忆文档
-└── .coze                      # Coze 配置
+└── ecosystem.config.js        # PM2 配置
 ```
 
 ---

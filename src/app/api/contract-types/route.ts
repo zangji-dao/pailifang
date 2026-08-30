@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -25,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: data.map(item => ({
+      data: (data || []).map(item => ({
         id: item.id,
         name: item.name,
         description: item.description,

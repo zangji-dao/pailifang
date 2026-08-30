@@ -6,6 +6,7 @@ import { Tab } from "../types";
 interface TabBarProps {
   tabs: Tab[];
   activeTab: string;
+  sidebarCollapsed: boolean;
   onSwitchTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
 }
@@ -13,17 +14,17 @@ interface TabBarProps {
 /**
  * 全局标签栏组件
  */
-export function TabBar({ tabs, activeTab, onSwitchTab, onCloseTab }: TabBarProps) {
+export function TabBar({ tabs, activeTab, sidebarCollapsed, onSwitchTab, onCloseTab }: TabBarProps) {
   return (
-    <div className="fixed left-56 right-0 top-14 z-30 h-10 bg-white border-b border-slate-200/60 flex items-center px-3 shrink-0">
-      <div className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
+    <div className={`fixed inset-x-0 top-16 z-30 hidden h-11 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur-xl transition-[left] duration-200 sm:flex ${sidebarCollapsed ? "lg:left-16" : "lg:left-60"}`}>
+      <div className="scrollbar-hide flex h-full min-w-0 flex-1 items-center gap-4 overflow-x-auto">
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={`group flex items-center gap-1.5 px-3 py-2 text-sm cursor-pointer transition-all border-b-2 whitespace-nowrap ${
+            className={`group relative flex h-full cursor-pointer items-center gap-1.5 whitespace-nowrap px-1 text-sm transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors ${
               activeTab === tab.id
-                ? "text-amber-600 border-amber-500 bg-amber-50/50"
-                : "text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100/50"
+                ? "font-medium text-slate-950 after:bg-amber-500"
+                : "text-slate-400 after:bg-transparent hover:text-slate-700"
             }`}
             onClick={() => onSwitchTab(tab.id)}
           >
@@ -35,7 +36,7 @@ export function TabBar({ tabs, activeTab, onSwitchTab, onCloseTab }: TabBarProps
                   e.stopPropagation();
                   onCloseTab(tab.id);
                 }}
-                className="ml-0.5 p-0.5 rounded hover:bg-slate-200/80 text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="ml-0.5 rounded p-0.5 text-slate-400 opacity-60 transition-opacity hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>

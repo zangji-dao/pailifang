@@ -5,7 +5,7 @@
 import { Pool } from 'pg';
 
 async function checkColumns() {
-  const databaseUrl = process.env.PGDATABASE_URL || process.env.COZE_SUPABASE_DB_URL || process.env.DATABASE_URL;
+  const databaseUrl = process.env.DATABASE_URL || process.env.PGDATABASE_URL;
   
   if (!databaseUrl) {
     console.error('❌ 数据库连接字符串未设置');

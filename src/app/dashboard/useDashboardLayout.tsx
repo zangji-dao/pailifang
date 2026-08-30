@@ -3,8 +3,58 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
-import { User, Tab, ExpandedMenusState } from "./types";
+import { User, Tab } from "./types";
 import { getTabConfig } from "./tab-config";
+import { apiClient } from "@/lib/apiClient";
+
+type BusinessModule = "base" | "orders" | "hr" | "sales" | "accounting";
+
+const MODULE_NAMES: Record<BusinessModule, string> = {
+  base: "基地管理",
+  orders: "工单大厅",
+  hr: "人力资源",
+  sales: "销售中心",
+  accounting: "账务中心",
+};
+
+function normalizePath(path: string) {
+  return path.split("?")[0] || "/";
+}
+
+function getBusinessModule(path: string): BusinessModule | null {
+  const normalizedPath = normalizePath(path);
+
+  if (normalizedPath === "/dashboard/base" || normalizedPath.startsWith("/dashboard/base/")) {
+    return "base";
+  }
+  if (normalizedPath === "/dashboard/orders" || normalizedPath.startsWith("/dashboard/orders/")) {
+    return "orders";
+  }
+  if (normalizedPath === "/dashboard/hr" || normalizedPath.startsWith("/dashboard/hr/")) {
+    return "hr";
+  }
+  if (normalizedPath === "/dashboard/sales" || normalizedPath.startsWith("/dashboard/sales/")) {
+    return "sales";
+  }
+  if (normalizedPath.startsWith("/accounting") || normalizedPath.startsWith("/dashboard/ledgers")) {
+    return "accounting";
+  }
+
+  return null;
+}
+
+function getOpenBusinessModule(tabs: Tab[]) {
+  return tabs.map((tab) => getBusinessModule(tab.path)).find(Boolean) ?? null;
+}
+
+function isPotentiallyUnsavedTab(tab: Tab) {
+  const path = tab.path.toLowerCase();
+  return (
+    /\/(new|create|edit)(\/|\?|$)/.test(path) ||
+    /[?&]new=true(?:&|$)/.test(path) ||
+    /^(新建|编辑)/.test(tab.label)
+  );
+}
 
 /**
  * 默认工作台标签页
@@ -27,36 +77,106 @@ export function useDashboardLayout() {
 
   // 用户状态
   const [user, setUser] = useState<User | null>(null);
+  const [organizationSwitching, setOrganizationSwitching] = useState(false);
 
   // 侧边栏状态
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // 展开菜单状态
-  const [expandedMenus, setExpandedMenus] = useState<ExpandedMenusState>(() => ({
-    "账务中心": pathname?.startsWith("/accounting") || false,
-    "工单管理": pathname?.startsWith("/dashboard/orders") || false,
-    "销售中心": pathname?.startsWith("/dashboard/sales") || false,
-    "人力资源": pathname?.startsWith("/dashboard/hr") || false,
-    "基地管理": pathname?.startsWith("/dashboard/base") || false,
-  }));
-
-  // 当路由变化时，自动展开对应的菜单（仅当菜单从未被手动操作过时）
-  useEffect(() => {
-    // 不再强制展开，尊重用户的手动操作
-    // 如果需要自动展开，可以取消下面的注释
-    // setExpandedMenus((prev) => ({
-    //   ...prev,
-    //   "账务中心": prev["账务中心"] || pathname?.startsWith("/accounting") || false,
-    //   "工单管理": prev["工单管理"] || pathname?.startsWith("/dashboard/orders") || false,
-    //   "销售中心": prev["销售中心"] || pathname?.startsWith("/dashboard/sales") || false,
-    //   "人力资源": prev["人力资源"] || pathname?.startsWith("/dashboard/hr") || false,
-    //   "基地管理": prev["基地管理"] || pathname?.startsWith("/dashboard/base") || false,
-    // }));
-  }, [pathname]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 标签页状态
   const [tabs, setTabs] = useState<Tab[]>([DEFAULT_TAB]);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  const confirmClosingBusinessModule = useCallback(
+    (module: BusinessModule | null) => {
+      const riskyTabs = tabs.filter((tab) => tab.closable && isPotentiallyUnsavedTab(tab));
+      if (riskyTabs.length === 0) return true;
+
+      const moduleName = module ? MODULE_NAMES[module] : "当前业务模块";
+      return window.confirm(
+        `${moduleName}中有新建或编辑页面。切换后将关闭该模块的全部标签，未保存内容可能丢失，是否继续？`
+      );
+    },
+    [tabs]
+  );
+
+  const returnToWorkbench = useCallback(() => {
+    const currentModule = getBusinessModule(pathname) ?? getOpenBusinessModule(tabs);
+    if (currentModule && !confirmClosingBusinessModule(currentModule)) {
+      return false;
+    }
+
+    setTabs([DEFAULT_TAB]);
+    setActiveTab(DEFAULT_TAB.id);
+    router.push(DEFAULT_TAB.path);
+    return true;
+  }, [confirmClosingBusinessModule, pathname, router, tabs]);
+
+  const openBusinessModule = useCallback(
+    (targetPath: string, fallbackLabel?: string) => {
+      const normalizedTargetPath = normalizePath(targetPath);
+      const targetModule = getBusinessModule(normalizedTargetPath);
+      const currentModule = getBusinessModule(pathname) ?? getOpenBusinessModule(tabs);
+
+      if (!targetModule) {
+        const standaloneTab = getTabConfig(normalizedTargetPath);
+        if (!standaloneTab) return false;
+
+        if (currentModule && !confirmClosingBusinessModule(currentModule)) {
+          return false;
+        }
+
+        setTabs((previousTabs) => {
+          const scopedTabs = currentModule ? [DEFAULT_TAB] : previousTabs;
+          const existingTab = scopedTabs.find(
+            (tab) => tab.id === standaloneTab.id || normalizePath(tab.path) === normalizedTargetPath
+          );
+          return existingTab
+            ? scopedTabs
+            : [...scopedTabs, { ...standaloneTab, path: targetPath }];
+        });
+        setActiveTab(standaloneTab.id);
+        router.push(targetPath);
+        return true;
+      }
+
+      const isSwitchingModule = Boolean(currentModule && currentModule !== targetModule);
+
+      if (isSwitchingModule && !confirmClosingBusinessModule(currentModule)) {
+        return false;
+      }
+
+      if (targetModule === "accounting") {
+        setTabs([DEFAULT_TAB]);
+        setActiveTab(DEFAULT_TAB.id);
+        router.push(targetPath);
+        return true;
+      }
+
+      const tabConfig =
+        getTabConfig(normalizedTargetPath) ??
+        ({
+          id: `business-${normalizedTargetPath.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")}`,
+          label: fallbackLabel ?? `${MODULE_NAMES[targetModule]}业务页面`,
+          path: targetPath,
+          icon: <LayoutDashboard className="h-3.5 w-3.5" />,
+          closable: true,
+          group: targetModule,
+        } satisfies Tab);
+
+      setTabs((previousTabs) => {
+        const scopedTabs = isSwitchingModule ? [DEFAULT_TAB] : previousTabs;
+        const existingTab = scopedTabs.find(
+          (tab) => tab.id === tabConfig.id || normalizePath(tab.path) === normalizedTargetPath
+        );
+        return existingTab ? scopedTabs : [...scopedTabs, { ...tabConfig, path: targetPath }];
+      });
+      setActiveTab(tabConfig.id);
+      router.push(targetPath);
+      return true;
+    },
+    [confirmClosingBusinessModule, pathname, router, tabs]
+  );
 
   // 打开新标签页
   const openTab = useCallback(
@@ -99,13 +219,18 @@ export function useDashboardLayout() {
   // 切换标签页
   const switchTab = useCallback(
     (tabId: string) => {
+      if (tabId === DEFAULT_TAB.id) {
+        returnToWorkbench();
+        return;
+      }
+
       const tab = tabs.find((t) => t.id === tabId);
       if (tab) {
         setActiveTab(tabId);
         router.push(tab.path);
       }
     },
-    [tabs, router]
+    [returnToWorkbench, tabs, router]
   );
 
   // 更新标签页标题
@@ -116,7 +241,7 @@ export function useDashboardLayout() {
   // 关闭当前标签页并导航到目标页面
   // 用于完成创建后关闭新建标签页，跳转到列表页或详情页
   const closeCurrentTabAndNavigate = useCallback(
-    (targetPath: string, targetLabel?: string) => {
+    (targetPath: string) => {
       const currentTabId = activeTab;
       const currentTabIndex = tabs.findIndex((t) => t.id === currentTabId);
       
@@ -147,26 +272,34 @@ export function useDashboardLayout() {
     [activeTab, tabs, router]
   );
 
-  // 切换菜单展开状态
-  const toggleMenu = useCallback((menuName: string) => {
-    setExpandedMenus((prev) => ({ ...prev, [menuName]: !prev[menuName] }));
-  }, []);
-
   // 用户认证检查
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    const userData = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
 
-    if (!isLoggedIn || !userData) {
+    if (!token) {
       router.push("/login");
       return;
     }
 
-    try {
-      setUser(JSON.parse(userData));
-    } catch (err) {
-      router.push("/login");
-    }
+    let active = true;
+    void apiClient.get<User>("/api/auth/me").then((response) => {
+      if (!active) return;
+      if (!response.success || !response.data) {
+        localStorage.removeItem("user");
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("token");
+        router.push("/login");
+        return;
+      }
+
+      localStorage.setItem("user", JSON.stringify(response.data));
+      localStorage.setItem("isLoggedIn", "true");
+      setUser(response.data);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   // 监听路由变化，自动打开/切换标签页
@@ -176,56 +309,84 @@ export function useDashboardLayout() {
       return;
     }
 
-    // 工作台
-    if (pathname === "/dashboard") {
-      setActiveTab("dashboard");
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      // 工作台
+      if (pathname === "/dashboard") {
+        setTabs([DEFAULT_TAB]);
+        setActiveTab(DEFAULT_TAB.id);
+        return;
+      }
 
-    // 根据路径自动创建标签页
-    const tabConfig = getTabConfig(pathname);
-    if (tabConfig) {
-      setTabs((prev) => {
-        const existingTab = prev.find((t) => t.path === pathname);
-        if (!existingTab) {
-          return [...prev, tabConfig!];
-        }
-        return prev;
-      });
-
-      const existingTab = tabs.find((t) => t.path === pathname);
-      if (existingTab) {
-        setActiveTab(existingTab.id);
-      } else if (tabConfig) {
+      // 根据路径自动创建标签页
+      const tabConfig = getTabConfig(pathname);
+      if (tabConfig) {
+        setTabs((prev) => {
+          const routeModule = getBusinessModule(pathname);
+          const scopedTabs = routeModule
+            ? prev.filter(
+                (tab) => tab.id === DEFAULT_TAB.id || getBusinessModule(tab.path) === routeModule
+              )
+            : prev;
+          const existingTab = scopedTabs.find(
+            (tab) => tab.id === tabConfig.id || normalizePath(tab.path) === pathname
+          );
+          if (!existingTab) {
+            return [...scopedTabs, tabConfig];
+          }
+          return scopedTabs;
+        });
         setActiveTab(tabConfig.id);
       }
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   // 退出登录
   const handleLogout = useCallback(() => {
+    void fetch("/api/auth/logout", { method: "POST" });
     localStorage.removeItem("user");
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
     router.push("/login");
   }, [router]);
+
+  const switchOrganization = useCallback(async (organizationId: string) => {
+    if (!user || organizationId === user.activeOrganizationId) return;
+
+    setOrganizationSwitching(true);
+    try {
+      const response = await apiClient.post<User>("/api/auth/context", { organizationId });
+      if (!response.success || !response.data) return;
+
+      localStorage.setItem("user", JSON.stringify(response.data));
+      setUser(response.data);
+      window.location.reload();
+    } finally {
+      setOrganizationSwitching(false);
+    }
+  }, [user]);
 
   return {
     // 状态
     user,
+    organizationSwitching,
     sidebarOpen,
     setSidebarOpen,
-    expandedMenus,
+    sidebarCollapsed,
+    setSidebarCollapsed,
     tabs,
     activeTab,
     // 标签页操作
     openTab,
     closeTab,
     switchTab,
+    openBusinessModule,
+    returnToWorkbench,
     updateTabLabel,
     closeCurrentTabAndNavigate,
-    // 菜单操作
-    toggleMenu,
     // 用户操作
     handleLogout,
+    switchOrganization,
   };
 }

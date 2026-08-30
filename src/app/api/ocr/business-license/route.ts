@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+import { invokeAi } from "@/lib/ai-client";
 
 /**
  * POST /api/ocr/business-license
@@ -15,10 +15,6 @@ export async function POST(request: NextRequest) {
         error: "请提供图片URL" 
       }, { status: 400 });
     }
-
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
 
     // 构建识别请求
     const messages: Array<{
@@ -58,24 +54,24 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-6-vision-250815",
-      temperature: 0.1, // 低温度确保输出稳定
+    const responseContent = await invokeAi(messages, {
+      model: process.env.AI_VISION_MODEL || "",
+      temperature: 0.1,
     });
 
     // 解析返回的JSON
     let result;
     try {
       // 尝试提取JSON部分
-      const content = response.content.trim();
+      const content = responseContent.trim();
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
       } else {
         result = JSON.parse(content);
       }
-    } catch (parseError) {
-      console.error("解析OCR结果失败:", response.content);
+    } catch {
+      console.error("解析OCR结果失败");
       return NextResponse.json({
         success: false,
         error: "识别结果解析失败，请重试",
@@ -86,11 +82,11 @@ export async function POST(request: NextRequest) {
       success: true,
       data: result,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("营业执照识别失败:", error);
     return NextResponse.json({
       success: false,
-      error: error.message || "识别失败",
+      error: error instanceof Error ? error.message : "识别失败",
     }, { status: 500 });
   }
 }

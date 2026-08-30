@@ -20,7 +20,7 @@ export interface TabsContextType {
   closeTab: (tabId: string) => void;
   switchTab: (tabId: string) => void;
   updateTabLabel: (tabId: string, label: string) => void;
-  closeCurrentTabAndNavigate: (targetPath: string, targetLabel?: string) => void;
+  closeCurrentTabAndNavigate: (targetPath: string) => void;
 }
 
 export const TabsContext = createContext<TabsContextType | null>(null);

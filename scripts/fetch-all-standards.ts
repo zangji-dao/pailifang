@@ -2,7 +2,7 @@
  * 搜索小企业会计准则和其他准则的详细科目表
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchAllStandards() {
   const config = new Config();

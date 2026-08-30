@@ -31,26 +31,38 @@ import {
  */
 export class S3StorageService implements IStorageService {
   private client: S3Client;
+  private presignClient: S3Client;
   private bucket: string;
 
   constructor(config: {
-    accessKeyId: string;
-    secretAccessKey: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
     bucket: string;
     region: string;
-    endpoint: string;
+    endpoint?: string;
+    publicEndpoint?: string;
+    forcePathStyle?: boolean;
   }) {
     this.bucket = config.bucket;
-    
-    this.client = new S3Client({
+
+    const clientOptions = {
       region: config.region,
+      credentials: config.accessKeyId && config.secretAccessKey
+        ? {
+            accessKeyId: config.accessKeyId,
+            secretAccessKey: config.secretAccessKey,
+          }
+        : undefined,
+      forcePathStyle: config.forcePathStyle || false,
+    };
+
+    this.client = new S3Client({
+      ...clientOptions,
       endpoint: config.endpoint,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
-      // 腾讯云 COS 使用路径样式
-      forcePathStyle: false,
+    });
+    this.presignClient = new S3Client({
+      ...clientOptions,
+      endpoint: config.publicEndpoint || config.endpoint,
     });
   }
 
@@ -96,7 +108,7 @@ export class S3StorageService implements IStorageService {
       Key: key,
     });
 
-    const url = await getSignedUrl(this.client, command, { expiresIn });
+    const url = await getSignedUrl(this.presignClient, command, { expiresIn });
 
     return {
       key,
@@ -233,6 +245,10 @@ export class S3StorageService implements IStorageService {
  */
 let storageInstance: S3StorageService | null = null;
 
+export function resetStorageService(): void {
+  storageInstance = null;
+}
+
 /**
  * 获取存储服务实例
  */
@@ -243,21 +259,28 @@ export function getStorageService(): S3StorageService {
     const bucket = process.env.S3_BUCKET;
     const region = process.env.S3_REGION;
     const endpoint = process.env.S3_ENDPOINT;
+    const publicEndpoint = process.env.S3_PUBLIC_ENDPOINT;
 
-    if (!accessKeyId || !secretAccessKey || !bucket || !region || !endpoint) {
+    if (!bucket || !region) {
       throw new Error(
         'Missing S3 storage configuration. Please set:\n' +
-        'S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET, S3_REGION, S3_ENDPOINT'
+        'S3_BUCKET and S3_REGION. Credentials and S3_ENDPOINT are optional when the runtime provides them.'
       );
     }
 
-    console.log('[存储] 使用腾讯云 COS 存储服务');
+    if ((accessKeyId && !secretAccessKey) || (!accessKeyId && secretAccessKey)) {
+      throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together');
+    }
+
+    console.log('[存储] 使用 S3 兼容对象存储服务');
     storageInstance = new S3StorageService({
       accessKeyId,
       secretAccessKey,
       bucket,
       region,
       endpoint,
+      publicEndpoint,
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
     });
   }
 

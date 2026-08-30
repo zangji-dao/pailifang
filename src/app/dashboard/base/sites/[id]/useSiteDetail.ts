@@ -49,6 +49,12 @@ export function useSiteDetail(baseId: string) {
         totalSpaces: 0,
         totalRegNumbers: 0,
         allocatedRegNumbers: 0,
+        tenantEnterpriseCount: 0,
+        serviceEnterpriseCount: 0,
+        totalArea: 0,
+        occupancyRate: 0,
+        utilityAlertCount: 0,
+        paidUtilityAmount: 0,
       };
     }
 
@@ -62,8 +68,36 @@ export function useSiteDetail(baseId: string) {
       (sum, m) => sum + (m.spaces?.reduce((s, sp) => s + (sp.regNumbers?.filter(r => r.available === false)?.length || 0), 0) || 0),
       0
     ) || 0;
+    const totalArea = baseDetail.meters.reduce(
+      (sum, meter) => sum + Number(meter.area || 0),
+      0
+    );
+    const utilityAlertCount = baseDetail.meters.reduce((sum, meter) => {
+      const electricityAlert = meter.electricityBalance !== null && Number(meter.electricityBalance) < 100;
+      const waterAlert = meter.waterBalance !== null && Number(meter.waterBalance) < 100;
+      const heatingAlert = meter.heatingStatus === "arrears";
+      const networkAlert = meter.networkStatus === "arrears";
+      return sum + [electricityAlert, waterAlert, heatingAlert, networkAlert].filter(Boolean).length;
+    }, 0);
+    const paidUtilityAmount = baseDetail.meters.reduce(
+      (sum, meter) => sum + meter.utilityPayments
+        .filter(payment => payment.status === "paid")
+        .reduce((paymentSum, payment) => paymentSum + Number(payment.amount || 0), 0),
+      0
+    );
 
-    return { totalMeters, totalSpaces, totalRegNumbers, allocatedRegNumbers };
+    return {
+      totalMeters,
+      totalSpaces,
+      totalRegNumbers,
+      allocatedRegNumbers,
+      tenantEnterpriseCount: baseDetail.tenantEnterprises.length,
+      serviceEnterpriseCount: baseDetail.serviceEnterprises.length,
+      totalArea,
+      occupancyRate: totalRegNumbers > 0 ? Math.round((allocatedRegNumbers / totalRegNumbers) * 100) : 0,
+      utilityAlertCount,
+      paidUtilityAmount,
+    };
   }, [baseDetail]);
 
   // 删除基地

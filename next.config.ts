@@ -1,12 +1,8 @@
 import type { NextConfig } from 'next';
-import path from 'path';
 
 const nextConfig: NextConfig = {
-  // outputFileTracingRoot: path.resolve(__dirname),
-  /* config options here */
-  allowedDevOrigins: ['*.dev.coze.site'],
+  output: 'standalone',
   devIndicators: false,
-  // 禁用 devtools 以避免 [object Event] 错误
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
@@ -15,8 +11,5 @@ const nextConfig: NextConfig = {
   // 转译有问题的 ES 模块
   transpilePackages: ['linkifyjs', '@tiptap/react'],
 };
-
-// 禁用 Next.js devtools
-process.env.NEXT_PRIVATE_DISABLE_DEVTOOLS = '1';
 
 export default nextConfig;

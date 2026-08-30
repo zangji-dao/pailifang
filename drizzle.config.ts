@@ -1,15 +1,18 @@
+import { config as loadEnv } from 'dotenv';
 import { defineConfig } from 'drizzle-kit';
+
+loadEnv({ path: '.env.local' });
+loadEnv();
+
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required for Drizzle migrations');
+}
 
 export default defineConfig({
   schema: './src/storage/database/shared/schema.ts',
   out: './drizzle',
   dialect: 'postgresql',
-  dbCredentials: {
-    host: process.env.PG_HOST || '152.136.12.122',
-    port: Number(process.env.PG_PORT) || 5432,
-    user: process.env.PG_USER || 'pi_user',
-    password: process.env.PG_PASSWORD || 'PiCube2024',
-    database: process.env.PG_DATABASE || 'pi_cube',
-    ssl: false,
-  },
+  dbCredentials: { url: databaseUrl },
 });

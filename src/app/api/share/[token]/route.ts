@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDatabaseClient } from '@/storage/database/server-client';
 
 // 增加 API 路由的最大运行时间
 export const maxDuration = 60;
@@ -15,7 +15,7 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { token } = await params;
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     // 查询分享链接
     const { data: shareLink, error: linkError } = await client
@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { token } = await params;
     const body = await request.json();
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     // 查询分享链接
     const { data: shareLink, error: linkError } = await client

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { S3Storage } from "coze-coding-dev-sdk";
+import { getDatabaseClient } from "@/storage/database/server-client";
+import { getObjectStorage } from "@/lib/object-storage";
 
 /**
  * GET /api/applications/[id]/download-attachments
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     // 获取申请详情
     const { data: application, error } = await client
@@ -116,13 +116,7 @@ export async function GET(
     }
 
     // 初始化存储
-    const storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-      accessKey: "",
-      secretKey: "",
-      bucketName: process.env.COZE_BUCKET_NAME,
-      region: "cn-beijing",
-    });
+    const storage = getObjectStorage();
 
     // 动态导入 archiver 用于打包
     const archiver = (await import("archiver")).default;

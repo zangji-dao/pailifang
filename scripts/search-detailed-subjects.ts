@@ -2,7 +2,7 @@
  * 搜索各会计准则详细科目表
  */
 
-import { SearchClient, Config } from "coze-coding-dev-sdk";
+import { SearchClient, Config } from "./lib/web-clients";
 
 async function searchDetailedSubjects() {
   const config = new Config();

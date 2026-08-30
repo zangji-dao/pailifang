@@ -27,14 +27,14 @@ export function BasicInfoStep({
   updateField,
 }: BasicInfoStepProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 企业名称 */}
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+      <div className="form-section">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 sm:mb-5">
           <span className="step-number step-number-1">1</span>
           企业名称
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <Label>
               申请名称 <span className="text-destructive">*</span>
@@ -126,12 +126,12 @@ export function BasicInfoStep({
       </div>
 
       {/* 注册信息 */}
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+      <div className="form-section">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 sm:mb-5">
           <span className="step-number step-number-2">2</span>
           注册信息
         </h3>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
             <Label>注册资金 <span className="text-destructive">*</span></Label>
             <div className="relative">
@@ -185,12 +185,12 @@ export function BasicInfoStep({
       </div>
 
       {/* 预计经营数据 */}
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+      <div className="form-section">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 sm:mb-5">
           <span className="step-number step-number-3">3</span>
           预计经营数据
         </h3>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
           <div className="space-y-2">
             <Label>预计主营收入 <span className="text-destructive">*</span></Label>
             <div className="relative">

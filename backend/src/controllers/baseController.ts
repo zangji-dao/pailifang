@@ -180,20 +180,9 @@ export const baseController = {
         .where(eq(meters.baseId, id))
         .orderBy(asc(meters.sortOrder), asc(meters.createdAt));
 
-      // 获取每个物业的空间和enterprise信息
+      // 获取每个物业下的物理空间和工位信息
       const metersWithDetails = await Promise.all(
         meterList.map(async (meter) => {
-          // 获取企业信息
-          let enterprise = null;
-          if (meter.enterpriseId) {
-            const enterpriseResult = await db
-              .select({ id: enterprises.id, name: enterprises.name })
-              .from(enterprises)
-              .where(eq(enterprises.id, meter.enterpriseId))
-              .limit(1);
-            enterprise = enterpriseResult[0] || null;
-          }
-
           // 获取空间列表
           const spaceList = await db
             .select()
@@ -236,7 +225,6 @@ export const baseController = {
 
           return {
             ...meter,
-            enterprise,
             spaces: spacesWithRegNumbers || [],
           };
         })

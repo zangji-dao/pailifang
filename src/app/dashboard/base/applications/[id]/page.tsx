@@ -112,92 +112,102 @@ export default function ApplicationDetailPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] -m-4 lg:-m-6 overflow-hidden">
-      {/* 页面标题 - 固定不滚动 */}
-      <div className="bg-card border-b shrink-0">
-        <div className="px-6 py-4">
-          <div className="flex items-center">
-            {/* 左侧：返回按钮 */}
-            <div className="w-[100px]">
-              <Button variant="ghost" size="sm" onClick={handleGoBack} disabled={saving}>
-                {saving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                )}
-                返回
+    <div className="-m-3 flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-slate-50/70 sm:-m-5 sm:h-[calc(100dvh-6.75rem)] lg:-m-7">
+      <div className="shrink-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            disabled={saving}
+            className="h-10 rounded-xl px-2.5 text-slate-600 sm:px-3"
+          >
+            {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-1.5 h-4 w-4" />}
+            返回
+          </Button>
+
+          <div className="min-w-0 text-center">
+            <h1 className="truncate text-lg font-semibold tracking-tight text-slate-950 sm:text-2xl">入驻申请详情</h1>
+            <p className="truncate text-xs text-slate-500 sm:text-sm">申请编号：{formData.applicationNo}</p>
+            {success && <p className="mt-0.5 text-[11px] text-emerald-600 sm:text-xs">已保存</p>}
+          </div>
+
+          <div className="flex min-w-10 justify-end">
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSubmit("draft")}
+                disabled={saving || submitting}
+                className="h-10 rounded-xl border-slate-200 bg-white px-3 shadow-sm"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+                <span className="hidden min-[360px]:inline">保存</span>
               </Button>
-            </div>
-            
-            {/* 中间：标题居中 */}
-            <div className="flex-1 text-center relative">
-              <h1 className="text-2xl font-semibold">入驻申请详情</h1>
-              <p className="text-sm text-muted-foreground">申请编号：{formData.applicationNo}</p>
-              {success && <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-green-600 hidden sm:inline">已保存</span>}
-            </div>
-            
-            {/* 右侧：保存按钮 */}
-            <div className="w-[100px] flex justify-end">
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSubmit("draft")}
-                  disabled={saving || submitting}
-                >
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-1" />
-                      保存
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 步骤指示器 - 固定不滚动 */}
-      <div className="px-6 py-3 border-b bg-muted/30 shrink-0">
-        <div className="flex items-center justify-center gap-2">
-          {formSteps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium",
-                  currentStep === index 
-                    ? "bg-gradient-to-r from-rose-500 to-orange-500 text-white" 
-                    : index < currentStep 
-                      ? "bg-emerald-500/10 text-emerald-600 cursor-pointer hover:bg-emerald-500/20" 
-                      : canEdit 
-                        ? "text-muted-foreground cursor-not-allowed" 
-                        : "text-muted-foreground bg-muted/50 cursor-pointer hover:bg-muted"
-                )}
-                onClick={() => {
-                  // 查看模式下可以自由切换所有步骤
-                  // 编辑模式下只能返回已完成的步骤
-                  if (!canEdit || index <= currentStep) {
-                    goToStep(index);
-                  }
-                }}
-              >
-                <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs", currentStep === index ? "bg-white/20 text-white" : index < currentStep ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}>
-                  {index < currentStep ? "✓" : index + 1}
-                </span>
-                {step.title}
-              </div>
-              {index < formSteps.length - 1 && <div className={cn("w-12 h-0.5 mx-2", index < currentStep ? "bg-emerald-500" : "bg-muted")} />}
+      <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 py-3 sm:px-6">
+        <div className="sm:hidden">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-xs font-semibold text-white">
+                {currentStep + 1}
+              </span>
+              <span className="truncate text-sm font-medium text-slate-800">{formSteps[currentStep]?.title}</span>
             </div>
-          ))}
+            <span className="shrink-0 text-xs text-slate-400">{currentStep + 1} / {formSteps.length}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+              style={{ width: `${((currentStep + 1) / formSteps.length) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="mx-auto hidden max-w-6xl items-center justify-center sm:flex">
+          {formSteps.map((step, index) => {
+            const accessible = !canEdit || index <= currentStep;
+            return (
+              <div key={step.id} className="flex min-w-0 items-center">
+                <button
+                  type="button"
+                  disabled={!accessible}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition-all lg:px-3",
+                    currentStep === index && "bg-amber-600 text-white shadow-sm shadow-amber-500/25",
+                    currentStep !== index && accessible && "cursor-pointer bg-amber-50 text-amber-700 hover:bg-amber-100",
+                    !accessible && "cursor-default text-slate-400",
+                  )}
+                  onClick={() => accessible && goToStep(index)}
+                >
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs",
+                      currentStep === index && "bg-white/20",
+                      currentStep !== index && accessible && "bg-amber-600 text-white",
+                      !accessible && "bg-slate-100 text-slate-400",
+                    )}
+                  >
+                    {index < currentStep ? "✓" : index + 1}
+                  </span>
+                  <span className="hidden lg:inline">{step.title}</span>
+                </button>
+                {index < formSteps.length - 1 && (
+                  <div className={cn("mx-1 h-px w-5 bg-slate-200 md:w-8 lg:mx-2 lg:w-12", index < currentStep && "bg-amber-300")} />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* 表单内容 - 滚动区域 */}
-      <div className="flex-1 overflow-auto px-6 py-4">
-        <div className="max-w-5xl mx-auto pb-24">
+      <div className="wizard-form min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
           {currentStep === 0 && (
             <BasicInfoStep
               formData={formData}
@@ -259,40 +269,35 @@ export default function ApplicationDetailPage() {
 
       {/* 底部操作栏（仅草稿状态显示） */}
       {canEdit && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-56 bg-card border-t shadow-lg">
-          <div className="px-10 lg:px-12 py-4">
-            <div className="flex items-center">
-              {/* 左侧：上一步按钮 */}
-              <div className="w-[100px]">
+        <div className="shrink-0 border-t border-slate-200/80 bg-white/95 px-3 pt-3 shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl sm:px-8 sm:py-3">
+          <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-0">
+              <div className="flex justify-start">
                 {currentStep > 0 && (
-                  <Button type="button" variant="outline" size="sm" onClick={goToPrevStep}>
+                  <Button type="button" variant="outline" onClick={goToPrevStep} className="h-11 min-w-24 rounded-xl">
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     上一步
                   </Button>
                 )}
               </div>
-              
-              {/* 中间：步骤提示 */}
-              <div className="flex-1 flex justify-center items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+
+              <div className="flex items-center justify-center gap-2 text-center">
+                <span className="text-xs text-slate-400 sm:text-sm">
                   第 {currentStep + 1} 步，共 {formSteps.length} 步
                 </span>
                 {isLastStep && (
-                  <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
+                  <span className="hidden rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700 sm:inline-flex">
                     最后一步
                   </span>
                 )}
               </div>
-              
-              {/* 右侧：下一步/提交审核按钮 */}
-              <div className="w-[100px] flex justify-end">
+
+              <div className="flex justify-end">
                 {isLastStep ? (
                   <Button
                     type="button"
-                    size="sm"
                     onClick={handleSubmitForApproval}
                     disabled={submitting}
-                    className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white"
+                    className="h-11 min-w-28 rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-500/20 hover:bg-orange-700"
                   >
                     {submitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -304,13 +309,12 @@ export default function ApplicationDetailPage() {
                     )}
                   </Button>
                 ) : (
-                  <Button type="button" size="sm" onClick={goToNextStep}>
+                  <Button type="button" onClick={goToNextStep} className="h-11 min-w-24 rounded-xl shadow-lg shadow-amber-500/20">
                     下一步
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 )}
               </div>
-            </div>
           </div>
         </div>
       )}

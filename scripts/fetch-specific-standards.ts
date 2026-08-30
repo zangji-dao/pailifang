@@ -2,7 +2,7 @@
  * 获取农民专业合作社和工会会计制度详细科目表
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchSpecificStandards() {
   const config = new Config();

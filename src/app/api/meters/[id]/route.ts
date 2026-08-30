@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -66,26 +66,35 @@ export async function PUT(
       name,
       area,
       // 电表
+      electricityEnabled,
       electricityNumber,
+      electricityProvider,
+      electricityChargeInst,
       electricityType,
       electricityEnterpriseId,
       // 水表
+      waterEnabled,
       waterNumber,
+      waterProvider,
+      waterChargeInst,
       waterType,
       waterEnterpriseId,
       // 取暖
+      heatingEnabled,
       heatingNumber,
       heatingType,
       heatingStatus,
       heatingEnterpriseId,
+      propertyFeeEnabled,
       // 网络
+      networkEnabled,
       networkNumber,
       networkType,
       networkStatus,
     } = body;
 
     // 构建更新对象
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -94,22 +103,31 @@ export async function PUT(
     if (area !== undefined) updateData.area = area;
     
     // 电表
+    if (electricityEnabled !== undefined) updateData.electricity_enabled = Boolean(electricityEnabled);
     if (electricityNumber !== undefined) updateData.electricity_number = electricityNumber;
+    if (electricityProvider !== undefined) updateData.electricity_provider = electricityProvider || null;
+    if (electricityChargeInst !== undefined) updateData.electricity_charge_inst = electricityChargeInst || null;
     if (electricityType !== undefined) updateData.electricity_type = electricityType;
     if (electricityEnterpriseId !== undefined) updateData.electricity_enterprise_id = electricityEnterpriseId || null;
     
     // 水表
+    if (waterEnabled !== undefined) updateData.water_enabled = Boolean(waterEnabled);
     if (waterNumber !== undefined) updateData.water_number = waterNumber;
+    if (waterProvider !== undefined) updateData.water_provider = waterProvider || null;
+    if (waterChargeInst !== undefined) updateData.water_charge_inst = waterChargeInst || null;
     if (waterType !== undefined) updateData.water_type = waterType;
     if (waterEnterpriseId !== undefined) updateData.water_enterprise_id = waterEnterpriseId || null;
     
     // 取暖
+    if (heatingEnabled !== undefined) updateData.heating_enabled = Boolean(heatingEnabled);
     if (heatingNumber !== undefined) updateData.heating_number = heatingNumber;
     if (heatingType !== undefined) updateData.heating_type = heatingType;
     if (heatingStatus !== undefined) updateData.heating_status = heatingStatus;
     if (heatingEnterpriseId !== undefined) updateData.heating_enterprise_id = heatingEnterpriseId || null;
+    if (propertyFeeEnabled !== undefined) updateData.property_fee_enabled = Boolean(propertyFeeEnabled);
     
     // 网络
+    if (networkEnabled !== undefined) updateData.network_enabled = Boolean(networkEnabled);
     if (networkNumber !== undefined) updateData.network_number = networkNumber;
     if (networkType !== undefined) updateData.network_type = networkType;
     if (networkStatus !== undefined) updateData.network_status = networkStatus;
@@ -155,7 +173,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -248,8 +266,8 @@ export async function DELETE(
     }
 
     // 检查是否有已分配的工位号（available = false 表示已分配）
-    const hasAllocatedRegNumbers = meter.spaces?.some((space: any) => 
-      space.registration_numbers?.some((reg: any) => reg.available === false)
+    const hasAllocatedRegNumbers = meter.spaces?.some((space: { registration_numbers?: Array<{ available?: boolean }> }) =>
+      space.registration_numbers?.some(reg => reg.available === false)
     );
 
     if (hasAllocatedRegNumbers) {

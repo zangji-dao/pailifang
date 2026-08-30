@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getSupabaseClient } from "@/storage/database/client";
+import { getDatabaseClient } from "@/storage/database/client";
 import {
   Plus,
   Search,
@@ -148,7 +148,7 @@ export default function WorkOrdersPage() {
   const fetchWorkOrders = async () => {
     try {
       setLoading(true);
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
 
       let query = client.from("work_orders").select("*").order("created_at", { ascending: false });
 
@@ -177,7 +177,7 @@ export default function WorkOrdersPage() {
 
   const fetchUsers = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("users")
         .select("id, name")
@@ -192,7 +192,7 @@ export default function WorkOrdersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("customers")
         .select("id, name");
@@ -206,7 +206,7 @@ export default function WorkOrdersPage() {
 
   const fetchLedgers = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("ledgers")
         .select("id, name, customer_id");
@@ -226,7 +226,7 @@ export default function WorkOrdersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
 
       const { error } = await client.from("work_orders").insert({
         ...formData,
@@ -258,7 +258,7 @@ export default function WorkOrdersPage() {
 
   const updateStatus = async (workOrderId: string, newStatus: string) => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const updateData: StatusUpdateData = { status: newStatus };
       if (newStatus === "completed") {
         updateData.completedAt = new Date().toISOString();

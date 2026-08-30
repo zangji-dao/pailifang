@@ -1,54 +1,40 @@
-// PM2 生产环境配置
-// 敏感信息通过环境变量传入，不在代码中硬编码
-// 
-// 使用方法：
-// PG_PASSWORD=xxx pm2 start ecosystem.config.js
+const path = require('path');
 
 module.exports = {
   apps: [
     {
-      name: "pi-backend",
-      script: "npx",
-      args: "tsx src/index.ts",
-      cwd: "/var/www/pi-cube/backend",
+      name: 'pi-backend',
+      script: 'dist/index.js',
+      cwd: path.join(__dirname, 'backend'),
       instances: 1,
-      exec_mode: "fork",
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_memory_restart: "1G",
+      max_memory_restart: '1G',
       env: {
-        NODE_ENV: "production",
-        COZE_PROJECT_ENV: "PROD",
-        PORT: "4001",
-        // PG_PASSWORD 通过命令行环境变量传入
+        NODE_ENV: 'production',
+        PORT: '4001',
       },
-      env_production: {
-        NODE_ENV: "production",
-        COZE_PROJECT_ENV: "PROD",
-        PORT: "4001",
-      },
-      error_file: "/var/www/pi-cube/logs/backend-error.log",
-      out_file: "/var/www/pi-cube/logs/backend-out.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss Z"
+      error_file: path.join(__dirname, 'logs/backend-error.log'),
+      out_file: path.join(__dirname, 'logs/backend-out.log'),
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },
     {
-      name: "pi-frontend",
-      script: "pnpm",
-      args: "run start",
-      cwd: "/var/www/pi-cube",
+      name: 'pi-frontend',
+      script: 'pnpm',
+      args: 'start:web',
+      cwd: __dirname,
       instances: 1,
-      exec_mode: "fork",
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_memory_restart: "1G",
+      max_memory_restart: '1G',
       env: {
-        NODE_ENV: "production",
-        COZE_PROJECT_ENV: "PROD",
-        PORT: "4000",
+        NODE_ENV: 'production',
       },
-      error_file: "/var/www/pi-cube/logs/frontend-error.log",
-      out_file: "/var/www/pi-cube/logs/frontend-out.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss Z"
-    }
-  ]
+      error_file: path.join(__dirname, 'logs/frontend-error.log'),
+      out_file: path.join(__dirname, 'logs/frontend-out.log'),
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
+  ],
 };

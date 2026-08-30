@@ -16,11 +16,10 @@ export * from './schema';
 
 // 数据库连接配置
 function getDatabaseConfig() {
-  // PostgreSQL 连接字符串 (优先使用 PGDATABASE_URL)
-  const databaseUrl = process.env.PGDATABASE_URL || process.env.COZE_SUPABASE_DB_URL || process.env.DATABASE_URL;
+  const databaseUrl = process.env.DATABASE_URL || process.env.PGDATABASE_URL;
   
   if (!databaseUrl) {
-    throw new Error('数据库连接字符串未设置 (PGDATABASE_URL, COZE_SUPABASE_DB_URL 或 DATABASE_URL)');
+    throw new Error('数据库连接字符串未设置，请配置 DATABASE_URL');
   }
   
   console.log(`[数据库] 连接到: ${databaseUrl.split('@')[1]?.split('/')[0] || '数据库'}`);
@@ -33,6 +32,11 @@ const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
+  ssl: (process.env.PG_SSL_MODE || process.env.PGSSLMODE || 'disable') === 'disable'
+    ? false
+    : {
+        rejectUnauthorized: process.env.PG_SSL_REJECT_UNAUTHORIZED !== 'false',
+      },
 });
 
 // 创建 Drizzle 实例

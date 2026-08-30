@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye, MapPin, DollarSign, Briefcase, Calendar, Plus } from "lucide-react";
+import { Upload, FileText, Loader2, Building2, User, Phone, CreditCard, Sparkles, Eye, MapPin, DollarSign, Briefcase, Calendar, Plus, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustries } from "@/hooks/useIndustries";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -24,6 +24,7 @@ interface BusinessRegistrationStepProps {
   creditCode: string;
   legalPerson: string;
   phone: string;
+  adminEmail: string;
   industry: string;
   // 新增字段
   registeredCapital?: string;
@@ -35,6 +36,7 @@ interface BusinessRegistrationStepProps {
   onUpdateCreditCode: (code: string) => void;
   onUpdateLegalPerson: (person: string) => void;
   onUpdatePhone: (phone: string) => void;
+  onUpdateAdminEmail: (email: string) => void;
   onUpdateIndustry: (industry: string) => void;
   onUpdateEnterpriseName?: (name: string) => void;
   onUpdateBusinessScope?: (scope: string) => void;
@@ -49,6 +51,7 @@ export function BusinessRegistrationStep({
   creditCode,
   legalPerson,
   phone,
+  adminEmail,
   industry,
   registeredCapital = "",
   businessScope = "",
@@ -58,6 +61,7 @@ export function BusinessRegistrationStep({
   onUpdateCreditCode,
   onUpdateLegalPerson,
   onUpdatePhone,
+  onUpdateAdminEmail,
   onUpdateIndustry,
   onUpdateEnterpriseName,
   onUpdateBusinessScope,
@@ -362,6 +366,22 @@ export function BusinessRegistrationStep({
                 />
               </div>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="adminEmail">企业管理员邮箱 <span className="text-destructive">*</span></Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="adminEmail"
+                type="email"
+                value={adminEmail}
+                onChange={(event) => onUpdateAdminEmail(event.target.value)}
+                placeholder="用于接收账号激活邀请"
+                className="pl-9"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">入驻完成后自动生成企业负责人邀请，由负责人自行设置登录密码。</p>
           </div>
 
           {/* 第三行：联系电话 + 所属行业 */}

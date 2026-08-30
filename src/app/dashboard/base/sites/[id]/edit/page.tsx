@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Building2,
   Loader2,
   ArrowLeft,
   AlertCircle,
@@ -12,7 +11,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTabs } from "@/app/dashboard/tabs-context";
-import { MapPicker } from "@/components/map/MapPicker";
+import { MapPicker, type Location } from "@/components/map/MapPicker";
+import { apiClient } from "@/lib/apiClient";
+import {
+  OperatorOrganizationSelect,
+  type OperatorOrganization,
+} from "../../_components/OperatorOrganizationSelect";
 
 interface BaseData {
   id: string;
@@ -20,11 +24,7 @@ interface BaseData {
   address: string | null;
   addressTemplate?: string | null;
   status: string;
-  managementCompanyName?: string | null;
-  managementCompanyCreditCode?: string | null;
-  managementCompanyLegalPerson?: string | null;
-  managementCompanyAddress?: string | null;
-  managementCompanyPhone?: string | null;
+  organizationId?: string | null;
 }
 
 export default function EditBasePage() {
@@ -42,13 +42,11 @@ export default function EditBasePage() {
     address: "",
     address_template: "",
     status: "active",
-    // 管理公司信息（甲方）
-    management_company_name: "",
-    management_company_credit_code: "",
-    management_company_legal_person: "",
-    management_company_address: "",
-    management_company_phone: "",
+    organization_id: "",
   });
+  const [operatorOrganizations, setOperatorOrganizations] = useState<OperatorOrganization[]>([]);
+  const [operatorsLoading, setOperatorsLoading] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState<Location>();
   
   // 解析地址模板为前缀和后缀
   const parseAddressTemplate = (template: string) => {
@@ -63,6 +61,23 @@ export default function EditBasePage() {
   // 获取地址模板前缀和后缀
   const addressParts = parseAddressTemplate(formData.address_template);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void apiClient.get<Array<OperatorOrganization & { type: string }>>("/api/access-control/organizations").then((response) => {
+      if (!active) return;
+      if (!response.success || !response.data) {
+        toast.error(response.error || "运营机构加载失败");
+        setOperatorsLoading(false);
+        return;
+      }
+      setOperatorOrganizations(response.data.filter((organization) => organization.type === "park"));
+      setOperatorsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // 加载基地数据
   useEffect(() => {
@@ -80,11 +95,7 @@ export default function EditBasePage() {
             address: base.address || "",
             address_template: base.addressTemplate || "",
             status: base.status,
-            management_company_name: base.managementCompanyName || "",
-            management_company_credit_code: base.managementCompanyCreditCode || "",
-            management_company_legal_person: base.managementCompanyLegalPerson || "",
-            management_company_address: base.managementCompanyAddress || "",
-            management_company_phone: base.managementCompanyPhone || "",
+            organization_id: base.organizationId || "",
           });
         } else {
           setError(result.error || "获取基地信息失败");
@@ -109,6 +120,10 @@ export default function EditBasePage() {
   const handleUpdateBase = async () => {
     if (!formData.name.trim()) {
       toast.error("请输入基地名称");
+      return;
+    }
+    if (!formData.organization_id) {
+      toast.error("请选择运营机构");
       return;
     }
     
@@ -172,14 +187,14 @@ export default function EditBasePage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-4xl space-y-4">
       {/* 头部 */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={handleGoBack}
-          className="text-slate-600"
+          className="h-10 rounded-xl text-slate-600 hover:bg-white"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           返回列表
@@ -187,15 +202,15 @@ export default function EditBasePage() {
       </div>
 
       {/* 表单卡片 */}
-      <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
+      <div className="dashboard-surface overflow-hidden">
         {/* 头部 */}
-        <div className="px-6 py-4 border-b border-slate-100">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-white to-amber-50/50 px-4 py-4 sm:px-6 sm:py-5">
           <h2 className="text-lg font-semibold text-slate-900">编辑基地</h2>
           <p className="text-sm text-slate-500 mt-1">修改基地基本信息</p>
         </div>
         
         {/* 表单内容 */}
-        <div className="p-6 space-y-5">
+        <div className="space-y-5 p-4 sm:p-6">
           {/* 基地名称 */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -206,7 +221,7 @@ export default function EditBasePage() {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="请输入基地名称"
-              className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             />
           </div>
           
@@ -218,9 +233,12 @@ export default function EditBasePage() {
             <input
               type="text"
               value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              onChange={(e) => {
+                setSelectedLocation(undefined);
+                setFormData({ ...formData, address: e.target.value });
+              }}
               placeholder="请输入基地详细地址"
-              className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             />
           </div>
           
@@ -231,15 +249,16 @@ export default function EditBasePage() {
             </label>
             <MapPicker
               value={
-                formData.address
+                selectedLocation || (formData.address
                   ? {
                       lng: 0,
                       lat: 0,
                       address: formData.address,
                     }
-                  : undefined
+                  : undefined)
               }
               onChange={(location) => {
+                setSelectedLocation(location.address ? location : undefined);
                 setFormData({
                   ...formData,
                   address: location.address || formData.address,
@@ -279,7 +298,7 @@ export default function EditBasePage() {
           </div>
           
           {/* 地址模板区块 */}
-          <div className="border-t border-slate-200 pt-5 mt-5">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 sm:p-5">
             <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
               <MapPin className="h-4 w-4 text-amber-500" />
               地址模板设置
@@ -292,8 +311,8 @@ export default function EditBasePage() {
               <label className="block text-sm font-medium text-slate-700">
                 地址模板
               </label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_6rem] sm:items-center">
+                <div className="min-w-0">
                   <input
                     type="text"
                     value={addressParts.prefix}
@@ -302,13 +321,13 @@ export default function EditBasePage() {
                       setFormData({ ...formData, address_template: newTemplate });
                     }}
                     placeholder="如：松原市宁江区建华路义乌城小区"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
                   />
                 </div>
-                <div className="flex items-center justify-center px-2 h-10 text-slate-400 text-sm whitespace-nowrap">
+                <div className="flex h-8 items-center justify-center px-2 text-sm text-slate-400 sm:h-11">
                   + 工位号 +
                 </div>
-                <div className="w-24">
+                <div>
                   <input
                     type="text"
                     value={addressParts.suffix}
@@ -317,7 +336,7 @@ export default function EditBasePage() {
                       setFormData({ ...formData, address_template: newTemplate });
                     }}
                     placeholder="号"
-                    className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
                   />
                 </div>
               </div>
@@ -329,103 +348,28 @@ export default function EditBasePage() {
             </div>
           </div>
           
-          {/* 管理公司信息区块 */}
-          <div className="border-t border-slate-200 pt-5 mt-5">
-            <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-amber-500" />
-              管理公司信息（合同甲方）
-            </h3>
-            <p className="text-sm text-slate-500 mb-4">
-              填写该基地的管理公司信息，用于生成入驻合同时作为甲方信息
-            </p>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {/* 管理公司名称 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  管理公司名称
-                </label>
-                <input
-                  type="text"
-                  value={formData.management_company_name}
-                  onChange={(e) => setFormData({ ...formData, management_company_name: e.target.value })}
-                  placeholder="例如：XX企业服务中心"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-              
-              {/* 统一社会信用代码 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  统一社会信用代码
-                </label>
-                <input
-                  type="text"
-                  value={formData.management_company_credit_code}
-                  onChange={(e) => setFormData({ ...formData, management_company_credit_code: e.target.value })}
-                  placeholder="18位信用代码"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 font-mono"
-                />
-              </div>
-              
-              {/* 法定代表人 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  法定代表人
-                </label>
-                <input
-                  type="text"
-                  value={formData.management_company_legal_person}
-                  onChange={(e) => setFormData({ ...formData, management_company_legal_person: e.target.value })}
-                  placeholder="法人姓名"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-              
-              {/* 联系电话 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  联系电话
-                </label>
-                <input
-                  type="text"
-                  value={formData.management_company_phone}
-                  onChange={(e) => setFormData({ ...formData, management_company_phone: e.target.value })}
-                  placeholder="联系电话"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-              
-              {/* 公司地址 */}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  公司地址
-                </label>
-                <input
-                  type="text"
-                  value={formData.management_company_address}
-                  onChange={(e) => setFormData({ ...formData, management_company_address: e.target.value })}
-                  placeholder="详细地址"
-                  className="w-full h-10 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
-                />
-              </div>
-            </div>
-          </div>
+          <OperatorOrganizationSelect
+            organizations={operatorOrganizations}
+            value={formData.organization_id}
+            onChange={(organization_id) => setFormData({ ...formData, organization_id })}
+            loading={operatorsLoading}
+          />
         </div>
         
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-xl">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
           <Button
             variant="outline"
             onClick={handleGoBack}
-            disabled={submitting}
+            disabled={submitting || operatorsLoading || operatorOrganizations.length === 0}
+            className="h-11 w-full rounded-xl sm:w-auto"
           >
             取消
           </Button>
           <Button
             onClick={handleUpdateBase}
             disabled={submitting}
-            className="bg-slate-900 hover:bg-slate-800 text-white"
+            className="h-11 w-full rounded-xl sm:w-auto"
           >
             {submitting ? (
               <>

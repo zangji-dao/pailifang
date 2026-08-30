@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getSupabaseClient } from "@/storage/database/client";
+import { getDatabaseClient } from "@/storage/database/client";
 import {
   Plus,
   Calculator,
@@ -153,7 +153,7 @@ export default function ProfitSharesPage() {
   const fetchProfitShares = async () => {
     try {
       setLoading(true);
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
 
       let query = client
         .from("profit_shares")
@@ -181,7 +181,7 @@ export default function ProfitSharesPage() {
 
   const fetchProfitRules = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("profit_rules")
         .select("*")
@@ -196,7 +196,7 @@ export default function ProfitSharesPage() {
 
   const fetchUsers = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("users")
         .select("id, name, role")
@@ -211,7 +211,7 @@ export default function ProfitSharesPage() {
 
   const fetchCustomers = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("customers")
         .select("id, name");
@@ -225,7 +225,7 @@ export default function ProfitSharesPage() {
 
   const fetchLedgers = async () => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const { data, error } = await client
         .from("ledgers")
         .select("id, name, customer_id");
@@ -245,7 +245,7 @@ export default function ProfitSharesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const rule = profitRules.find((r) => r.id === formData.profitRuleId);
 
       if (!rule) {
@@ -292,7 +292,7 @@ export default function ProfitSharesPage() {
 
   const updateStatus = async (profitShareId: string, newStatus: string) => {
     try {
-      const client = getSupabaseClient();
+      const client = getDatabaseClient();
       const updateData: StatusUpdateData = { status: newStatus };
       if (newStatus === "paid") {
         updateData.paidAt = new Date().toISOString();

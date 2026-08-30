@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextResponse } from 'next/server';
 
 /**
@@ -22,19 +22,31 @@ export async function GET() {
       );
     }
 
-    // 获取已分配工位号的企业ID（入驻企业 = 已分配工位号的企业）
-    const { data: regNumbers, error: regError } = await supabase
-      .from('registration_numbers')
-      .select('enterprise_id')
-      .not('enterprise_id', 'is', null);
+    const [{ data: regNumbers, error: regError }, { data: serviceRelations, error: relationError }] = await Promise.all([
+      supabase
+        .from('registration_numbers')
+        .select('enterprise_id')
+        .not('enterprise_id', 'is', null),
+      supabase
+        .from('enterprise_base_relations')
+        .select('enterprise_id')
+        .eq('relation_type', 'service')
+        .eq('status', 'active'),
+    ]);
 
     if (regError) {
       console.error('获取工位号统计失败:', regError);
+    }
+    if (relationError) {
+      console.error('获取服务企业关系统计失败:', relationError);
     }
 
     // 去重得到已入驻企业ID集合
     const tenantEnterpriseIds = new Set(
       regNumbers?.map(r => r.enterprise_id).filter(Boolean) || []
+    );
+    const serviceEnterpriseIds = new Set(
+      serviceRelations?.map(relation => relation.enterprise_id).filter(Boolean) || []
     );
 
     // 计算统计数据
@@ -42,7 +54,7 @@ export async function GET() {
       total: enterprises?.length || 0,
       // 入驻企业 = 已分配工位号的企业
       tenant: tenantEnterpriseIds.size,
-      service: enterprises?.filter(e => e.type === 'non_tenant').length || 0,
+      service: serviceEnterpriseIds.size,
       active: enterprises?.filter(e => e.status === 'active').length || 0,
     };
 

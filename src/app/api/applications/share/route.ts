@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDatabaseClient } from '@/storage/database/server-client';
 import { nanoid } from 'nanoid';
 
 /**
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     // 检查申请是否存在
     const { data: application, error: appError } = await client
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 生成完整的分享URL（环境变量已包含 https:// 前缀）
-    const baseUrl = process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'http://localhost:5000';
+    const baseUrl = process.env.APP_URL || 'http://localhost:5000';
     const shareUrl = `${baseUrl}/share/${token}`;
 
     return NextResponse.json({

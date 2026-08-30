@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, X, Bell, Settings, LogOut, Sparkles } from "lucide-react";
+import { Building2, Check, Loader2, LogOut, Menu, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -13,12 +13,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User } from "../types";
 import { ROLE_MAP } from "../constants";
+import { BrandMark } from "@/components/brand-logo";
 
 interface HeaderProps {
   user: User;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onLogout: () => void;
+  onOrganizationChange?: (organizationId: string) => void;
+  organizationSwitching?: boolean;
 }
 
 /**
@@ -43,93 +46,105 @@ function getRoleName(role: string): string {
 /**
  * 顶部导航栏组件
  */
-export function Header({ user, sidebarOpen, onToggleSidebar, onLogout }: HeaderProps) {
+export function Header({
+  user,
+  sidebarOpen,
+  onToggleSidebar,
+  onLogout,
+  onOrganizationChange,
+  organizationSwitching = false,
+}: HeaderProps) {
+  const activeRoleName = user.activeOrganization?.roles.map((role) => role.name).join("、") || getRoleName(user.role);
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
-      <div className="flex items-center justify-between h-full px-4 lg:px-6">
-        {/* 左侧：Logo + 标题 */}
-        <div className="flex items-center gap-4">
+    <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-slate-200 bg-[#fbfcfd]/95 backdrop-blur-xl">
+      <div className="flex h-full items-center gap-4 px-3 sm:px-5 lg:px-6">
+        <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            aria-label={sidebarOpen ? "关闭侧栏" : "打开侧栏"}
+            className="h-9 w-9 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950 lg:hidden"
             onClick={onToggleSidebar}
           >
             {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
 
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                <span className="text-white font-bold text-sm">Π</span>
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white"></div>
-            </div>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <BrandMark className="h-9 w-9 shrink-0 drop-shadow-sm" />
             <div className="hidden sm:block">
-              <h1 className="text-base font-semibold text-slate-900 tracking-tight">Π立方</h1>
-              <p className="text-[10px] text-slate-400 leading-none -mt-0.5">企业服务中心</p>
+              <h1 className="text-sm font-semibold tracking-[0.08em] text-slate-950">Π立方</h1>
+              <p className="mt-0.5 text-[10px] tracking-wide text-slate-400">企业经营服务中台</p>
             </div>
           </div>
         </div>
 
-        {/* 右侧：操作区 */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100 relative"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-
-          <div className="w-px h-6 bg-slate-200 mx-2"></div>
-
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 h-8 px-2 hover:bg-slate-100">
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white text-xs font-medium">
+              <Button variant="ghost" className="flex h-10 items-center gap-2 rounded-lg px-1.5 hover:bg-slate-100 sm:px-2.5">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-slate-900 text-xs font-semibold text-amber-200">
                     {getInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-slate-700 leading-tight">{user.name}</p>
-                  <p className="text-[10px] text-slate-400 leading-tight">{getRoleName(user.role)}</p>
+                  <p className="text-sm font-medium leading-tight text-slate-800">{user.name}</p>
+                  <p className="max-w-44 truncate text-[10px] leading-tight text-slate-400">
+                    {user.activeOrganization?.organizationName || activeRoleName}
+                  </p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60 p-2">
-              <DropdownMenuLabel className="p-3 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 mb-2">
+            <DropdownMenuContent align="end" className="w-64 rounded-xl border-slate-200 p-2 shadow-xl">
+              <DropdownMenuLabel className="mb-2 rounded-lg bg-slate-50 p-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white">
+                    <AvatarFallback className="bg-slate-900 text-amber-200">
                       {getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium text-slate-900">{user.name}</p>
                     <p className="text-xs text-slate-500">{user.email}</p>
-                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-medium text-amber-700 bg-amber-100 rounded-full">
-                      <Sparkles className="h-2.5 w-2.5" />
-                      {getRoleName(user.role)}
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                      <ShieldCheck className="h-2.5 w-2.5 text-emerald-500" />
+                      {activeRoleName}
                     </span>
                   </div>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem className="rounded-md cursor-pointer">
-                <Settings className="h-4 w-4 mr-2 text-slate-400" />
-                账户设置
-              </DropdownMenuItem>
+              {user.memberships && user.memberships.length > 0 && (
+                <>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                    当前组织
+                  </DropdownMenuLabel>
+                  {user.memberships.map((membership) => (
+                    <DropdownMenuItem
+                      key={membership.id}
+                      disabled={organizationSwitching}
+                      onClick={() => onOrganizationChange?.(membership.organizationId)}
+                      className="cursor-pointer rounded-md py-2"
+                    >
+                      {organizationSwitching && membership.organizationId === user.activeOrganizationId ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin text-slate-400" />
+                      ) : (
+                        <Building2 className="mr-2 h-4 w-4 text-slate-400" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-slate-800">{membership.organizationName}</p>
+                        <p className="truncate text-[10px] text-slate-400">
+                          {membership.roles.map((role) => role.name).join("、") || "组织成员"}
+                        </p>
+                      </div>
+                      {membership.organizationId === user.activeOrganizationId && (
+                        <Check className="ml-2 h-4 w-4 text-emerald-500" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem
                 onClick={onLogout}

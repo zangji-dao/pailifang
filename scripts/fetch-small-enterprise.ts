@@ -2,7 +2,7 @@
  * 获取小企业会计准则详细科目表
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchSmallEnterpriseSubjects() {
   const config = new Config();

@@ -19,7 +19,7 @@
   --text-stat-number: 1.5rem;
   --text-stat-number--line-height: 2rem;
 
-  /* 七彩配色 - 入驻流程步骤颜色（更鲜艳的颜色） */
+  /* 入驻流程兼容色 */
   /* 天蓝色 - 分配地址 */
   --color-step-sky: #3b82f6;
   --color-step-sky-foreground: #ffffff;
@@ -97,38 +97,38 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --radius: 0.875rem;
+  --background: #f6f7fb;
+  --foreground: #172033;
+  --card: #ffffff;
+  --card-foreground: #172033;
+  --popover: #ffffff;
+  --popover-foreground: #172033;
+  --primary: #c8670a;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f3f7;
+  --secondary-foreground: #273247;
+  --muted: #f2f4f8;
+  --muted-foreground: #6f7888;
+  --accent: #fff4e8;
+  --accent-foreground: #9a4b05;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #e2e6ed;
+  --input: #d9dfe8;
+  --ring: #f59e0b;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #fbfcfe;
+  --sidebar-foreground: #273247;
+  --sidebar-primary: #c8670a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff4e8;
+  --sidebar-accent-foreground: #9a4b05;
+  --sidebar-border: #e2e6ed;
+  --sidebar-ring: #f59e0b;
   
   /* 七彩配色 - 入驻流程步骤颜色（柔和纯色） */
   /* 天蓝色 - 分配地址 */
@@ -192,7 +192,30 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    min-width: 320px;
+  }
+}
+
+@layer components {
+  .dashboard-surface {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_40px_-32px_rgba(15,23,42,0.45)];
+  }
+
+  .form-section {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.5)] sm:p-6;
+  }
+
+  .wizard-form [data-slot="input"],
+  .wizard-form [data-slot="select-trigger"] {
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
+    background: #ffffff;
+  }
+
+  .wizard-form [data-slot="input"]:focus-visible,
+  .wizard-form [data-slot="select-trigger"]:focus-visible {
+    border-color: #f59e0b;
   }
 }
 
@@ -227,15 +250,15 @@
     font-weight: 600;
   }
   
-  /* 步骤序号样式 - 七彩配色 */
+  /* 统一步骤序号样式 */
   .step-number {
-    @apply flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold;
+    @apply flex h-7 w-7 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-sm font-semibold text-amber-700;
   }
-  .step-number-1 { @apply bg-step-sky/10 text-step-sky; }
-  .step-number-2 { @apply bg-step-violet/10 text-step-violet; }
-  .step-number-3 { @apply bg-step-amber/10 text-step-amber; }
-  .step-number-4 { @apply bg-step-emerald/10 text-step-emerald; }
-  .step-number-5 { @apply bg-step-rose/10 text-step-rose; }
+  .step-number-1,
+  .step-number-2,
+  .step-number-3,
+  .step-number-4,
+  .step-number-5 { @apply border-amber-200 bg-amber-50 text-amber-700; }
 }
 
 body {

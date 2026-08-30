@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -13,6 +13,9 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  Plus,
+  X,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +120,25 @@ interface ApiEnterprise {
   remarks: string | null;
 }
 
+interface EnterpriseBaseRelation {
+  id: string;
+  baseId: string;
+  relationType: "tenant" | "service";
+  isPrimary: boolean;
+  base: {
+    id: string;
+    name: string;
+    address: string | null;
+  } | null;
+}
+
+interface BaseOption {
+  id: string;
+  name: string;
+  address: string | null;
+  status: string;
+}
+
 // 转换API数据到前端格式
 function transformEnterprise(api: ApiEnterprise): Enterprise {
   return {
@@ -150,6 +172,28 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exiting, setExiting] = useState(false);
+  const [baseRelations, setBaseRelations] = useState<EnterpriseBaseRelation[]>([]);
+  const [baseOptions, setBaseOptions] = useState<BaseOption[]>([]);
+  const [selectedServiceBaseId, setSelectedServiceBaseId] = useState("");
+  const [updatingBaseRelation, setUpdatingBaseRelation] = useState(false);
+
+  const loadBaseRelations = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const [relationResponse, baseResponse] = await Promise.all([
+        fetch(`/api/enterprises/${resolvedParams.id}/base-relations`, { signal }),
+        fetch('/api/bases', { signal }),
+      ]);
+      const [relationResult, baseResult] = await Promise.all([
+        relationResponse.json(),
+        baseResponse.json(),
+      ]);
+      if (relationResult.success) setBaseRelations(relationResult.data || []);
+      if (baseResult.success) setBaseOptions(baseResult.data || []);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      console.error('获取企业基地关系失败:', err);
+    }
+  }, [resolvedParams.id]);
 
   // 获取企业详情
   useEffect(() => {
@@ -189,6 +233,57 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
       controller.abort();
     };
   }, [resolvedParams.id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadBaseRelations(controller.signal);
+    return () => controller.abort();
+  }, [loadBaseRelations]);
+
+  const handleAddServiceBase = async () => {
+    if (!selectedServiceBaseId) return;
+    try {
+      setUpdatingBaseRelation(true);
+      const response = await fetch(`/api/enterprises/${resolvedParams.id}/base-relations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_id: selectedServiceBaseId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || '添加服务基地失败');
+      setSelectedServiceBaseId('');
+      await loadBaseRelations();
+      toast.success('服务基地已添加');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '添加服务基地失败');
+    } finally {
+      setUpdatingBaseRelation(false);
+    }
+  };
+
+  const handleRemoveServiceBase = async (relation: EnterpriseBaseRelation) => {
+    try {
+      setUpdatingBaseRelation(true);
+      const response = await fetch(`/api/enterprises/${resolvedParams.id}/base-relations`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ relation_id: relation.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || '移除服务基地失败');
+      await loadBaseRelations();
+      toast.success('服务基地已移除');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '移除服务基地失败');
+    } finally {
+      setUpdatingBaseRelation(false);
+    }
+  };
+
+  const relatedBaseIds = new Set(baseRelations.map(relation => relation.baseId));
+  const availableServiceBases = baseOptions.filter(
+    base => base.status === 'active' && !relatedBaseIds.has(base.id)
+  );
 
   // 返回列表
   const handleBack = () => {
@@ -316,7 +411,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
                     <AlertDialogDescription>
                       确定要将「{enterprise?.name}」转为服务企业吗？
                       <br />
-                      转换后企业状态将变更为"已建交"，可在服务企业列表中查看。
+                      转换后将释放当前工位，企业状态变更为“已建交”，可在服务企业列表中查看。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -508,6 +603,81 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
             </div>
           </div>
 
+          {/* 企业与基地关系 */}
+          <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-slate-700">企业与基地关系</h3>
+                  <p className="mt-1 text-xs text-slate-400">入驻关系来自工位分配；服务关系可关联多个基地。</p>
+                </div>
+                <Badge variant="outline">{baseRelations.length} 个基地</Badge>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              {baseRelations.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+                  暂未关联基地
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {baseRelations.map(relation => (
+                    <div key={relation.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {relation.relationType === 'tenant'
+                            ? <Building2 className="h-4 w-4 text-emerald-600" />
+                            : <Briefcase className="h-4 w-4 text-purple-600" />}
+                          <span className="font-medium text-slate-900">{relation.base?.name || '未知基地'}</span>
+                          <Badge variant="outline" className={relation.relationType === 'tenant' ? 'text-emerald-600' : 'text-purple-600'}>
+                            {relation.relationType === 'tenant' ? '入驻' : '服务'}
+                          </Badge>
+                          {relation.isPrimary && <Badge variant="secondary">主要基地</Badge>}
+                        </div>
+                        {relation.base?.address && <p className="mt-2 truncate text-xs text-slate-400">{relation.base.address}</p>}
+                      </div>
+                      {relation.relationType === 'service' && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          disabled={updatingBaseRelation}
+                          onClick={() => void handleRemoveServiceBase(relation)}
+                          className="h-8 w-8 shrink-0 text-slate-400 hover:text-red-600"
+                          aria-label={`移除${relation.base?.name || '服务基地'}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center">
+                <select
+                  value={selectedServiceBaseId}
+                  onChange={event => setSelectedServiceBaseId(event.target.value)}
+                  disabled={updatingBaseRelation || availableServiceBases.length === 0}
+                  className="h-10 flex-1 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-300 disabled:text-slate-400"
+                >
+                  <option value="">{availableServiceBases.length > 0 ? '选择要增加的服务基地' : '暂无其他可关联基地'}</option>
+                  {availableServiceBases.map(base => (
+                    <option key={base.id} value={base.id}>{base.name}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  onClick={() => void handleAddServiceBase()}
+                  disabled={!selectedServiceBaseId || updatingBaseRelation}
+                >
+                  {updatingBaseRelation ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  添加服务基地
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* 企业类型说明 */}
           <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -516,7 +686,7 @@ export default function EnterpriseDetailPage({ params }: { params: Promise<{ id:
             <div className="p-6">
               <p className="text-slate-600 text-sm leading-relaxed">
                 {enterprise.type === "non_tenant"
-                  ? "服务企业：不在基地内注册的企业，仅使用园区提供的服务。"
+                  ? "服务企业：不在基地内注册、不占用工位，可使用一个或多个基地提供的服务。"
                   : "入驻企业：在基地内注册的企业，享受基地提供的各项服务和支持。"}
               </p>
             </div>

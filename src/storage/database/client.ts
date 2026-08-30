@@ -1,6 +1,6 @@
 /**
  * 数据库客户端 - 前端兼容层
- * 模拟 Supabase 风格 API，通过 fetch 调用后端 API
+ * 提供链式数据库 API，通过 fetch 调用后端接口
  */
 
 // 类型定义
@@ -194,4 +194,4 @@ class DatabaseClient {
 
 // 导出
 export const db = new DatabaseClient();
-export const getSupabaseClient = () => db;
+export const getDatabaseClient = () => db;

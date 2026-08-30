@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { BrandMark } from "@/components/brand-logo";
 import { LedgerContext, LedgerConfig, DEFAULT_LEDGER_CONFIG } from "./ledger-context";
 
 // 主菜单项类型（一级菜单）
@@ -203,9 +204,7 @@ export default function LedgerDetailLayout({ children }: LedgerDetailLayoutProps
         <div className="w-14 bg-slate-800 flex flex-col items-center shrink-0 relative">
           {/* Logo区域 */}
           <div className="h-12 flex items-center justify-center border-b border-slate-700">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">Π</span>
-            </div>
+            <BrandMark className="h-8 w-8" />
           </div>
 
           {/* 返回工作台按钮 */}

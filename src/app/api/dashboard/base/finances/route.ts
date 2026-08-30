@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // 获取资金记录列表

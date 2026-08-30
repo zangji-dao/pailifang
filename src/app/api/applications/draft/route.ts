@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDatabaseClient } from '@/storage/database/server-client';
 
 /**
  * 生成申请编号
@@ -21,7 +21,7 @@ function generateApplicationNo(): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     // 如果有 id，则更新现有记录
     if (body.id) {

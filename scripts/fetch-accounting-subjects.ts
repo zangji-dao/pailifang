@@ -2,7 +2,7 @@
  * 获取详细的会计科目表内容
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchAccountingSubjects() {
   const config = new Config();

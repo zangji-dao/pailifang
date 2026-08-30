@@ -75,6 +75,7 @@ interface FormState {
   creditCode: string;
   legalPerson: string;
   phone: string;
+  adminEmail: string;
   industry: string;
   registeredCapital: string;
   establishDate: string;
@@ -114,6 +115,7 @@ const initialFormState: FormState = {
   creditCode: "",
   legalPerson: "",
   phone: "",
+  adminEmail: "",
   industry: "",
   registeredCapital: "",
   establishDate: "",
@@ -141,6 +143,7 @@ export default function NewTenantPage() {
   // 状态
   const [submitting, setSubmitting] = useState(false);
   const [createdEnterpriseId, setCreatedEnterpriseId] = useState<string | null>(null);
+  const [createdInvitationLink, setCreatedInvitationLink] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
@@ -162,6 +165,7 @@ export default function NewTenantPage() {
     creditCode,
     legalPerson,
     phone,
+    adminEmail,
     industry,
     registeredCapital,
     establishDate,
@@ -248,6 +252,7 @@ export default function NewTenantPage() {
               enterpriseType: "tenant", // 默认入驻企业
               legalPerson: app.legal_person_name || "",
               phone: app.legal_person_phone || app.contact_person_phone || "",
+              adminEmail: app.legal_person_email || "",
               registeredCapital: app.registered_capital?.toString() || "",
               businessScope: app.business_scope || "",
               remarks: app.business_scope || "",
@@ -310,6 +315,7 @@ export default function NewTenantPage() {
               creditCode: enterprise.credit_code || "",
               legalPerson: enterprise.legal_person || "",
               phone: enterprise.phone || "",
+              adminEmail: enterprise.admin_email || enterprise.adminEmail || "",
               industry: enterprise.industry || "",
               remarks: enterprise.business_scope || "",
               currentMainStepId: mainStepId,
@@ -357,7 +363,6 @@ export default function NewTenantPage() {
   const validateCurrentStep = useCallback((): boolean => {
     switch (`${currentMainStepId}_${currentSubStepId}`) {
       case "address_select_base":
-        if (isNonTenant) return true;
         return selectedBaseId !== "";
       case "address_select_type":
         return enterpriseType !== null;
@@ -371,7 +376,9 @@ export default function NewTenantPage() {
         return enterpriseName.trim() !== "";
       case "registration_upload_license":
         // 工商注册步骤：填写基本信息（营业执照非必填）
-        return creditCode.trim() !== "" && legalPerson.trim() !== "";
+        return creditCode.trim() !== ""
+          && legalPerson.trim() !== ""
+          && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail.trim());
       case "contract_select_contract":
         // 服务企业跳过合同步骤
         if (isNonTenant) return true;
@@ -387,7 +394,7 @@ export default function NewTenantPage() {
       default:
         return true;
     }
-  }, [currentMainStepId, currentSubStepId, selectedBaseId, enterpriseType, selectedRegNumber, proofFiles, enterpriseName, businessLicense, creditCode, legalPerson, contract, paymentRecordIds, isNonTenant]);
+  }, [currentMainStepId, currentSubStepId, selectedBaseId, enterpriseType, selectedRegNumber, proofFiles, enterpriseName, businessLicense, creditCode, legalPerson, adminEmail, contract, paymentRecordIds, isNonTenant]);
 
   // 保存草稿到数据库
   const saveDraft = useCallback(async (step?: string) => {
@@ -400,6 +407,7 @@ export default function NewTenantPage() {
         enterprise_code: enterpriseCode,
         name: enterpriseName || `草稿-${enterpriseCode}`,
         type: enterpriseType,
+        base_id: selectedBaseId || null,
         space_id: selectedRegNumber?.spaceId || null,
         registered_address: registeredAddress || selectedRegNumber?.fullAddress || null,
         business_address: selectedRegNumber?.fullAddress || null,
@@ -407,6 +415,9 @@ export default function NewTenantPage() {
         credit_code: creditCode || null,
         legal_person: legalPerson || null,
         phone: phone || null,
+        admin_email: adminEmail.trim().toLowerCase(),
+        admin_name: legalPerson || enterpriseName,
+        admin_phone: phone || null,
         industry: industry || null,
         registered_capital: registeredCapital || null,
         establish_date: establishDate || null,
@@ -437,7 +448,7 @@ export default function NewTenantPage() {
     } finally {
       setSavingDraft(false);
     }
-  }, [draftId, enterpriseCode, enterpriseName, enterpriseType, selectedBaseId, selectedRegNumber, proofFiles, remarks, creditCode, legalPerson, phone, industry, registeredCapital, establishDate, registeredAddress, businessScope, currentMainStepId, submitting, updateFormState]);
+  }, [draftId, enterpriseCode, enterpriseName, enterpriseType, selectedBaseId, selectedRegNumber, remarks, creditCode, legalPerson, phone, adminEmail, industry, registeredCapital, establishDate, registeredAddress, businessScope, currentMainStepId, submitting, updateFormState]);
 
   // 下一步
   const handleNext = useCallback(() => {
@@ -600,14 +611,22 @@ export default function NewTenantPage() {
       // 创建成功，清除缓存
       clearFormCache();
       setCreatedEnterpriseId(result.data?.id);
+      setCreatedInvitationLink(
+        result.invitation?.activationPath
+          ? `${window.location.origin}${result.invitation.activationPath}`
+          : null,
+      );
       toast({ title: "创建成功", description: `企业 ${enterpriseName} 已成功创建` });
+      if (result.warning) {
+        toast({ title: "账号邀请待处理", description: result.warning, variant: "destructive" });
+      }
     } catch (error: any) {
       console.error("提交失败:", error);
       toast({ title: "创建失败", description: error.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
-  }, [enterpriseName, enterpriseCode, enterpriseType, selectedBaseId, remarks, selectedRegNumber, proofFiles, creditCode, legalPerson, phone, industry, contract, paymentRecordIds, bases, toast, clearFormCache]);
+  }, [enterpriseName, enterpriseCode, enterpriseType, selectedBaseId, remarks, selectedRegNumber, proofFiles, creditCode, legalPerson, phone, adminEmail, industry, contract, paymentRecordIds, bases, toast, clearFormCache]);
 
   // 获取基地名称
   const getBaseName = () => bases.find(b => b.id === selectedBaseId)?.name || "";
@@ -630,6 +649,8 @@ export default function NewTenantPage() {
           creditCode={creditCode}
           legalPerson={legalPerson}
           phone={phone}
+          adminEmail={adminEmail}
+          invitationLink={createdInvitationLink}
           contract={contract}
           paymentRecordCount={paymentRecordCount}
           totalPaymentAmount={totalPaymentAmount}
@@ -660,6 +681,7 @@ export default function NewTenantPage() {
           return (
             <SelectBaseStep
               selectedBaseId={selectedBaseId}
+              enterpriseType={enterpriseType}
               onSelectBase={(id) => updateFormState({ selectedBaseId: id })}
             />
           );
@@ -750,6 +772,7 @@ export default function NewTenantPage() {
           creditCode={creditCode}
           legalPerson={legalPerson}
           phone={phone}
+          adminEmail={adminEmail}
           industry={industry}
           registeredCapital={registeredCapital}
           establishDate={establishDate}
@@ -759,6 +782,7 @@ export default function NewTenantPage() {
           onUpdateCreditCode={(code) => updateFormState({ creditCode: code })}
           onUpdateLegalPerson={(person) => updateFormState({ legalPerson: person })}
           onUpdatePhone={(p) => updateFormState({ phone: p })}
+          onUpdateAdminEmail={(email) => updateFormState({ adminEmail: email })}
           onUpdateIndustry={(ind) => updateFormState({ industry: ind })}
           onUpdateEnterpriseName={(name) => updateFormState({ enterpriseName: name })}
           onUpdateBusinessScope={(scope) => updateFormState({ businessScope: scope })}

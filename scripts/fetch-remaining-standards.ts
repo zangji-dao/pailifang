@@ -2,7 +2,7 @@
  * 搜索民间非营利组织、工会、农村集体经济组织的会计科目表
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchRemainingStandards() {
   const config = new Config();

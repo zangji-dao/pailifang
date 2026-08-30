@@ -1,4 +1,4 @@
-import { SearchClient, Config } from "coze-coding-dev-sdk";
+import { SearchClient, Config } from "./lib/web-clients";
 
 async function searchAPI() {
   const config = new Config();

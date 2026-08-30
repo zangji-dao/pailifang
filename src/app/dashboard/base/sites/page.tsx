@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
+  ArrowRight,
   Building2,
+  Layers3,
   MapPin,
   Home,
   Plus,
@@ -15,8 +19,10 @@ import {
   Pencil,
   Trash2,
   Briefcase,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTabs } from "../../tabs-context";
 
@@ -25,7 +31,12 @@ interface Base {
   name: string;
   address: string | null;
   status: string;
-  meterCount: number;
+  propertyCount: number;
+  spaceCount: number;
+  workstationCount: number;
+  allocatedWorkstationCount: number;
+  tenantEnterpriseCount: number;
+  serviceEnterpriseCount: number;
   createdAt: string;
   // 管理公司信息（甲方）
   management_company_name?: string | null;
@@ -35,12 +46,6 @@ interface Base {
   management_company_phone?: string | null;
 }
 
-interface BaseStats {
-  totalSpaces: number;
-  totalRegNumbers: number;
-  allocatedRegNumbers: number;
-}
-
 interface EnterpriseStats {
   total: number;
   tenant: number;
@@ -48,30 +53,14 @@ interface EnterpriseStats {
   active: number;
 }
 
-// 数据库返回的原始类型
-interface Meter {
-  spaces?: Space[];
-}
-
-interface Space {
-  regNumbers?: RegNumber[];
-}
-
-interface RegNumber {
-  available: boolean;
-}
-
-interface BaseDetail {
-  meters?: Meter[];
-}
-
 export default function BaseListPage() {
   const router = useRouter();
   const tabs = useTabs();
   const [bases, setBases] = useState<Base[]>([]);
-  const [baseStats, setBaseStats] = useState<Record<string, BaseStats>>({});
   const [enterpriseStats, setEnterpriseStats] = useState<EnterpriseStats>({ total: 0, tenant: 0, service: 0, active: 0 });
   const [loading, setLoading] = useState(true);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   
   // 删除确认弹窗
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; base: Base | null }>({
@@ -94,40 +83,6 @@ export default function BaseListPage() {
       
         if (basesResult.success) {
           setBases(basesResult.data);
-        
-        // 并行获取所有基地的详细统计（而不是串行）
-        const stats: Record<string, BaseStats> = {};
-        const detailPromises = basesResult.data.map(async (base: Base) => {
-          try {
-            const detailResponse = await fetch(`/api/bases/${base.id}`);
-            const detailResult = await detailResponse.json();
-            if (detailResult.success && detailResult.data.meters) {
-              const meters: Meter[] = detailResult.data.meters;
-              return {
-                id: base.id,
-                stats: {
-                  totalSpaces: meters.reduce((sum: number, m: Meter) => sum + (m.spaces?.length || 0), 0),
-                  totalRegNumbers: meters.reduce((sum: number, m: Meter) => 
-                    sum + (m.spaces?.reduce((s: number, sp: Space) => s + (sp.regNumbers?.length || 0), 0) || 0), 0),
-                  allocatedRegNumbers: meters.reduce((sum: number, m: Meter) => 
-                    sum + (m.spaces?.reduce((s: number, sp: Space) => 
-                      s + (sp.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0), 0) || 0), 0),
-                },
-              };
-            }
-          } catch (e) {
-            console.error("获取基地详情失败:", e);
-          }
-          return null;
-        });
-        
-        const detailResults = await Promise.all(detailPromises);
-        detailResults.forEach((result) => {
-          if (result) {
-            stats[result.id] = result.stats;
-          }
-        });
-        setBaseStats(stats);
         }
       }
 
@@ -226,10 +181,34 @@ export default function BaseListPage() {
     }
   };
 
-  const totalMeters = bases.reduce((sum, b) => sum + b.meterCount, 0);
-  const totalSpaces = Object.values(baseStats).reduce((sum, s) => sum + s.totalSpaces, 0);
-  const totalRegNumbers = Object.values(baseStats).reduce((sum, s) => sum + s.totalRegNumbers, 0);
-  const totalAllocated = Object.values(baseStats).reduce((sum, s) => sum + s.allocatedRegNumbers, 0);
+  const totalProperties = bases.reduce((sum, base) => sum + base.propertyCount, 0);
+  const totalSpaces = bases.reduce((sum, base) => sum + base.spaceCount, 0);
+  const totalWorkstations = bases.reduce((sum, base) => sum + base.workstationCount, 0);
+  const totalAllocatedWorkstations = bases.reduce((sum, base) => sum + base.allocatedWorkstationCount, 0);
+  const activeBaseCount = bases.filter((base) => base.status === "active").length;
+  const inactiveBaseCount = bases.length - activeBaseCount;
+  const workstationAllocationRate = totalWorkstations > 0
+    ? (totalAllocatedWorkstations / totalWorkstations) * 100
+    : 0;
+  const filteredBases = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+
+    return bases.filter((base) => {
+      const matchesStatus = statusFilter === "all" || base.status === statusFilter;
+      const matchesKeyword = !keyword || [
+        base.name,
+        base.address,
+        base.management_company_name,
+        base.management_company_credit_code,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword);
+
+      return matchesStatus && matchesKeyword;
+    });
+  }, [bases, searchKeyword, statusFilter]);
 
   if (loading) {
     return (
@@ -239,214 +218,106 @@ export default function BaseListPage() {
     );
   }
 
-  // 列表视图
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* 操作栏 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Button 
-          className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shrink-0 sm:ml-auto"
-          onClick={handleCreateBase}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          新增基地
-        </Button>
-      </div>
-
-      {/* 核心指标卡片 - 响应式网格 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
-        {/* 基地总数 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-              <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+    <div className="mx-auto max-w-[1400px] space-y-5 p-4 sm:p-6">
+      <section className="relative overflow-hidden rounded-[28px] border border-slate-800 bg-[#0f172a] p-5 text-white shadow-[0_24px_70px_-42px_rgba(15,23,42,0.9)] sm:p-7">
+        <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full border border-amber-300/10 bg-amber-300/[0.04]" />
+        <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-400/[0.03] blur-3xl" />
+        <div className="relative">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300/80"><Building2 className="h-3.5 w-3.5" />Base Portfolio</div>
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-[30px]">基地资源管理</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">从基地到物业、物理空间和工位，统一维护载体资源与企业服务关系。</p>
             </div>
-            <span className="text-xs sm:text-sm text-slate-500">基地总数</span>
+            <Button className="h-11 shrink-0 rounded-xl bg-amber-400 px-5 font-semibold text-slate-950 hover:bg-amber-300" onClick={handleCreateBase}>
+              <Plus className="mr-2 h-4 w-4" />新增基地
+            </Button>
           </div>
-          <p className="text-2xl font-semibold text-slate-900">{bases.length}</p>
-        </div>
 
-        {/* 物业总数 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-              <Home className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
+          <div className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 lg:grid-cols-4">
+            <HeroStat label="运营基地" value={activeBaseCount} unit={`/ ${bases.length}`} note={inactiveBaseCount > 0 ? `${inactiveBaseCount} 个已停用` : "全部正常运营"} />
+            <HeroStat label="载体规模" value={totalProperties} unit="个物业" note={`${totalSpaces} 个物理空间`} />
+            <HeroStat label="工位利用" value={`${workstationAllocationRate.toFixed(1)}%`} unit="" note={`${totalAllocatedWorkstations} / ${totalWorkstations} 已分配`} />
+            <HeroStat label="企业服务关系" value={enterpriseStats.tenant + enterpriseStats.service} unit="家" note={`${enterpriseStats.tenant} 入驻 · ${enterpriseStats.service} 服务`} />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <PortfolioMetric label="载体层级" value={totalProperties} unit="个物业" description={`${totalSpaces} 个物理空间`} icon={Layers3} tone="amber" />
+        <PortfolioMetric label="工位配置" value={totalWorkstations} unit="个" description={`已分配 ${totalAllocatedWorkstations} 个`} icon={Hash} tone="blue" progress={workstationAllocationRate} />
+        <PortfolioMetric label="入驻企业" value={enterpriseStats.tenant} unit="家" description="注册并分配基地工位" icon={Users} tone="cyan" />
+        <PortfolioMetric label="服务企业" value={enterpriseStats.service} unit="家" description="未入驻但使用基地服务" icon={Briefcase} tone="violet" />
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-amber-700" /><h2 className="font-semibold text-slate-950">基地运营档案</h2></div>
+              <p className="mt-1 text-xs text-slate-400">展示 {filteredBases.length} 个，共 {bases.length} 个基地</p>
             </div>
-            <span className="text-xs sm:text-sm text-slate-500">物业总数</span>
-          </div>
-          <p className="text-2xl font-semibold text-slate-900">{totalMeters}</p>
-        </div>
-
-        {/* 物理空间 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-              <DoorOpen className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
-            </div>
-            <span className="text-xs sm:text-sm text-slate-500">物理空间</span>
-          </div>
-          <p className="text-2xl font-semibold text-slate-900">{totalSpaces}</p>
-        </div>
-
-        {/* 工位号 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-              <Hash className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-            </div>
-            <span className="text-xs sm:text-sm text-slate-500">工位号</span>
-          </div>
-          <p className="text-2xl font-semibold text-slate-900">{totalRegNumbers}</p>
-        </div>
-
-        {/* 入驻企业 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-blue-100 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-            </div>
-            <span className="text-xs sm:text-sm text-blue-600">入驻企业</span>
-          </div>
-          <p className="text-2xl font-semibold text-blue-700">{enterpriseStats.tenant}</p>
-          <p className="text-xs text-slate-400 mt-1">基地内注册</p>
-        </div>
-
-        {/* 服务企业 */}
-        <div className="bg-white rounded-xl p-4 sm:p-5 border border-purple-100 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
-              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
-            </div>
-            <span className="text-xs sm:text-sm text-purple-600">服务企业</span>
-          </div>
-          <p className="text-2xl font-semibold text-purple-700">{enterpriseStats.service}</p>
-          <p className="text-xs text-slate-400 mt-1">使用园区服务</p>
-        </div>
-      </div>
-
-      {/* 基地列表 */}
-      <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm">
-        <div className="p-4 sm:p-5 border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">基地列表</h2>
-            <span className="text-sm text-slate-500">共 {bases.length} 个基地</span>
-          </div>
-        </div>
-        
-        {bases.length === 0 ? (
-          <div className="text-center py-16">
-            <Building2 className="h-12 w-12 text-slate-200 mx-auto mb-3" />
-            <p className="text-slate-500">暂无基地</p>
-            <p className="text-sm text-slate-400 mt-1">点击上方"新增基地"开始添加</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {bases.map((base) => {
-              const stats = baseStats[base.id] || { totalSpaces: 0, totalRegNumbers: 0, allocatedRegNumbers: 0 };
-              
-              return (
-                <div
-                  key={base.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50 transition-colors gap-4"
-                >
-                  {/* 左侧：基地信息 */}
-                  <div 
-                    className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 cursor-pointer"
-                    onClick={() => handleBaseClick(base.id, base.name)}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 sm:w-72">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={searchKeyword}
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  placeholder="搜索基地、地址或管理单位"
+                  className="h-10 rounded-xl border-slate-200 bg-slate-50 pl-9 shadow-none focus-visible:bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-3 rounded-xl bg-slate-100 p-1 text-xs font-medium">
+                {([
+                  ["all", "全部", bases.length],
+                  ["active", "运营中", activeBaseCount],
+                  ["inactive", "已停用", inactiveBaseCount],
+                ] as const).map(([value, label, count]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setStatusFilter(value)}
+                    className={cn("rounded-lg px-3 py-2 transition-colors", statusFilter === value ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800")}
                   >
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
-                      <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-slate-500" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-slate-900 truncate">{base.name}</h3>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded text-xs font-medium shrink-0",
-                          base.status === "active" 
-                            ? "bg-emerald-50 text-emerald-600" 
-                            : "bg-slate-100 text-slate-500"
-                        )}>
-                          {base.status === "active" ? "运营中" : "已停用"}
-                        </span>
-                      </div>
-                      {base.address && (
-                        <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500 truncate">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{base.address}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 中间：统计数据 - 小屏幕隐藏，大屏幕显示 */}
-                  <div className="hidden lg:flex items-center gap-8 shrink-0">
-                    {/* 物业 */}
-                    <div className="text-center min-w-[60px]">
-                      <p className="text-2xl font-semibold text-slate-900">{base.meterCount}</p>
-                      <p className="text-xs text-slate-500">物业</p>
-                    </div>
-                    
-                    {/* 物理空间 */}
-                    <div className="text-center min-w-[60px]">
-                      <p className="text-2xl font-semibold text-slate-900">{stats.totalSpaces}</p>
-                      <p className="text-xs text-slate-500">空间</p>
-                    </div>
-                    
-                    {/* 工位号 */}
-                    <div className="text-center min-w-[60px]">
-                      <p className="text-2xl font-semibold text-slate-900">{stats.totalRegNumbers}</p>
-                      <p className="text-xs text-slate-500">工位号</p>
-                    </div>
-                    
-                    {/* 入驻企业 */}
-                    <div className="text-center min-w-[80px]">
-                      <p className="text-2xl font-semibold text-violet-600">{stats.allocatedRegNumbers}</p>
-                      <p className="text-xs text-slate-500">入驻企业</p>
-                    </div>
-                  </div>
-
-                  {/* 右侧：操作区 */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                    {/* 小屏幕：显示统计标签 */}
-                    <div className="flex sm:hidden items-center gap-2 text-xs text-slate-500">
-                      <span className="px-2 py-1 bg-slate-100 rounded">{base.meterCount} 物业</span>
-                      <span className="px-2 py-1 bg-violet-50 text-violet-600 rounded">{stats.allocatedRegNumbers} 企业</span>
-                    </div>
-                    
-                    {/* 操作按钮 */}
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="h-8 px-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditBase(base);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4 mr-1.5" />
-                        编辑
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirm({ open: true, base });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1.5" />
-                        删除
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                    {label} <span className="ml-1 text-[10px] text-slate-400">{count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+
+        <div className="bg-slate-50/60 p-4 sm:p-5">
+          {bases.length === 0 ? (
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><Building2 className="h-6 w-6" /></div>
+              <h3 className="mt-4 font-semibold text-slate-900">还没有基地档案</h3>
+              <p className="mt-1 text-sm text-slate-400">创建基地后即可继续配置物业、空间和工位。</p>
+              <Button className="mt-5 rounded-xl bg-slate-900 text-white hover:bg-slate-800" onClick={handleCreateBase}><Plus className="mr-2 h-4 w-4" />新增基地</Button>
+            </div>
+          ) : filteredBases.length === 0 ? (
+            <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center">
+              <Search className="h-7 w-7 text-slate-300" />
+              <h3 className="mt-4 font-semibold text-slate-900">没有符合条件的基地</h3>
+              <p className="mt-1 text-sm text-slate-400">尝试更换关键词或运营状态。</p>
+              <button type="button" className="mt-4 text-sm font-medium text-amber-700 hover:text-amber-800" onClick={() => { setSearchKeyword(""); setStatusFilter("all"); }}>清除筛选</button>
+            </div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {filteredBases.map((base) => (
+                <BasePortfolioCard
+                  key={base.id}
+                  base={base}
+                  onOpen={() => handleBaseClick(base.id, base.name)}
+                  onEdit={() => handleEditBase(base)}
+                  onDelete={() => setDeleteConfirm({ open: true, base })}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* 删除确认弹窗 */}
       {deleteConfirm.open && deleteConfirm.base && (
@@ -461,10 +332,9 @@ export default function BaseListPage() {
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
             {(() => {
               const base = deleteConfirm.base;
-              const stats = baseStats[base.id] || { totalSpaces: 0, totalRegNumbers: 0, allocatedRegNumbers: 0 };
-              const hasMeters = base.meterCount > 0;
-              const hasEnterprises = stats.allocatedRegNumbers > 0;
-              const canDelete = !hasMeters && !hasEnterprises;
+              const hasProperties = base.propertyCount > 0;
+              const hasEnterprises = base.tenantEnterpriseCount > 0 || base.serviceEnterpriseCount > 0;
+              const canDelete = !hasProperties && !hasEnterprises;
               
               if (!canDelete) {
                 // 有关联数据，禁止删除
@@ -481,16 +351,22 @@ export default function BaseListPage() {
                         基地「{base.name}」下存在关联数据，无法删除。
                       </p>
                       <div className="mt-4 bg-amber-50 rounded-lg p-3 space-y-2">
-                        {hasMeters && (
+                        {hasProperties && (
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-slate-600">物业数量</span>
-                            <span className="font-medium text-amber-700">{base.meterCount} 个</span>
+                            <span className="font-medium text-amber-700">{base.propertyCount} 个</span>
                           </div>
                         )}
                         {hasEnterprises && (
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-slate-600">入驻企业</span>
-                            <span className="font-medium text-amber-700">{stats.allocatedRegNumbers} 家</span>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-600">入驻企业</span>
+                              <span className="font-medium text-amber-700">{base.tenantEnterpriseCount} 家</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-600">服务企业</span>
+                              <span className="font-medium text-amber-700">{base.serviceEnterpriseCount} 家</span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -556,6 +432,172 @@ export default function BaseListPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function HeroStat({ label, value, unit, note }: { label: string; value: number | string; unit: string; note: string }) {
+  return (
+    <div className="bg-slate-950/75 px-4 py-4 sm:px-5">
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <div className="mt-2 flex items-end gap-1.5">
+        <span className="text-2xl font-semibold tracking-tight tabular-nums text-white sm:text-[28px]">{value}</span>
+        {unit && <span className="pb-0.5 text-xs text-slate-500">{unit}</span>}
+      </div>
+      <p className="mt-2 truncate text-[11px] text-slate-500">{note}</p>
+    </div>
+  );
+}
+
+function PortfolioMetric({
+  label,
+  value,
+  unit,
+  description,
+  icon: Icon,
+  tone,
+  progress,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  description: string;
+  icon: LucideIcon;
+  tone: "amber" | "blue" | "cyan" | "violet";
+  progress?: number;
+}) {
+  const tones = {
+    amber: "bg-amber-50 text-amber-700",
+    blue: "bg-blue-50 text-blue-700",
+    cyan: "bg-cyan-50 text-cyan-700",
+    violet: "bg-violet-50 text-violet-700",
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-slate-400">{label}</p>
+          <div className="mt-2 flex items-end gap-1.5">
+            <span className="text-2xl font-semibold tracking-tight tabular-nums text-slate-950 sm:text-[28px]">{value}</span>
+            <span className="pb-0.5 text-xs text-slate-400">{unit}</span>
+          </div>
+        </div>
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", tones[tone])}><Icon className="h-4.5 w-4.5" /></div>
+      </div>
+      {progress !== undefined && (
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
+        </div>
+      )}
+      <p className="mt-3 text-xs text-slate-400">{description}</p>
+    </div>
+  );
+}
+
+function BasePortfolioCard({
+  base,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  base: Base;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const allocationRate = base.workstationCount > 0
+    ? (base.allocatedWorkstationCount / base.workstationCount) * 100
+    : 0;
+
+  return (
+    <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/60">
+      <div className="h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-cyan-400" />
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-amber-300 shadow-lg shadow-slate-950/10">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={onOpen} className="truncate text-left font-semibold text-slate-950 hover:text-amber-800">{base.name}</button>
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold",
+                  base.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                )}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", base.status === "active" ? "bg-emerald-500" : "bg-slate-400")} />
+                  {base.status === "active" ? "运营中" : "已停用"}
+                </span>
+              </div>
+              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-400">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{base.address || "暂未配置基地地址"}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-900" onClick={onEdit} aria-label={`编辑${base.name}`} title="编辑基地">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={onDelete} aria-label={`删除${base.name}`} title="删除基地">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Management Entity</p>
+              <p className="mt-1 truncate text-sm font-medium text-slate-700">{base.management_company_name || "未配置管理单位"}</p>
+            </div>
+            {base.management_company_phone && <span className="shrink-0 text-xs tabular-nums text-slate-400">{base.management_company_phone}</span>}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <ResourceValue label="物业" value={base.propertyCount} icon={Home} tone="amber" />
+          <ResourceValue label="物理空间" value={base.spaceCount} icon={DoorOpen} tone="emerald" />
+          <ResourceValue label="工位" value={base.workstationCount} icon={Hash} tone="blue" />
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-100 p-3.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-500">工位分配进度</span>
+            <span className="font-semibold tabular-nums text-slate-700">{base.allocatedWorkstationCount} / {base.workstationCount}</span>
+          </div>
+          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${Math.min(allocationRate, 100)}%` }} />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-lg bg-cyan-50 px-2.5 py-1.5 font-medium text-cyan-700">{base.tenantEnterpriseCount} 家入驻企业</span>
+            <span className="rounded-lg bg-violet-50 px-2.5 py-1.5 font-medium text-violet-700">{base.serviceEnterpriseCount} 家服务企业</span>
+          </div>
+          <button type="button" onClick={onOpen} className="inline-flex items-center gap-1.5 self-end text-sm font-semibold text-slate-600 transition-colors hover:text-slate-950 sm:self-auto">
+            查看基地<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ResourceValue({ label, value, icon: Icon, tone }: { label: string; value: number; icon: LucideIcon; tone: "amber" | "emerald" | "blue" }) {
+  const tones = {
+    amber: "bg-amber-50 text-amber-700",
+    emerald: "bg-emerald-50 text-emerald-700",
+    blue: "bg-blue-50 text-blue-700",
+  };
+
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", tones[tone])}><Icon className="h-3.5 w-3.5" /></div>
+      <p className="mt-3 text-lg font-semibold tabular-nums text-slate-900">{value}</p>
+      <p className="mt-0.5 text-[10px] text-slate-400">{label}</p>
     </div>
   );
 }

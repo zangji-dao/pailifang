@@ -23,7 +23,7 @@ export interface PaginatedResponse<T> {
 
 /**
  * 获取 API 基础 URL
- * 在沙箱环境中，通过 Next.js API Routes 代理请求到后端
+ * 浏览器默认通过 Next.js API Routes 访问；服务端直接访问 Express。
  */
 const getApiBaseUrl = (): string => {
   // 服务端渲染时：使用后端服务地址
@@ -31,21 +31,7 @@ const getApiBaseUrl = (): string => {
     return config.backend.baseUrl;
   }
 
-  // 客户端：使用相对路径（通过 Next.js API Routes 代理）
-  const { protocol, hostname, port } = window.location;
-
-  // 沙箱环境：使用相对路径，由 Next.js API Routes 代理到后端
-  if (hostname.includes('dev.coze.site')) {
-    return ''; // 空字符串表示使用相对路径
-  }
-
-  // 生产环境：通过域名访问（无端口）→ 使用 Nginx 代理
-  if (!port || port === '80' || port === '443') {
-    return `${protocol}//${hostname}`;
-  }
-
-  // 开发环境：直接访问后端
-  return `${protocol}//${hostname}:4001`;
+  return process.env.NEXT_PUBLIC_API_BASE_URL || '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -146,9 +132,9 @@ export const apiClient = new ApiClient(API_BASE_URL);
 export const API_BASE_URL_EXPORTED = API_BASE_URL;
 
 // 导出环境判断函数
-export const getCurrentEnvironment = (): 'sandbox' | 'production' => {
+export const getCurrentEnvironment = (): 'development' | 'production' => {
   if (typeof window === 'undefined') {
-    return isDevelopment ? 'sandbox' : 'production';
+    return isDevelopment ? 'development' : 'production';
   }
-  return window.location.hostname.includes('dev.coze.site') ? 'sandbox' : 'production';
+  return process.env.NODE_ENV === 'production' ? 'production' : 'development';
 };

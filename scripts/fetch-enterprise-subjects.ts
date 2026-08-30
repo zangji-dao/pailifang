@@ -2,7 +2,7 @@
  * 获取完整的企业会计准则科目表
  */
 
-import { FetchClient, Config } from "coze-coding-dev-sdk";
+import { FetchClient, Config } from "./lib/web-clients";
 
 async function fetchEnterpriseSubjects() {
   const config = new Config();

@@ -1,5 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4101';
 
 /**
  * GET /api/enterprises
@@ -107,6 +109,9 @@ export async function GET(request: NextRequest) {
         creditCode: item.credit_code,
         legalPerson: item.legal_person,
         phone: item.phone,
+        adminEmail: item.admin_email,
+        adminName: item.admin_name,
+        adminPhone: item.admin_phone,
         industry: item.industry,
         type: item.type,
         status: item.status,
@@ -225,17 +230,56 @@ export async function POST(request: NextRequest) {
     // 根据类型确定流程状态
     let processStatus = 'new';
     const enterpriseType = body.type || 'tenant';
+
+    if (!body.base_id) {
+      return NextResponse.json(
+        { success: false, error: enterpriseType === 'tenant' ? '入驻企业必须选择基地' : '服务企业必须选择主要服务基地' },
+        { status: 400 }
+      );
+    }
+
+    let selectedWorkstation: { id: string; space_id: string; available: boolean; enterprise_id: string | null } | null = null;
     
     if (enterpriseType === 'tenant') {
       // 入驻企业：选择了工位号则待工商注册，否则报错
-      if (body.registration_number_id || body.space_id) {
-        processStatus = 'pending_registration'; // 有工位号，待工商注册
-      } else {
+      if (!body.registration_number_id) {
         return NextResponse.json(
           { success: false, error: '入驻企业必须选择工位号' },
           { status: 400 }
         );
       }
+
+      const { data: workstation, error: workstationError } = await supabase
+        .from('registration_numbers')
+        .select('id, space_id, available, enterprise_id')
+        .eq('id', body.registration_number_id)
+        .single();
+
+      if (workstationError || !workstation || workstation.enterprise_id || workstation.available === false) {
+        return NextResponse.json(
+          { success: false, error: '所选工位已被占用，请重新选择' },
+          { status: 409 }
+        );
+      }
+
+      const { data: workstationSpace, error: workstationSpaceError } = await supabase
+        .from('spaces')
+        .select('id, meter_id')
+        .eq('id', workstation.space_id)
+        .single();
+      const { data: workstationProperty, error: workstationPropertyError } = workstationSpace?.meter_id
+        ? await supabase.from('meters').select('id, base_id').eq('id', workstationSpace.meter_id).single()
+        : { data: null, error: new Error('工位缺少物业信息') };
+
+      if (workstationSpaceError || workstationPropertyError || !workstationProperty || workstationProperty.base_id !== body.base_id) {
+        return NextResponse.json(
+          { success: false, error: '所选工位不属于当前基地' },
+          { status: 400 }
+        );
+      }
+
+      selectedWorkstation = workstation;
+      processStatus = 'pending_registration';
     } else {
       // 非入驻企业：创建完成后设为"已建交"状态
       processStatus = 'established'; // 已建交
@@ -249,9 +293,13 @@ export async function POST(request: NextRequest) {
       credit_code: body.credit_code || null,
       legal_person: body.legal_person || null,
       phone: body.phone || null,
+      admin_email: body.admin_email || null,
+      admin_name: body.admin_name || body.legal_person || null,
+      admin_phone: body.admin_phone || body.phone || null,
       industry: body.industry || null,
       type: enterpriseType,
       status: body.status || 'active',
+      base_id: body.base_id || null,
       process_status: processStatus,
       business_scope: body.business_scope || null,
       registered_address: body.registered_address || null,
@@ -263,7 +311,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 添加空间ID（数据库已有此字段）
-    if (body.space_id) enterpriseData.space_id = body.space_id;
+    if (selectedWorkstation?.space_id) enterpriseData.space_id = selectedWorkstation.space_id;
 
     console.log('[创建企业] 准备插入的数据:', JSON.stringify(enterpriseData, null, 2));
 
@@ -298,23 +346,11 @@ export async function POST(request: NextRequest) {
 
       if (updateRegError) {
         console.error('更新工位号状态失败:', updateRegError);
-      }
-    }
-
-    // 如果是入驻企业且有房间信息，创建房间关联
-    if (enterpriseType === 'tenant' && body.space_id) {
-      // 分配房间给企业
-      const { error: updateSpaceError } = await supabase
-        .from('spaces')
-        .update({ 
-          status: 'occupied',
-          enterprise_id: enterprise.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', body.space_id);
-
-      if (updateSpaceError) {
-        console.error('分配房间失败:', updateSpaceError);
+        await supabase.from('enterprises').delete().eq('id', enterprise.id);
+        return NextResponse.json(
+          { success: false, error: '企业创建失败：工位分配未完成，请重试' },
+          { status: 500 }
+        );
       }
     }
 
@@ -374,9 +410,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let invitation = null;
+    let invitationWarning: string | null = null;
+    if (body.admin_email && enterprise.organization_id) {
+      const cookieToken = request.cookies.get('auth-token')?.value;
+      const headerToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+      const token = cookieToken || headerToken;
+      if (token) {
+        try {
+          const invitationResponse = await fetch(`${BACKEND_URL}/api/access-control/invitations`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              organizationId: enterprise.organization_id,
+              email: body.admin_email,
+              name: body.admin_name || body.legal_person || body.name,
+              phone: body.admin_phone || body.phone || null,
+              roleCodes: ['enterprise_owner'],
+            }),
+          });
+          const invitationResult = await invitationResponse.json();
+          if (invitationResponse.ok && invitationResult.success) {
+            invitation = invitationResult.data;
+          } else {
+            invitationWarning = invitationResult.error || '企业已创建，但负责人邀请生成失败';
+          }
+        } catch (error) {
+          console.error('生成企业负责人邀请失败:', error);
+          invitationWarning = '企业已创建，但负责人邀请生成失败';
+        }
+      } else {
+        invitationWarning = '企业已创建，但当前登录状态无法生成负责人邀请';
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: enterprise,
+      invitation,
+      warning: invitationWarning,
     });
   } catch (error) {
     console.error('创建企业失败:', error);

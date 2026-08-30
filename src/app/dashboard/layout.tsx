@@ -19,44 +19,51 @@ export default function DashboardLayout({
 }) {
   const {
     user,
+    organizationSwitching,
     sidebarOpen,
     setSidebarOpen,
-    expandedMenus,
+    sidebarCollapsed,
+    setSidebarCollapsed,
     tabs,
     activeTab,
     openTab,
     closeTab,
     switchTab,
+    openBusinessModule,
+    returnToWorkbench,
     updateTabLabel,
     closeCurrentTabAndNavigate,
-    toggleMenu,
     handleLogout,
+    switchOrganization,
   } = useDashboardLayout();
 
   // 用户未登录时不渲染
   if (!user) return null;
 
   // 获取导航配置（根据用户角色动态生成）
-  const navigation = getNavigation(user.role);
+  const navigation = getNavigation(user.role, user.permissions, user.activeOrganization?.organizationType);
 
   return (
     <ToastProvider>
       <TabsContext.Provider
         value={{ tabs, activeTab, openTab, closeTab, switchTab, updateTabLabel, closeCurrentTabAndNavigate }}
       >
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30">
+        <div className="min-h-[100dvh] bg-[#f3f5f7] text-slate-900">
           {/* 顶部导航栏 */}
           <Header
             user={user}
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             onLogout={handleLogout}
+            onOrganizationChange={switchOrganization}
+            organizationSwitching={organizationSwitching}
           />
 
           {/* 全局标签栏 */}
           <TabBar
             tabs={tabs}
             activeTab={activeTab}
+            sidebarCollapsed={sidebarCollapsed}
             onSwitchTab={switchTab}
             onCloseTab={closeTab}
           />
@@ -64,21 +71,23 @@ export default function DashboardLayout({
           {/* 侧边栏 */}
           <Sidebar
             navigation={navigation}
-            expandedMenus={expandedMenus}
             isOpen={sidebarOpen}
-            onToggleMenu={toggleMenu}
+            collapsed={sidebarCollapsed}
+            onCollapsedChange={setSidebarCollapsed}
             onCloseSidebar={() => setSidebarOpen(false)}
+            onOpenBusinessModule={openBusinessModule}
+            onReturnWorkbench={returnToWorkbench}
           />
 
           {/* 主内容区 */}
-          <main className="lg:pl-56 pt-[6rem]">
-            <div className="p-4 lg:p-6">{children}</div>
+          <main className={`min-w-0 pt-16 transition-[padding] duration-200 sm:pt-[6.75rem] ${sidebarCollapsed ? "lg:pl-16" : "lg:pl-60"}`}>
+            <div className="p-3 sm:p-5 lg:p-6 xl:p-8">{children}</div>
           </main>
 
           {/* 移动端遮罩 */}
           {sidebarOpen && (
             <div
-              className="fixed inset-0 z-30 bg-slate-900/20 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
           )}

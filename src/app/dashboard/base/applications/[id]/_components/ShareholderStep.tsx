@@ -154,7 +154,7 @@ export function ShareholderStep({
       </div>
 
       {formData.shareholders.map((shareholder, index) => (
-        <div key={index} className="rounded-lg border p-4 space-y-4">
+        <div key={index} className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.5)] sm:p-6">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">股东 {index + 1}</span>
             {canEdit && formData.shareholders.length > 1 && (
@@ -177,7 +177,7 @@ export function ShareholderStep({
           </div>
 
           {/* 基本信息 */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label>{shareholder.type === "enterprise" ? "企业名称" : "股东姓名"} <span className="text-destructive">*</span></Label>
               <Input value={shareholder.name} onChange={(e) => updateShareholder(index, "name", e.target.value)} onFocus={handleFocus} placeholder={shareholder.type === "enterprise" ? "请输入企业名称" : "请输入股东姓名"} disabled={!canEdit} />
@@ -262,7 +262,7 @@ export function ShareholderStep({
                   </Badge>
                 )}
               </Label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* 正面 */}
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">正面（人像面）<span className="text-destructive">*</span></p>
@@ -377,7 +377,7 @@ export function ShareholderStep({
           {shareholder.type === "enterprise" && (
             <div className="space-y-2">
               <Label>营业执照 <span className="text-destructive">*</span></Label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* 正本 */}
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">正本<span className="text-destructive">*</span></p>

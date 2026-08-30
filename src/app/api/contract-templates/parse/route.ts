@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ParseResult, ParsedPage } from '@/types/contract-template';
 import { execSync } from 'child_process';

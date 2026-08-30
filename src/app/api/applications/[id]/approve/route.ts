@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDatabaseClient } from '@/storage/database/server-client';
 
 /**
  * POST /api/applications/[id]/approve
@@ -21,7 +21,7 @@ export async function POST(
       );
     }
 
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     // 检查申请是否存在且状态为待审批
     const { data: application, error: appError } = await client

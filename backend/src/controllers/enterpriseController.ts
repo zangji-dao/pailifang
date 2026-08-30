@@ -80,7 +80,7 @@ export const enterpriseController = {
    */
   async createEnterprise(req: Request, res: Response) {
     try {
-      const { name, creditCode, legalPerson, phone, industry, type, status, registeredAddress, businessAddress, settledDate, remarks } = req.body;
+      const { name, creditCode, legalPerson, phone, adminEmail, adminName, adminPhone, industry, type, status, registeredAddress, businessAddress, settledDate, remarks } = req.body;
 
       if (!name) {
         return res.status(400).json({
@@ -94,6 +94,9 @@ export const enterpriseController = {
         creditCode,
         legalPerson,
         phone,
+        adminEmail,
+        adminName,
+        adminPhone,
         industry,
         type: type || 'tenant',
         status: status || 'active',
@@ -151,7 +154,7 @@ export const enterpriseController = {
   async updateEnterprise(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { name, creditCode, legalPerson, phone, industry, type, status, registeredAddress, businessAddress, settledDate, remarks } = req.body;
+      const { name, creditCode, legalPerson, phone, adminEmail, adminName, adminPhone, industry, type, status, registeredAddress, businessAddress, settledDate, remarks } = req.body;
 
       // 检查企业是否存在
       const existing = await db.select().from(enterprises).where(eq(enterprises.id, id));
@@ -168,6 +171,9 @@ export const enterpriseController = {
           creditCode,
           legalPerson,
           phone,
+          adminEmail,
+          adminName,
+          adminPhone,
           industry,
           type,
           status,

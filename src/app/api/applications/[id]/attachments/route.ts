@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { S3Storage } from "coze-coding-dev-sdk";
+import { getObjectStorage } from "@/lib/object-storage";
 
 /**
  * POST /api/applications/[id]/attachments
@@ -19,13 +19,7 @@ export async function POST(
     }
 
     // 初始化存储
-    const storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-      accessKey: "",
-      secretKey: "",
-      bucketName: process.env.COZE_BUCKET_NAME,
-      region: "cn-beijing",
-    });
+    const storage = getObjectStorage();
 
     // 上传文件
     const uploadedFiles: { name: string; key: string; url: string }[] = [];
@@ -54,8 +48,8 @@ export async function POST(
     }
 
     // 更新数据库，添加附件
-    const { getSupabaseClient } = await import("@/storage/database/supabase-client");
-    const client = getSupabaseClient();
+    const { getDatabaseClient } = await import("@/storage/database/server-client");
+    const client = getDatabaseClient();
     
     // 先获取现有附件
     const { data: existing } = await client
@@ -110,8 +104,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { getSupabaseClient } = await import("@/storage/database/supabase-client");
-    const client = getSupabaseClient();
+    const { getDatabaseClient } = await import("@/storage/database/server-client");
+    const client = getDatabaseClient();
     
     const { data, error } = await client
       .from("pi_settlement_applications")
@@ -127,13 +121,7 @@ export async function GET(
     
     // 如果有附件，生成访问 URL
     if (attachments.length > 0) {
-      const storage = new S3Storage({
-        endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-        accessKey: "",
-        secretKey: "",
-        bucketName: process.env.COZE_BUCKET_NAME,
-        region: "cn-beijing",
-      });
+      const storage = getObjectStorage();
       
       for (const attachment of attachments) {
         if (attachment.url && !attachment.url.startsWith("http")) {
@@ -185,8 +173,8 @@ export async function DELETE(
     }
     
     // 从数据库中获取现有附件
-    const { getSupabaseClient } = await import("@/storage/database/supabase-client");
-    const client = getSupabaseClient();
+    const { getDatabaseClient } = await import("@/storage/database/server-client");
+    const client = getDatabaseClient();
     
     const { data: existing } = await client
       .from("pi_settlement_applications")
@@ -202,13 +190,7 @@ export async function DELETE(
     }
     
     // 删除存储中的文件
-    const storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-      accessKey: "",
-      secretKey: "",
-      bucketName: process.env.COZE_BUCKET_NAME,
-      region: "cn-beijing",
-    });
+    const storage = getObjectStorage();
     
     // 删除对象存储中的文件
     if (attachmentToDelete.url && !attachmentToDelete.url.startsWith("http")) {

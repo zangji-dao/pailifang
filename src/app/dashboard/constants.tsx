@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Users,
-  BookOpen,
   ClipboardList,
   FileText,
   Building2,
@@ -9,10 +8,8 @@ import {
   Inbox,
   UserCheck,
   Store,
-  Calendar,
   UserCog,
   Briefcase,
-  TrendingUp,
   Target,
   Wallet,
   DollarSign,
@@ -24,7 +21,6 @@ import {
   FileSignature,
   GitBranch,
   Building,
-  Home,
   FileCheck,
   Settings,
   Tags,
@@ -92,6 +88,7 @@ export const CONTRACT_CHILDREN: NavChildItem[] = [
  * 基地管理子菜单
  */
 export const BASE_MANAGEMENT_CHILDREN: NavChildItem[] = [
+  { name: "经营数据", href: "/dashboard/base/metrics", icon: BarChart3 },
   { name: "基地列表", href: "/dashboard/base/sites", icon: Building },
   { name: "入驻管理", href: "", icon: FileCheck, children: SETTLEMENT_CHILDREN },
   { name: "分配地址", href: "/dashboard/base/addresses", icon: MapPin },
@@ -119,14 +116,6 @@ export const ORDERS_DISPATCH: NavChildItem = {
 };
 
 /**
- * 账务中心子菜单
- */
-export const ACCOUNTING_CHILDREN = [
-  { name: "去记账", href: "/accounting", icon: BookOpen },
-  { name: "税务日历", href: "/dashboard/tax-calendar", icon: Calendar },
-];
-
-/**
  * 人力资源子菜单
  */
 export const HR_CHILDREN = [
@@ -144,7 +133,6 @@ export const HR_CHILDREN = [
  * 销售中心子菜单
  */
 export const SALES_CHILDREN = [
-  { name: "营销概览", href: "/dashboard/sales/overview", icon: TrendingUp },
   { name: "线索中心", href: "/dashboard/sales/leads", icon: Users, badge: "42" },
   { name: "渠道管理", href: "/dashboard/sales/channels", icon: Store },
   { name: "客户公海", href: "/dashboard/sales/pool", icon: Inbox },
@@ -159,50 +147,86 @@ export const SALES_CHILDREN = [
  * @param userRole 用户角色
  * @returns 完整的导航配置
  */
-export function getNavigation(userRole?: string): NavItem[] {
+export function getNavigation(userRole?: string, permissions: string[] = [], organizationType?: string): NavItem[] {
   // 工单大厅子菜单（根据角色动态添加派单功能）
   const ordersChildren = [...ORDERS_CHILDREN];
   if (userRole === "sales" || userRole === "admin") {
     ordersChildren.push(ORDERS_DISPATCH);
   }
 
-  return [
-    ...BASE_NAVIGATION,
-    {
+  const isPlatform = organizationType === "platform" || permissions.includes("platform.manage");
+  const isPark = organizationType === "park";
+  const canAccessMetrics = permissions.some((permission) => ["metrics.read", "metrics.submit", "metrics.review", "metrics.manage"].includes(permission));
+  const canAccessAccounting = isPlatform || permissions.some((permission) => permission.startsWith("ledger."));
+  const canAccessHr = isPlatform || permissions.some((permission) => permission.startsWith("hr."));
+  const accountNavigation = permissions.some((permission) => ["platform.manage", "membership.manage", "delegation.manage"].includes(permission))
+    ? [{ name: "账号与权限", href: "/dashboard/access-control", icon: UserCog, badge: null } satisfies NavItem]
+    : [];
+  const businessNavigation: NavItem[] = [];
+
+  if (isPlatform || isPark) {
+    businessNavigation.push({
       name: "基地管理",
+      href: "/dashboard/base",
       icon: MapPin,
       expandable: true,
       badge: null,
       children: BASE_MANAGEMENT_CHILDREN,
-    },
-    {
+    });
+  } else if (canAccessMetrics) {
+    businessNavigation.push({
+      name: "经营数据",
+      href: "/dashboard/base/metrics",
+      icon: BarChart3,
+      badge: null,
+    });
+  }
+
+  if (isPlatform) {
+    businessNavigation.push({
       name: "工单大厅",
       href: "/dashboard/orders",
       icon: ClipboardList,
       expandable: true,
       badge: null,
       children: ordersChildren,
-    },
-    {
+    });
+  }
+
+  if (canAccessAccounting) {
+    businessNavigation.push({
       name: "账务中心",
+      href: "/accounting",
       icon: FileText,
-      expandable: true,
       badge: null,
-      children: ACCOUNTING_CHILDREN,
-    },
-    {
+    });
+  }
+
+  if (canAccessHr) {
+    businessNavigation.push({
       name: "人力资源",
+      href: "/dashboard/hr",
       icon: UserCog,
       expandable: true,
       badge: null,
       children: HR_CHILDREN,
-    },
-    {
+    });
+  }
+
+  if (isPlatform || userRole === "sales") {
+    businessNavigation.push({
       name: "销售中心",
+      href: "/dashboard/sales/overview",
       icon: Briefcase,
       expandable: true,
       badge: null,
       children: SALES_CHILDREN,
-    },
+    });
+  }
+
+  return [
+    ...BASE_NAVIGATION,
+    ...accountNavigation,
+    ...businessNavigation,
   ];
 }

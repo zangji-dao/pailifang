@@ -35,29 +35,28 @@ export function isAlipayConfigured(): boolean {
 
 // 缴费类型枚举
 export enum BillType {
-  ELECTRICITY = 'ELECTRICITY', // 电费
+  ELECTRICITY = 'ELECTRIC', // 电费
   WATER = 'WATER', // 水费
   GAS = 'GAS', // 燃气费
 }
 
-// 缴费机构编码（吉林省松原市）
+// 缴费机构编码必须由支付宝生活缴费业务方确认后配置
 export const ChargeInstCodes = {
-  // 国家电网 - 吉林省电力有限公司
-  JILIN_ELECTRICITY: '1002001001001',
-  // 松原市自来水公司
-  SONGYUAN_WATER: '1003001001001',
+  JILIN_ELECTRICITY: '',
+  SONGYUAN_WATER: '',
 };
 
 // 账单查询结果类型
 export interface BillInfo {
-  billKey: string; // 户号
-  billDate: string; // 账单日期
-  billAmount: string; // 账单金额
-  billStatus: string; // 账单状态
-  payload?: {
-    ownerName?: string; // 户名
-    address?: string; // 地址
-  };
+  amount: string | null;
+  balance: string | null;
+  billDate: string | null;
+  billKey: string | null;
+  billStatus: string | null;
+  chargeInst: string | null;
+  chargeMode: string | null;
+  ownerName: string | null;
+  subBizType: string | null;
 }
 
 // 查询账单参数
@@ -65,11 +64,11 @@ export interface QueryBillParams {
   billKey: string; // 户号
   chargeInst: string; // 缴费机构编码
   billType: BillType; // 缴费类型
+  billDate?: string;
 }
 
 /**
- * 查询生活缴费账单
- * 文档: https://opendocs.alipay.com/open/02hd36
+ * 按收费机构和户号查询生活缴费账单及可用余额
  */
 export async function queryBill(params: QueryBillParams): Promise<{
   success: boolean;
@@ -79,17 +78,37 @@ export async function queryBill(params: QueryBillParams): Promise<{
   const client = getAlipayClient();
 
   try {
-    // 支付宝SDK exec方法直接传递业务参数，不需要手动JSON.stringify
-    const result = await client.exec('alipay.ebpp.bill.get', {
+    const result = await client.exec('alipay.ebpp.jfexport.instbill.query', {
+      biz_type: 'JF',
+      sub_biz_type: params.billType,
       bill_key: params.billKey,
       charge_inst: params.chargeInst,
-      bill_type: params.billType,
+      ...(params.billDate ? { bill_date: params.billDate } : {}),
     });
 
     if (result.code === '10000') {
+      const rawBills = result.inst_bills ?? result.instBills;
+      const bills = Array.isArray(rawBills) ? rawBills : [];
       return {
         success: true,
-        data: result.bill_infos || [],
+        data: bills.map((bill: Record<string, unknown>) => {
+          const readValue = (snakeCase: string, camelCase: string) => {
+            const value = bill[snakeCase] ?? bill[camelCase];
+            return value === undefined || value === null || value === '' ? null : String(value);
+          };
+
+          return {
+            amount: readValue('amount', 'amount'),
+            balance: readValue('balance', 'balance'),
+            billDate: readValue('bill_date', 'billDate'),
+            billKey: readValue('bill_key', 'billKey'),
+            billStatus: readValue('bill_status', 'billStatus'),
+            chargeInst: readValue('charge_inst', 'chargeInst'),
+            chargeMode: readValue('charge_mode', 'chargeMode'),
+            ownerName: readValue('owner_name', 'ownerName'),
+            subBizType: readValue('sub_biz_type', 'subBizType'),
+          };
+        }),
       };
     } else {
       return {
@@ -279,43 +298,14 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
 }
 
 /**
- * 使用用户授权令牌查询账单
- * 需要用户授权后才能调用
- * 文档: https://opendocs.alipay.com/open/02hd36
+ * 兼容旧调用方式；机构账单查询不向支付宝传递用户授权令牌
  */
 export async function queryBillWithAuth(params: QueryBillParams & { authToken: string }): Promise<{
   success: boolean;
   data?: BillInfo[];
   error?: string;
 }> {
-  const client = getAlipayClient();
-
-  try {
-    const result = await client.exec('alipay.ebpp.bill.get', {
-      bill_key: params.billKey,
-      charge_inst: params.chargeInst,
-      bill_type: params.billType,
-      auth_token: params.authToken, // 使用用户的授权令牌
-    });
-
-    if (result.code === '10000') {
-      return {
-        success: true,
-        data: result.bill_infos || [],
-      };
-    } else {
-      return {
-        success: false,
-        error: result.msg || result.sub_msg || '查询失败',
-      };
-    }
-  } catch (error) {
-    console.error('查询账单失败:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '查询失败',
-    };
-  }
+  return queryBill(params);
 }
 
 /**

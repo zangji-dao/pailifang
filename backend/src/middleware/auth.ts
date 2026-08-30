@@ -1,38 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
+import { AccessUser, getSessionContext } from '../services/session';
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-  };
+  user?: AccessUser;
+  sessionId?: string;
+  sessionTokenHash?: string;
+}
+
+function getBearerToken(req: Request) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  return authHeader.substring(7).trim() || null;
 }
 
 export const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    // 从 Authorization header 获取 token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = getBearerToken(req);
+    if (!token) {
       return res.status(401).json({ success: false, error: '未授权访问' });
     }
 
-    const token = authHeader.substring(7); // 移除 'Bearer ' 前缀
-
-    // TODO: 这里应该验证 JWT token
-    // 暂时使用简化版本：token 直接是 userId
-    if (!token || token.length < 10) {
+    const session = await getSessionContext(token);
+    if (!session) {
       return res.status(401).json({ success: false, error: '无效的 token' });
     }
 
-    // TODO: 从数据库验证用户信息
-    // 暂时将 token 作为 userId 存入 req.user
-    req.user = {
-      id: token,
-      email: '',
-      name: '',
-      role: '',
-    };
+    req.user = session.user;
+    req.sessionId = session.sessionId;
+    req.sessionTokenHash = session.tokenHash;
 
     next();
   } catch (error) {
@@ -44,16 +39,13 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
 // 可选的认证中间件（不强制要求登录）
 export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      if (token && token.length >= 10) {
-        req.user = {
-          id: token,
-          email: '',
-          name: '',
-          role: '',
-        };
+    const token = getBearerToken(req);
+    if (token) {
+      const session = await getSessionContext(token);
+      if (session) {
+        req.user = session.user;
+        req.sessionId = session.sessionId;
+        req.sessionTokenHash = session.tokenHash;
       }
     }
     next();
@@ -62,3 +54,17 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
     next();
   }
 };
+
+export function requirePermission(...permissionCodes: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未授权访问' });
+    }
+
+    if (req.user.permissions.includes('platform.manage') || permissionCodes.some((code) => req.user?.permissions.includes(code))) {
+      return next();
+    }
+
+    return res.status(403).json({ success: false, error: '当前账号无权执行此操作' });
+  };
+}

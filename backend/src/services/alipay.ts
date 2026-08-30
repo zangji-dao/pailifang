@@ -11,6 +11,7 @@ const getAlipayConfig = () => ({
   alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
   gateway: 'https://openapi.alipay.com/gateway.do',
   redirectUri: process.env.ALIPAY_REDIRECT_URI || '',
+  utilityBillingEnabled: process.env.ALIPAY_UTILITY_BILLING_ENABLED === 'true',
 });
 
 // SDK 实例缓存
@@ -37,18 +38,109 @@ export function isAlipayConfigured(): boolean {
   return !!(config.appId && config.privateKey && config.alipayPublicKey);
 }
 
-// 缴费类型
-export enum BillType {
-  ELECTRICITY = 'ELECTRICITY',
-  WATER = 'WATER',
-  GAS = 'GAS',
+export function getAlipayConfigurationStatus() {
+  const config = getAlipayConfig();
+  const configured = isAlipayConfigured();
+  const utilityBillingEnabled = configured && config.utilityBillingEnabled;
+
+  return {
+    configured,
+    appIdMasked: config.appId
+      ? `${config.appId.slice(0, 4)}****${config.appId.slice(-4)}`
+      : null,
+    redirectUri: config.redirectUri || null,
+    utilityBilling: {
+      enabled: utilityBillingEnabled,
+      status: utilityBillingEnabled ? 'enabled' : 'pending_authorization',
+      mode: 'institution_bill_query',
+      requiresInstitutionAgreement: true,
+      message: utilityBillingEnabled
+        ? '生活缴费户号查询已启用，可按收费机构实际返回同步账单及余额。'
+        : '支付宝加签已完成，户号查询代码已就绪；还需开通生活缴费接口权限并配置收费机构编码。',
+    },
+  };
 }
 
-// 缴费机构编码
-export const ChargeInstCodes = {
-  JILIN_ELECTRICITY: '1002001001001',
-  SONGYUAN_WATER: '1003001001001',
-};
+export type UtilityBillSubType = 'ELECTRIC' | 'WATER';
+
+export interface InstitutionBill {
+  amount: string | null;
+  balance: string | null;
+  billDate: string | null;
+  billKey: string | null;
+  billStatus: string | null;
+  chargeInst: string | null;
+  chargeMode: string | null;
+  ownerName: string | null;
+  subBizType: string | null;
+}
+
+function readResultValue(source: Record<string, unknown>, snakeCase: string, camelCase: string) {
+  const value = source[snakeCase] ?? source[camelCase];
+  return value === undefined || value === null || value === '' ? null : String(value);
+}
+
+export async function queryInstitutionBill(params: {
+  billKey: string;
+  chargeInst: string;
+  subBizType: UtilityBillSubType;
+  billDate?: string;
+}) {
+  const config = getAlipayConfig();
+  if (!config.utilityBillingEnabled) {
+    return {
+      success: false as const,
+      code: 'ALIPAY_UTILITY_BILLING_NOT_ENABLED',
+      error: '当前应用尚未启用支付宝生活缴费户号查询权限。',
+    };
+  }
+
+  const client = getAlipayClient();
+  const result = await client.exec('alipay.ebpp.jfexport.instbill.query', {
+    biz_type: 'JF',
+    sub_biz_type: params.subBizType,
+    bill_key: params.billKey,
+    charge_inst: params.chargeInst,
+    ...(params.billDate ? { bill_date: params.billDate } : {}),
+  }) as Record<string, unknown>;
+
+  const responseCode = String(result.code || '');
+  if (responseCode !== '10000') {
+    return {
+      success: false as const,
+      code: String(result.sub_code || result.subCode || responseCode || 'ALIPAY_QUERY_FAILED'),
+      error: String(result.sub_msg || result.subMsg || result.msg || '支付宝生活缴费查询失败'),
+    };
+  }
+
+  const rawBills = result.inst_bills ?? result.instBills;
+  const billList = Array.isArray(rawBills) ? rawBills : [];
+  const bills: InstitutionBill[] = billList
+    .filter((bill): bill is Record<string, unknown> => !!bill && typeof bill === 'object')
+    .map((bill) => ({
+      amount: readResultValue(bill, 'amount', 'amount'),
+      balance: readResultValue(bill, 'balance', 'balance'),
+      billDate: readResultValue(bill, 'bill_date', 'billDate'),
+      billKey: readResultValue(bill, 'bill_key', 'billKey'),
+      billStatus: readResultValue(bill, 'bill_status', 'billStatus'),
+      chargeInst: readResultValue(bill, 'charge_inst', 'chargeInst'),
+      chargeMode: readResultValue(bill, 'charge_mode', 'chargeMode'),
+      ownerName: readResultValue(bill, 'owner_name', 'ownerName'),
+      subBizType: readResultValue(bill, 'sub_biz_type', 'subBizType'),
+    }));
+
+  return {
+    success: true as const,
+    data: {
+      billKey: params.billKey,
+      chargeInst: params.chargeInst,
+      subBizType: params.subBizType,
+      bills,
+      balance: bills.find((bill) => bill.balance !== null)?.balance ?? null,
+      amount: bills.find((bill) => bill.amount !== null)?.amount ?? null,
+    },
+  };
+}
 
 // 生成授权链接
 export function generateAuthUrl(redirectUri?: string): string {
@@ -86,33 +178,6 @@ export async function exchangeToken(authCode: string) {
   return {
     success: false,
     error: result.msg || result.sub_msg || '换取令牌失败',
-  };
-}
-
-// 查询账单
-export async function queryBill(params: {
-  billKey: string;
-  chargeInst: string;
-  billType: BillType;
-}) {
-  const client = getAlipayClient();
-
-  const result = await client.exec('alipay.ebpp.bill.get', {
-    bill_key: params.billKey,
-    charge_inst: params.chargeInst,
-    bill_type: params.billType,
-  });
-
-  if (result.code === '10000') {
-    return {
-      success: true,
-      data: result.bill_infos || [],
-    };
-  }
-
-  return {
-    success: false,
-    error: result.msg || result.sub_msg || '查询失败',
   };
 }
 

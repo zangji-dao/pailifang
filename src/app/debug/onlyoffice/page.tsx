@@ -4,13 +4,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 
 export default function OnlyOfficeDebugPage() {
   const [tests, setTests] = useState<Record<string, { status: 'pending' | 'success' | 'error'; message: string }>>({});
+  const [pageInfo, setPageInfo] = useState({ href: '', protocol: '', host: '' });
 
   const runTests = async () => {
     setTests({
@@ -71,6 +72,11 @@ export default function OnlyOfficeDebugPage() {
   };
 
   useEffect(() => {
+    setPageInfo({
+      href: window.location.href,
+      protocol: window.location.protocol,
+      host: window.location.host,
+    });
     runTests();
   }, []);
 
@@ -160,15 +166,15 @@ export default function OnlyOfficeDebugPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">当前 URL:</span>
-                <span className="font-mono">{window.location.href}</span>
+                <span className="font-mono">{pageInfo.href || '加载中...'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">协议:</span>
-                <span className="font-mono">{window.location.protocol}</span>
+                <span className="font-mono">{pageInfo.protocol || '加载中...'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">主机:</span>
-                <span className="font-mono">{window.location.host}</span>
+                <span className="font-mono">{pageInfo.host || '加载中...'}</span>
               </div>
             </div>
           </CardContent>

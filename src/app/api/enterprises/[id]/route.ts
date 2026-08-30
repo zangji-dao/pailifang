@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -106,7 +106,7 @@ export async function PUT(
     // 获取企业当前状态（用于其他判断）
     const { data: currentEnterprise } = await supabase
       .from('enterprises')
-      .select('id, process_status, status')
+      .select('id, process_status, status, type')
       .eq('id', id)
       .single();
 
@@ -123,6 +123,7 @@ export async function PUT(
     if (body.phone !== undefined) updateData.phone = body.phone;
     if (body.industry !== undefined) updateData.industry = body.industry;
     if (body.type !== undefined) updateData.type = body.type;
+    if (body.base_id !== undefined) updateData.base_id = body.base_id;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.process_status !== undefined) updateData.process_status = body.process_status;
     if (body.registered_capital !== undefined) updateData.registered_capital = body.registered_capital;
@@ -132,6 +133,11 @@ export async function PUT(
     if (body.business_scope !== undefined) updateData.business_scope = body.business_scope;
     if (body.settled_date !== undefined) updateData.settled_date = body.settled_date;
     if (body.remarks !== undefined) updateData.remarks = body.remarks;
+
+    if (currentEnterprise?.type === 'tenant' && body.type === 'non_tenant') {
+      updateData.space_id = null;
+      updateData.registration_number = null;
+    }
 
     const { data, error } = await supabase
       .from('enterprises')

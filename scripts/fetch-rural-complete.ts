@@ -2,7 +2,7 @@
  * 获取农村集体经济组织会计制度完整科目表
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchRuralComplete() {
   const config = new Config();

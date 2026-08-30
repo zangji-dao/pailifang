@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { execSync } from 'child_process';
 import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync } from 'fs';
@@ -41,6 +41,14 @@ interface DraftData {
   selectedVariables: TemplateVariable[];
   editedHtml?: string;
   attachments?: Attachment[];
+}
+
+interface ContractTemplateRecord {
+  id: string;
+  name?: string;
+  status?: string;
+  draft_data?: DraftData | null;
+  source_file_url?: string | null;
 }
 
 // LibreOffice 用户配置目录
@@ -104,9 +112,6 @@ async function ensureLibreOfficeWarmedUp(): Promise<void> {
   
   return warmupPromise;
 }
-
-// 模块加载时启动后台预热（不阻塞）
-ensureLibreOfficeWarmedUp();
 
 /**
  * 使用 LibreOffice 将 HTML 转换为 Word 文档
@@ -328,16 +333,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '模板不存在' }, { status: 404 });
     }
 
-    const draftData = (template as any).draft_data as DraftData | null;
+    const templateRecord = template as ContractTemplateRecord;
+    const draftData = templateRecord.draft_data || null;
 
     if (!draftData) {
       // 调试：输出模板数据，帮助排查 draft_data 为空的原因
       console.log('模板数据:', JSON.stringify({
-        id: template.id,
-        name: template.name,
-        status: template.status,
+        id: templateRecord.id,
+        name: templateRecord.name,
+        status: templateRecord.status,
         hasDraftData: false,
-        source_file_url: (template as any).source_file_url,
+        source_file_url: templateRecord.source_file_url,
       }, null, 2));
       return NextResponse.json({ success: false, error: '没有找到草稿数据，请先保存模板' }, { status: 400 });
     }

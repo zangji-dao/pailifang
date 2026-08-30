@@ -52,9 +52,8 @@ export const mainSteps: MainStep[] = [
       {
         id: "select_base",
         title: "选择基地",
-        description: "选择入驻的合作基地",
+        description: "选择入驻或使用服务的基地",
         icon: Building2,
-        isOptional: true, // 非入驻企业可跳过
       },
       {
         id: "select_station",

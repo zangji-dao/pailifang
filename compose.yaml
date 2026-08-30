@@ -1,0 +1,155 @@
+name: pi-cube-enterprise-center
+
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql://${POSTGRES_USER:-pi_cube}:${POSTGRES_PASSWORD:?请设置 POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pi_cube}
+  PG_SSL_MODE: disable
+
+x-storage-environment: &storage-environment
+  S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?请设置 MINIO_ROOT_USER}
+  S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?请设置 MINIO_ROOT_PASSWORD}
+  S3_BUCKET: ${S3_BUCKET:-pi-cube-files}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_ENDPOINT: http://minio:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+  S3_FORCE_PATH_STYLE: "true"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pi_cube}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pi_cube}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?请设置 MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?请设置 MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?请设置 MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?请设置 MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET:-pi-cube-files}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        until mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do sleep 2; done &&
+        mc mb --ignore-existing "local/$${S3_BUCKET}"
+    restart: "no"
+
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?请设置 ONLYOFFICE_JWT_SECRET}
+    ports:
+      - "${ONLYOFFICE_PORT:-8080}:80"
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-logs:/var/log/onlyoffice
+
+  backend:
+    build:
+      context: .
+      target: backend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:4001}
+        NEXT_PUBLIC_ONLYOFFICE_URL: ${NEXT_PUBLIC_ONLYOFFICE_URL:-http://localhost:8080}
+    restart: unless-stopped
+    environment:
+      <<: [*database-environment, *storage-environment]
+      PORT: 4001
+      APP_URL: http://web:5000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000,http://127.0.0.1:5000}
+      ALIPAY_APPID: ${ALIPAY_APPID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_REDIRECT_URI: ${ALIPAY_REDIRECT_URI:-}
+      YSWITH_APP_KEY: ${YSWITH_APP_KEY:-}
+      YSWITH_APP_SECRET: ${YSWITH_APP_SECRET:-}
+    ports:
+      - "${BACKEND_PORT:-4001}:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:4001}
+        NEXT_PUBLIC_ONLYOFFICE_URL: ${NEXT_PUBLIC_ONLYOFFICE_URL:-http://localhost:8080}
+    restart: unless-stopped
+    environment:
+      <<: [*database-environment, *storage-environment]
+      PORT: 5000
+      HOSTNAME: 0.0.0.0
+      APP_URL: ${APP_INTERNAL_URL:-http://web:5000}
+      BACKEND_URL: http://backend:4001
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:4001}
+      ONLYOFFICE_URL: http://onlyoffice
+      NEXT_PUBLIC_ONLYOFFICE_URL: ${NEXT_PUBLIC_ONLYOFFICE_URL:-http://localhost:8080}
+      ONLYOFFICE_JWT_ENABLED: "true"
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?请设置 ONLYOFFICE_JWT_SECRET}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_TEXT_MODEL: ${AI_TEXT_MODEL:-}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-}
+      ALIPAY_APPID: ${ALIPAY_APPID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_REDIRECT_URI: ${ALIPAY_REDIRECT_URI:-}
+      YSWITH_APP_KEY: ${YSWITH_APP_KEY:-}
+      YSWITH_APP_SECRET: ${YSWITH_APP_SECRET:-}
+      ALLOW_DATABASE_MIGRATION_API: "false"
+    ports:
+      - "${WEB_PORT:-5000}:5000"
+    depends_on:
+      backend:
+        condition: service_healthy
+      onlyoffice:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  minio-data:
+  onlyoffice-data:
+  onlyoffice-logs:

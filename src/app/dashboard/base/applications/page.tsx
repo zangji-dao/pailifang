@@ -19,6 +19,7 @@ import {
   Printer,
   CheckCircle,
   XCircle,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -311,9 +312,19 @@ export default function ApplicationsPage() {
       }
       
       const data = result.data;
-    const personnel = Array.isArray(data.personnel) ? data.personnel : [];
-    const shareholders = Array.isArray(data.shareholders) ? data.shareholders : [];
-    const enterpriseNameBackups = data.enterpriseNameBackups || [];
+      const personnel: Array<{
+        name?: string;
+        roles?: string[];
+        phone?: string;
+        email?: string;
+      }> = Array.isArray(data.personnel) ? data.personnel : [];
+      const shareholders: Array<{
+        type?: string;
+        name?: string;
+        investment?: string | number;
+        phone?: string;
+      }> = Array.isArray(data.shareholders) ? data.shareholders : [];
+      const enterpriseNameBackups = data.enterpriseNameBackups || [];
 
     // 职务映射
     const roleMap: Record<string, string> = {
@@ -534,7 +545,7 @@ export default function ApplicationsPage() {
                 </tr>
               </thead>
               <tbody>
-                ${personnel.map((p: any) => `
+                ${personnel.map((p) => `
                   <tr>
                     <td>${p.name || "-"}</td>
                     <td>${(p.roles || []).map((r: string) => roleMap[r] || r).join("、") || "-"}</td>
@@ -561,9 +572,9 @@ export default function ApplicationsPage() {
                 </tr>
               </thead>
               <tbody>
-                ${shareholders.map((s: any) => `
+                ${shareholders.map((s) => `
                   <tr>
-                    <td>${shareholderTypeMap[s.type] || "-"}</td>
+                    <td>${s.type ? shareholderTypeMap[s.type] || "-" : "-"}</td>
                     <td>${s.name || "-"}</td>
                     <td>${s.investment || "-"}</td>
                     <td>${s.phone || "-"}</td>
@@ -754,93 +765,92 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-5 sm:space-y-6">
       {/* 页面标题 */}
-      <div className="py-6">
-        <h1 className="text-2xl font-semibold text-slate-900">
+      <div className="pt-2 sm:pt-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
           入驻申请
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="mt-1.5 text-sm text-slate-500">
           填写入园审批表，管理企业入驻申请
         </p>
       </div>
 
-      {/* 分割线 */}
-      <div className="border-b" />
-
       {/* 统计卡片区域 */}
-      <div className="py-6">
-        <div className="flex gap-4">
+      <div className="dashboard-surface p-3 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-6">
           {/* 新建申请按钮 */}
           <button
             onClick={handleCreate}
-            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-rose-400 px-6 py-4 transition-all hover:bg-rose-50 min-w-[140px]"
+            className="flex min-h-28 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 px-6 py-4 text-amber-700 transition-all hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-50 hover:shadow-lg hover:shadow-amber-500/10"
           >
-            <Plus className="h-8 w-8 text-rose-500 mb-2" />
-            <span className="text-sm font-medium text-rose-600">新建申请</span>
+            <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-600 text-white shadow-lg shadow-amber-500/20">
+              <Plus className="h-5 w-5" />
+            </span>
+            <span className="text-sm font-semibold">新建申请</span>
           </button>
 
           {/* 状态统计 */}
-          <div className="flex-1">
-            <div className="text-sm font-medium text-muted-foreground mb-3">申请状态</div>
-            <div className="grid grid-cols-4 gap-3">
+          <div className="min-w-0">
+            <div className="mb-3 text-sm font-medium text-slate-600">申请状态</div>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
               <button
                 onClick={() => setStatusFilter(statusFilter === "filling" ? null : "filling")}
                 className={cn(
-                  "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
+                  "flex min-h-20 items-center justify-between rounded-xl border px-3 py-3 text-left transition-all",
                   statusFilter === "filling" 
-                    ? "border-cyan-500 bg-cyan-50" 
-                    : "border-border hover:border-cyan-300 hover:bg-cyan-50/50"
+                    ? "border-amber-400 bg-amber-50 ring-2 ring-amber-100"
+                    : "border-slate-200 bg-white hover:border-amber-200 hover:bg-amber-50/40"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">填报中</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "filling" ? "text-cyan-600" : "text-foreground")}>{stats.filling}</div>
+                  <div className={cn("mt-1 text-xl font-semibold", statusFilter === "filling" ? "text-amber-700" : "text-slate-900")}>{stats.filling}</div>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-cyan-500" />
+                <div className="h-2 w-2 rounded-full bg-amber-500" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
                 className={cn(
-                  "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
+                  "flex min-h-20 items-center justify-between rounded-xl border px-3 py-3 text-left transition-all",
                   statusFilter === "pending" 
-                    ? "border-amber-500 bg-amber-50" 
-                    : "border-border hover:border-amber-300 hover:bg-amber-50/50"
+                    ? "border-blue-400 bg-blue-50 ring-2 ring-blue-100"
+                    : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">待审批</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "pending" ? "text-amber-600" : "text-foreground")}>{stats.pending}</div>
+                  <div className={cn("mt-1 text-xl font-semibold", statusFilter === "pending" ? "text-blue-700" : "text-slate-900")}>{stats.pending}</div>
                 </div>
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "rejected" ? null : "rejected")}
                 className={cn(
-                  "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
+                  "flex min-h-20 items-center justify-between rounded-xl border px-3 py-3 text-left transition-all",
                   statusFilter === "rejected" 
                     ? "border-red-500 bg-red-50" 
-                    : "border-border hover:border-red-300 hover:bg-red-50/50"
+                    : "border-slate-200 bg-white hover:border-red-200 hover:bg-red-50/40"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已驳回</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "rejected" ? "text-red-600" : "text-foreground")}>{stats.rejected}</div>
+                  <div className={cn("mt-1 text-xl font-semibold", statusFilter === "rejected" ? "text-red-600" : "text-slate-900")}>{stats.rejected}</div>
                 </div>
                 <XCircle className="w-4 h-4 text-red-400" />
               </button>
               <button
                 onClick={() => setStatusFilter(statusFilter === "approved" ? null : "approved")}
                 className={cn(
-                  "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all",
+                  "flex min-h-20 items-center justify-between rounded-xl border px-3 py-3 text-left transition-all",
                   statusFilter === "approved" 
                     ? "border-emerald-500 bg-emerald-50" 
-                    : "border-border hover:border-emerald-300 hover:bg-emerald-50/50"
+                    : "border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40"
                 )}
               >
                 <div className="text-left">
                   <div className="text-xs text-muted-foreground">已通过</div>
-                  <div className={cn("text-xl font-semibold", statusFilter === "approved" ? "text-emerald-600" : "text-foreground")}>{stats.approved}</div>
+                  <div className={cn("mt-1 text-xl font-semibold", statusFilter === "approved" ? "text-emerald-600" : "text-slate-900")}>{stats.approved}</div>
                 </div>
                 <CheckCircle className="w-4 h-4 text-emerald-400" />
               </button>
@@ -849,14 +859,14 @@ export default function ApplicationsPage() {
         </div>
       </div>
 
-      {/* 分割线 */}
-      <div className="border-b" />
-
       {/* 空状态引导页 - 默认显示 */}
       {statusFilter === null && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="text-muted-foreground mb-2">点击上方「新建申请」创建入驻申请</div>
-          <div className="text-sm text-muted-foreground">或点击状态卡片查看已有申请</div>
+        <div className="dashboard-surface flex flex-col items-center justify-center px-6 py-14 text-center sm:py-16">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+            <FileText className="h-5 w-5" />
+          </div>
+          <div className="mb-1 font-medium text-slate-700">点击上方「新建申请」创建入驻申请</div>
+          <div className="text-sm text-slate-400">或选择状态卡片查看已有申请</div>
         </div>
       )}
 
@@ -920,7 +930,7 @@ export default function ApplicationsPage() {
             {filteredApplications.length === 0 ? (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                  暂无申请记录，点击"填写申请表"开始
+                  暂无申请记录，点击“填写申请表”开始
                 </td>
               </tr>
             ) : (

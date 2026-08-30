@@ -1,0 +1,12 @@
+packages:
+  - backend
+
+overrides:
+  esbuild: ^0.25.12
+
+allowBuilds:
+  core-js: true
+  esbuild: true
+  puppeteer: true
+  sharp: true
+  unrs-resolver: true

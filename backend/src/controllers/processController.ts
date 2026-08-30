@@ -3,6 +3,7 @@ import { db } from '../database/client';
 import { settlementProcesses, settlementApplications, enterprises, contracts } from '../database/schema';
 import { eq, sql, desc, and } from 'drizzle-orm';
 import type { StageProgress } from '../database/schema';
+import { createAccountInvitation } from '../services/accountInvitation';
 
 export const processController = {
   /**
@@ -194,6 +195,41 @@ export const processController = {
             updatedAt: new Date(),
           })
           .where(eq(settlementApplications.id, process.applicationId));
+
+        const applicationRows = await db
+          .select({
+            enterpriseId: settlementApplications.enterpriseId,
+            enterpriseName: settlementApplications.enterpriseName,
+            legalPersonName: settlementApplications.legalPersonName,
+            legalPersonPhone: settlementApplications.legalPersonPhone,
+            legalPersonEmail: settlementApplications.legalPersonEmail,
+            contactPersonName: settlementApplications.contactPersonName,
+            contactPersonPhone: settlementApplications.contactPersonPhone,
+          })
+          .from(settlementApplications)
+          .where(eq(settlementApplications.id, process.applicationId))
+          .limit(1);
+        const application = applicationRows[0];
+        if (application?.enterpriseId && application.legalPersonEmail) {
+          const enterpriseRows = await db
+            .select({ organizationId: enterprises.organizationId })
+            .from(enterprises)
+            .where(eq(enterprises.id, application.enterpriseId))
+            .limit(1);
+          if (enterpriseRows[0]?.organizationId) {
+            try {
+              await createAccountInvitation({
+                organizationId: enterpriseRows[0].organizationId,
+                email: application.legalPersonEmail,
+                name: application.legalPersonName || application.contactPersonName || application.enterpriseName,
+                phone: application.legalPersonPhone || application.contactPersonPhone,
+                roleCodes: ['enterprise_owner'],
+              });
+            } catch (invitationError) {
+              console.error('入驻完成后生成企业负责人邀请失败:', invitationError);
+            }
+          }
+        }
       }
 
       res.json({

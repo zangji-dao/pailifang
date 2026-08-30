@@ -11,8 +11,16 @@ const eslintConfig = defineConfig([
     '.next/**',
     'out/**',
     'build/**',
+    'backend/dist/**',
+    'server/dist/**',
     'next-env.d.ts',
   ]),
+  {
+    files: ['src/storage/database/postgres-client.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
 ]);
 
 export default eslintConfig;

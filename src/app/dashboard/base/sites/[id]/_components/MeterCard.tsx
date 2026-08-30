@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight } from "lucide-react";
+import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight, Gift } from "lucide-react";
 import type { Meter, NetworkStatus, HeatingStatus } from "../types";
 
 interface MeterCardProps {
@@ -9,29 +9,11 @@ interface MeterCardProps {
   baseId: string;
 }
 
-// 格式化余额显示（数据库返回的可能是字符串或数字）
-function formatBalance(balance: number | string | null): string {
-  if (balance === null || balance === undefined) return "--";
-  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
-  if (isNaN(num)) return "--";
-  return `¥${num.toFixed(2)}`;
-}
-
-// 格式化时间
-function formatUpdateTime(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 1) return "刚刚";
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 7) return `${diffDays}天前`;
-  return date.toLocaleDateString("zh-CN");
+function formatBalance(value: number | string | null) {
+  if (value === null || value === "") return "--";
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "--";
+  return amount >= 1000 ? `¥${(amount / 1000).toFixed(1)}k` : `¥${amount.toFixed(2)}`;
 }
 
 // 网络状态显示 - 带图标和徽章样式
@@ -126,55 +108,53 @@ export function MeterCard({ meter, baseId }: MeterCardProps) {
           <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
         </div>
 
-        {/* 水电暖网状态 */}
-        <div className="grid grid-cols-4 gap-2">
+        {/* 已启用费用 */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {/* 电 - 显示余额 */}
-          <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-100">
+          {meter.electricityEnabled && <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-100">
             <Zap className="h-5 w-5 text-amber-500" />
             <span className="text-xs mt-1 font-medium text-amber-700">电</span>
-            <span className={`text-sm font-bold mt-0.5 ${parseFloat(String(meter.electricityBalance ?? 0)) < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
+            <span className={`text-sm font-bold mt-0.5 ${meter.electricityBalance === null ? "text-slate-400" : "text-amber-700"}`}>
               {formatBalance(meter.electricityBalance)}
             </span>
-            {meter.electricityBalanceUpdatedAt && (
-              <span className="text-[10px] text-amber-600/60">
-                {formatUpdateTime(meter.electricityBalanceUpdatedAt)}
-              </span>
-            )}
-          </div>
+            <span className="text-[10px] text-amber-600/60">{meter.electricityBalanceUpdatedAt ? "已同步" : "待同步"}</span>
+          </div>}
 
           {/* 水 - 显示余额 */}
-          <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-sky-50 to-sky-100/50 border border-sky-100">
+          {meter.waterEnabled && <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-sky-50 to-sky-100/50 border border-sky-100">
             <Droplets className="h-5 w-5 text-sky-500" />
             <span className="text-xs mt-1 font-medium text-sky-700">水</span>
-            <span className={`text-sm font-bold mt-0.5 ${parseFloat(String(meter.waterBalance ?? 0)) < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
+            <span className={`text-sm font-bold mt-0.5 ${meter.waterBalance === null ? "text-slate-400" : "text-sky-700"}`}>
               {formatBalance(meter.waterBalance)}
             </span>
-            {meter.waterBalanceUpdatedAt && (
-              <span className="text-[10px] text-sky-600/60">
-                {formatUpdateTime(meter.waterBalanceUpdatedAt)}
-              </span>
-            )}
-          </div>
+            <span className="text-[10px] text-sky-600/60">{meter.waterBalanceUpdatedAt ? "已同步" : "待同步"}</span>
+          </div>}
 
           {/* 暖 - 显示状态徽章 */}
-          <div className={`flex flex-col items-center p-2.5 rounded-xl border ${heatingDisplay.bgColor}`}>
+          {meter.heatingEnabled && <div className={`flex flex-col items-center p-2.5 rounded-xl border ${heatingDisplay.bgColor}`}>
             <Flame className={`h-5 w-5 ${heatingDisplay.textColor}`} />
             <span className="text-xs mt-1 font-medium text-orange-700">暖</span>
             <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 ${heatingDisplay.bgColor} ${heatingDisplay.textColor}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${heatingDisplay.dotColor}`}></span>
               {heatingDisplay.text}
             </span>
-          </div>
+          </div>}
+
+          {meter.propertyFeeEnabled && <div className="flex flex-col items-center rounded-xl border border-emerald-100 bg-emerald-50 p-2.5">
+            <Gift className="h-5 w-5 text-emerald-600" />
+            <span className="mt-1 text-xs font-medium text-emerald-700">物业</span>
+            <span className="mt-1 text-[10px] font-medium text-emerald-700">已启用</span>
+          </div>}
 
           {/* 网 - 显示状态徽章 */}
-          <div className={`flex flex-col items-center p-2.5 rounded-xl border ${networkDisplay.bgColor}`}>
+          {meter.networkEnabled && <div className={`flex flex-col items-center p-2.5 rounded-xl border ${networkDisplay.bgColor}`}>
             <Wifi className={`h-5 w-5 ${networkDisplay.textColor}`} />
             <span className="text-xs mt-1 font-medium text-violet-700">网</span>
             <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 ${networkDisplay.bgColor} ${networkDisplay.textColor}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${networkDisplay.dotColor}`}></span>
               {networkDisplay.text}
             </span>
-          </div>
+          </div>}
         </div>
 
         {/* 底部统计 - 简化显示 */}

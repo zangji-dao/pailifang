@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@/storage/database/client';
+import { getDatabaseClient } from '@/storage/database/client';
 import { refreshAccessToken } from './alipay';
 
 // 支付宝授权令牌数据类型
@@ -34,7 +34,7 @@ export async function getValidAccessToken(userId: string): Promise<{
   error?: string;
   needAuth?: boolean;
 }> {
-  const supabase = getSupabaseClient();
+  const supabase = getDatabaseClient();
 
   // 查询用户的授权信息
   const { data: authDataRaw, error: dbError } = await supabase
@@ -134,7 +134,7 @@ export async function getValidAccessToken(userId: string): Promise<{
  * 获取用户的授权状态
  */
 export async function getAuthStatus(userId: string): Promise<AuthTokenStatus> {
-  const supabase = getSupabaseClient();
+  const supabase = getDatabaseClient();
 
   const { data: authDataRaw, error } = await supabase
     .from('alipay_auth_tokens')

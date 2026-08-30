@@ -12,7 +12,7 @@ const prodConfig: AppConfig = {
   // API 配置
   api: {
     // 前端 API 路由（Next.js API Routes）
-    baseUrl: process.env.COZE_PROJECT_DOMAIN_DEFAULT || '',
+    baseUrl: process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '',
     prefix: '/api',
     timeout: 15000,
   },
@@ -55,16 +55,6 @@ const prodConfig: AppConfig = {
   debug: {
     enabled: false,
     logLevel: 'error',
-  },
-
-  // 地图配置
-  map: {
-    // 高德地图 API Key（从环境变量获取）
-    amapKey: process.env.AMAP_KEY || '',
-    // 默认中心点：长春市
-    defaultCenterLng: 125.3245,
-    defaultCenterLat: 43.8868,
-    defaultZoom: 12,
   },
 };
 

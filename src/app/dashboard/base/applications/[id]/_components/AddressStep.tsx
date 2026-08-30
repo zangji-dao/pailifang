@@ -21,16 +21,16 @@ export function AddressStep({
   const stepNumber = isMigration ? "2" : "1";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 迁移企业：迁移前地址 */}
       {isMigration && (
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+        <div className="form-section">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 sm:mb-5">
             <span className="step-number step-number-1">1</span>
             迁移前地址
             <Badge variant="outline" className="ml-2 text-xs font-normal bg-step-amber-muted text-step-amber border-step-amber/30">迁移企业必填</Badge>
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="space-y-2">
               <Label>原注册地址 <span className="text-destructive">*</span></Label>
               <Textarea
@@ -60,8 +60,8 @@ export function AddressStep({
       )}
 
       {/* 邮寄地址 */}
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+      <div className="form-section">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 sm:mb-5">
           <span className="step-number step-number-2">
             {stepNumber}
           </span>
@@ -82,7 +82,7 @@ export function AddressStep({
 
       {/* 新建企业：实际经营地址提示 */}
       {formData.applicationType === "new" && (
-        <div className="rounded-lg bg-muted/50 border border-dashed p-4">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-4 sm:p-5">
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div className="text-sm text-muted-foreground">

@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { MapPin, Search, Loader2, X } from "lucide-react";
+import { useCallback, useState } from "react";
+import dynamic from "next/dynamic";
+import { Loader2, MapPin, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import dynamic from "next/dynamic";
 
-// 动态导入地图组件，避免 SSR 问题
 const MapComponent = dynamic(() => import("./MapComponent"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[300px] flex items-center justify-center bg-muted/50">
+    <div className="flex h-[300px] w-full items-center justify-center bg-muted/50">
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin" />
+        <Loader2 className="h-5 w-5 animate-spin" />
         <span>加载地图中...</span>
       </div>
     </div>
@@ -24,11 +23,10 @@ export interface Location {
   lat: number;
   address: string;
   name?: string;
-  // 地址详情
-  province?: string;  // 省/直辖市
-  city?: string;      // 市
-  district?: string;  // 区/县
-  street?: string;    // 街道
+  province?: string;
+  city?: string;
+  district?: string;
+  street?: string;
 }
 
 interface MapPickerProps {
@@ -38,273 +36,153 @@ interface MapPickerProps {
   className?: string;
 }
 
-// 搜索功能使用 Nominatim（OpenStreetMap 的免费地理编码服务）
+interface NominatimAddress {
+  province?: string;
+  state?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  county?: string;
+  suburb?: string;
+  district?: string;
+  road?: string;
+  street?: string;
+}
+
+interface NominatimSearchResult {
+  lat: string;
+  lon: string;
+  display_name: string;
+  name?: string;
+  address?: NominatimAddress;
+}
+
+interface NominatimReverseResult {
+  display_name?: string;
+  address?: NominatimAddress;
+}
+
 async function searchAddress(query: string): Promise<Location[]> {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&accept-language=zh`
-    );
-    const data = await response.json();
-    
-    return data.map((item: any) => {
-      const addr = item.address || {};
-      return {
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-        address: item.display_name,
-        name: item.name || item.display_name.split(",")[0],
-        province: addr.province || addr.state || addr['ISO3166-2-lvl4']?.split('-')[0] || '',
-        city: addr.city || addr.town || addr.village || addr.county || '',
-        district: addr.suburb || addr.district || addr.county || '',
-        street: addr.road || addr.street || '',
-      };
-    });
-  } catch (error) {
-    console.error("搜索失败:", error);
-    return [];
-  }
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&accept-language=zh`,
+  );
+  if (!response.ok) throw new Error("地址搜索失败");
+
+  const data = await response.json() as NominatimSearchResult[];
+  return data.map((item) => {
+    const address = item.address || {};
+    return {
+      lat: Number.parseFloat(item.lat),
+      lng: Number.parseFloat(item.lon),
+      address: item.display_name,
+      name: item.name || item.display_name.split(",")[0],
+      province: address.province || address.state || "",
+      city: address.city || address.town || address.village || address.county || "",
+      district: address.suburb || address.district || address.county || "",
+      street: address.road || address.street || "",
+    };
+  });
 }
 
-// 逆地理编码 - 返回完整地址信息
 async function reverseGeocode(lat: number, lng: number): Promise<Location> {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=zh`
-    );
-    const data = await response.json();
-    const addr = data.address || {};
-    
-    // 提取省份
-    let province = addr.province || addr.state || '';
-    
-    // 提取城市 - OpenStreetMap 有时把区县放在 city 字段，需要从 display_name 解析真正的城市
-    let city = '';
-    let district = '';
-    
-    // 从 display_name 解析（格式通常是：街道, 区县, 城市, 省份, 邮编, 国家）
-    if (data.display_name) {
-      const parts = data.display_name.split(',').map((s: string) => s.trim());
-      
-      for (const part of parts) {
-        // 跳过邮编和国家
-        if (/^\d+$/.test(part) || part === '中国') continue;
-        
-        // 匹配省份（包含"省"或"自治区"）
-        if (!province && (part.includes('省') || part.includes('自治区'))) {
-          province = part;
-          continue;
-        }
-        
-        // 匹配城市（包含"市"但不包含"省"、"自治区"）
-        if (part.includes('市') && !part.includes('省') && !part.includes('自治区')) {
-          if (!city) {
-            city = part;
-          }
-          continue;
-        }
-        
-        // 匹配区县（包含"区"或"县"）
-        if (part.includes('区') || part.includes('县')) {
-          if (!district) {
-            district = part;
-          }
-          continue;
-        }
-      }
-    }
-    
-    // 如果从 display_name 没解析到城市，尝试用 addr.city
-    if (!city) {
-      city = addr.city || addr.town || addr.village || '';
-    }
-    
-    // 如果没有区县，用 addr 中的值
-    if (!district) {
-      district = addr.suburb || addr.district || addr.county || '';
-    }
-    
-    // 处理 ISO3166-2-lvl4 代码（如 CN-JL）
-    if (!province && addr['ISO3166-2-lvl4']) {
-      const code = addr['ISO3166-2-lvl4'].split('-')[1];
-      // 简单映射常见省份代码
-      const codeMap: Record<string, string> = {
-        'BJ': '北京市', 'TJ': '天津市', 'HE': '河北省', 'SX': '山西省',
-        'NM': '内蒙古自治区', 'LN': '辽宁省', 'JL': '吉林省', 'HL': '黑龙江省',
-        'SH': '上海市', 'JS': '江苏省', 'ZJ': '浙江省', 'AH': '安徽省',
-        'FJ': '福建省', 'JX': '江西省', 'SD': '山东省', 'HA': '河南省',
-        'HB': '湖北省', 'HN': '湖南省', 'GD': '广东省', 'GX': '广西壮族自治区',
-        'HI': '海南省', 'CQ': '重庆市', 'SC': '四川省', 'GZ': '贵州省',
-        'YN': '云南省', 'XZ': '西藏自治区', 'SN': '陕西省', 'GS': '甘肃省',
-        'QH': '青海省', 'NX': '宁夏回族自治区', 'XJ': '新疆维吾尔自治区',
-        'HK': '香港特别行政区', 'MO': '澳门特别行政区', 'TW': '台湾省',
-      };
-      province = codeMap[code] || '';
-    }
-    
-    return {
-      lat,
-      lng,
-      address: data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-      province,
-      city,
-      district,
-      street: addr.road || addr.street || '',
-    };
-  } catch (error) {
-    console.error("逆地理编码失败:", error);
-    return {
-      lat,
-      lng,
-      address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-    };
-  }
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=zh`,
+  );
+  if (!response.ok) throw new Error("地址解析失败");
+
+  const data = await response.json() as NominatimReverseResult;
+  const address = data.address || {};
+  return {
+    lat,
+    lng,
+    address: data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+    province: address.province || address.state || "",
+    city: address.city || address.town || address.village || address.county || "",
+    district: address.suburb || address.district || address.county || "",
+    street: address.road || address.street || "",
+  };
 }
 
-// 中国省份名称映射（用于匹配）
-const provinceNames: Record<string, string> = {
-  '北京市': '北京',
-  '北京': '北京',
-  '天津市': '天津',
-  '天津': '天津',
-  '河北省': '河北',
-  '河北': '河北',
-  '山西省': '山西',
-  '山西': '山西',
-  '内蒙古自治区': '内蒙古',
-  '内蒙古': '内蒙古',
-  '辽宁省': '辽宁',
-  '辽宁': '辽宁',
-  '吉林省': '吉林',
-  '吉林': '吉林',
-  '黑龙江省': '黑龙江',
-  '黑龙江': '黑龙江',
-  '上海市': '上海',
-  '上海': '上海',
-  '江苏省': '江苏',
-  '江苏': '江苏',
-  '浙江省': '浙江',
-  '浙江': '浙江',
-  '安徽省': '安徽',
-  '安徽': '安徽',
-  '福建省': '福建',
-  '福建': '福建',
-  '江西省': '江西',
-  '江西': '江西',
-  '山东省': '山东',
-  '山东': '山东',
-  '河南省': '河南',
-  '河南': '河南',
-  '湖北省': '湖北',
-  '湖北': '湖北',
-  '湖南省': '湖南',
-  '湖南': '湖南',
-  '广东省': '广东',
-  '广东': '广东',
-  '广西壮族自治区': '广西',
-  '广西': '广西',
-  '海南省': '海南',
-  '海南': '海南',
-  '重庆市': '重庆',
-  '重庆': '重庆',
-  '四川省': '四川',
-  '四川': '四川',
-  '贵州省': '贵州',
-  '贵州': '贵州',
-  '云南省': '云南',
-  '云南': '云南',
-  '西藏自治区': '西藏',
-  '西藏': '西藏',
-  '陕西省': '陕西',
-  '陕西': '陕西',
-  '甘肃省': '甘肃',
-  '甘肃': '甘肃',
-  '青海省': '青海',
-  '青海': '青海',
-  '宁夏回族自治区': '宁夏',
-  '宁夏': '宁夏',
-  '新疆维吾尔自治区': '新疆',
-  '新疆': '新疆',
-  '香港特别行政区': '香港',
-  '香港': '香港',
-  '澳门特别行政区': '澳门',
-  '澳门': '澳门',
-  '台湾省': '台湾',
-  '台湾': '台湾',
-};
-
-// 标准化省份名称
-function normalizeProvinceName(province: string): string {
-  if (!province) return '';
-  // 直接匹配
-  if (provinceNames[province]) return provinceNames[province];
-  // 模糊匹配
-  for (const [key, value] of Object.entries(provinceNames)) {
-    if (province.includes(key) || key.includes(province)) {
-      return value;
-    }
-  }
-  return province;
-}
-
-export function MapPicker({ value, onChange, placeholder = "点击选择地址", className = "" }: MapPickerProps) {
+export function MapPicker({
+  value,
+  onChange,
+  placeholder = "点击选择地址",
+  className = "",
+}: MapPickerProps) {
   const [showMap, setShowMap] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Location[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [providerError, setProviderError] = useState("");
   const [mapKey, setMapKey] = useState(0);
 
-  // 处理地图点击选择
   const handleLocationSelect = useCallback(async (lat: number, lng: number) => {
-    const location = await reverseGeocode(lat, lng);
-    // 直接返回原始数据，由调用方处理匹配
-    onChange(location);
+    setProviderError("");
+    try {
+      onChange(await reverseGeocode(lat, lng));
+    } catch (error: unknown) {
+      console.error("地址解析失败:", error);
+      setProviderError(error instanceof Error ? error.message : "地址解析失败");
+      onChange({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+    }
   }, [onChange]);
 
-  // 处理搜索
   const handleSearch = async () => {
-    if (!searchKeyword.trim()) return;
-    
+    const keyword = searchKeyword.trim();
+    if (!keyword) return;
+
     setSearching(true);
     setShowResults(true);
-    const results = await searchAddress(searchKeyword);
-    // 直接返回原始数据，由调用方处理匹配
-    setSearchResults(results);
-    setSearching(false);
+    setProviderError("");
+    try {
+      const results = await searchAddress(keyword);
+      setSearchResults(results);
+      if (results.length === 0) setProviderError("未找到匹配地址，请补充省市区后重试");
+    } catch (error: unknown) {
+      console.error("地址搜索失败:", error);
+      setSearchResults([]);
+      setProviderError(error instanceof Error ? error.message : "地址搜索失败");
+    } finally {
+      setSearching(false);
+    }
   };
 
-  // 选择搜索结果
   const selectSearchResult = async (location: Location) => {
-    const fullLocation = await reverseGeocode(location.lat, location.lng);
-    // 直接返回原始数据，由调用方处理匹配
-    onChange(fullLocation);
+    setProviderError("");
+    try {
+      onChange(await reverseGeocode(location.lat, location.lng));
+    } catch {
+      onChange(location);
+    }
     setShowResults(false);
     setSearchKeyword("");
     setSearchResults([]);
   };
 
-  // 已选择位置但未展开地图
   if (!showMap && value?.address) {
     return (
-      <div className={`border rounded-lg p-3 ${className}`}>
+      <div className={`rounded-lg border p-3 ${className}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-            <span className="truncate flex-1">{value.address}</span>
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 flex-shrink-0 text-primary" />
+            <span className="flex-1 truncate">{value.address}</span>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center gap-2">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => {
                 setShowMap(true);
-                setMapKey(prev => prev + 1);
+                setMapKey((current) => current + 1);
               }}
               className="text-primary"
             >
               修改
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => onChange({ lng: 0, lat: 0, address: "" })}
@@ -315,7 +193,7 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
           </div>
         </div>
         {value.lat !== 0 && value.lng !== 0 && (
-          <p className="text-xs text-muted-foreground mt-2 pl-6">
+          <p className="mt-2 pl-6 text-xs text-muted-foreground">
             经度: {value.lng.toFixed(6)} 纬度: {value.lat.toFixed(6)}
           </p>
         )}
@@ -323,87 +201,88 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
     );
   }
 
-  // 未展开地图且未选择位置
   if (!showMap) {
     return (
       <button
+        type="button"
         onClick={() => {
           setShowMap(true);
-          setMapKey(prev => prev + 1);
+          setMapKey((current) => current + 1);
         }}
-        className={`w-full border-2 border-dashed rounded-lg p-4 text-center hover:border-primary hover:bg-primary/5 transition-colors ${className}`}
+        className={`w-full rounded-lg border-2 border-dashed p-4 text-center transition-colors hover:border-primary hover:bg-primary/5 ${className}`}
       >
-        <MapPin className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+        <MapPin className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">{placeholder}</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">使用 OpenStreetMap（免费）</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">
+          使用 OpenStreetMap（免费）
+        </p>
       </button>
     );
   }
 
-  // 展开的地图界面
   return (
-    <div className={`border rounded-lg overflow-hidden ${className}`}>
-      {/* 头部 */}
-      <div className="flex items-center justify-between p-3 border-b bg-muted/50">
+    <div className={`overflow-hidden rounded-lg border ${className}`}>
+      <div className="flex items-center justify-between border-b bg-muted/50 p-3">
         <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-primary" />
+          <MapPin className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">选择地址</span>
           <span className="text-xs text-muted-foreground">(OpenStreetMap)</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowMap(false)}
-        >
-          <X className="w-4 h-4" />
+        <Button type="button" variant="ghost" size="sm" onClick={() => setShowMap(false)}>
+          <X className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* 搜索栏 */}
-      <div className="p-3 border-b relative">
+      <div className="relative border-b p-3">
         <div className="flex items-center gap-2">
           <Input
             value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="搜索地址..."
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            placeholder="输入省市区、道路或园区名称"
             className="flex-1"
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleSearch();
+              }
+            }}
           />
-          <Button onClick={handleSearch} disabled={searching}>
-            {searching ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Search className="w-4 h-4" />
-            )}
+          <Button type="button" onClick={() => void handleSearch()} disabled={searching}>
+            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </Button>
         </div>
-        
-        {/* 搜索结果下拉 */}
+
         {showResults && searchResults.length > 0 && (
-          <div className="absolute left-3 right-3 top-full mt-1 bg-background border rounded-lg shadow-lg z-[1000] max-h-60 overflow-y-auto">
-            {searchResults.map((result, index) => (
+          <div className="absolute left-3 right-3 top-full z-[1000] mt-1 max-h-60 overflow-y-auto rounded-lg border bg-background shadow-lg">
+            {searchResults.map((result) => (
               <button
-                key={index}
-                onClick={() => selectSearchResult(result)}
-                className="w-full px-3 py-2 text-left hover:bg-muted text-sm border-b last:border-b-0"
+                type="button"
+                key={`${result.lng}-${result.lat}-${result.name || result.address}`}
+                onClick={() => void selectSearchResult(result)}
+                className="w-full border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
               >
-                <div className="font-medium truncate">{result.name}</div>
-                <div className="text-xs text-muted-foreground truncate">{result.address}</div>
+                <div className="truncate font-medium">{result.name || result.address}</div>
+                <div className="truncate text-xs text-muted-foreground">{result.address}</div>
               </button>
             ))}
           </div>
         )}
-        
+
         {showResults && searching && (
-          <div className="absolute left-3 right-3 top-full mt-1 bg-background border rounded-lg shadow-lg z-[1000] p-3 text-center text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+          <div className="absolute left-3 right-3 top-full z-[1000] mt-1 rounded-lg border bg-background p-3 text-center text-sm text-muted-foreground shadow-lg">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
             搜索中...
           </div>
         )}
       </div>
 
-      {/* 地图容器 */}
-      <div className="w-full h-[300px]">
+      {providerError && (
+        <div className="border-b border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+          {providerError}
+        </div>
+      )}
+
+      <div className="h-[300px] w-full">
         <MapComponent
           key={mapKey}
           position={value ? [value.lat, value.lng] : undefined}
@@ -411,14 +290,13 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
         />
       </div>
 
-      {/* 已选地址 */}
       {value?.address && (
-        <div className="p-3 border-t bg-muted/30">
+        <div className="border-t bg-muted/30 p-3">
           <div className="flex items-start gap-2">
-            <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
+            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{value.address}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 经度: {value.lng.toFixed(6)} 纬度: {value.lat.toFixed(6)}
               </p>
             </div>
@@ -426,9 +304,8 @@ export function MapPicker({ value, onChange, placeholder = "点击选择地址",
         </div>
       )}
 
-      {/* 提示 */}
-      <div className="p-2 bg-muted/30 text-xs text-muted-foreground text-center">
-        点击地图选择位置，或使用搜索功能定位
+      <div className="bg-muted/30 p-2 text-center text-xs text-muted-foreground">
+        点击地图选择位置，或搜索地址后定位
       </div>
     </div>
   );

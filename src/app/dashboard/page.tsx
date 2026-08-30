@@ -1,522 +1,290 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Crown,
-  Users,
-  Phone,
-  Calculator,
-  ChevronDown,
-  Building2,
-  FileText,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Briefcase,
-  Calendar,
   ArrowRight,
-  Store,
-  Award,
-  Zap,
-  Target,
-  UserCheck,
-  Receipt,
   BarChart3,
-  Settings,
-  Sparkles,
+  BriefcaseBusiness,
+  Building2,
+  CheckCircle2,
+  CircleDollarSign,
+  Landmark,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  TrendingUp,
+  UsersRound,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiClient } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { User } from "./types";
 
-interface User {
+interface MetricBase {
   id: string;
   name: string;
-  email: string;
-  role: string;
-  avatar?: string;
 }
 
-// 角色配置
-const ROLE_CONFIG = {
-  admin: {
-    name: "老板/管理员",
-    icon: Crown,
-    description: "全局经营视角",
-    color: "text-amber-600",
-    bgColor: "bg-amber-100",
-  },
-  manager: {
-    name: "经理",
-    icon: Users,
-    description: "团队运营视角",
-    color: "text-blue-600",
-    bgColor: "bg-blue-100",
-  },
-  sales: {
-    name: "销售",
-    icon: Phone,
-    description: "个人业绩视角",
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
-  },
-  accountant: {
-    name: "员工/会计",
-    icon: Calculator,
-    description: "工作任务视角",
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-100",
-  },
-};
+interface MetricEnterprise {
+  id: string;
+  name: string;
+  baseId: string | null;
+  baseName: string | null;
+}
 
-// 功能入口配置
-const FEATURE_MODULES = [
-  {
-    id: "customers",
-    name: "客户管理",
-    description: "客户档案、跟进记录",
-    icon: Building2,
-    href: "/dashboard/customers",
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    gradient: "from-blue-500 to-cyan-500",
-    stats: "128 位客户",
-  },
-  {
-    id: "work-orders",
-    name: "工单中心",
-    description: "任务派发、进度追踪",
-    icon: FileText,
-    href: "/dashboard/work-orders",
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    gradient: "from-amber-500 to-orange-500",
-    stats: "5 待处理",
-    badge: "5",
-  },
-  {
-    id: "accounting",
-    name: "云财务",
-    description: "记账、报税、报表",
-    icon: Calculator,
-    href: "/accounting",
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-    gradient: "from-emerald-500 to-teal-500",
-    stats: "23 个账套",
-  },
-  {
-    id: "settlement",
-    name: "分润结算",
-    description: "业绩统计、收益分配",
-    icon: DollarSign,
-    href: "/dashboard/settlement",
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
-    gradient: "from-purple-500 to-pink-500",
-    stats: "¥8,600 本月",
-  },
-  {
-    id: "sales",
-    name: "销售中心",
-    description: "线索管理、商机转化",
-    icon: TrendingUp,
-    href: "/dashboard/sales",
-    color: "text-rose-600",
-    bgColor: "bg-rose-50",
-    gradient: "from-rose-500 to-red-500",
-    stats: "12 条线索",
-    badge: "3",
-  },
-  {
-    id: "hr",
-    name: "人力资源",
-    description: "劳务派遣、员工管理",
-    icon: UserCheck,
-    href: "/dashboard/hr",
-    color: "text-cyan-600",
-    bgColor: "bg-cyan-50",
-    gradient: "from-cyan-500 to-blue-500",
-    stats: "56 在职",
-  },
-];
+interface MetricOptions {
+  bases: MetricBase[];
+  enterprises: MetricEnterprise[];
+}
 
-// 个人工作数据
-const MY_WORK_STATS = [
-  {
-    title: "本月分润",
-    value: "¥8,600",
-    change: "+12.5%",
-    trend: "up",
-    icon: DollarSign,
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-  },
-  {
-    title: "待处理工单",
-    value: "5",
-    change: "需处理",
-    trend: "neutral",
-    icon: Clock,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-  },
-  {
-    title: "本月完成",
-    value: "18",
-    change: "+3单",
-    trend: "up",
-    icon: CheckCircle2,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-  },
-  {
-    title: "服务评分",
-    value: "4.8",
-    change: "优秀",
-    trend: "neutral",
-    icon: Award,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
-  },
-];
+interface MetricSummary {
+  year: string;
+  totals: {
+    revenue?: string;
+    taxTotal?: string;
+    taxLocal?: string;
+    investment?: string;
+    enterpriseCount?: number;
+    reportCount?: number;
+    employees?: number;
+    localEmployees?: number;
+  };
+  monthly: Array<{
+    period: string;
+    revenue: string;
+    taxTotal: string;
+    taxLocal: string;
+    employees: number;
+    localEmployees: number;
+    investment: string;
+  }>;
+}
 
-// 待处理工单
-const PENDING_TASKS = [
-  { id: "WO-2026-016", title: "月度记账", customer: "吉林省宏远贸易公司", deadline: "今天", priority: "high", amount: 800 },
-  { id: "WO-2026-017", title: "税务申报", customer: "松原市宇鑫化工有限公司", deadline: "明天", priority: "high", amount: 500 },
-  { id: "WO-2026-018", title: "财务报表", customer: "华信科技有限公司", deadline: "后天", priority: "medium", amount: 600 },
-  { id: "WO-2026-019", title: "凭证审核", customer: "新兴建材有限公司", deadline: "3天后", priority: "low", amount: 300 },
-];
+interface MetricReport {
+  id: string;
+  enterpriseId: string;
+  baseId: string;
+  status: "draft" | "submitted" | "confirmed" | "rejected";
+}
 
-// 最近收入
-const RECENT_INCOME = [
-  { customer: "吉林省宏远贸易公司", service: "月度记账", amount: 400, date: "今天" },
-  { customer: "松原市宇鑫化工有限公司", service: "税务申报", amount: 250, date: "昨天" },
-  { customer: "华信科技有限公司", service: "财务报表", amount: 300, date: "昨天" },
-  { customer: "新兴建材有限公司", service: "凭证审核", amount: 150, date: "前天" },
-];
+const ALL_BASES = "all";
+const now = new Date();
+const CURRENT_YEAR = String(now.getFullYear());
+const CURRENT_PERIOD = `${CURRENT_YEAR}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-// 本周目标
-const WEEKLY_TARGETS = [
-  { name: "工单完成", current: 18, target: 25 },
-  { name: "凭证录入", current: 156, target: 200 },
-  { name: "客户回访", current: 3, target: 5 },
-];
+function formatMoney(value: string | number | undefined) {
+  return Number(value || 0).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+}
 
-// 快捷操作
-const QUICK_ACTIONS = [
-  { name: "新增客户", icon: Building2, href: "/dashboard/customers/new" },
-  { name: "创建工单", icon: FileText, href: "/dashboard/work-orders/new" },
-  { name: "新增凭证", icon: Receipt, href: "/accounting/vouchers/new" },
-  { name: "收款登记", icon: DollarSign, href: "/dashboard/settlement/receipt" },
-];
+function readUser() {
+  try {
+    const value = localStorage.getItem("user");
+    return value ? JSON.parse(value) as User : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [currentRole, setCurrentRole] = useState<string>("accountant");
+  const [options, setOptions] = useState<MetricOptions>({ bases: [], enterprises: [] });
+  const [summary, setSummary] = useState<MetricSummary>({ year: CURRENT_YEAR, totals: {}, monthly: [] });
+  const [currentReports, setCurrentReports] = useState<MetricReport[]>([]);
+  const [selectedBaseId, setSelectedBaseId] = useState(ALL_BASES);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setCurrentRole(parsedUser.role || "accountant");
+  const loadOverview = useCallback(async (baseId: string) => {
+    setLoading(true);
+    setLoadError("");
+    const baseQuery = baseId === ALL_BASES ? "" : `&baseId=${encodeURIComponent(baseId)}`;
+    const [summaryResponse, reportResponse] = await Promise.all([
+      apiClient.get<MetricSummary>(`/api/business-metrics/summary?year=${CURRENT_YEAR}${baseQuery}`),
+      apiClient.get<MetricReport[]>(`/api/business-metrics?period=${CURRENT_PERIOD}${baseQuery}`),
+    ]);
+
+    if (!summaryResponse.success || !summaryResponse.data || !reportResponse.success || !reportResponse.data) {
+      setLoadError(summaryResponse.error || reportResponse.error || "经营数据加载失败");
+    } else {
+      setSummary(summaryResponse.data);
+      setCurrentReports(reportResponse.data);
     }
     setLoading(false);
   }, []);
 
-  const currentRoleConfig = ROLE_CONFIG[currentRole as keyof typeof ROLE_CONFIG];
-  const CurrentIcon = currentRoleConfig?.icon || Calculator;
+  useEffect(() => {
+    const userTimer = window.setTimeout(() => {
+      setUser(readUser());
+      void loadOverview(ALL_BASES);
+    }, 0);
+    void apiClient.get<MetricOptions>("/api/business-metrics/options").then((response) => {
+      if (response.success && response.data) setOptions(response.data);
+    });
+    return () => window.clearTimeout(userTimer);
+  }, [loadOverview]);
 
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] -m-6 p-6 bg-gradient-to-br from-amber-50/60 via-slate-50 to-amber-50/30 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-500 mt-2">加载中...</p>
-        </div>
-      </div>
-    );
-  }
+  const selectedBase = options.bases.find((base) => base.id === selectedBaseId);
+  const scopeName = selectedBase?.name ?? "全部基地";
+  const scopedEnterprises = useMemo(() => options.enterprises.filter((enterprise) => (
+    selectedBaseId === ALL_BASES || enterprise.baseId === selectedBaseId
+  )), [options.enterprises, selectedBaseId]);
+
+  const reportProgress = useMemo(() => {
+    const uniqueReports = new Set(currentReports.map((report) => report.enterpriseId)).size;
+    const confirmed = new Set(currentReports.filter((report) => report.status === "confirmed").map((report) => report.enterpriseId)).size;
+    const submitted = currentReports.filter((report) => report.status === "submitted").length;
+    const rejected = currentReports.filter((report) => report.status === "rejected").length;
+    const total = scopedEnterprises.length;
+    return {
+      total,
+      reported: uniqueReports,
+      confirmed,
+      submitted,
+      rejected,
+      missing: Math.max(total - uniqueReports, 0),
+      rate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
+    };
+  }, [currentReports, scopedEnterprises.length]);
+
+  const totals = summary.totals;
+  const localEmploymentRate = Number(totals.employees || 0) > 0
+    ? Math.round((Number(totals.localEmployees || 0) / Number(totals.employees || 0)) * 1000) / 10
+    : 0;
+  const localTaxRate = Number(totals.taxTotal || 0) > 0
+    ? Math.round((Number(totals.taxLocal || 0) / Number(totals.taxTotal || 0)) * 1000) / 10
+    : 0;
+  const chartMax = Math.max(...summary.monthly.flatMap((item) => [Number(item.revenue), Number(item.taxTotal)]), 1);
+  const canSubmit = user?.permissions?.some((permission) => ["platform.manage", "metrics.manage", "metrics.submit"].includes(permission));
+  const canReview = user?.permissions?.some((permission) => ["platform.manage", "metrics.manage", "metrics.review"].includes(permission));
+
+  const changeBase = (baseId: string) => {
+    setSelectedBaseId(baseId);
+    void loadOverview(baseId);
+  };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] -m-6 p-6 bg-gradient-to-br from-amber-50/60 via-slate-50 to-amber-50/30">
-      {/* 角色切换演示工具条 */}
-      <div className="fixed top-16 right-4 z-50">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2 bg-white/90 backdrop-blur-sm border-slate-200 shadow-sm">
-              <div className={`w-6 h-6 rounded-full ${currentRoleConfig.bgColor} flex items-center justify-center`}>
-                <CurrentIcon className={`h-3.5 w-3.5 ${currentRoleConfig.color}`} />
-              </div>
-              <span className="text-sm">{currentRoleConfig.name}</span>
-              <ChevronDown className="h-4 w-4 text-slate-400" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>切换角色视图</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {Object.entries(ROLE_CONFIG).map(([role, config]) => {
-              const Icon = config.icon;
-              return (
-                <DropdownMenuItem
-                  key={role}
-                  onClick={() => setCurrentRole(role)}
-                  className={cn("flex items-center gap-3 cursor-pointer", currentRole === role ? "bg-amber-50" : "")}
-                >
-                  <div className={`w-8 h-8 rounded-full ${config.bgColor} flex items-center justify-center`}>
-                    <Icon className={`h-4 w-4 ${config.color}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{config.name}</p>
-                    <p className="text-xs text-slate-500">{config.description}</p>
-                  </div>
-                  {currentRole === role && <Badge variant="secondary" className="text-xs">当前</Badge>}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* 页面标题 */}
-        <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-[1580px] space-y-5">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 px-5 py-6 text-white shadow-[0_22px_65px_rgba(15,23,42,0.2)] sm:px-8 sm:py-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_88%_12%,rgba(34,211,238,0.2),transparent_28%),radial-gradient(circle_at_12%_100%,rgba(251,191,36,0.13),transparent_28%)]" />
+        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">工作台</h1>
-            <p className="text-slate-500 mt-1">欢迎回来，{user?.name || "张会计"}</p>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              <Landmark className="h-3.5 w-3.5 text-amber-300" />
+              政府园区经营管理
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-4xl">基地企业经营数据</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">以基地为统计口径，汇总已审核确认的企业销售收入、税收贡献、固定资产投资和就业带动成果。</p>
           </div>
-          <div className="flex items-center gap-2">
-            {QUICK_ACTIONS.map((action) => (
-              <Button
-                key={action.name}
-                variant="outline"
-                size="sm"
-                className="h-8 bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                asChild
-              >
-                <Link href={action.href}>
-                  <action.icon className="h-3.5 w-3.5 mr-1.5" />
-                  {action.name}
-                </Link>
-              </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Select value={selectedBaseId} onValueChange={changeBase}>
+              <SelectTrigger className="h-10 min-w-52 border-white/15 bg-white/5 text-white [&_svg]:text-slate-400"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value={ALL_BASES}>汇总全部基地</SelectItem>{options.bases.map((base) => <SelectItem key={base.id} value={base.id}>{base.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button asChild className="h-10 bg-amber-400 text-slate-950 hover:bg-amber-300">
+              <Link href="/dashboard/base/metrics">{canSubmit ? "经营数据填报" : "查看经营数据"}<ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </div>
+        <div className="relative mt-7 flex flex-wrap gap-x-6 gap-y-2 border-t border-white/10 pt-5 text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-cyan-300" />统计范围：{scopeName}</span>
+          <span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5 text-cyan-300" />纳入企业：{scopedEnterprises.length} 家</span>
+          <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />数据口径：审核确认</span>
+        </div>
+      </section>
+
+      {loadError && (
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{loadError}</span><Button size="sm" variant="outline" onClick={() => void loadOverview(selectedBaseId)}><RefreshCw className="mr-2 h-3.5 w-3.5" />重试</Button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-slate-400" /></div>
+      ) : (
+        <>
+          <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
+            {[
+              { label: "税收合计", value: `${formatMoney(totals.taxTotal)} 万`, detail: `地方留成 ${formatMoney(totals.taxLocal)} 万`, icon: Landmark, tone: "bg-amber-50 text-amber-700" },
+              { label: "销售收入", value: `${formatMoney(totals.revenue)} 万`, detail: `${summary.year} 年审核口径`, icon: TrendingUp, tone: "bg-cyan-50 text-cyan-700" },
+              { label: "地方留成占比", value: `${localTaxRate}%`, detail: "地方留成 / 税收合计", icon: CircleDollarSign, tone: "bg-orange-50 text-orange-700" },
+              { label: "带动就业", value: `${Number(totals.employees || 0).toLocaleString("zh-CN")} 人`, detail: `本地就业 ${Number(totals.localEmployees || 0).toLocaleString("zh-CN")} 人`, icon: UsersRound, tone: "bg-emerald-50 text-emerald-700" },
+              { label: "固定资产投资", value: `${formatMoney(totals.investment)} 万`, detail: `${summary.year} 年累计`, icon: BriefcaseBusiness, tone: "bg-violet-50 text-violet-700" },
+              { label: "纳入统计企业", value: `${Number(totals.enterpriseCount || 0)} 家`, detail: `累计确认 ${Number(totals.reportCount || 0)} 条月报`, icon: Building2, tone: "bg-slate-100 text-slate-700" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                <div className={cn("mb-4 flex h-9 w-9 items-center justify-center rounded-xl", item.tone)}><item.icon className="h-4 w-4" /></div>
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-slate-950">{item.value}</p>
+                <p className="mt-2 text-[11px] text-slate-400">{item.detail}</p>
+              </div>
             ))}
-          </div>
-        </div>
+          </section>
 
-        {/* 功能入口卡片 */}
-        <div className="grid grid-cols-6 gap-4">
-          {FEATURE_MODULES.map((module) => (
-            <Link
-              key={module.id}
-              href={module.href}
-              className="group relative bg-white rounded-xl border border-slate-200/60 p-4 hover:shadow-lg hover:border-amber-200 transition-all duration-300"
-            >
-              {/* 角标 */}
-              {module.badge && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 text-[10px] font-medium bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm">
-                  {module.badge}
-                </span>
+          <section className="grid gap-5 xl:grid-cols-12">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-8">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div><h2 className="font-semibold text-slate-950">月度经营走势</h2><p className="mt-1 text-xs text-slate-400">销售收入与税收合计，金额单位：万元</p></div>
+                <div className="flex gap-4 text-xs text-slate-500"><span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-cyan-500" />销售收入</span><span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-amber-400" />税收合计</span></div>
+              </div>
+              {summary.monthly.length === 0 ? (
+                <div className="flex h-72 flex-col items-center justify-center text-center"><BarChart3 className="h-10 w-10 text-slate-300" /><p className="mt-4 font-medium text-slate-600">暂无已确认的月度经营数据</p><p className="mt-1 text-sm text-slate-400">完成填报和审核后，趋势图会自动生成。</p></div>
+              ) : (
+                <div className="mt-8 flex h-72 items-end gap-3 overflow-x-auto pb-2 sm:gap-5">
+                  {summary.monthly.map((item) => {
+                    const revenueHeight = Math.max((Number(item.revenue) / chartMax) * 210, 4);
+                    const taxHeight = Math.max((Number(item.taxTotal) / chartMax) * 210, 4);
+                    return (
+                      <div key={item.period} className="flex min-w-14 flex-1 flex-col items-center">
+                        <div className="flex h-[220px] items-end gap-1.5">
+                          <div title={`销售收入 ${formatMoney(item.revenue)} 万`} className="w-4 rounded-t-md bg-cyan-500/90 sm:w-6" style={{ height: revenueHeight }} />
+                          <div title={`税收 ${formatMoney(item.taxTotal)} 万`} className="w-4 rounded-t-md bg-amber-400 sm:w-6" style={{ height: taxHeight }} />
+                        </div>
+                        <span className="mt-3 text-[11px] text-slate-400">{Number(item.period.slice(5, 7))}月</span>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
+            </div>
 
-              {/* 图标 */}
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-gradient-to-br text-white shadow-lg",
-                  module.gradient
-                )}
-              >
-                <module.icon className="h-6 w-6" />
+            <div className="space-y-5 xl:col-span-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <div className="flex items-center justify-between"><div><h2 className="font-semibold text-slate-950">{CURRENT_PERIOD.replace("-", "年")}月报送进度</h2><p className="mt-1 text-xs text-slate-400">按当前基地范围统计</p></div><span className="text-2xl font-semibold text-slate-950">{reportProgress.rate}%</span></div>
+                <Progress value={reportProgress.rate} className="mt-5 h-2 bg-slate-100" />
+                <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
+                  <ProgressCell label="已确认" value={reportProgress.confirmed} tone="text-emerald-700 bg-emerald-50" />
+                  <ProgressCell label="待审核" value={reportProgress.submitted} tone="text-amber-700 bg-amber-50" />
+                  <ProgressCell label="未报送" value={reportProgress.missing} tone="text-slate-700 bg-slate-50" />
+                  <ProgressCell label="已驳回" value={reportProgress.rejected} tone="text-red-700 bg-red-50" />
+                </div>
+                {canReview && reportProgress.submitted > 0 && <Button asChild variant="outline" className="mt-4 w-full"><Link href="/dashboard/base/metrics">处理待审核数据<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>}
               </div>
 
-              {/* 标题 */}
-              <h3 className="font-semibold text-slate-900 mb-1 group-hover:text-amber-600 transition-colors">
-                {module.name}
-              </h3>
-
-              {/* 描述 */}
-              <p className="text-xs text-slate-500 mb-2">{module.description}</p>
-
-              {/* 统计数据 */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-600">{module.stats}</span>
-                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all" />
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-emerald-600" /><h2 className="font-semibold text-slate-950">就业带动情况</h2></div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-400">就业人数</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{Number(totals.employees || 0).toLocaleString("zh-CN")}</p><p className="text-[11px] text-slate-400">人</p></div>
+                  <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs text-emerald-600">本地就业</p><p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-900">{Number(totals.localEmployees || 0).toLocaleString("zh-CN")}</p><p className="text-[11px] text-emerald-600">人</p></div>
+                </div>
+                <div className="mt-5"><div className="mb-2 flex items-center justify-between text-xs"><span className="text-slate-500">本地用工占比</span><span className="font-semibold text-slate-700">{localEmploymentRate}%</span></div><Progress value={localEmploymentRate} className="h-2 bg-slate-100" /></div>
               </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* 数据概览 */}
-        <div className="grid grid-cols-4 gap-4">
-          {MY_WORK_STATS.map((stat, index) => (
-            <Card key={index} className="border-slate-200/60 bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-slate-500">{stat.title}</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
-                    <p
-                      className={cn(
-                        "text-xs mt-1",
-                        stat.trend === "up" ? "text-emerald-600" : stat.trend === "down" ? "text-red-600" : "text-slate-500"
-                      )}
-                    >
-                      {stat.change}
-                    </p>
-                  </div>
-                  <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", stat.bgColor)}>
-                    <stat.icon className={cn("h-5 w-5", stat.color)} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* 主要内容区 */}
-        <div className="grid grid-cols-3 gap-6">
-          {/* 待处理工单 */}
-          <Card className="col-span-2 border-slate-200/60 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                  <CardTitle className="text-base">待处理工单</CardTitle>
-                </div>
-                <Button variant="link" className="text-amber-600 text-sm p-0 h-auto" asChild>
-                  <Link href="/dashboard/work-orders">
-                    查看全部
-                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {PENDING_TASKS.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors cursor-pointer"
-                  >
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                        task.priority === "high"
-                          ? "bg-red-100"
-                          : task.priority === "medium"
-                          ? "bg-amber-100"
-                          : "bg-blue-100"
-                      )}
-                    >
-                      <FileText
-                        className={cn(
-                          "h-4 w-4",
-                          task.priority === "high"
-                            ? "text-red-500"
-                            : task.priority === "medium"
-                            ? "text-amber-500"
-                            : "text-blue-500"
-                        )}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-slate-900 text-sm">{task.title}</p>
-                        <span className="text-sm font-medium text-slate-600">¥{task.amount}</span>
-                      </div>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <p className="text-xs text-slate-500">{task.customer}</p>
-                        <span
-                          className={cn(
-                            "text-xs font-medium",
-                            task.priority === "high"
-                              ? "text-red-500"
-                              : task.priority === "medium"
-                              ? "text-amber-500"
-                              : "text-blue-500"
-                          )}
-                        >
-                          {task.deadline}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 右侧区域 */}
-          <div className="space-y-6">
-            {/* 本周目标 */}
-            <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-amber-500" />
-                  <CardTitle className="text-base">本周目标</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {WEEKLY_TARGETS.map((target, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm text-slate-600">{target.name}</span>
-                      <span className="text-xs text-slate-500">
-                        {target.current}/{target.target}
-                      </span>
-                    </div>
-                    <Progress
-                      value={(target.current / target.target) * 100}
-                      className="h-2"
-                    />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* 最近收入 */}
-            <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-amber-500" />
-                  <CardTitle className="text-base">最近收入</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {RECENT_INCOME.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{item.customer}</p>
-                        <p className="text-xs text-slate-500">{item.service}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-emerald-600">+¥{item.amount}</p>
-                        <p className="text-xs text-slate-400">{item.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
+}
+
+function ProgressCell({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return <div className={cn("rounded-xl p-3", tone)}><p className="text-xs opacity-75">{label}</p><p className="mt-1 text-xl font-semibold tabular-nums">{value}<span className="ml-1 text-xs font-normal">家</span></p></div>;
 }

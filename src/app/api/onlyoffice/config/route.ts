@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
 const ONLYOFFICE_URL = process.env.ONLYOFFICE_URL || "http://localhost:8080";
+const ONLYOFFICE_PUBLIC_URL = process.env.NEXT_PUBLIC_ONLYOFFICE_URL || ONLYOFFICE_URL;
 const JWT_SECRET = process.env.ONLYOFFICE_JWT_SECRET || "";
 const JWT_ENABLED = process.env.ONLYOFFICE_JWT_ENABLED === "true";
 
@@ -94,17 +95,17 @@ export async function POST(request: NextRequest) {
     const documentKey = `${documentId}-${Date.now()}`;
 
     // 构建公网基础 URL
-    const rawDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || "http://localhost:5000";
+    const rawDomain = process.env.APP_URL || "http://localhost:5000";
     const publicUrl = rawDomain.startsWith("http") ? rawDomain : `https://${rawDomain}`;
 
     // 如果有 storagePath，优先通过下载代理（确保 URL 不会过期）
     // COS 签名 URL 有过期时间，通过代理实时获取最新签名 URL
-    // 内网地址（Coze S3 代理、localhost）也必须走代理
+    // 本机地址必须走代理，确保 OnlyOffice 服务能够访问
     let proxyDocumentUrl = documentUrl;
     if (storagePath) {
       // 有 storageKey，使用下载代理获取实时签名 URL
       proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?storagePath=${encodeURIComponent(storagePath)}`;
-    } else if (documentUrl.includes("integration.coze.cn") || documentUrl.includes("localhost") || documentUrl.includes("127.0.0.1")) {
+    } else if (documentUrl.includes("localhost") || documentUrl.includes("127.0.0.1")) {
       // 内网地址，使用下载代理
       if (templateId) {
         proxyDocumentUrl = `${publicUrl}/api/onlyoffice/download?templateId=${encodeURIComponent(templateId)}`;
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       config,
-      serverUrl: ONLYOFFICE_URL,
+      serverUrl: ONLYOFFICE_PUBLIC_URL,
     });
   } catch (error) {
     console.error("OnlyOffice config error:", error);

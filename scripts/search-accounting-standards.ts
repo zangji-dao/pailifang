@@ -2,7 +2,7 @@
  * 搜索财政部最新会计准则科目表
  */
 
-import { SearchClient, Config } from "coze-coding-dev-sdk";
+import { SearchClient, Config } from "./lib/web-clients";
 
 async function searchAccountingStandards() {
   const config = new Config();

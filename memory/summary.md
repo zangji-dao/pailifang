@@ -6,7 +6,7 @@
 
 ## 项目概览
 - 概述: 企业入驻管理系统，支持企业从申请到入驻的完整流程管理
-- 技术栈: Next.js 16, React 19, TypeScript 5, shadcn/ui, Tailwind CSS 4, Supabase
+- 技术栈: Next.js 16, React 19, TypeScript 5, shadcn/ui, Tailwind CSS 4, PostgreSQL
 - 编码规范: Airbnb
 
 ## 关键决策

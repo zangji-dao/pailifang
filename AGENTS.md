@@ -1,314 +1,46 @@
-# 企业入驻管理系统
+# Π立方企业服务中心
 
-## 项目概览
+## 技术架构
 
-企业入驻管理系统，支持企业从申请到入驻的完整流程管理。系统支持两种企业类型：
-- **入驻企业 (tenant)**：在基地内注册的企业，需要工位号、地址分配、工商注册、合同签订、费用缴纳等完整流程
-- **服务企业 (non_tenant)**：仅享受服务的企业，流程简化，支持状态循环
+- 前端：Next.js 16、React 19、TypeScript、Tailwind CSS 4。
+- 后端：Express、TypeScript、Drizzle ORM。
+- 数据库：本地 PostgreSQL 14，PostgREST 提供兼容接口。
+- 文件存储：生产环境使用腾讯云 COS，本地环境使用 MinIO。
+- 文档服务：OnlyOffice Document Server。
 
-## 技术栈
+## 端口约定
 
-- **框架**: Next.js 16 (App Router)
-- **前端**: React 19, TypeScript 5
-- **UI组件**: shadcn/ui (基于 Radix UI)
-- **样式**: Tailwind CSS 4
-- **数据库**: Supabase (PostgreSQL)
-- **编码规范**: Airbnb
+- 本地前端：`5100`。
+- 本地后端：`4101`。
+- 生产前端：`4000`。
+- 生产后端：`4001`。
+- `5000/5001` 属于 CHEMICALOOP，不得占用。
 
-## 核心业务逻辑
+## 开发与验证
 
-### 入驻企业流程状态
+- 使用 Node.js 20+ 和 pnpm 11.19+。
+- 安装依赖：`pnpm install --frozen-lockfile`。
+- 本地开发：`pnpm dev`。
+- 静态检查：`pnpm validate`。
+- 完整构建：`pnpm build`。
 
-| 状态 | 标签 | 说明 |
-|------|------|------|
-| `pending_address` | 待分配地址 | 新申请，等待分配工位号 |
-| `pending_registration` | 待工商注册 | 已分配地址，等待上传营业执照 |
-| `pending_contract` | 待签合同 | 工商注册完成，等待签订合同 |
-| `pending_payment` | 待缴费 | 合同已签，等待缴纳费用 |
-| `active` | 入驻中 | 已完成入驻，正常运营 |
+## 数据模型
 
-**状态流转**：
-- 入驻中 → 转为服务企业（点击"转为服务企业"按钮）
+- 基地包含多个物业。
+- 物业以独立水表、电表等缴费主体划分。
+- 物理空间属于物业，工位属于物理空间。
+- 入驻企业注册在基地内并分配工位；服务企业不在基地注册，但可以使用基地服务。
+- 运营机构先独立录入，创建基地时从已有机构中选择，同一机构可以运营多个基地。
 
-**注意**：入驻企业迁出时，直接转为服务企业，状态变为"已建交"，不再有"已迁出"和"已完成"状态。
+## 安全规则
 
-### 服务企业流程状态
+- 不得提交 `.env*` 实际配置、`.secrets/`、私钥、访问令牌、数据库密码或运行日志。
+- 示例环境文件只能使用明显占位值。
+- 不得在代码、文档、提交信息或日志中写入真实凭证。
 
-| 状态 | 标签 | 说明 |
-|------|------|------|
-| `new` | 洽谈中 | 初次接触，企业信息未填完 |
-| `established` | 已建交 | 企业信息填写完成，等待签订合同 |
-| `active` | 服务中 | 有正在执行的合同 |
+## 部署规则
 
-**状态流转图**：
-```
-洽谈中 ──填写完信息──→ 已建交 ──关联有效合同──→ 服务中
-                         ↑                      │
-                         └───所有合同到期/执行完──┘
-```
-
-**状态流转由合同驱动**：
-- 已建交 → 服务中：合同管理中录入合同并关联该企业
-- 服务中 → 已建交：所有合同都到期/执行完后自动变回
-- 一个企业可以有多个合同，只要有合同还在执行中，状态就是"服务中"
-
-**操作按钮对应**：
-- 洽谈中：显示「继续注册」（填写企业信息）
-- 已建交：显示提示"请到合同管理创建合同"
-- 服务中：显示提示"合同执行中"
-
-### 工位号编码规则
-
-工位号格式：`PI` + 基地码(2位) + 随机4位数字
-- 示例：`PI012305`
-- 工位号不回收，企业退出时不释放
-
-## 目录结构
-
-```
-src/
-├── app/
-│   ├── api/                    # API路由
-│   │   ├── enterprises/        # 企业CRUD接口
-│   │   ├── registration-numbers/ # 工位号管理接口
-│   │   ├── industries/         # 行业管理接口
-│   │   └── storage/            # 文件上传接口
-│   ├── dashboard/
-│   │   ├── base/tenants/       # 企业管理页面
-│   │   │   ├── page.tsx        # 企业列表页
-│   │   │   ├── create/         # 新建企业流程
-│   │   │   └── [id]/           # 企业详情页
-│   │   └── _components/        # 共享组件
-│   └── ...
-├── components/
-│   └── ui/                     # shadcn/ui组件
-├── hooks/                      # 自定义Hooks
-└── lib/                        # 工具库
-
-```
-
-## 开发命令
-
-```bash
-# 安装依赖
-pnpm install
-
-# 开发模式（端口5000，支持热更新）
-pnpm run dev
-
-# 类型检查
-npx tsc --noEmit
-
-# 构建生产版本
-pnpm run build
-
-# 启动生产服务
-pnpm run start
-```
-
-## 关键组件
-
-### 企业列表页 (`src/app/dashboard/base/tenants/page.tsx`)
-- 支持Tab切换（入驻企业/服务企业）
-- 状态卡片统计
-- 搜索和筛选功能
-- 快速操作按钮（继续注册、开始/终止服务、查看、编辑）
-
-### 企业详情页 (`src/app/dashboard/base/tenants/[id]/page.tsx`)
-- 企业基本信息展示
-- 状态流转操作（服务企业）
-- 编辑、迁出功能
-
-### 新建企业流程 (`src/app/dashboard/base/tenants/create/`)
-- 多步骤表单
-- 根据企业类型动态调整步骤
-- 营业执照OCR识别
-- 工位号自动分配
-
-## API接口
-
-### 企业管理
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/enterprises` | 获取企业列表 |
-| POST | `/api/enterprises` | 创建企业 |
-| GET | `/api/enterprises/[id]` | 获取企业详情 |
-| PUT | `/api/enterprises/[id]` | 更新企业信息 |
-| DELETE | `/api/enterprises/[id]` | 删除企业 |
-
-### 工位号管理
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/registration-numbers` | 获取工位号列表 |
-| POST | `/api/registration-numbers` | 创建工位号 |
-| PUT | `/api/registration-numbers/[id]` | 更新工位号状态 |
-
-## 注意事项
-
-1. **状态一致性**：服务企业创建后自动设置为 `established`（已建交）状态
-2. **状态循环**：服务企业支持"已建交 ↔ 服务中"的状态循环
-3. **工位号管理**：工位号不回收，企业退出时不释放
-4. **企业名称唯一性**：企业名称不能重复（排除已终止的企业）
-
-## 合同管理
-
-### 合同模板
-
-合同模板支持动态字段和PDF导出功能，主要特性：
-- 动态字段填充：企业名称、地址、联系方式等自动从企业信息填充
-- 专属封面页：带企业编码和签订日期
-- 签章区域：支持甲乙双方签章
-- 智能分页：自动保护表格和重要内容不被截断
-
-### PDF导出 (`src/lib/pdf-export.ts`)
-
-PDF导出采用html2canvas + jsPDF方案：
-1. 在隐藏的iframe中渲染合同HTML
-2. 使用html2canvas转换为图片
-3. 智能分页算法处理表格和重要内容
-4. 通过jsPDF生成最终PDF文件
-
-**分页保护机制**：
-- `.no-break`：保护重要内容块不被分页截断
-- `.simple-table`：保护表格完整性
-
-### 合同状态
-
-| 状态 | 标签 | 说明 |
-|------|------|------|
-| `draft` | 草稿 | 合同创建中，未生效 |
-| `active` | 执行中 | 合同正在执行 |
-| `completed` | 已完成 | 合同执行完毕 |
-| `terminated` | 已终止 | 合同提前终止 |
-
-### Word 导出
-
-Word 导出采用 LibreOffice 直接转换方案（HTML → DOCX），确保样式完整保留。
-
-**核心处理流程**：
-1. 从 draft_data.editedHtml 获取编辑后的 HTML
-2. 处理变量替换（`processVariables` 函数）
-3. 清理内联字体样式，统一字体和字号（`normalizeFontStyles` 函数）
-4. 合并主文档和附件 HTML（`mergeHtmlParts` 函数）
-5. 通过 LibreOffice 转换为 DOCX
-
-**样式处理规范**：
-- 移除内联 `font-family`、`font-size` 样式，使用全局宋体
-- **保留用户设置的 `line-height` 样式**
-- 全局默认：宋体 12pt、1.5 倍行高
-- 标题分级：h1=16pt, h2=14pt, h3=12pt
-
-**性能优化**：
-- 模块加载时预热 LibreOffice
-- 首次导出约 25-35 秒，后续约 3-5 秒
-
-**空段落清理**：
-- 清理带 `page-break-before: always` 的空分页段落
-- 清理文档末尾连续超过5个的空段落
-
-### 公文格式预设
-
-编辑器工具栏提供公文格式预设，一键应用完整样式：
-
-| 格式名称 | 字体 | 字号 | 行距 | 对齐 | 说明 |
-|---------|------|------|------|------|------|
-| 公文标题 | 黑体 | 22pt | 1.5倍 | 居中 | 适用于合同标题 |
-| 一级标题 | 黑体 | 16pt | 1.5倍 | 左对齐 | 加粗 |
-| 二级标题 | 黑体 | 14pt | 1.5倍 | 左对齐 | 加粗 |
-| 三级标题 | 黑体 | 12pt | 1.5倍 | 左对齐 | 加粗 |
-| 正文(三号) | 宋体 | 16pt | 1.5倍 | 两端对齐 | 适用于正文 |
-| 正文(小四) | 宋体 | 12pt | 1.5倍 | 两端对齐 | 适用于正文 |
-| 签章区 | 宋体 | 12pt | 1.5倍 | 右对齐 | 适用于签章区域 |
-
-**使用方法**：
-1. 在编辑器中选中要设置格式的段落
-2. 点击工具栏的"公文格式"下拉框
-3. 选择对应的格式，自动应用字体、字号、行距、对齐等样式
-
-### 合同模板调试工具
-
-**调试 API**：`GET /api/contract-templates/debug/[id]`
-- 查看模板详细信息
-- 获取 HTML 内容片段
-- 搜索签章区域匹配
-
-**调试页面**：`/dashboard/base/contracts/templates/debug`
-- 输入模板 ID 查询模板数据
-- 导出处理后的 HTML 进行对比
-
-## OnlyOffice 集成
-
-### 概述
-
-系统集成了 OnlyOffice Document Server，用于合同模板的在线编辑。OnlyOffice 提供了完整的 Word 编辑功能，支持中文排版和公文格式。
-
-### 部署要求
-
-详见 [OnlyOffice 部署指南](docs/ONLYOFFICE_DEPLOYMENT.md)
-
-**关键环境变量**：
-- `ONLYOFFICE_URL`: OnlyOffice 服务地址
-- `ONLYOFFICE_JWT_ENABLED`: 是否启用 JWT 认证
-- `ONLYOFFICE_JWT_SECRET`: JWT 密钥
-
-### 核心文件
-
-| 文件 | 说明 |
-|------|------|
-| `src/components/OnlyOfficeEditor.tsx` | OnlyOffice 编辑器组件 |
-| `src/app/api/onlyoffice/config/route.ts` | 编辑器配置 API |
-| `src/app/api/onlyoffice/callback/route.ts` | 文档保存回调 API |
-| `src/app/api/onlyoffice/upload/route.ts` | 文件上传 API |
-| `public/plugins/variable-binding/` | 变量绑定插件 |
-
-### 测试页面
-
-访问 `/dashboard/base/contracts/templates/new/onlyoffice-test` 测试 OnlyOffice 集成。
-
-### 新建模板流程
-
-系统提供两种模板创建方式：
-
-**方式一：OnlyOffice 编辑器（推荐）**
-- 路径：`/dashboard/base/contracts/templates/new-onlyoffice`
-- 流程：基本信息 → 上传文档 → OnlyOffice 编辑 → 完成
-- 特点：原生 Word 编辑体验，支持内容控件绑定变量
-
-**方式二：传统编辑器**
-- 路径：`/dashboard/base/contracts/templates/new`
-- 流程：基本信息 → 上传文档 → 解析文档 → 绑定变量 → 完成
-- 特点：基于 HTML 编辑，需要解析 Word 文档
-
-### 变量绑定插件
-
-OnlyOffice 插件用于在文档中插入变量标记：
-- 使用内容控件（Content Controls）标记变量位置
-- 支持系统变量和自定义变量
-- 插件部署路径：`/var/www/onlyoffice/documentserver/sdkjs-plugins/variable-binding/`
-
-### SDK 重定向机制
-
-由于沙箱环境无法直接访问 OnlyOffice 云服务器，SDK 使用重定向机制：
-
-1. **本地 SDK**：将 OnlyOffice SDK (`public/onlyoffice-sdk/`) 部署到沙箱
-2. **云服务器**：OnlyOffice Document Server 部署在云服务器，通过 Cloudflare Tunnel 提供 HTTPS 访问
-3. **重定向逻辑**：修改 SDK 的 `extendAppPath` 函数，将本地 SDK 请求重定向到云服务器
-
-**修改的 SDK 文件**：
-```
-public/onlyoffice-sdk/9.3.1-d4a23844f4ad8b02d407339fff4a8e3c/web-apps/apps/api/documents/api.js
-```
-
-**云服务器地址**：`https://journal-bowl-novelty-worthy.trycloudflare.com`
-- 查看签章区域匹配结果
-
-**调试模式导出**：
-在 Word 导出请求中添加 `debug: true` 参数，返回处理后的 HTML 而非 Word 文件：
-```json
-{
-  "templateId": "xxx",
-  "debug": true
-}
-```
+- GitHub `main` 是唯一代码源，禁止把服务器上的临时修改作为长期版本。
+- 部署前先备份环境文件和数据库，再执行 `git pull --ff-only`。
+- 必须先通过 `pnpm ts-check` 和 `pnpm build`，再重载 PM2；`pnpm validate` 还包含存量 ESLint 规则检查，应逐步清理。
+- 生产环境由 PM2 管理 `pi-frontend` 与 `pi-backend`，Nginx 代理到 `4000/4001`。

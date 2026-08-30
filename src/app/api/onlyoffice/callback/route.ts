@@ -13,7 +13,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/database/server";
 
 const JWT_SECRET = process.env.ONLYOFFICE_JWT_SECRET || "";
 const JWT_ENABLED = process.env.ONLYOFFICE_JWT_ENABLED === "true";

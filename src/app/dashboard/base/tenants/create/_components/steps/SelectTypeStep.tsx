@@ -76,7 +76,7 @@ export function SelectTypeStep({
               </div>
               <h3 className="text-lg font-semibold mb-2">入驻企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                在园区内分配工位的企业
+                注册在基地并分配物理工位的企业
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• 分配工位号</p>
@@ -99,12 +99,12 @@ export function SelectTypeStep({
               </div>
               <h3 className="text-lg font-semibold mb-2">服务企业</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                不在园区入驻，仅使用园区服务
+                不在基地注册，但使用基地相关服务
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• 无需分配工位</p>
-                <p>• 上传产权证明</p>
-                <p>• 待工商变更</p>
+                <p>• 选择主要服务基地</p>
+                <p>• 可后续增加其他服务基地</p>
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, integer, json, boolean, unique, foreignKey, decimal, date, index, serial } from "drizzle-orm/pg-core"
+import { pgTable, varchar, text, timestamp, integer, json, jsonb, boolean, unique, foreignKey, decimal, date, index, serial } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -26,6 +26,7 @@ export const healthCheck = pgTable("health_check", {
 export const customers = pgTable("customers", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
+	enterpriseCode: varchar("enterprise_code", { length: 80 }),
 	contactPerson: varchar("contact_person", { length: 128 }).notNull(),
 	contactPhone: varchar("contact_phone", { length: 20 }).notNull(),
 	email: varchar({ length: 255 }),
@@ -115,6 +116,159 @@ export const users = pgTable("users", {
 	index("users_email_idx").on(table.email),
 	index("users_role_idx").on(table.role),
 	unique("users_email_unique").on(table.email),
+]);
+
+export const organizations = pgTable("organizations", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	type: varchar({ length: 30 }).notNull(),
+	status: varchar({ length: 20 }).default('active').notNull(),
+	metadata: jsonb().default(sql`'{}'::jsonb`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("organizations_type_status_idx").on(table.type, table.status),
+	unique("organizations_code_key").on(table.code),
+]);
+
+export const organizationMembers = pgTable("organization_members", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+	status: varchar({ length: 20 }).default('active').notNull(),
+	isOwner: boolean("is_owner").default(false).notNull(),
+	invitedBy: varchar("invited_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	joinedAt: timestamp("joined_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("organization_members_user_status_idx").on(table.userId, table.status),
+	unique("organization_members_org_user_unique").on(table.organizationId, table.userId),
+]);
+
+export const accountInvitations = pgTable("account_invitations", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	email: varchar({ length: 255 }).notNull(),
+	name: varchar({ length: 128 }).notNull(),
+	phone: varchar({ length: 20 }),
+	roleCodes: jsonb("role_codes").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+	tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	expiresAt: timestamp("expires_at").notNull(),
+	invitedBy: varchar("invited_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	acceptedUserId: varchar("accepted_user_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	acceptedAt: timestamp("accepted_at"),
+	revokedAt: timestamp("revoked_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("account_invitations_org_status_idx").on(table.organizationId, table.status, table.createdAt),
+	unique("account_invitations_token_hash_key").on(table.tokenHash),
+]);
+
+export const roles = pgTable("roles", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	code: varchar({ length: 80 }).notNull(),
+	name: varchar({ length: 120 }).notNull(),
+	organizationType: varchar("organization_type", { length: 30 }),
+	description: text(),
+	isSystem: boolean("is_system").default(true).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	unique("roles_code_key").on(table.code),
+]);
+
+export const permissions = pgTable("permissions", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	resource: varchar({ length: 60 }).notNull(),
+	action: varchar({ length: 40 }).notNull(),
+	description: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	unique("permissions_code_key").on(table.code),
+]);
+
+export const rolePermissions = pgTable("role_permissions", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	roleId: varchar("role_id", { length: 36 }).notNull().references(() => roles.id, { onDelete: 'cascade' }),
+	permissionId: varchar("permission_id", { length: 36 }).notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+}, (table) => [
+	unique("role_permissions_unique").on(table.roleId, table.permissionId),
+]);
+
+export const memberRoles = pgTable("member_roles", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	memberId: varchar("member_id", { length: 36 }).notNull().references(() => organizationMembers.id, { onDelete: 'cascade' }),
+	roleId: varchar("role_id", { length: 36 }).notNull().references(() => roles.id, { onDelete: 'cascade' }),
+	scopeType: varchar("scope_type", { length: 30 }).default('organization').notNull(),
+	scopeId: varchar("scope_id", { length: 36 }),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("member_roles_member_idx").on(table.memberId),
+	unique("member_roles_unique").on(table.memberId, table.roleId, table.scopeType, table.scopeId),
+]);
+
+export const serviceEngagements = pgTable("service_engagements", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	enterpriseOrganizationId: varchar("enterprise_organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	providerOrganizationId: varchar("provider_organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	startsOn: date("starts_on"),
+	endsOn: date("ends_on"),
+	createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	approvedBy: varchar("approved_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	metadata: jsonb().default(sql`'{}'::jsonb`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("service_engagements_provider_status_idx").on(table.providerOrganizationId, table.status),
+	index("service_engagements_enterprise_status_idx").on(table.enterpriseOrganizationId, table.status),
+]);
+
+export const serviceGrants = pgTable("service_grants", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	engagementId: varchar("engagement_id", { length: 36 }).notNull().references(() => serviceEngagements.id, { onDelete: 'cascade' }),
+	appCode: varchar("app_code", { length: 60 }).notNull(),
+	permissionCodes: jsonb("permission_codes").default(sql`'[]'::jsonb`).notNull(),
+	scopeType: varchar("scope_type", { length: 30 }).default('enterprise').notNull(),
+	scopeId: varchar("scope_id", { length: 36 }),
+	canExport: boolean("can_export").default(false).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	unique("service_grants_unique").on(table.engagementId, table.appCode, table.scopeType, table.scopeId),
+]);
+
+export const appSubscriptions = pgTable("app_subscriptions", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	appCode: varchar("app_code", { length: 60 }).notNull(),
+	planCode: varchar("plan_code", { length: 60 }).default('standard').notNull(),
+	status: varchar({ length: 20 }).default('active').notNull(),
+	startsOn: date("starts_on").default(sql`CURRENT_DATE`).notNull(),
+	endsOn: date("ends_on"),
+	settings: jsonb().default(sql`'{}'::jsonb`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	unique("app_subscriptions_unique").on(table.organizationId, table.appCode),
+]);
+
+export const authSessions = pgTable("auth_sessions", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+	tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+	activeOrganizationId: varchar("active_organization_id", { length: 36 }).references(() => organizations.id, { onDelete: 'set null' }),
+	expiresAt: timestamp("expires_at").notNull(),
+	lastSeenAt: timestamp("last_seen_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	revokedAt: timestamp("revoked_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	unique("auth_sessions_token_hash_key").on(table.tokenHash),
 ]);
 
 export const workOrders = pgTable("work_orders", {
@@ -292,6 +446,7 @@ export const exchangeRateHistory = pgTable("exchange_rate_history", {
 // 基地表
 export const bases = pgTable("bases", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id, { onDelete: 'set null' }),
 	name: varchar({ length: 255 }).notNull(),
 	address: text(),
 	addressTemplate: text("address_template"),
@@ -302,20 +457,34 @@ export const bases = pgTable("bases", {
 	managementCompanyLegalPerson: varchar("management_company_legal_person", { length: 100 }),
 	managementCompanyAddress: varchar("management_company_address", { length: 500 }),
 	managementCompanyPhone: varchar("management_company_phone", { length: 50 }),
+	propertyFeeMode: varchar("property_fee_mode", { length: 20 }).default('charged').notNull(),
+	propertyFeeBillingCycle: varchar("property_fee_billing_cycle", { length: 20 }).default('annual').notNull(),
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at"),
 }, (table) => [
 	index("bases_name_idx").on(table.name),
+	index("bases_organization_id_idx").on(table.organizationId),
 	index("bases_status_idx").on(table.status),
 ]);
 
 // 企业表
 export const enterprises = pgTable("enterprises", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id, { onDelete: 'set null' }),
+	baseId: varchar("base_id", { length: 36 }).references(() => bases.id, { onDelete: 'set null' }),
 	name: varchar({ length: 255 }).notNull(),
 	creditCode: varchar("credit_code", { length: 50 }),
 	legalPerson: varchar("legal_person", { length: 100 }),
 	phone: varchar({ length: 20 }),
+	adminEmail: varchar("admin_email", { length: 255 }),
+	adminName: varchar("admin_name", { length: 128 }),
+	adminPhone: varchar("admin_phone", { length: 20 }),
+	processStatus: varchar("process_status", { length: 30 }).default('new').notNull(),
+	businessScope: text("business_scope"),
+	spaceId: varchar("space_id", { length: 36 }),
+	registrationNumber: varchar("registration_number", { length: 100 }),
+	registeredCapital: varchar("registered_capital", { length: 100 }),
+	establishDate: date("establish_date"),
 	registeredAddress: varchar("registered_address", { length: 500 }),
 	businessAddress: varchar("business_address", { length: 500 }),
 	industry: varchar({ length: 100 }),
@@ -326,9 +495,88 @@ export const enterprises = pgTable("enterprises", {
 	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at"),
 }, (table) => [
+	index("enterprises_base_id_idx").on(table.baseId),
 	index("enterprises_credit_code_idx").on(table.creditCode),
 	index("enterprises_name_idx").on(table.name),
+	index("enterprises_organization_id_idx").on(table.organizationId),
 	index("enterprises_type_idx").on(table.type),
+]);
+
+export const enterpriseBaseRelations = pgTable("enterprise_base_relations", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	enterpriseId: varchar("enterprise_id", { length: 36 }).notNull().references(() => enterprises.id, { onDelete: 'cascade' }),
+	baseId: varchar("base_id", { length: 36 }).notNull().references(() => bases.id, { onDelete: 'cascade' }),
+	relationType: varchar("relation_type", { length: 20 }).notNull(),
+	status: varchar({ length: 20 }).default('active').notNull(),
+	source: varchar({ length: 30 }).default('manual').notNull(),
+	startedAt: timestamp("started_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	endedAt: timestamp("ended_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("enterprise_base_relations_base_idx").on(table.baseId, table.relationType, table.status),
+	index("enterprise_base_relations_enterprise_idx").on(table.enterpriseId, table.status),
+]);
+
+export const organizationBases = pgTable("organization_bases", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	baseId: varchar("base_id", { length: 36 }).notNull().references(() => bases.id, { onDelete: 'cascade' }),
+	relationshipType: varchar("relationship_type", { length: 30 }).default('operator').notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	unique("organization_bases_unique").on(table.organizationId, table.baseId, table.relationshipType),
+]);
+
+export const organizationEnterprises = pgTable("organization_enterprises", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+	enterpriseId: varchar("enterprise_id", { length: 36 }).notNull().references(() => enterprises.id, { onDelete: 'cascade' }),
+	relationshipType: varchar("relationship_type", { length: 30 }).default('owner').notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	unique("organization_enterprises_unique").on(table.organizationId, table.enterpriseId, table.relationshipType),
+]);
+
+export const businessMetricReports = pgTable("business_metric_reports", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	enterpriseId: varchar("enterprise_id", { length: 36 }).notNull().references(() => enterprises.id, { onDelete: 'cascade' }),
+	baseId: varchar("base_id", { length: 36 }).notNull().references(() => bases.id, { onDelete: 'cascade' }),
+	reportingPeriod: date("reporting_period").notNull(),
+	revenue: decimal({ precision: 18, scale: 2 }).default('0').notNull(),
+	taxTotal: decimal("tax_total", { precision: 18, scale: 2 }).default('0').notNull(),
+	taxLocal: decimal("tax_local", { precision: 18, scale: 2 }).default('0').notNull(),
+	employees: integer().default(0).notNull(),
+	localEmployees: integer("local_employees").default(0).notNull(),
+	investment: decimal({ precision: 18, scale: 2 }).default('0').notNull(),
+	sourceType: varchar("source_type", { length: 30 }).default('manual').notNull(),
+	status: varchar({ length: 20 }).default('draft').notNull(),
+	submittedBy: varchar("submitted_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	submittedAt: timestamp("submitted_at"),
+	reviewedBy: varchar("reviewed_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	reviewedAt: timestamp("reviewed_at"),
+	reviewComment: text("review_comment"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("business_metric_reports_base_period_idx").on(table.baseId, table.reportingPeriod),
+	index("business_metric_reports_status_idx").on(table.status),
+	unique("business_metric_reports_enterprise_period_unique").on(table.enterpriseId, table.reportingPeriod),
+]);
+
+export const auditLogs = pgTable("audit_logs", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+	organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id, { onDelete: 'set null' }),
+	action: varchar({ length: 100 }).notNull(),
+	resourceType: varchar("resource_type", { length: 80 }).notNull(),
+	resourceId: varchar("resource_id", { length: 36 }),
+	ipAddress: varchar("ip_address", { length: 64 }),
+	userAgent: text("user_agent"),
+	details: jsonb().default(sql`'{}'::jsonb`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("audit_logs_org_created_idx").on(table.organizationId, table.createdAt),
 ]);
 
 // ============================================
@@ -619,25 +867,35 @@ export const meters = pgTable("meters", {
 	baseId: varchar("base_id", { length: 36 }).notNull(),
 	code: varchar({ length: 50 }).notNull(),
 	name: varchar({ length: 255 }),
-	enterpriseId: varchar("enterprise_id", { length: 36 }),
+	propertyOwner: varchar("property_owner", { length: 200 }),
+	managementCompany: varchar("management_company", { length: 200 }),
 	// 电表
+	electricityEnabled: boolean("electricity_enabled").default(false).notNull(),
 	electricityNumber: varchar("electricity_number", { length: 50 }),
+	electricityProvider: varchar("electricity_provider", { length: 255 }),
+	electricityChargeInst: varchar("electricity_charge_inst", { length: 100 }),
 	electricityType: varchar("electricity_type", { length: 20 }).default('base'), // base=基地负责, customer=客户负责
 	electricityBalance: decimal("electricity_balance", { precision: 10, scale: 2 }), // 电表余额（支付宝获取）
 	electricityBalanceUpdatedAt: timestamp("electricity_balance_updated_at"), // 余额更新时间
 	electricityEnterpriseId: varchar("electricity_enterprise_id", { length: 36 }),
 	// 水表
+	waterEnabled: boolean("water_enabled").default(false).notNull(),
 	waterNumber: varchar("water_number", { length: 50 }),
+	waterProvider: varchar("water_provider", { length: 255 }),
+	waterChargeInst: varchar("water_charge_inst", { length: 100 }),
 	waterType: varchar("water_type", { length: 20 }).default('base'),
 	waterBalance: decimal("water_balance", { precision: 10, scale: 2 }), // 水表余额（支付宝获取）
 	waterBalanceUpdatedAt: timestamp("water_balance_updated_at"), // 余额更新时间
 	waterEnterpriseId: varchar("water_enterprise_id", { length: 36 }),
 	// 取暖（人工维护状态）
+	heatingEnabled: boolean("heating_enabled").default(false).notNull(),
 	heatingNumber: varchar("heating_number", { length: 50 }),
 	heatingType: varchar("heating_type", { length: 20 }).default('base'),
 	heatingStatus: varchar("heating_status", { length: 20 }).default('full'), // full=全额, base=基础, arrears=欠费, not_applicable=不涉及
 	heatingEnterpriseId: varchar("heating_enterprise_id", { length: 36 }),
+	propertyFeeEnabled: boolean("property_fee_enabled").default(false).notNull(),
 	// 网络（人工维护状态）
+	networkEnabled: boolean("network_enabled").default(false).notNull(),
 	networkNumber: varchar("network_number", { length: 50 }),
 	networkType: varchar("network_type", { length: 20 }).default('base'),
 	networkStatus: varchar("network_status", { length: 20 }).default('normal'), // normal=正常, arrears=欠费, not_applicable=不涉及
@@ -651,12 +909,42 @@ export const meters = pgTable("meters", {
 }, (table) => [
 	index("meters_base_id_idx").on(table.baseId),
 	index("meters_code_idx").on(table.code),
-	index("meters_enterprise_id_idx").on(table.enterpriseId),
 	foreignKey({
 			columns: [table.baseId],
 			foreignColumns: [bases.id],
 			name: "fk_meters_base"
 		}).onDelete("cascade"),
+]);
+
+// 物业缴费流水表（水、电、暖、网及物业费等）
+export const propertyUtilityPayments = pgTable("property_utility_payments", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	meterId: varchar("meter_id", { length: 36 }).notNull(),
+	utilityType: varchar("utility_type", { length: 30 }).notNull(),
+	billingPeriod: varchar("billing_period", { length: 30 }).notNull(),
+	provider: varchar({ length: 255 }),
+	accountNumber: varchar("account_number", { length: 100 }),
+	chargeType: varchar("charge_type", { length: 30 }),
+	quantity: decimal({ precision: 12, scale: 2 }),
+	quantityUnit: varchar("quantity_unit", { length: 20 }),
+	unitPrice: decimal("unit_price", { precision: 12, scale: 2 }),
+	amount: decimal({ precision: 14, scale: 2 }).default('0').notNull(),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	paidAt: timestamp("paid_at"),
+	paymentMethod: varchar("payment_method", { length: 30 }),
+	receiptNumber: varchar("receipt_number", { length: 100 }),
+	metadata: jsonb().default(sql`'{}'::jsonb`).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("property_utility_payments_meter_idx").on(table.meterId, table.paidAt),
+	index("property_utility_payments_status_idx").on(table.status, table.billingPeriod),
+	unique("property_utility_payments_period_unique").on(table.meterId, table.utilityType, table.billingPeriod),
+	foreignKey({
+		columns: [table.meterId],
+		foreignColumns: [meters.id],
+		name: "property_utility_payments_meter_id_fkey"
+	}).onDelete("cascade"),
 ]);
 
 // 物理空间表
@@ -679,19 +967,22 @@ export const spaces = pgTable("spaces", {
 		}).onDelete("cascade"),
 ]);
 
-// 注册号表
-export const regNumbers = pgTable("reg_numbers", {
-	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	spaceId: varchar("space_id", { length: 36 }).notNull(),
-	code: varchar({ length: 50 }).notNull(),
-	status: varchar({ length: 20 }).default('available').notNull(), // available=可用, allocated=已分配, reserved=预留
+// 工位表（registration_numbers 为唯一工位主数据源）
+export const regNumbers = pgTable("registration_numbers", {
+	id: varchar().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	spaceId: varchar("space_id"),
+	code: varchar().notNull(),
+	manualCode: varchar("manual_code", { length: 50 }),
 	enterpriseId: varchar("enterprise_id", { length: 36 }),
-	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-	updatedAt: timestamp("updated_at"),
+	available: boolean().default(true),
+	propertyOwner: varchar("property_owner", { length: 200 }),
+	managementCompany: varchar("management_company", { length: 200 }),
+	assignedEnterpriseName: varchar("assigned_enterprise_name", { length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true }),
 }, (table) => [
 	index("reg_numbers_code_idx").on(table.code),
 	index("reg_numbers_space_id_idx").on(table.spaceId),
-	index("reg_numbers_status_idx").on(table.status),
 	foreignKey({
 			columns: [table.spaceId],
 			foreignColumns: [spaces.id],
@@ -702,6 +993,24 @@ export const regNumbers = pgTable("reg_numbers", {
 			foreignColumns: [enterprises.id],
 			name: "fk_reg_numbers_enterprise"
 		}).onDelete("set null"),
+]);
+
+export const workstationAssignments = pgTable("workstation_assignments", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	workstationId: varchar("workstation_id").notNull().references(() => regNumbers.id, { onDelete: 'restrict' }),
+	enterpriseId: varchar("enterprise_id", { length: 36 }).notNull().references(() => enterprises.id, { onDelete: 'cascade' }),
+	enterpriseBaseRelationId: varchar("enterprise_base_relation_id", { length: 36 }).references(() => enterpriseBaseRelations.id, { onDelete: 'set null' }),
+	applicationId: varchar("application_id", { length: 36 }),
+	contractId: varchar("contract_id", { length: 36 }),
+	status: varchar({ length: 20 }).default('active').notNull(),
+	source: varchar({ length: 30 }).default('system').notNull(),
+	assignedAt: timestamp("assigned_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	releasedAt: timestamp("released_at"),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("workstation_assignments_enterprise_idx").on(table.enterpriseId, table.status),
+	index("workstation_assignments_relation_idx").on(table.enterpriseBaseRelationId, table.status),
 ]);
 
 // 支付宝授权表

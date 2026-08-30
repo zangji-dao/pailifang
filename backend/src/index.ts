@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { config } from './config/env';
 
 // 打印环境信息
@@ -24,6 +25,8 @@ import applicationRoutes from './routes/applicationRoutes';
 import processRoutes from './routes/processRoutes';
 import contractRoutes from './routes/contractRoutes';
 import industryRoutes from './routes/industryRoutes';
+import businessMetricRoutes from './routes/businessMetricRoutes';
+import accessControlRoutes from './routes/accessControlRoutes';
 
 const app = express();
 const PORT = config.server.port;
@@ -69,6 +72,8 @@ app.use('/api/settlement/applications', applicationRoutes);
 app.use('/api/settlement/processes', processRoutes);
 app.use('/api/settlement/contracts', contractRoutes);
 app.use('/api/industries', industryRoutes);
+app.use('/api/business-metrics', businessMetricRoutes);
+app.use('/api/access-control', accessControlRoutes);
 
 // 文件存储路由（需要文件上传中间件）
 app.use('/api/storage', upload.single('file'), storageRoutes);
@@ -139,11 +144,13 @@ app.use((req, res) => {
 });
 
 // 错误处理
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  void _next;
   console.error('Server error:', err);
-  res.status(err.status || 500).json({
+  const error = err as { status?: number; message?: string };
+  res.status(error.status || 500).json({
     success: false,
-    error: err.message || '服务器内部错误',
+    error: error.message || '服务器内部错误',
   });
 });
 

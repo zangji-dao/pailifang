@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -10,7 +10,25 @@ export async function POST(request: NextRequest) {
     const supabase = createClient();
     const body = await request.json();
 
-    const { base_id, code, name, area } = body;
+    const {
+      base_id,
+      code,
+      name,
+      area,
+      electricityEnabled = false,
+      electricityNumber,
+      electricityProvider,
+      electricityChargeInst,
+      waterEnabled = false,
+      waterNumber,
+      waterProvider,
+      waterChargeInst,
+      heatingEnabled = false,
+      heatingNumber,
+      propertyFeeEnabled = false,
+      networkEnabled = false,
+      networkNumber,
+    } = body;
 
     if (!base_id) {
       return NextResponse.json(
@@ -22,6 +40,13 @@ export async function POST(request: NextRequest) {
     if (!code) {
       return NextResponse.json(
         { success: false, error: '物业编号为必填项' },
+        { status: 400 }
+      );
+    }
+
+    if (![electricityEnabled, waterEnabled, heatingEnabled, propertyFeeEnabled, networkEnabled].some(Boolean)) {
+      return NextResponse.json(
+        { success: false, error: '请至少选择一项物业费用' },
         { status: 400 }
       );
     }
@@ -50,6 +75,19 @@ export async function POST(request: NextRequest) {
         code,
         name: name || code,
         area: area || null,
+        electricity_enabled: Boolean(electricityEnabled),
+        electricity_number: electricityEnabled ? electricityNumber || null : null,
+        electricity_provider: electricityEnabled ? electricityProvider || null : null,
+        electricity_charge_inst: electricityEnabled ? electricityChargeInst || null : null,
+        water_enabled: Boolean(waterEnabled),
+        water_number: waterEnabled ? waterNumber || null : null,
+        water_provider: waterEnabled ? waterProvider || null : null,
+        water_charge_inst: waterEnabled ? waterChargeInst || null : null,
+        heating_enabled: Boolean(heatingEnabled),
+        heating_number: heatingEnabled ? heatingNumber || null : null,
+        property_fee_enabled: Boolean(propertyFeeEnabled),
+        network_enabled: Boolean(networkEnabled),
+        network_number: networkEnabled ? networkNumber || null : null,
         status: 'active',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

@@ -15,7 +15,7 @@ export type { AppConfig } from './types';
 
 /**
  * 获取当前环境配置
- * - development → 沙箱/Coze环境
+ * - development → 本地开发环境
  * - production  → 生产环境
  */
 const getConfig = (): AppConfig => {

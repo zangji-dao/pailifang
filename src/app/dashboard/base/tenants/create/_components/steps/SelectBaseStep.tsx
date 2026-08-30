@@ -17,10 +17,11 @@ interface Base {
 
 interface SelectBaseStepProps {
   selectedBaseId: string;
+  enterpriseType: "tenant" | "non_tenant" | null;
   onSelectBase: (baseId: string) => void;
 }
 
-export function SelectBaseStep({ selectedBaseId, onSelectBase }: SelectBaseStepProps) {
+export function SelectBaseStep({ selectedBaseId, enterpriseType, onSelectBase }: SelectBaseStepProps) {
   const [bases, setBases] = useState<Base[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterProvince, setFilterProvince] = useState<Province | null>(null);
@@ -114,8 +115,12 @@ export function SelectBaseStep({ selectedBaseId, onSelectBase }: SelectBaseStepP
   return (
     <Card>
       <CardHeader>
-        <CardTitle>选择合作基地</CardTitle>
-        <CardDescription>请选择企业入驻的合作基地</CardDescription>
+        <CardTitle>{enterpriseType === "non_tenant" ? "选择主要服务基地" : "选择入驻基地"}</CardTitle>
+        <CardDescription>
+          {enterpriseType === "non_tenant"
+            ? "服务企业不占用工位，但需要明确主要使用服务的基地"
+            : "入驻企业将在该基地注册并分配物理工位"}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 城市筛选 */}

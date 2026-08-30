@@ -83,9 +83,9 @@ export function PersonnelStep({
   const handleFocus = () => setShowError(false);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 提示信息 */}
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+      <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4 text-amber-950 sm:p-5">
         <div className="flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
           <div className="text-sm text-blue-800">
@@ -123,7 +123,7 @@ export function PersonnelStep({
       </div>
 
       {formData.personnel.map((person, index) => (
-        <div key={index} className="rounded-lg border bg-card overflow-hidden">
+        <div key={index} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_40px_-34px_rgba(15,23,42,0.5)]">
           {/* 人员头部 */}
           <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
             <div className="flex items-center gap-3">
@@ -148,9 +148,9 @@ export function PersonnelStep({
             )}
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="space-y-4 p-4 sm:p-6">
             {/* 基本信息 */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>姓名 <span className="text-destructive">*</span></Label>
                 <Input value={person.name} onChange={(e) => updatePersonnel(index, "name", e.target.value)} onFocus={handleFocus} placeholder="请输入姓名" disabled={!canEdit} />
@@ -161,7 +161,7 @@ export function PersonnelStep({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>住址 <span className="text-destructive">*</span></Label>
                 <Input value={person.address} onChange={(e) => updatePersonnel(index, "address", e.target.value)} onFocus={handleFocus} placeholder="请输入住址" disabled={!canEdit} />
@@ -217,7 +217,7 @@ export function PersonnelStep({
             {/* 身份证上传 */}
             <div className="space-y-3">
               <Label>身份证照片 <span className="text-destructive">*</span></Label>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                 {/* 正面 */}
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">正面（人像面）<span className="text-destructive">*</span></p>
@@ -291,14 +291,14 @@ export function PersonnelStep({
       ))}
 
       {/* 中介人信息 */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        <h3 className="font-medium flex items-center gap-2">
+      <div className="form-section space-y-4">
+        <h3 className="flex items-center gap-2 font-semibold text-slate-900">
           <span className="step-number step-number-4">
             {formData.personnel.length + 1}
           </span>
           中介人信息
         </h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label>所在部门</Label>
             <Input value={formData.intermediaryDepartment} onChange={(e) => updateField("intermediaryDepartment", e.target.value)} placeholder="请输入所在部门" disabled={!canEdit} />

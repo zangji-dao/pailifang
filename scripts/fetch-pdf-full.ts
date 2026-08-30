@@ -1,4 +1,4 @@
-import { FetchClient, Config } from 'coze-coding-dev-sdk';
+import { FetchClient, Config } from './lib/web-clients';
 
 async function fetchFullPDF() {
   const config = new Config();

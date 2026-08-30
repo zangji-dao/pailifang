@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { 
   CheckCircle2, 
   Building2, 
   MapPin, 
   Phone, 
   User,
-  Calendar,
   FileText,
-  CreditCard
+  CreditCard,
+  Copy,
+  Mail,
 } from "lucide-react";
 
 interface OnboardingCompleteStepProps {
@@ -28,6 +31,8 @@ interface OnboardingCompleteStepProps {
   creditCode: string;
   legalPerson: string;
   phone: string;
+  adminEmail: string;
+  invitationLink: string | null;
   contract: {
     contractId: string | null;
     contractNumber: string;
@@ -47,12 +52,22 @@ export function OnboardingCompleteStep({
   creditCode,
   legalPerson,
   phone,
+  adminEmail,
+  invitationLink,
   contract,
   paymentRecordCount,
   totalPaymentAmount,
   onViewDetails,
   onReturnToList,
 }: OnboardingCompleteStepProps) {
+  const [copied, setCopied] = useState(false);
+
+  const copyInvitation = async () => {
+    if (!invitationLink) return;
+    await navigator.clipboard.writeText(invitationLink);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
 
   return (
     <div className="space-y-6">
@@ -222,6 +237,31 @@ export function OnboardingCompleteStep({
                 <span className="font-bold text-step-emerald">¥{totalPaymentAmount.toLocaleString()}</span>
               </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-cyan-200 bg-cyan-50/60">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-cyan-950">
+            <Mail className="h-5 w-5" />
+            企业负责人账号邀请
+          </CardTitle>
+          <CardDescription>
+            邀请邮箱：{adminEmail || "未填写"}。邀请默认 7 天有效，负责人通过链接设置密码后即可登录。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invitationLink ? (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input value={invitationLink} readOnly className="bg-white font-mono text-xs" />
+              <Button type="button" onClick={() => void copyInvitation()} className="shrink-0">
+                {copied ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                {copied ? "已复制" : "复制激活链接"}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-cyan-900">企业已创建，可前往“账号与权限”重新生成负责人邀请。</p>
           )}
         </CardContent>
       </Card>

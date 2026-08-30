@@ -6,8 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Lock, User, Crown, Calculator, Phone } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
+import { Lock, User, Crown } from "lucide-react";
+import { BrandMark } from "@/components/brand-logo";
+
+interface LoginUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  [key: string]: unknown;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,34 +24,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 测试账号快捷登录
-  const testAccounts = [
-    { email: "admin@example.com", password: "admin123", name: "管理员", role: "admin", icon: Crown, color: "text-amber-600", bg: "hover:bg-amber-50 hover:border-amber-300" },
-    { email: "accountant@example.com", password: "accountant123", name: "会计", role: "accountant", icon: Calculator, color: "text-emerald-600", bg: "hover:bg-emerald-50 hover:border-emerald-300" },
-    { email: "sales@example.com", password: "sales123", name: "销售", role: "sales", icon: Phone, color: "text-blue-600", bg: "hover:bg-blue-50 hover:border-blue-300" },
-  ];
+  const showLocalAdminLogin = process.env.NODE_ENV === "development";
 
-  const handleQuickLogin = async (account: typeof testAccounts[0]) => {
-    setEmail(account.email);
-    setPassword(account.password);
+  const completeLogin = (user: LoginUser, token: string) => {
+    localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("token", token);
+    router.push("/dashboard");
+  };
+
+  const handleLocalAdminLogin = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await apiClient.post("/api/auth/login", {
-        email: account.email,
-        password: account.password,
+      const response = await fetch("/api/auth/local-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
+      const data = await response.json();
 
-      if (!response.success) {
-        throw new Error(response.error || "登录失败");
+      if (!response.ok || !data.success || !data.data || !data.token) {
+        throw new Error(data.error || "管理员一键登录失败");
       }
 
-      localStorage.setItem("user", JSON.stringify(response.data));
-      localStorage.setItem("isLoggedIn", "true");
-      router.push("/dashboard");
+      completeLogin(data.data as LoginUser, data.token as string);
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : '登录失败');
+      setError(error instanceof Error ? error.message : "管理员一键登录失败");
     } finally {
       setLoading(false);
     }
@@ -55,18 +62,18 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await apiClient.post("/api/auth/login", {
-        email,
-        password,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
+      const data = await response.json();
 
-      if (!response.success) {
-        throw new Error(response.error || "登录失败");
+      if (!response.ok || !data.success || !data.data || !data.token) {
+        throw new Error(data.error || "登录失败");
       }
 
-      localStorage.setItem("user", JSON.stringify(response.data));
-      localStorage.setItem("isLoggedIn", "true");
-      router.push("/dashboard");
+      completeLogin(data.data as LoginUser, data.token as string);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : '登录失败');
     } finally {
@@ -87,13 +94,12 @@ export default function LoginPage() {
         <CardHeader className="space-y-4 pt-8 pb-2">
           {/* Logo */}
           <div className="flex justify-center">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <span className="text-2xl font-bold text-white">Π</span>
-            </div>
+            <BrandMark className="h-16 w-16 drop-shadow-[0_12px_24px_rgba(15,23,42,0.18)]" />
           </div>
           {/* 标题 */}
           <div className="text-center">
             <h1 className="text-xl font-semibold text-slate-900">Π立方企业服务中心</h1>
+            <p className="mt-1 text-xs tracking-wide text-slate-400">园区经营服务中台</p>
           </div>
         </CardHeader>
         
@@ -145,33 +151,28 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-10 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-medium shadow-lg shadow-amber-500/20"
+              className="h-10 w-full bg-slate-950 font-medium text-white shadow-lg shadow-slate-950/15 hover:bg-slate-800"
               disabled={loading}
             >
               {loading ? "登录中..." : "登录"}
             </Button>
           </form>
 
-          {/* 测试账号快捷登录 */}
-          <div className="pt-4 border-t border-slate-100">
-            <p className="text-xs text-slate-400 text-center mb-3">测试账号快捷登录</p>
-            <div className="grid grid-cols-3 gap-2">
-              {testAccounts.map((account) => (
-                <Button
-                  key={account.role}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={`h-9 text-xs border-slate-200 ${account.bg}`}
-                  onClick={() => handleQuickLogin(account)}
-                  disabled={loading}
-                >
-                  <account.icon className={`w-3.5 h-3.5 mr-1 ${account.color}`} />
-                  {account.name}
-                </Button>
-              ))}
+          {showLocalAdminLogin && (
+            <div className="pt-4 border-t border-slate-100">
+              <p className="text-xs text-slate-400 text-center mb-3">仅限本机开发环境</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full border-slate-300 text-slate-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800"
+                onClick={handleLocalAdminLogin}
+                disabled={loading}
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                管理员一键登录
+              </Button>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

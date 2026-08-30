@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDatabaseClient } from '@/storage/database/server-client';
 
 /**
  * GET /api/applications/[id]
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     const { data, error } = await client
       .from('pi_settlement_applications')
@@ -91,7 +91,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -164,7 +164,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const client = getSupabaseClient();
+    const client = getDatabaseClient();
 
     const { error } = await client
       .from('pi_settlement_applications')

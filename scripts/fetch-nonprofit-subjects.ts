@@ -2,7 +2,7 @@
  * 获取民间非营利组织会计制度详细科目表
  */
 
-import { FetchClient, Config, SearchClient } from "coze-coding-dev-sdk";
+import { FetchClient, Config, SearchClient } from "./lib/web-clients";
 
 async function fetchNonProfitSubjects() {
   const config = new Config();

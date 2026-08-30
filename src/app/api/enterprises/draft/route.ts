@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
       name,
       enterprise_code,
       type,
+      base_id,
       space_id,
       registered_address,
       business_address,
@@ -27,6 +28,9 @@ export async function POST(request: NextRequest) {
       credit_code,
       legal_person,
       phone,
+      admin_email,
+      admin_name,
+      admin_phone,
       industry,
       registered_capital,
       establish_date,
@@ -63,6 +67,7 @@ export async function POST(request: NextRequest) {
 
       if (name !== undefined) updateData.name = name;
       if (type !== undefined) updateData.type = type;
+      if (base_id !== undefined) updateData.base_id = base_id;
       if (space_id !== undefined) updateData.space_id = space_id;
       if (registered_address !== undefined) updateData.registered_address = registered_address;
       if (business_address !== undefined) updateData.business_address = business_address;
@@ -70,6 +75,9 @@ export async function POST(request: NextRequest) {
       if (credit_code !== undefined) updateData.credit_code = credit_code;
       if (legal_person !== undefined) updateData.legal_person = legal_person;
       if (phone !== undefined) updateData.phone = phone;
+      if (admin_email !== undefined) updateData.admin_email = admin_email;
+      if (admin_name !== undefined) updateData.admin_name = admin_name;
+      if (admin_phone !== undefined) updateData.admin_phone = admin_phone;
       if (industry !== undefined) updateData.industry = industry;
       if (registered_capital !== undefined) updateData.registered_capital = registered_capital;
       if (establish_date !== undefined) updateData.establish_date = establish_date;
@@ -157,6 +165,7 @@ export async function POST(request: NextRequest) {
       name: name || `草稿-${finalEnterpriseCode}`,
       enterprise_code: finalEnterpriseCode,
       type: type || 'tenant',
+      base_id: base_id || null,
       status: status,
       process_status: processStatus,
       space_id: space_id || null,
@@ -166,6 +175,9 @@ export async function POST(request: NextRequest) {
       credit_code: credit_code || null,
       legal_person: legal_person || null,
       phone: phone || null,
+      admin_email: admin_email || null,
+      admin_name: admin_name || legal_person || name || null,
+      admin_phone: admin_phone || phone || null,
       industry: industry || null,
       registered_capital: registered_capital || null,
       establish_date: establish_date || null,

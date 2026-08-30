@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/database/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ContractFieldDefinition } from '@/types/contract-template';
 import { randomUUID } from 'crypto';

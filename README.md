@@ -1,358 +1,134 @@
-# projects
+# Π立方企业服务平台
 
-这是一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的全栈应用项目，由扣子编程 CLI 创建。
+Π立方是企业入驻、代理记账、合同、客户、工单、结算和人力资源一体化管理平台。
 
-## 快速开始
+## 架构
 
-### 启动开发服务器
-
-```bash
-coze dev
+```text
+Browser / Mini Program
+        |
+        v
+Next.js 16 (port 5000)
+        |
+        +--> PostgreSQL
+        +--> Express API (port 4001)
+        +--> S3-compatible storage
+        +--> OpenAI-compatible AI service
+        +--> Alipay / OnlyOffice / Ys7
 ```
 
-启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
+项目源码已从 Coze 导出结构迁移为标准 Node.js 工程，不再依赖 Coze SDK、workload identity、Coze 对象存储代理或 Supabase REST SDK。数据库查询兼容层直接使用参数化 PostgreSQL SQL。
 
-开发服务器支持热更新，修改代码后页面会自动刷新。
+## 推荐启动
 
-### 构建生产版本
+1. 创建自托管配置：
 
-```bash
-coze build
+```powershell
+Copy-Item .env.compose.example .env.compose
 ```
 
-### 启动生产服务器
+2. 修改 `.env.compose` 中的数据库、MinIO 和 OnlyOffice 密钥。
 
-```bash
-coze start
+3. 启动完整服务：
+
+```powershell
+docker compose --env-file .env.compose up -d --build
 ```
 
-## 项目结构
+4. 访问：
 
-```
-src/
-├── app/                      # Next.js App Router 目录
-│   ├── layout.tsx           # 根布局组件
-│   ├── page.tsx             # 首页
-│   ├── globals.css          # 全局样式（包含 shadcn 主题变量）
-│   └── [route]/             # 其他路由页面
-├── components/              # React 组件目录
-│   └── ui/                  # shadcn/ui 基础组件（优先使用）
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── ...
-├── lib/                     # 工具函数库
-│   └── utils.ts            # cn() 等工具函数
-└── hooks/                   # 自定义 React Hooks（可选）
-```
+- Web：`http://localhost:5000`
+- 后端健康检查：`http://localhost:4001/health`
+- MinIO 控制台：`http://localhost:9001`
+- OnlyOffice：`http://localhost:8080`
 
-## 核心开发规范
+旧项目数据迁移前，请先执行 `docs/FULL_MIGRATION_RUNBOOK_2026-08-23.md` 中的数据库和对象存储步骤。
 
-### 1. 组件开发
+## 本地开发
 
-**优先使用 shadcn/ui 基础组件**
+当前工作机已按与 CHEMICALOOP 相同的“本机进程 + 独立数据目录”方式完成配置，不需要 Docker，也不会占用 CHEMICALOOP 的数据库或 Web 端口：
 
-本项目已预装完整的 shadcn/ui 组件库，位于 `src/components/ui/` 目录。开发时应优先使用这些组件作为基础：
-
-```tsx
-// ✅ 推荐：使用 shadcn 基础组件
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-
-export default function MyComponent() {
-  return (
-    <Card>
-      <CardHeader>标题</CardHeader>
-      <CardContent>
-        <Input placeholder="输入内容" />
-        <Button>提交</Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-**可用的 shadcn 组件清单**
-
-- 表单：`button`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `slider`
-- 布局：`card`, `separator`, `tabs`, `accordion`, `collapsible`, `scroll-area`
-- 反馈：`alert`, `alert-dialog`, `dialog`, `toast`, `sonner`, `progress`
-- 导航：`dropdown-menu`, `menubar`, `navigation-menu`, `context-menu`
-- 数据展示：`table`, `avatar`, `badge`, `hover-card`, `tooltip`, `popover`
-- 其他：`calendar`, `command`, `carousel`, `resizable`, `sidebar`
-
-详见 `src/components/ui/` 目录下的具体组件实现。
-
-### 2. 路由开发
-
-Next.js 使用文件系统路由，在 `src/app/` 目录下创建文件夹即可添加路由：
-
-```bash
-# 创建新路由 /about
-src/app/about/page.tsx
-
-# 创建动态路由 /posts/[id]
-src/app/posts/[id]/page.tsx
-
-# 创建路由组（不影响 URL）
-src/app/(marketing)/about/page.tsx
-
-# 创建 API 路由
-src/app/api/users/route.ts
-```
-
-**页面组件示例**
-
-```tsx
-// src/app/about/page.tsx
-import { Button } from '@/components/ui/button';
-
-export const metadata = {
-  title: '关于我们',
-  description: '关于页面描述',
-};
-
-export default function AboutPage() {
-  return (
-    <div>
-      <h1>关于我们</h1>
-      <Button>了解更多</Button>
-    </div>
-  );
-}
-```
-
-**动态路由示例**
-
-```tsx
-// src/app/posts/[id]/page.tsx
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  return <div>文章 ID: {id}</div>;
-}
-```
-
-**API 路由示例**
-
-```tsx
-// src/app/api/users/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json({ users: [] });
-}
-
-export async function POST(request: Request) {
-  const body = await request.json();
-  return NextResponse.json({ success: true });
-}
-```
-
-### 3. 依赖管理
-
-**必须使用 pnpm 管理依赖**
-
-```bash
-# ✅ 安装依赖
+```powershell
 pnpm install
-
-# ✅ 添加新依赖
-pnpm add package-name
-
-# ✅ 添加开发依赖
-pnpm add -D package-name
-
-# ❌ 禁止使用 npm 或 yarn
-# npm install  # 错误！
-# yarn add     # 错误！
+pnpm local:setup
+pnpm dev
 ```
 
-项目已配置 `preinstall` 脚本，使用其他包管理器会报错。
+本机开发地址：
 
-### 4. 样式开发
+- Web：`http://localhost:5100`
+- 后端：`http://localhost:4101`
+- PostgreSQL：`127.0.0.1:55432/pi_cube`
+- MinIO API：`http://127.0.0.1:9100`
+- MinIO 控制台：`http://127.0.0.1:9101`
 
-**使用 Tailwind CSS v4**
+本机管理员账号为 `admin@pi-cube.local`。登录页在本机开发模式下提供“管理员一键登录”，凭据只保存在未提交的 `.env.local` 中，不会写入浏览器代码或生产构建。
 
-本项目使用 Tailwind CSS v4 进行样式开发，并已配置 shadcn 主题变量。
+`pnpm local:setup` 会生成未提交的 `.env.local` 和 `backend/.env`，创建独立 PostgreSQL 数据目录、完整业务与权限表结构以及 `pi-cube-files` 空桶。不会复制原系统业务数据。
 
-```tsx
-// 使用 Tailwind 类名
-<div className="flex items-center gap-4 p-4 rounded-lg bg-background">
-  <Button className="bg-primary text-primary-foreground">
-    主要按钮
-  </Button>
-</div>
+## 账号权限与经营数据
 
-// 使用 cn() 工具函数合并类名
-import { cn } from '@/lib/utils';
+- 工作台右上角支持在用户所属组织之间切换，权限按当前组织重新计算。
+- `http://localhost:5100/dashboard/access-control` 用于创建组织账号、分配角色、维护服务机构和企业委托。
+- `http://localhost:5100/dashboard/base/metrics` 用于按企业和月份填报销售收入、税收、投资与就业数据。
+- 经营数据按“草稿 → 待审核 → 已确认 / 已驳回”流转，只有已确认数据进入工作台汇总。
+- 新建基地和企业时，数据库会自动建立对应组织、资源关联和默认应用订阅。
+- 企业入驻完成后自动生成企业负责人邀请，负责人通过一次性链接激活账号并成为企业管理员。
+- 企业管理员可在“账号与权限”中邀请员工；邀请默认 7 天失效，并支持撤销或重新生成链接。
+- 账号回收会立即禁用组织成员身份并注销相关会话，恢复后才可重新登录；企业退出时自动回收该企业全部账号和未使用邀请。
+- 公开注册默认关闭；园区和服务机构账号应由具有成员管理权限的管理员创建。
 
-<div className={cn(
-  "base-class",
-  condition && "conditional-class",
-  className
-)}>
-  内容
-</div>
+权限模型由用户、组织、成员身份、角色、权限、数据范围和服务委托组成。平台、园区、企业、服务机构及监管单位使用同一套组织模型，代账机构只能访问企业明确授权的应用和数据范围。
+
+## 基地空间与企业关系
+
+- 基地空间采用“基地 → 物业 → 物理空间 → 工位”四级模型；物业是按独立水表、电表划分的计量管理单元，物理空间是物业内规划的房间，工位是可分配的最小物理单元。
+- `registration_numbers` 是唯一工位主数据源；`workstation_assignments` 保存工位分配及释放历史。
+- 入驻企业必须选择基地并分配工位；服务企业不占用工位，但必须选择主要服务基地，并可在企业详情中继续增加其他服务基地。
+- `enterprise_base_relations` 保存企业与基地之间的入驻或服务关系，企业转为服务企业、迁出或停用时会自动释放工位。
+- 基地列表按基地批量统计物业、空间、工位、已分配工位、去重后的入驻企业和服务企业，不再把工位数量当作企业数量。
+
+如需手工配置其他环境，至少设置：
+
+- `DATABASE_URL`
+- `S3_BUCKET`、`S3_REGION` 和对应凭据
+- `APP_URL`
+- `BACKEND_URL`
+- 使用 AI、OnlyOffice、支付宝或萤石云功能时对应的服务变量
+
+## 常用命令
+
+```powershell
+pnpm dev
+pnpm local:setup
+pnpm local:status
+pnpm local:stop
+pnpm ts-check
+pnpm build:web
+pnpm build:backend
+pnpm build
+pnpm start
+pnpm migrate:database -- --confirm-target pi_cube
+pnpm migrate:database:verify
+pnpm migrate:storage -- --verify
+pnpm migrate:storage:references
 ```
 
-**主题变量**
+迁移命令默认读取未提交的 `.env.migration`，模板为 `.env.migration.example`。
 
-主题变量定义在 `src/app/globals.css` 中，支持亮色/暗色模式：
+## 外部服务
 
-- `--background`, `--foreground`
-- `--primary`, `--primary-foreground`
-- `--secondary`, `--secondary-foreground`
-- `--muted`, `--muted-foreground`
-- `--accent`, `--accent-foreground`
-- `--destructive`, `--destructive-foreground`
-- `--border`, `--input`, `--ring`
+- 数据库：标准 PostgreSQL，使用 `DATABASE_URL` 或 `PG_*`
+- 对象存储：AWS SDK，支持 S3、腾讯云 COS、MinIO 等兼容服务
+- AI：OpenAI-compatible `/chat/completions`
+- 文档：OnlyOffice；Word 解析和导出运行时包含 LibreOffice Writer
+- 历史搜索脚本：通过 `SEARCH_API_URL` 对接自有搜索网关
 
-### 5. 表单开发
+## 迁移状态
 
-推荐使用 `react-hook-form` + `zod` 进行表单开发：
-
-```tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-const formSchema = z.object({
-  username: z.string().min(2, '用户名至少 2 个字符'),
-  email: z.string().email('请输入有效的邮箱'),
-});
-
-export default function MyForm() {
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { username: '', email: '' },
-  });
-
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Input {...form.register('username')} />
-      <Input {...form.register('email')} />
-      <Button type="submit">提交</Button>
-    </form>
-  );
-}
-```
-
-### 6. 数据获取
-
-**服务端组件（推荐）**
-
-```tsx
-// src/app/posts/page.tsx
-async function getPosts() {
-  const res = await fetch('https://api.example.com/posts', {
-    cache: 'no-store', // 或 'force-cache'
-  });
-  return res.json();
-}
-
-export default async function PostsPage() {
-  const posts = await getPosts();
-
-  return (
-    <div>
-      {posts.map(post => (
-        <div key={post.id}>{post.title}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-**客户端组件**
-
-```tsx
-'use client';
-
-import { useEffect, useState } from 'react';
-
-export default function ClientComponent() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(setData);
-  }, []);
-
-  return <div>{JSON.stringify(data)}</div>;
-}
-```
-
-## 常见开发场景
-
-### 添加新页面
-
-1. 在 `src/app/` 下创建文件夹和 `page.tsx`
-2. 使用 shadcn 组件构建 UI
-3. 根据需要添加 `layout.tsx` 和 `loading.tsx`
-
-### 创建业务组件
-
-1. 在 `src/components/` 下创建组件文件（非 UI 组件）
-2. 优先组合使用 `src/components/ui/` 中的基础组件
-3. 使用 TypeScript 定义 Props 类型
-
-### 添加全局状态
-
-推荐使用 React Context 或 Zustand：
-
-```tsx
-// src/lib/store.ts
-import { create } from 'zustand';
-
-interface Store {
-  count: number;
-  increment: () => void;
-}
-
-export const useStore = create<Store>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
-```
-
-### 集成数据库
-
-推荐使用 Prisma 或 Drizzle ORM，在 `src/lib/db.ts` 中配置。
-
-## 技术栈
-
-- **框架**: Next.js 16.1.1 (App Router)
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **样式**: Tailwind CSS v4
-- **表单**: React Hook Form + Zod
-- **图标**: Lucide React
-- **字体**: Geist Sans & Geist Mono
-- **包管理器**: pnpm 9+
-- **TypeScript**: 5.x
-
-## 参考文档
-
-- [Next.js 官方文档](https://nextjs.org/docs)
-- [shadcn/ui 组件文档](https://ui.shadcn.com)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com)
-
-## 重要提示
-
-1. **必须使用 pnpm** 作为包管理器
-2. **优先使用 shadcn/ui 组件** 而不是从零开发基础组件
-3. **遵循 Next.js App Router 规范**，正确区分服务端/客户端组件
-4. **使用 TypeScript** 进行类型安全开发
-5. **使用 `@/` 路径别名** 导入模块（已配置）
+- 源码、依赖、构建脚本和部署结构已完成迁出。
+- 数据库及对象存储迁移工具已提供。
+- 当前本机环境采用全新空数据库和空对象存储；按用户选择未复制原业务数据。
+- 40 张业务表的空结构基线已固化在 `database/init/10-application-schema.sql`，新环境不依赖原数据库初始化。
+- OnlyOffice、AI、支付宝和萤石云属于可选外部服务，使用对应功能前仍需配置服务或凭据。
+- 迁移记录见 `docs/MIGRATION_FROM_COZE_2026-08-23.md`。
