@@ -58,6 +58,18 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail || !password) {
+      setError("请输入邮箱和密码");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError("请输入正确的邮箱地址");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -65,7 +77,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password }),
       });
       const data = await response.json();
 
@@ -104,7 +116,7 @@ export default function LoginPage() {
         </CardHeader>
         
         <CardContent className="space-y-5 pb-8">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} noValidate className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-slate-700">
                 邮箱
@@ -114,6 +126,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="请输入邮箱"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -133,6 +146,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="请输入密码"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
