@@ -32,14 +32,14 @@ CREATE TABLE IF NOT EXISTS contract_fields (
 CREATE TABLE IF NOT EXISTS contract_instances (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID NOT NULL REFERENCES contract_templates(id) ON DELETE CASCADE,
-  enterprise_id UUID REFERENCES enterprises(id) ON DELETE SET NULL,
+  enterprise_id VARCHAR(36) REFERENCES enterprises(id) ON DELETE SET NULL,
   contract_number VARCHAR(50),               -- 合同编号
   field_values JSONB DEFAULT '{}'::jsonb,   -- 填充的字段值
   selected_attachments UUID[] DEFAULT '{}',  -- 选择的附件ID列表
   status VARCHAR(20) DEFAULT 'draft',        -- draft | pending | signed | archived
   pdf_url TEXT,                              -- 生成的PDF文件URL
   signed_pdf_url TEXT,                       -- 签名后的PDF URL
-  created_by UUID,
+  created_by VARCHAR(36),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
