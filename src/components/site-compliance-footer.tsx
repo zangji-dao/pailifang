@@ -5,6 +5,8 @@ interface SiteComplianceFooterProps {
 
 const ICP_RECORD_NUMBER = "吉ICP备2026003342号-1";
 const ICP_RECORD_URL = "https://beian.miit.gov.cn/";
+const PUBLIC_SECURITY_RECORD_NUMBER = "吉公网安备22070002000179号";
+const PUBLIC_SECURITY_RECORD_URL = "https://beian.mps.gov.cn/#/query/webSearch?code=22070002000179";
 
 export function SiteComplianceFooter({
   className = "",
@@ -30,7 +32,27 @@ export function SiteComplianceFooter({
         {ICP_RECORD_NUMBER}
       </a>
       <span aria-hidden="true">·</span>
-      <span>互联网信息服务备案</span>
+      <a
+        href={PUBLIC_SECURITY_RECORD_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1 transition-colors"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3 5.5 5.8v5.4c0 4.3 2.7 7.7 6.5 9.8 3.8-2.1 6.5-5.5 6.5-9.8V5.8L12 3Z" />
+          <path d="m9.4 12 1.7 1.7 3.6-3.8" />
+        </svg>
+        {PUBLIC_SECURITY_RECORD_NUMBER}
+      </a>
     </footer>
   );
 }
