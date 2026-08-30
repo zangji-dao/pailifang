@@ -7,6 +7,7 @@ import { Header } from "./_components/Header";
 import { TabBar } from "./_components/TabBar";
 import { Sidebar } from "./_components/Sidebar";
 import { ToastProvider } from "@/hooks/use-toast";
+import { SiteComplianceFooter } from "@/components/site-compliance-footer";
 
 /**
  * Dashboard 布局组件
@@ -80,8 +81,9 @@ export default function DashboardLayout({
           />
 
           {/* 主内容区 */}
-          <main className={`min-w-0 pt-16 transition-[padding] duration-200 sm:pt-[6.75rem] ${sidebarCollapsed ? "lg:pl-16" : "lg:pl-60"}`}>
-            <div className="p-3 sm:p-5 lg:p-6 xl:p-8">{children}</div>
+          <main className={`flex min-h-[100dvh] min-w-0 flex-col pt-16 transition-[padding] duration-200 sm:pt-[6.75rem] ${sidebarCollapsed ? "lg:pl-16" : "lg:pl-60"}`}>
+            <div className="flex-1 p-3 sm:p-5 lg:p-6 xl:p-8">{children}</div>
+            <SiteComplianceFooter className="border-t border-slate-200/80 bg-white/45 px-4 py-4 backdrop-blur-sm" />
           </main>
 
           {/* 移动端遮罩 */}

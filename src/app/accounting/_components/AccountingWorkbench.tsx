@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Header } from "@/app/dashboard/_components/Header";
 import type { User } from "@/app/dashboard/types";
+import { SiteComplianceFooter } from "@/components/site-compliance-footer";
 import { SubjectsListPage } from "../subjects";
 import { AuxiliarySettingsPage } from "../auxiliary";
 import { CurrencySettingsPage } from "../currency";
@@ -504,6 +505,7 @@ export function AccountingWorkbench() {
 
           <main className="min-w-0 flex-1 px-3 py-3 pb-24 sm:px-4 lg:px-5 lg:pb-6">
             <div className="mx-auto max-w-[1520px]">{renderModule()}</div>
+            <SiteComplianceFooter className="mx-auto mt-8 max-w-[1520px] border-t border-slate-200/80 py-4" />
           </main>
         </div>
 
