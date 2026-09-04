@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS meter_fee_configs (
 CREATE INDEX IF NOT EXISTS meter_fee_configs_meter_idx
   ON meter_fee_configs (meter_id, enabled);
 
+ALTER TABLE meters
+  ADD COLUMN IF NOT EXISTS property_fee_type varchar(20) DEFAULT 'base',
+  ADD COLUMN IF NOT EXISTS property_fee_enterprise_id varchar(36),
+  ADD COLUMN IF NOT EXISTS network_enterprise_id varchar(36);
+
 ALTER TABLE property_utility_payments
   ADD COLUMN IF NOT EXISTS fee_type_id varchar(36) REFERENCES base_fee_types(id) ON DELETE SET NULL;
 
