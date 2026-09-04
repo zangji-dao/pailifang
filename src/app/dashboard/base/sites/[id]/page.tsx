@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   BriefcaseBusiness,
@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   ReceiptText,
+  Settings2,
   Trash2,
   Users,
   Zap,
@@ -67,11 +68,27 @@ import {
   EnterprisePanel,
   PropertyPaymentPanel,
 } from "./_components/BaseDetailPanels";
+import { UtilityResponsibilityFields } from "./_components/UtilityResponsibilityFields";
+import { FeeTypeManagerDialog } from "./_components/FeeTypeManagerDialog";
+import type { MeterType } from "./types";
+
+interface NewMeterFeeConfig {
+  enabled: boolean;
+  responsibilityType: MeterType;
+  enterpriseId: string;
+  accountNumber: string;
+  provider: string;
+  notes: string;
+}
+
+const fixedFeeCodes = new Set(["electricity", "water", "heating", "property_fee", "network"]);
 
 export default function BaseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const baseId = params.id as string;
+  const activeTab = searchParams.get("tab") || "overview";
   const {
     baseDetail,
     loading,
@@ -84,6 +101,7 @@ export default function BaseDetailPage() {
   } = useSiteDetail(baseId);
 
   const [showAddMeterDialog, setShowAddMeterDialog] = useState(false);
+  const [feeTypeManagerOpen, setFeeTypeManagerOpen] = useState(false);
   const [addingMeter, setAddingMeter] = useState(false);
   const [meterForm, setMeterForm] = useState({
     code: "",
@@ -92,19 +110,35 @@ export default function BaseDetailPage() {
     electricityEnabled: true,
     electricityNumber: "",
     electricityProvider: "",
-    electricityChargeInst: "",
+    electricityType: "base" as MeterType,
+    electricityEnterpriseId: "",
     waterEnabled: true,
     waterNumber: "",
     waterProvider: "",
-    waterChargeInst: "",
+    waterType: "base" as MeterType,
+    waterEnterpriseId: "",
     heatingEnabled: true,
     heatingNumber: "",
+    heatingType: "base" as MeterType,
+    heatingEnterpriseId: "",
     propertyFeeEnabled: true,
+    propertyFeeType: "base" as MeterType,
+    propertyFeeEnterpriseId: "",
     networkEnabled: false,
     networkNumber: "",
+    networkType: "base" as MeterType,
+    networkEnterpriseId: "",
   });
+  const [newMeterFeeConfigs, setNewMeterFeeConfigs] = useState<Record<string, NewMeterFeeConfig>>({});
   const [meterIds, setMeterIds] = useState<string[]>([]);
   const [savingOrder, setSavingOrder] = useState(false);
+
+  const handleTabChange = useCallback((value: string) => {
+    const nextUrl = value === "overview"
+      ? `/dashboard/base/sites/${baseId}`
+      : `/dashboard/base/sites/${baseId}?tab=${value}`;
+    router.replace(nextUrl, { scroll: false });
+  }, [baseId, router]);
 
   useEffect(() => {
     const sortedMeters = [...(baseDetail?.meters || [])].sort(
@@ -112,6 +146,22 @@ export default function BaseDetailPage() {
     );
     setMeterIds(sortedMeters.map(meter => meter.id));
   }, [baseDetail?.meters]);
+
+  useEffect(() => {
+    setNewMeterFeeConfigs(current => Object.fromEntries(
+      (baseDetail?.feeTypes || []).map(feeType => [
+        feeType.id,
+        current[feeType.id] || {
+          enabled: false,
+          responsibilityType: "base",
+          enterpriseId: "",
+          accountNumber: "",
+          provider: "",
+          notes: "",
+        },
+      ]),
+    ));
+  }, [baseDetail?.feeTypes]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -154,8 +204,33 @@ export default function BaseDetailPage() {
       toast.error("请输入物业编号");
       return;
     }
-    if (![meterForm.electricityEnabled, meterForm.waterEnabled, meterForm.heatingEnabled, meterForm.propertyFeeEnabled, meterForm.networkEnabled].some(Boolean)) {
+    const fixedConfigByCode: Record<string, NewMeterFeeConfig> = {
+      electricity: { enabled: meterForm.electricityEnabled, responsibilityType: meterForm.electricityType, enterpriseId: meterForm.electricityEnterpriseId, accountNumber: meterForm.electricityNumber, provider: meterForm.electricityProvider, notes: "" },
+      water: { enabled: meterForm.waterEnabled, responsibilityType: meterForm.waterType, enterpriseId: meterForm.waterEnterpriseId, accountNumber: meterForm.waterNumber, provider: meterForm.waterProvider, notes: "" },
+      heating: { enabled: meterForm.heatingEnabled, responsibilityType: meterForm.heatingType, enterpriseId: meterForm.heatingEnterpriseId, accountNumber: meterForm.heatingNumber, provider: "", notes: "" },
+      property_fee: { enabled: meterForm.propertyFeeEnabled, responsibilityType: baseDetail?.propertyFeeMode === "free" ? "base" : meterForm.propertyFeeType, enterpriseId: baseDetail?.propertyFeeMode === "free" ? "" : meterForm.propertyFeeEnterpriseId, accountNumber: "", provider: "", notes: "" },
+      network: { enabled: meterForm.networkEnabled, responsibilityType: meterForm.networkType, enterpriseId: meterForm.networkEnterpriseId, accountNumber: meterForm.networkNumber, provider: "", notes: "" },
+    };
+    const submittedFeeConfigs = (baseDetail?.feeTypes || []).map(feeType => ({
+      feeTypeId: feeType.id,
+      ...(fixedConfigByCode[feeType.code] || newMeterFeeConfigs[feeType.id] || {
+        enabled: false,
+        responsibilityType: "base" as MeterType,
+        enterpriseId: "",
+        accountNumber: "",
+        provider: "",
+        notes: "",
+      }),
+    }));
+    if (!submittedFeeConfigs.some(config => config.enabled)) {
       toast.error("请至少选择一项物业费用");
+      return;
+    }
+    const missingResponsibility = submittedFeeConfigs.find(config => (
+      config.enabled && config.responsibilityType === "customer" && !config.enterpriseId
+    ));
+    if (missingResponsibility) {
+      toast.error(`请选择承担${baseDetail?.feeTypes.find(feeType => feeType.id === missingResponsibility.feeTypeId)?.name || "该费用"}的入驻企业`);
       return;
     }
 
@@ -172,16 +247,25 @@ export default function BaseDetailPage() {
           electricityEnabled: meterForm.electricityEnabled,
           electricityNumber: meterForm.electricityNumber.trim() || null,
           electricityProvider: meterForm.electricityProvider.trim() || null,
-          electricityChargeInst: meterForm.electricityChargeInst.trim() || null,
+          electricityType: meterForm.electricityType,
+          electricityEnterpriseId: meterForm.electricityEnterpriseId || null,
           waterEnabled: meterForm.waterEnabled,
           waterNumber: meterForm.waterNumber.trim() || null,
           waterProvider: meterForm.waterProvider.trim() || null,
-          waterChargeInst: meterForm.waterChargeInst.trim() || null,
+          waterType: meterForm.waterType,
+          waterEnterpriseId: meterForm.waterEnterpriseId || null,
           heatingEnabled: meterForm.heatingEnabled,
           heatingNumber: meterForm.heatingNumber.trim() || null,
+          heatingType: meterForm.heatingType,
+          heatingEnterpriseId: meterForm.heatingEnterpriseId || null,
           propertyFeeEnabled: meterForm.propertyFeeEnabled,
+          propertyFeeType: baseDetail?.propertyFeeMode === "free" ? "base" : meterForm.propertyFeeType,
+          propertyFeeEnterpriseId: baseDetail?.propertyFeeMode === "free" ? null : meterForm.propertyFeeEnterpriseId || null,
           networkEnabled: meterForm.networkEnabled,
           networkNumber: meterForm.networkNumber.trim() || null,
+          networkType: meterForm.networkType,
+          networkEnterpriseId: meterForm.networkEnterpriseId || null,
+          feeConfigs: submittedFeeConfigs,
         }),
       });
       const result = await response.json();
@@ -198,17 +282,29 @@ export default function BaseDetailPage() {
         electricityEnabled: true,
         electricityNumber: "",
         electricityProvider: "",
-        electricityChargeInst: "",
+        electricityType: "base",
+        electricityEnterpriseId: "",
         waterEnabled: true,
         waterNumber: "",
         waterProvider: "",
-        waterChargeInst: "",
+        waterType: "base",
+        waterEnterpriseId: "",
         heatingEnabled: true,
         heatingNumber: "",
+        heatingType: "base",
+        heatingEnterpriseId: "",
         propertyFeeEnabled: true,
+        propertyFeeType: "base",
+        propertyFeeEnterpriseId: "",
         networkEnabled: false,
         networkNumber: "",
+        networkType: "base",
+        networkEnterpriseId: "",
       });
+      setNewMeterFeeConfigs(Object.fromEntries((baseDetail?.feeTypes || []).map(feeType => [
+        feeType.id,
+        { enabled: false, responsibilityType: "base", enterpriseId: "", accountNumber: "", provider: "", notes: "" },
+      ])));
       await refreshBaseDetail();
     } catch {
       toast.error("创建失败");
@@ -301,7 +397,7 @@ export default function BaseDetailPage() {
           <StatsCards stats={stats} />
         </div>
 
-        <Tabs defaultValue="overview" className="mt-6 gap-5">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6 gap-5">
           <div className="overflow-x-auto pb-1">
             <TabsList className="h-12 min-w-max rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
               <TabsTrigger value="overview" className="rounded-xl px-4 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
@@ -331,7 +427,7 @@ export default function BaseDetailPage() {
                   description="展示已建立基地关系的企业及其工位分配情况"
                   compact
                 />
-                <PropertyPaymentPanel base={baseDetail} compact onRefresh={refreshBaseDetail} />
+                <PropertyPaymentPanel base={baseDetail} compact />
               </div>
               <div className="space-y-5">
                 <BaseProfileCard base={baseDetail} />
@@ -353,49 +449,89 @@ export default function BaseDetailPage() {
           </TabsContent>
 
           <TabsContent value="payments" className="mt-0">
-            <PropertyPaymentPanel base={baseDetail} onRefresh={refreshBaseDetail} />
+            <PropertyPaymentPanel base={baseDetail} />
           </TabsContent>
 
           <TabsContent value="resources" className="mt-0">
-            <section className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/30 sm:p-6">
-              <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-950">物业与空间资源</h2>
-                  <p className="mt-1 text-sm text-slate-500">物业按独立水、电表划分；进入物业后维护房间与工位</p>
+            <section className="space-y-5">
+              <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-950">物业与空间资源</h2>
+                    <p className="mt-1 text-sm text-slate-500">集中维护物业、费用账户、物理空间和工位资源</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   {savingOrder && (
                     <span className="inline-flex items-center gap-1.5 text-sm text-cyan-700">
                       <Loader2 className="h-4 w-4 animate-spin" /> 保存排序
                     </span>
                   )}
+                  <Button variant="outline" onClick={() => setFeeTypeManagerOpen(true)}>
+                    <Settings2 className="mr-2 h-4 w-4" /> 费用类型
+                  </Button>
                   <Button onClick={() => setShowAddMeterDialog(true)} className="bg-slate-950 text-white hover:bg-slate-800">
                     <Plus className="mr-2 h-4 w-4" /> 新增物业
                   </Button>
                 </div>
               </div>
 
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={meterIds} strategy={rectSortingStrategy}>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                    {meterIds.map(meterId => {
-                      const meter = baseDetail.meters.find(item => item.id === meterId);
-                      return meter ? <DraggableMeterCard key={meter.id} meter={meter} baseId={baseId} /> : null;
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => setShowAddMeterDialog(true)}
-                      className="group min-h-56 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center transition hover:border-cyan-300 hover:bg-cyan-50/50"
-                    >
-                      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200 transition group-hover:text-cyan-700 group-hover:ring-cyan-200">
-                        <Plus className="h-5 w-5" />
-                      </span>
-                      <span className="mt-4 block font-semibold text-slate-700">新增物业</span>
-                      <span className="mt-1 block text-sm text-slate-400">录入独立计量单元及水电暖网信息</span>
-                    </button>
+              <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 bg-white sm:grid-cols-4 sm:divide-x sm:divide-slate-100">
+                {[
+                  ["物业", `${stats.totalMeters} 个`],
+                  ["总面积", `${stats.totalArea.toLocaleString("zh-CN")} ㎡`],
+                  ["物理空间", `${stats.totalSpaces} 个`],
+                  ["费用类型", `${baseDetail.feeTypes.filter(feeType => feeType.isActive).length} 类`],
+                ].map(([label, value], index) => (
+                  <div key={label} className={`px-4 py-4 ${index < 2 ? "border-b border-slate-100 sm:border-b-0" : ""}`}>
+                    <p className="text-xs text-slate-400">{label}</p>
+                    <p className="mt-1 text-base font-semibold tabular-nums text-slate-900">{value}</p>
                   </div>
-                </SortableContext>
-              </DndContext>
+                ))}
+              </div>
+
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">物业清单</h3>
+                    <p className="mt-1 text-xs text-slate-400">点击物业维护适用费用、账单、房间和工位；拖动可调整顺序</p>
+                  </div>
+                  <span className="text-xs text-slate-400">{meterIds.length} 个物业</span>
+                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={meterIds} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                      {meterIds.map(meterId => {
+                        const meter = baseDetail.meters.find(item => item.id === meterId);
+                        return meter ? (
+                          <DraggableMeterCard
+                            key={meter.id}
+                            meter={meter}
+                            baseId={baseId}
+                            propertyFeeMode={baseDetail.propertyFeeMode}
+                          />
+                        ) : null;
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setShowAddMeterDialog(true)}
+                        className="group flex min-h-40 items-center justify-center gap-4 rounded-lg border-2 border-dashed border-slate-200 bg-white p-5 text-left transition hover:border-cyan-300 hover:bg-cyan-50/40"
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-white group-hover:text-cyan-700">
+                          <Plus className="h-5 w-5" />
+                        </span>
+                        <span>
+                          <span className="block font-semibold text-slate-700">新增物业</span>
+                          <span className="mt-1 block text-sm text-slate-400">建立独立计量单元并配置适用费用</span>
+                        </span>
+                      </button>
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </div>
             </section>
           </TabsContent>
 
@@ -448,6 +584,14 @@ export default function BaseDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <FeeTypeManagerDialog
+        baseId={baseId}
+        feeTypes={baseDetail.feeTypes}
+        open={feeTypeManagerOpen}
+        onOpenChange={setFeeTypeManagerOpen}
+        onRefresh={refreshBaseDetail}
+      />
+
       <Dialog open={showAddMeterDialog} onOpenChange={setShowAddMeterDialog}>
         <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
@@ -476,7 +620,7 @@ export default function BaseDetailPage() {
                   { field: "waterEnabled" as const, label: "水费", icon: Droplets, className: "text-sky-600" },
                   { field: "heatingEnabled" as const, label: "取暖费", icon: Flame, className: "text-orange-600" },
                   { field: "propertyFeeEnabled" as const, label: "物业费", icon: Gift, className: "text-emerald-600" },
-                  { field: "networkEnabled" as const, label: "网络费", icon: Wifi, className: "text-slate-600" },
+                  { field: "networkEnabled" as const, label: "宽带费", icon: Wifi, className: "text-violet-600" },
                 ].map(item => (
                   <label key={item.field} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-medium transition ${meterForm[item.field] ? "border-cyan-300 bg-cyan-50" : "border-slate-200 bg-white"}`}>
                     <Checkbox
@@ -487,6 +631,25 @@ export default function BaseDetailPage() {
                     {item.label}
                   </label>
                 ))}
+                {baseDetail.feeTypes.filter(feeType => feeType.isActive && !fixedFeeCodes.has(feeType.code)).map(feeType => {
+                  const config = newMeterFeeConfigs[feeType.id];
+                  return (
+                    <label key={feeType.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-medium transition ${config?.enabled ? "border-cyan-300 bg-cyan-50" : "border-slate-200 bg-white"}`}>
+                      <Checkbox
+                        checked={config?.enabled || false}
+                        onCheckedChange={checked => setNewMeterFeeConfigs(current => ({
+                          ...current,
+                          [feeType.id]: {
+                            ...(current[feeType.id] || { responsibilityType: "base", enterpriseId: "", accountNumber: "", provider: "", notes: "" }),
+                            enabled: checked === true,
+                          },
+                        }))}
+                      />
+                      <ReceiptText className="h-4 w-4 text-slate-500" />
+                      <span className="min-w-0 truncate">{feeType.name}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -496,8 +659,15 @@ export default function BaseDetailPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input value={meterForm.electricityNumber} onChange={event => setMeterForm(current => ({ ...current, electricityNumber: event.target.value }))} placeholder="电费户号" />
                   <Input value={meterForm.electricityProvider} onChange={event => setMeterForm(current => ({ ...current, electricityProvider: event.target.value }))} placeholder="收费机构名称" />
-                  <Input className="sm:col-span-2" value={meterForm.electricityChargeInst} onChange={event => setMeterForm(current => ({ ...current, electricityChargeInst: event.target.value }))} placeholder="支付宝收费机构编码（可后补）" />
                 </div>
+                <UtilityResponsibilityFields
+                  responsibilityType={meterForm.electricityType}
+                  enterpriseId={meterForm.electricityEnterpriseId}
+                  enterprises={baseDetail.tenantEnterprises}
+                  managementCompanyName={baseDetail.organization?.name || baseDetail.managementCompanyName || "管理公司"}
+                  onResponsibilityTypeChange={electricityType => setMeterForm(current => ({ ...current, electricityType }))}
+                  onEnterpriseChange={electricityEnterpriseId => setMeterForm(current => ({ ...current, electricityEnterpriseId }))}
+                />
               </div>
             )}
 
@@ -507,8 +677,15 @@ export default function BaseDetailPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input value={meterForm.waterNumber} onChange={event => setMeterForm(current => ({ ...current, waterNumber: event.target.value }))} placeholder="水费户号" />
                   <Input value={meterForm.waterProvider} onChange={event => setMeterForm(current => ({ ...current, waterProvider: event.target.value }))} placeholder="收费机构名称" />
-                  <Input className="sm:col-span-2" value={meterForm.waterChargeInst} onChange={event => setMeterForm(current => ({ ...current, waterChargeInst: event.target.value }))} placeholder="支付宝收费机构编码（可后补）" />
                 </div>
+                <UtilityResponsibilityFields
+                  responsibilityType={meterForm.waterType}
+                  enterpriseId={meterForm.waterEnterpriseId}
+                  enterprises={baseDetail.tenantEnterprises}
+                  managementCompanyName={baseDetail.organization?.name || baseDetail.managementCompanyName || "管理公司"}
+                  onResponsibilityTypeChange={waterType => setMeterForm(current => ({ ...current, waterType }))}
+                  onEnterpriseChange={waterEnterpriseId => setMeterForm(current => ({ ...current, waterEnterpriseId }))}
+                />
               </div>
             )}
 
@@ -516,6 +693,14 @@ export default function BaseDetailPage() {
               <div className="rounded-2xl border border-orange-100 bg-orange-50/50 p-4">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800"><Flame className="h-4 w-4" />取暖费账户</p>
                 <Input value={meterForm.heatingNumber} onChange={event => setMeterForm(current => ({ ...current, heatingNumber: event.target.value }))} placeholder="取暖户号" />
+                <UtilityResponsibilityFields
+                  responsibilityType={meterForm.heatingType}
+                  enterpriseId={meterForm.heatingEnterpriseId}
+                  enterprises={baseDetail.tenantEnterprises}
+                  managementCompanyName={baseDetail.organization?.name || baseDetail.managementCompanyName || "管理公司"}
+                  onResponsibilityTypeChange={heatingType => setMeterForm(current => ({ ...current, heatingType }))}
+                  onEnterpriseChange={heatingEnterpriseId => setMeterForm(current => ({ ...current, heatingEnterpriseId }))}
+                />
               </div>
             )}
 
@@ -525,15 +710,65 @@ export default function BaseDetailPage() {
                 <p className="mt-1 text-xs leading-5 text-emerald-700">
                   {baseDetail.propertyFeeMode === "free" ? "当前基地实行免物业费政策，启用后看板将显示年度免收状态。" : "当前基地按年度管理物业费，后续可建立每年账单。"}
                 </p>
+                {baseDetail.propertyFeeMode !== "free" && (
+                  <UtilityResponsibilityFields
+                    responsibilityType={meterForm.propertyFeeType}
+                    enterpriseId={meterForm.propertyFeeEnterpriseId}
+                    enterprises={baseDetail.tenantEnterprises}
+                    managementCompanyName={baseDetail.organization?.name || baseDetail.managementCompanyName || "管理公司"}
+                    onResponsibilityTypeChange={propertyFeeType => setMeterForm(current => ({ ...current, propertyFeeType }))}
+                    onEnterpriseChange={propertyFeeEnterpriseId => setMeterForm(current => ({ ...current, propertyFeeEnterpriseId }))}
+                  />
+                )}
               </div>
             )}
 
             {meterForm.networkEnabled && (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700"><Wifi className="h-4 w-4" />网络费用账户</p>
+                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700"><Wifi className="h-4 w-4" />宽带费账户</p>
                 <Input value={meterForm.networkNumber} onChange={event => setMeterForm(current => ({ ...current, networkNumber: event.target.value }))} placeholder="宽带或网络账号" />
+                <UtilityResponsibilityFields
+                  responsibilityType={meterForm.networkType}
+                  enterpriseId={meterForm.networkEnterpriseId}
+                  enterprises={baseDetail.tenantEnterprises}
+                  managementCompanyName={baseDetail.organization?.name || baseDetail.managementCompanyName || "管理公司"}
+                  onResponsibilityTypeChange={networkType => setMeterForm(current => ({ ...current, networkType }))}
+                  onEnterpriseChange={networkEnterpriseId => setMeterForm(current => ({ ...current, networkEnterpriseId }))}
+                />
               </div>
             )}
+
+            {baseDetail.feeTypes.filter(feeType => feeType.isActive && !fixedFeeCodes.has(feeType.code) && newMeterFeeConfigs[feeType.id]?.enabled).map(feeType => {
+              const config = newMeterFeeConfigs[feeType.id];
+              return (
+                <div key={feeType.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-slate-700"><ReceiptText className="h-4 w-4" />{feeType.name}</p>
+                    <span className="text-xs text-slate-400">{feeType.billingCycle === "monthly" ? "按月" : "按年"}</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      value={config.accountNumber}
+                      onChange={event => setNewMeterFeeConfigs(current => ({ ...current, [feeType.id]: { ...current[feeType.id], accountNumber: event.target.value } }))}
+                      placeholder="费用账户或合同号（选填）"
+                    />
+                    <Input
+                      value={config.provider}
+                      onChange={event => setNewMeterFeeConfigs(current => ({ ...current, [feeType.id]: { ...current[feeType.id], provider: event.target.value } }))}
+                      placeholder="收费方（选填）"
+                    />
+                  </div>
+                  <UtilityResponsibilityFields
+                    responsibilityType={config.responsibilityType}
+                    enterpriseId={config.enterpriseId}
+                    enterprises={baseDetail.tenantEnterprises}
+                    managementCompanyName={baseDetail.organization?.name || baseDetail.managementCompanyName || "管理公司"}
+                    onResponsibilityTypeChange={responsibilityType => setNewMeterFeeConfigs(current => ({ ...current, [feeType.id]: { ...current[feeType.id], responsibilityType } }))}
+                    onEnterpriseChange={enterpriseId => setNewMeterFeeConfigs(current => ({ ...current, [feeType.id]: { ...current[feeType.id], enterpriseId } }))}
+                  />
+                </div>
+              );
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddMeterDialog(false)} disabled={addingMeter}>取消</Button>

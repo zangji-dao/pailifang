@@ -1,6 +1,32 @@
 // 表号类型
 export type MeterType = "base" | "customer";
 
+export type FeeBillingCycle = "monthly" | "annual";
+
+export interface BaseFeeType {
+  id: string;
+  baseId: string;
+  code: string;
+  name: string;
+  billingCycle: FeeBillingCycle;
+  isBuiltin: boolean;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface MeterFeeConfig {
+  id: string;
+  meterId: string;
+  feeTypeId: string;
+  enabled: boolean;
+  responsibilityType: MeterType;
+  enterpriseId: string | null;
+  accountNumber: string | null;
+  provider: string | null;
+  notes: string | null;
+  feeType: BaseFeeType;
+}
+
 // 网络状态
 export type NetworkStatus = "normal" | "arrears" | "not_applicable";
 
@@ -40,6 +66,7 @@ export interface BaseEnterprise extends Enterprise {
 export interface UtilityPayment {
   id: string;
   meterId: string;
+  feeTypeId: string | null;
   utilityType: "electricity" | "water" | "heating" | "network" | "property_fee" | string;
   billingPeriod: string;
   provider: string | null;
@@ -53,6 +80,17 @@ export interface UtilityPayment {
   paidAt: string | null;
   paymentMethod: string | null;
   receiptNumber: string | null;
+  metadata?: {
+    source?: string;
+    recordedAt?: string;
+    dueDate?: string | null;
+    invoiceStatus?: "pending" | "issued" | "not_required" | string;
+    invoiceNumber?: string | null;
+    feeTypeName?: string;
+    responsibilityType?: MeterType;
+    responsibleEnterpriseId?: string | null;
+    maintainedBy?: "management_company" | string;
+  } | null;
 }
 
 // 工位号信息
@@ -90,19 +128,13 @@ export interface Meter {
   electricityEnabled: boolean;
   electricityNumber: string | null;
   electricityProvider: string | null;
-  electricityChargeInst: string | null;
   electricityType: MeterType;
-  electricityBalance: number | string | null; // 余额
-  electricityBalanceUpdatedAt: string | null; // 余额更新时间
   electricityEnterpriseId: string | null;
   // 水表
   waterEnabled: boolean;
   waterNumber: string | null;
   waterProvider: string | null;
-  waterChargeInst: string | null;
   waterType: MeterType;
-  waterBalance: number | string | null; // 余额
-  waterBalanceUpdatedAt: string | null; // 余额更新时间
   waterEnterpriseId: string | null;
   // 取暖
   heatingEnabled: boolean;
@@ -111,15 +143,19 @@ export interface Meter {
   heatingStatus: HeatingStatus;
   heatingEnterpriseId: string | null;
   propertyFeeEnabled: boolean;
+  propertyFeeType: MeterType;
+  propertyFeeEnterpriseId: string | null;
   // 网络
   networkEnabled: boolean;
   networkNumber: string | null;
   networkType: MeterType;
   networkStatus: NetworkStatus;
+  networkEnterpriseId: string | null;
   // 面积
   area: number | string | null;
   spaces: Space[];
   utilityPayments: UtilityPayment[];
+  feeConfigs: MeterFeeConfig[];
 }
 
 export interface BaseOrganization {
@@ -148,6 +184,7 @@ export interface BaseDetail {
   managementCompanyPhone: string | null;
   propertyFeeMode: "charged" | "free";
   propertyFeeBillingCycle: "annual";
+  feeTypes: BaseFeeType[];
   tenantEnterprises: BaseEnterprise[];
   serviceEnterprises: BaseEnterprise[];
   serviceEnterpriseCount: number;

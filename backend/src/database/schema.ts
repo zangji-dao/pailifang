@@ -873,19 +873,13 @@ export const meters = pgTable("meters", {
 	electricityEnabled: boolean("electricity_enabled").default(false).notNull(),
 	electricityNumber: varchar("electricity_number", { length: 50 }),
 	electricityProvider: varchar("electricity_provider", { length: 255 }),
-	electricityChargeInst: varchar("electricity_charge_inst", { length: 100 }),
 	electricityType: varchar("electricity_type", { length: 20 }).default('base'), // base=基地负责, customer=客户负责
-	electricityBalance: decimal("electricity_balance", { precision: 10, scale: 2 }), // 电表余额（支付宝获取）
-	electricityBalanceUpdatedAt: timestamp("electricity_balance_updated_at"), // 余额更新时间
 	electricityEnterpriseId: varchar("electricity_enterprise_id", { length: 36 }),
 	// 水表
 	waterEnabled: boolean("water_enabled").default(false).notNull(),
 	waterNumber: varchar("water_number", { length: 50 }),
 	waterProvider: varchar("water_provider", { length: 255 }),
-	waterChargeInst: varchar("water_charge_inst", { length: 100 }),
 	waterType: varchar("water_type", { length: 20 }).default('base'),
-	waterBalance: decimal("water_balance", { precision: 10, scale: 2 }), // 水表余额（支付宝获取）
-	waterBalanceUpdatedAt: timestamp("water_balance_updated_at"), // 余额更新时间
 	waterEnterpriseId: varchar("water_enterprise_id", { length: 36 }),
 	// 取暖（人工维护状态）
 	heatingEnabled: boolean("heating_enabled").default(false).notNull(),
@@ -894,10 +888,13 @@ export const meters = pgTable("meters", {
 	heatingStatus: varchar("heating_status", { length: 20 }).default('full'), // full=全额, base=基础, arrears=欠费, not_applicable=不涉及
 	heatingEnterpriseId: varchar("heating_enterprise_id", { length: 36 }),
 	propertyFeeEnabled: boolean("property_fee_enabled").default(false).notNull(),
+	propertyFeeType: varchar("property_fee_type", { length: 20 }).default('base'),
+	propertyFeeEnterpriseId: varchar("property_fee_enterprise_id", { length: 36 }),
 	// 网络（人工维护状态）
 	networkEnabled: boolean("network_enabled").default(false).notNull(),
 	networkNumber: varchar("network_number", { length: 50 }),
 	networkType: varchar("network_type", { length: 20 }).default('base'),
+	networkEnterpriseId: varchar("network_enterprise_id", { length: 36 }),
 	networkStatus: varchar("network_status", { length: 20 }).default('normal'), // normal=正常, arrears=欠费, not_applicable=不涉及
 	// 面积
 	area: decimal("area", { precision: 10, scale: 2 }),
@@ -916,10 +913,59 @@ export const meters = pgTable("meters", {
 		}).onDelete("cascade"),
 ]);
 
+export const baseFeeTypes = pgTable("base_fee_types", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	baseId: varchar("base_id", { length: 36 }).notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	billingCycle: varchar("billing_cycle", { length: 20 }).default('monthly').notNull(),
+	isBuiltin: boolean("is_builtin").default(false).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("base_fee_types_base_idx").on(table.baseId, table.isActive, table.sortOrder),
+	unique("base_fee_types_base_code_unique").on(table.baseId, table.code),
+	foreignKey({
+		columns: [table.baseId],
+		foreignColumns: [bases.id],
+		name: "base_fee_types_base_id_fkey"
+	}).onDelete("cascade"),
+]);
+
+export const meterFeeConfigs = pgTable("meter_fee_configs", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	meterId: varchar("meter_id", { length: 36 }).notNull(),
+	feeTypeId: varchar("fee_type_id", { length: 36 }).notNull(),
+	enabled: boolean().default(false).notNull(),
+	responsibilityType: varchar("responsibility_type", { length: 20 }).default('base').notNull(),
+	enterpriseId: varchar("enterprise_id", { length: 36 }),
+	accountNumber: varchar("account_number", { length: 100 }),
+	provider: varchar({ length: 255 }),
+	notes: text(),
+	createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at"),
+}, (table) => [
+	index("meter_fee_configs_meter_idx").on(table.meterId, table.enabled),
+	unique("meter_fee_configs_meter_type_unique").on(table.meterId, table.feeTypeId),
+	foreignKey({
+		columns: [table.meterId],
+		foreignColumns: [meters.id],
+		name: "meter_fee_configs_meter_id_fkey"
+	}).onDelete("cascade"),
+	foreignKey({
+		columns: [table.feeTypeId],
+		foreignColumns: [baseFeeTypes.id],
+		name: "meter_fee_configs_fee_type_id_fkey"
+	}).onDelete("cascade"),
+]);
+
 // 物业缴费流水表（水、电、暖、网及物业费等）
 export const propertyUtilityPayments = pgTable("property_utility_payments", {
 	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	meterId: varchar("meter_id", { length: 36 }).notNull(),
+	feeTypeId: varchar("fee_type_id", { length: 36 }),
 	utilityType: varchar("utility_type", { length: 30 }).notNull(),
 	billingPeriod: varchar("billing_period", { length: 30 }).notNull(),
 	provider: varchar({ length: 255 }),
@@ -945,6 +991,11 @@ export const propertyUtilityPayments = pgTable("property_utility_payments", {
 		foreignColumns: [meters.id],
 		name: "property_utility_payments_meter_id_fkey"
 	}).onDelete("cascade"),
+	foreignKey({
+		columns: [table.feeTypeId],
+		foreignColumns: [baseFeeTypes.id],
+		name: "property_utility_payments_fee_type_id_fkey"
+	}).onDelete("set null"),
 ]);
 
 // 物理空间表

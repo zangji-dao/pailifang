@@ -512,6 +512,10 @@ export const meters = pgTable("meters", {
 	heatingNumber: varchar("heating_number", { length: 50 }),
 	heatingType: varchar("heating_type", { length: 20 }).default('base'),
 	heatingEnterpriseId: varchar("heating_enterprise_id", { length: 36 }),
+	propertyFeeType: varchar("property_fee_type", { length: 20 }).default('base'),
+	propertyFeeEnterpriseId: varchar("property_fee_enterprise_id", { length: 36 }),
+	networkType: varchar("network_type", { length: 20 }).default('base'),
+	networkEnterpriseId: varchar("network_enterprise_id", { length: 36 }),
 	area: numeric({ precision: 10, scale:  2 }),
 	sortOrder: integer("sort_order").default(0),
 	status: varchar({ length: 20 }).default('active').notNull(),
@@ -525,6 +529,42 @@ export const meters = pgTable("meters", {
 			foreignColumns: [bases.id],
 			name: "meters_base_id_fkey"
 		}).onDelete("cascade"),
+]);
+
+export const baseFeeTypes = pgTable("base_fee_types", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	baseId: varchar("base_id", { length: 36 }).notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	billingCycle: varchar("billing_cycle", { length: 20 }).default('monthly').notNull(),
+	isBuiltin: boolean("is_builtin").default(false).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("base_fee_types_base_idx").using("btree", table.baseId.asc().nullsLast().op("text_ops"), table.isActive.asc().nullsLast(), table.sortOrder.asc().nullsLast()),
+	unique("base_fee_types_base_code_unique").on(table.baseId, table.code),
+	foreignKey({ columns: [table.baseId], foreignColumns: [bases.id], name: "base_fee_types_base_id_fkey" }).onDelete("cascade"),
+]);
+
+export const meterFeeConfigs = pgTable("meter_fee_configs", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	meterId: varchar("meter_id", { length: 36 }).notNull(),
+	feeTypeId: varchar("fee_type_id", { length: 36 }).notNull(),
+	enabled: boolean().default(false).notNull(),
+	responsibilityType: varchar("responsibility_type", { length: 20 }).default('base').notNull(),
+	enterpriseId: varchar("enterprise_id", { length: 36 }),
+	accountNumber: varchar("account_number", { length: 100 }),
+	provider: varchar({ length: 255 }),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("meter_fee_configs_meter_idx").using("btree", table.meterId.asc().nullsLast().op("text_ops"), table.enabled.asc().nullsLast()),
+	unique("meter_fee_configs_meter_type_unique").on(table.meterId, table.feeTypeId),
+	foreignKey({ columns: [table.meterId], foreignColumns: [meters.id], name: "meter_fee_configs_meter_id_fkey" }).onDelete("cascade"),
+	foreignKey({ columns: [table.feeTypeId], foreignColumns: [baseFeeTypes.id], name: "meter_fee_configs_fee_type_id_fkey" }).onDelete("cascade"),
 ]);
 
 export const spaces = pgTable("spaces", {

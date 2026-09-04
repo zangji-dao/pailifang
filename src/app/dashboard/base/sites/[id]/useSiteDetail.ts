@@ -73,11 +73,9 @@ export function useSiteDetail(baseId: string) {
       0
     );
     const utilityAlertCount = baseDetail.meters.reduce((sum, meter) => {
-      const electricityAlert = meter.electricityBalance !== null && Number(meter.electricityBalance) < 100;
-      const waterAlert = meter.waterBalance !== null && Number(meter.waterBalance) < 100;
       const heatingAlert = meter.heatingStatus === "arrears";
       const networkAlert = meter.networkStatus === "arrears";
-      return sum + [electricityAlert, waterAlert, heatingAlert, networkAlert].filter(Boolean).length;
+      return sum + [heatingAlert, networkAlert].filter(Boolean).length;
     }, 0);
     const paidUtilityAmount = baseDetail.meters.reduce(
       (sum, meter) => sum + meter.utilityPayments

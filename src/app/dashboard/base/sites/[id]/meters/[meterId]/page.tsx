@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2, Zap, Droplets, Flame, Wifi, CircleAlert, BadgeCheck, ReceiptText, RefreshCw } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Building2, Settings, DoorOpen, Plus, ChevronRight, Loader2, Save, Pencil, Trash2, Zap, Droplets, Flame, Wifi, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -31,36 +31,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import type { Meter, Space, Enterprise, RegNumber, MeterType, NetworkStatus, HeatingStatus, UtilityPayment } from "../../types";
+import type { BaseFeeType, Meter, Space, Enterprise, RegNumber, MeterType, NetworkStatus, HeatingStatus, UtilityPayment } from "../../types";
+import { getUtilityBillingPeriod, getUtilityCycle, getUtilityLabel, type ManagedUtilityType } from "../../utilityTasks";
+import { UtilityResponsibilityFields } from "../../_components/UtilityResponsibilityFields";
 
-interface AlipayConfiguration {
-  configured: boolean;
-  appIdMasked: string | null;
-  redirectUri: string | null;
-  utilityBilling?: {
-    enabled: boolean;
-    status: "enabled" | "pending_authorization";
-    mode: "institution_bill_query";
-    requiresInstitutionAgreement: boolean;
-    message: string;
-  };
+type UtilityBillType = ManagedUtilityType;
+
+interface FeeConfigForm {
+  enabled: boolean;
+  responsibilityType: MeterType;
+  enterpriseId: string;
+  accountNumber: string;
+  provider: string;
+  notes: string;
 }
 
-type UtilityBillType = "electricity" | "water";
+const fixedFeeCodes = new Set(["electricity", "water", "heating", "property_fee", "network"]);
 
-const createUtilityBillForm = () => ({
-  billingPeriod: new Date().toISOString().slice(0, 7),
+const createUtilityBillForm = (
+  utilityType: UtilityBillType = "electricity",
+  billingPeriod = getUtilityBillingPeriod(utilityType),
+) => ({
+  billingPeriod,
   amount: "",
   quantity: "",
   unitPrice: "",
   status: "pending",
+  dueDate: "",
   paymentMethod: "",
   receiptNumber: "",
+  invoiceStatus: "pending",
+  invoiceNumber: "",
 });
 
-function getLatestPayment(meter: Meter, utilityType: "electricity" | "water") {
+function getLatestPayment(meter: Meter, utilityType: UtilityBillType) {
   return [...(meter.utilityPayments || [])]
     .filter(payment => payment.utilityType === utilityType)
     .sort((first, second) => second.billingPeriod.localeCompare(first.billingPeriod))[0] || null;
@@ -75,22 +82,6 @@ function formatBillAmount(payment: UtilityPayment | null) {
   });
 }
 
-function formatBalance(balance: number | string | null) {
-  if (balance === null || balance === "") return "--";
-  const value = Number(balance);
-  if (!Number.isFinite(value)) return "--";
-  return value.toLocaleString("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 2,
-  });
-}
-
-function formatBalanceUpdatedAt(value: string | null) {
-  if (!value) return "尚未从收费机构同步";
-  return `更新于 ${new Date(value).toLocaleString("zh-CN", { hour12: false })}`;
-}
-
 function getPaymentStatus(payment: UtilityPayment | null) {
   if (!payment) return { label: "暂无账单", className: "bg-slate-100 text-slate-500" };
   if (payment.status === "paid") return { label: "已缴", className: "bg-emerald-100 text-emerald-700" };
@@ -98,11 +89,37 @@ function getPaymentStatus(payment: UtilityPayment | null) {
   return { label: "待缴", className: "bg-amber-100 text-amber-700" };
 }
 
+function getFeeIcon(utilityType: string) {
+  if (utilityType === "electricity") return Zap;
+  if (utilityType === "water") return Droplets;
+  if (utilityType === "heating") return Flame;
+  if (utilityType === "network") return Wifi;
+  return ReceiptText;
+}
+
+function createFeeConfigForms(feeTypes: BaseFeeType[], meter: Meter | null) {
+  return Object.fromEntries(feeTypes.map(feeType => {
+    const config = meter?.feeConfigs?.find(item => item.feeTypeId === feeType.id);
+    return [feeType.id, {
+      enabled: config?.enabled ?? false,
+      responsibilityType: config?.responsibilityType || "base",
+      enterpriseId: config?.enterpriseId || "",
+      accountNumber: config?.accountNumber || "",
+      provider: config?.provider || "",
+      notes: config?.notes || "",
+    } satisfies FeeConfigForm];
+  }));
+}
+
 export default function MeterDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const baseId = params.id as string;
   const meterId = params.meterId as string;
+  const requestedFee = searchParams.get("fee") as UtilityBillType | null;
+  const requestedPeriod = searchParams.get("period");
+  const returnToResources = () => router.push(`/dashboard/base/sites/${baseId}?tab=resources`);
 
   const [meter, setMeter] = useState<Meter | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,11 +136,15 @@ export default function MeterDetailPage() {
   // 删除空间确认
   const [deleteSpaceId, setDeleteSpaceId] = useState<string | null>(null);
 
-  const [alipayConfiguration, setAlipayConfiguration] = useState<AlipayConfiguration | null>(null);
-  const [syncingBalance, setSyncingBalance] = useState<UtilityBillType | null>(null);
   const [billDialogType, setBillDialogType] = useState<UtilityBillType | null>(null);
   const [savingBill, setSavingBill] = useState(false);
   const [utilityBillForm, setUtilityBillForm] = useState(createUtilityBillForm);
+  const [feeTypes, setFeeTypes] = useState<BaseFeeType[]>([]);
+  const [feeConfigForms, setFeeConfigForms] = useState<Record<string, FeeConfigForm>>({});
+  const [baseContext, setBaseContext] = useState({
+    managementCompanyName: "管理公司",
+    propertyFeeMode: "charged" as "charged" | "free",
+  });
 
   // 删除物业确认
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -138,14 +159,12 @@ export default function MeterDetailPage() {
     electricityEnabled: true,
     electricityNumber: "",
     electricityProvider: "",
-    electricityChargeInst: "",
     electricityType: "base" as MeterType,
     electricityEnterpriseId: "",
     // 水表
     waterEnabled: true,
     waterNumber: "",
     waterProvider: "",
-    waterChargeInst: "",
     waterType: "base" as MeterType,
     waterEnterpriseId: "",
     // 取暖
@@ -155,12 +174,16 @@ export default function MeterDetailPage() {
     heatingStatus: "full" as HeatingStatus,
     heatingEnterpriseId: "",
     propertyFeeEnabled: true,
+    propertyFeeType: "base" as MeterType,
+    propertyFeeEnterpriseId: "",
     // 网络
     networkEnabled: false,
     networkNumber: "",
     networkType: "base" as MeterType,
     networkStatus: "normal" as NetworkStatus,
+    networkEnterpriseId: "",
   });
+  const extraFeeTypes = feeTypes.filter(feeType => feeType.isActive && !fixedFeeCodes.has(feeType.code));
 
   // 新增空间表单
   const [spaceForm, setSpaceForm] = useState({ name: "" });
@@ -181,6 +204,17 @@ export default function MeterDetailPage() {
         const result = await res.json();
         if (result.success) {
           const foundMeter = result.data.meters?.find((m: Meter) => m.id === meterId);
+          const nextFeeTypes = (result.data.feeTypes || []) as BaseFeeType[];
+          setFeeTypes(nextFeeTypes);
+          setFeeConfigForms(createFeeConfigForms(nextFeeTypes, foundMeter || null));
+          setEnterprises((result.data.tenantEnterprises || []).map((enterprise: Enterprise) => ({
+            id: enterprise.id,
+            name: enterprise.name,
+          })));
+          setBaseContext({
+            managementCompanyName: result.data.organization?.name || result.data.managementCompanyName || "管理公司",
+            propertyFeeMode: result.data.propertyFeeMode === "free" ? "free" : "charged",
+          });
           setMeter(foundMeter || null);
           // 初始化表单
           if (foundMeter) {
@@ -191,13 +225,11 @@ export default function MeterDetailPage() {
               electricityEnabled: foundMeter.electricityEnabled ?? Boolean(foundMeter.electricityNumber),
               electricityNumber: foundMeter.electricityNumber || "",
               electricityProvider: foundMeter.electricityProvider || "",
-              electricityChargeInst: foundMeter.electricityChargeInst || "",
               electricityType: foundMeter.electricityType || "base",
               electricityEnterpriseId: foundMeter.electricityEnterpriseId || "",
               waterEnabled: foundMeter.waterEnabled ?? Boolean(foundMeter.waterNumber),
               waterNumber: foundMeter.waterNumber || "",
               waterProvider: foundMeter.waterProvider || "",
-              waterChargeInst: foundMeter.waterChargeInst || "",
               waterType: foundMeter.waterType || "base",
               waterEnterpriseId: foundMeter.waterEnterpriseId || "",
               heatingEnabled: foundMeter.heatingEnabled ?? Boolean(foundMeter.heatingNumber),
@@ -206,10 +238,13 @@ export default function MeterDetailPage() {
               heatingStatus: foundMeter.heatingStatus || "full",
               heatingEnterpriseId: foundMeter.heatingEnterpriseId || "",
               propertyFeeEnabled: foundMeter.propertyFeeEnabled ?? true,
+              propertyFeeType: foundMeter.propertyFeeType || "base",
+              propertyFeeEnterpriseId: foundMeter.propertyFeeEnterpriseId || "",
               networkEnabled: foundMeter.networkEnabled ?? Boolean(foundMeter.networkNumber),
               networkNumber: foundMeter.networkNumber || "",
               networkType: foundMeter.networkType || "base",
               networkStatus: foundMeter.networkStatus || "normal",
+              networkEnterpriseId: foundMeter.networkEnterpriseId || "",
             });
           }
         }
@@ -231,47 +266,6 @@ export default function MeterDetailPage() {
     return () => controller.abort();
   }, [baseId, meterId]);
 
-  // 获取入驻企业列表
-  useEffect(() => {
-    const controller = new AbortController();
-    
-    const fetchEnterprises = async () => {
-      try {
-        const res = await fetch("/api/enterprises?type=tenant", { signal: controller.signal });
-        const result = await res.json();
-        if (result.success) {
-          setEnterprises(result.data || []);
-        }
-      } catch (error) {
-        // 忽略 AbortError
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
-        console.error("获取企业列表失败:", error);
-      }
-    };
-
-    fetchEnterprises();
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/alipay/configuration", { signal: controller.signal, cache: "no-store" })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          setAlipayConfiguration(result.data);
-        }
-      })
-      .catch(error => {
-        if (error instanceof Error && error.name !== "AbortError") {
-          console.error("获取支付宝配置状态失败:", error);
-        }
-      });
-    return () => controller.abort();
-  }, []);
-
   // 刷新数据
   const refreshMeter = async () => {
     try {
@@ -279,6 +273,13 @@ export default function MeterDetailPage() {
       const result = await res.json();
       if (result.success) {
         const foundMeter = result.data.meters?.find((m: Meter) => m.id === meterId);
+        const nextFeeTypes = (result.data.feeTypes || []) as BaseFeeType[];
+        setFeeTypes(nextFeeTypes);
+        setFeeConfigForms(createFeeConfigForms(nextFeeTypes, foundMeter || null));
+        setEnterprises((result.data.tenantEnterprises || []).map((enterprise: Enterprise) => ({
+          id: enterprise.id,
+          name: enterprise.name,
+        })));
         setMeter(foundMeter || null);
       }
     } catch (error) {
@@ -292,8 +293,33 @@ export default function MeterDetailPage() {
       toast.error("请输入物业编号");
       return;
     }
-    if (![form.electricityEnabled, form.waterEnabled, form.heatingEnabled, form.propertyFeeEnabled, form.networkEnabled].some(Boolean)) {
+    const fixedConfigByCode: Record<string, FeeConfigForm> = {
+      electricity: { enabled: form.electricityEnabled, responsibilityType: form.electricityType, enterpriseId: form.electricityEnterpriseId, accountNumber: form.electricityNumber, provider: form.electricityProvider, notes: "" },
+      water: { enabled: form.waterEnabled, responsibilityType: form.waterType, enterpriseId: form.waterEnterpriseId, accountNumber: form.waterNumber, provider: form.waterProvider, notes: "" },
+      heating: { enabled: form.heatingEnabled, responsibilityType: form.heatingType, enterpriseId: form.heatingEnterpriseId, accountNumber: form.heatingNumber, provider: "", notes: "" },
+      property_fee: { enabled: form.propertyFeeEnabled, responsibilityType: baseContext.propertyFeeMode === "free" ? "base" : form.propertyFeeType, enterpriseId: baseContext.propertyFeeMode === "free" ? "" : form.propertyFeeEnterpriseId, accountNumber: "", provider: "", notes: "" },
+      network: { enabled: form.networkEnabled, responsibilityType: form.networkType, enterpriseId: form.networkEnterpriseId, accountNumber: form.networkNumber, provider: "", notes: "" },
+    };
+    const submittedFeeConfigs = feeTypes.map(feeType => ({
+      feeTypeId: feeType.id,
+      ...(fixedConfigByCode[feeType.code] || feeConfigForms[feeType.id] || {
+        enabled: false,
+        responsibilityType: "base" as MeterType,
+        enterpriseId: "",
+        accountNumber: "",
+        provider: "",
+        notes: "",
+      }),
+    }));
+    if (!submittedFeeConfigs.some(config => config.enabled)) {
       toast.error("请至少选择一项物业费用");
+      return;
+    }
+    const missingResponsibility = submittedFeeConfigs.find(config => (
+      config.enabled && config.responsibilityType === "customer" && !config.enterpriseId
+    ));
+    if (missingResponsibility) {
+      toast.error(`请选择承担${feeTypes.find(feeType => feeType.id === missingResponsibility.feeTypeId)?.name || "该费用"}的入驻企业`);
       return;
     }
 
@@ -309,13 +335,11 @@ export default function MeterDetailPage() {
           electricityEnabled: form.electricityEnabled,
           electricityNumber: form.electricityNumber || null,
           electricityProvider: form.electricityProvider || null,
-          electricityChargeInst: form.electricityChargeInst || null,
           electricityType: form.electricityType,
           electricityEnterpriseId: form.electricityEnterpriseId || null,
           waterEnabled: form.waterEnabled,
           waterNumber: form.waterNumber || null,
           waterProvider: form.waterProvider || null,
-          waterChargeInst: form.waterChargeInst || null,
           waterType: form.waterType,
           waterEnterpriseId: form.waterEnterpriseId || null,
           heatingEnabled: form.heatingEnabled,
@@ -324,10 +348,14 @@ export default function MeterDetailPage() {
           heatingStatus: form.heatingStatus,
           heatingEnterpriseId: form.heatingEnterpriseId || null,
           propertyFeeEnabled: form.propertyFeeEnabled,
+          propertyFeeType: baseContext.propertyFeeMode === "free" ? "base" : form.propertyFeeType,
+          propertyFeeEnterpriseId: baseContext.propertyFeeMode === "free" ? null : form.propertyFeeEnterpriseId || null,
           networkEnabled: form.networkEnabled,
           networkNumber: form.networkNumber || null,
           networkType: form.networkType,
           networkStatus: form.networkStatus,
+          networkEnterpriseId: form.networkEnterpriseId || null,
+          feeConfigs: submittedFeeConfigs,
         }),
       });
 
@@ -482,64 +510,28 @@ export default function MeterDetailPage() {
     });
   };
 
-  const openUtilityBillDialog = (utilityType: UtilityBillType) => {
-    setUtilityBillForm(createUtilityBillForm());
+  const openUtilityBillDialog = (utilityType: UtilityBillType, billingPeriod?: string | null) => {
+    setUtilityBillForm(createUtilityBillForm(utilityType, billingPeriod || getUtilityBillingPeriod(utilityType, new Date(), feeTypes)));
     setBillDialogType(utilityType);
   };
 
-  const handleSyncBalance = async (utilityType: UtilityBillType) => {
-    if (!meter) return;
-
-    const isElectricity = utilityType === "electricity";
-    const accountNumber = isElectricity ? form.electricityNumber : form.waterNumber;
-    const chargeInst = isElectricity ? form.electricityChargeInst : form.waterChargeInst;
-    const savedAccountNumber = isElectricity ? meter.electricityNumber : meter.waterNumber;
-    const savedChargeInst = isElectricity ? meter.electricityChargeInst : meter.waterChargeInst;
-
-    if (!accountNumber.trim()) {
-      toast.error(`请先填写${isElectricity ? "电费" : "水费"}户号`);
-      return;
-    }
-    if (!chargeInst.trim()) {
-      toast.error("请先填写支付宝生活缴费收费机构编码");
-      return;
-    }
-    if (accountNumber !== (savedAccountNumber || "") || chargeInst !== (savedChargeInst || "")) {
-      toast.error("户号或收费机构编码有修改，请先保存物业信息再同步");
-      return;
-    }
-
-    setSyncingBalance(utilityType);
-    try {
-      const response = await fetch(`/api/meters/${meterId}/sync-balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: utilityType }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        toast.error(result.error || "余额同步失败");
-        return;
-      }
-
-      if (result.data?.balance === null || result.data?.balance === undefined) {
-        toast.info(result.message || "收费机构本次未返回余额");
-      } else {
-        toast.success(`${isElectricity ? "电费" : "水费"}余额已同步：${formatBalance(result.data.balance)}`);
-      }
-      await refreshMeter();
-    } catch (error) {
-      console.error("同步水电余额失败:", error);
-      toast.error("余额同步失败");
-    } finally {
-      setSyncingBalance(null);
-    }
-  };
+  useEffect(() => {
+    if (!meter || !requestedFee || !feeTypes.some(feeType => feeType.code === requestedFee)) return;
+    setUtilityBillForm(createUtilityBillForm(
+      requestedFee,
+      requestedPeriod || getUtilityBillingPeriod(requestedFee, new Date(), feeTypes),
+    ));
+    setBillDialogType(requestedFee);
+  }, [feeTypes, meter, requestedFee, requestedPeriod]);
 
   const handleSaveUtilityBill = async () => {
     if (!billDialogType) return;
-    if (!/^\d{4}-\d{2}$/.test(utilityBillForm.billingPeriod)) {
-      toast.error("请选择正确的账期");
+    const monthlyUtility = getUtilityCycle(billDialogType, feeTypes) === "monthly";
+    const validBillingPeriod = monthlyUtility
+      ? /^\d{4}-\d{2}$/.test(utilityBillForm.billingPeriod)
+      : /^\d{4}(?:-\d{4})?$/.test(utilityBillForm.billingPeriod);
+    if (!validBillingPeriod) {
+      toast.error(monthlyUtility ? "请选择正确的月份" : "请输入正确的年度或供暖周期");
       return;
     }
     if (utilityBillForm.amount === "" || Number(utilityBillForm.amount) < 0) {
@@ -550,6 +542,19 @@ export default function MeterDetailPage() {
     setSavingBill(true);
     try {
       const isElectricity = billDialogType === "electricity";
+      const isWater = billDialogType === "water";
+      const dynamicFeeType = feeTypes.find(feeType => feeType.code === billDialogType);
+      const dynamicConfig = dynamicFeeType ? feeConfigForms[dynamicFeeType.id] : null;
+      const provider = isElectricity ? form.electricityProvider : isWater ? form.waterProvider : dynamicConfig?.provider || "";
+      const accountNumber = isElectricity
+        ? form.electricityNumber
+        : isWater
+          ? form.waterNumber
+          : billDialogType === "network"
+            ? form.networkNumber
+            : billDialogType === "heating"
+              ? form.heatingNumber
+              : dynamicConfig?.accountNumber || "";
       const response = await fetch(`/api/meters/${meterId}/utility-payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -560,10 +565,13 @@ export default function MeterDetailPage() {
           quantity: utilityBillForm.quantity,
           unitPrice: utilityBillForm.unitPrice,
           status: utilityBillForm.status,
+          dueDate: utilityBillForm.dueDate,
           paymentMethod: utilityBillForm.paymentMethod,
           receiptNumber: utilityBillForm.receiptNumber,
-          provider: isElectricity ? form.electricityProvider : form.waterProvider,
-          accountNumber: isElectricity ? form.electricityNumber : form.waterNumber,
+          invoiceStatus: utilityBillForm.invoiceStatus,
+          invoiceNumber: utilityBillForm.invoiceNumber,
+          provider,
+          accountNumber,
         }),
       });
       const result = await response.json();
@@ -572,7 +580,7 @@ export default function MeterDetailPage() {
         return;
       }
 
-      toast.success(`${isElectricity ? "电费" : "水费"}账单已保存`);
+      toast.success(`${getUtilityLabel(billDialogType, feeTypes)}${getUtilityCycle(billDialogType, feeTypes) === "monthly" ? "消费记录" : "费用记录"}已保存`);
       setBillDialogType(null);
       await refreshMeter();
     } catch (error) {
@@ -645,50 +653,51 @@ export default function MeterDetailPage() {
     );
   }
 
-  const electricityPayment = getLatestPayment(meter, "electricity");
-  const waterPayment = getLatestPayment(meter, "water");
-  const electricityPaymentStatus = getPaymentStatus(electricityPayment);
-  const waterPaymentStatus = getPaymentStatus(waterPayment);
-  const alipayUtilityEnabled = !!(alipayConfiguration?.configured && alipayConfiguration.utilityBilling?.enabled);
+  const billIsMonthly = billDialogType ? getUtilityCycle(billDialogType, feeTypes) === "monthly" : true;
+  const billSupportsUsage = billDialogType === "electricity" || billDialogType === "water";
+  const enabledFeeConfigs = meter.feeConfigs.filter(config => config.enabled);
+  const totalWorkstations = meter.spaces.reduce((total, space) => total + (space.regNumbers?.length || 0), 0);
+  const allocatedWorkstations = meter.spaces.reduce(
+    (total, space) => total + (space.regNumbers?.filter(regNumber => regNumber.available === false).length || 0),
+    0,
+  );
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #FDFBF7 0%, #F8F5F0 100%)" }}>
-      <div className="p-8 max-w-4xl mx-auto">
-        {/* 页面头部 */}
-        <div className="mb-8">
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 border-b border-slate-200 pb-5">
           <button
-            onClick={() => router.push(`/dashboard/base/sites/${baseId}`)}
-            className="inline-flex items-center gap-2 text-sm font-medium mb-4 px-3 py-1.5 rounded-lg hover:bg-white/60 transition-colors"
-            style={{ color: "#78716C" }}
+            onClick={returnToResources}
+            className="mb-4 inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-white hover:text-slate-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            返回基地详情
+            返回空间资源
           </button>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 via-amber-50 to-orange-100 flex items-center justify-center shadow-inner">
-                <Building2 className="h-7 w-7 text-amber-600" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white sm:h-12 sm:w-12">
+                <Building2 className="h-5 w-5" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1C1917" }}>
-                  物业信息
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-400">物业资源详情 · {meter.code}</p>
+                <h1 className="mt-1 break-words text-xl font-semibold text-slate-950 sm:text-2xl">
+                  {meter.name || meter.code}
                 </h1>
-                <p className="text-sm" style={{ color: "#78716C" }}>编辑物业基本信息和表号</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
               <Button 
                 variant="outline" 
                 onClick={() => setShowDeleteConfirm(true)} 
                 disabled={!canDeleteMeter()}
-                className="h-10 px-4 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 disabled:text-slate-400 disabled:border-slate-200 disabled:hover:bg-transparent"
+                className="h-10 flex-1 border-red-200 px-4 text-red-600 hover:border-red-300 hover:bg-red-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent sm:flex-none"
                 title={!canDeleteMeter() ? getDeleteDisabledReason() : "删除物业"}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 删除
               </Button>
-              <Button onClick={handleSave} disabled={saving} className="h-10 px-6">
+              <Button onClick={handleSave} disabled={saving} className="h-10 flex-1 px-6 sm:flex-none">
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -705,10 +714,34 @@ export default function MeterDetailPage() {
           </div>
         </div>
 
-        {/* 基本信息表单 */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <div className="mb-6 grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 bg-white sm:grid-cols-4 sm:divide-x sm:divide-slate-100">
+          {[
+            ["建筑面积", `${Number(meter.area || 0).toLocaleString("zh-CN")} ㎡`],
+            ["物理空间", `${meter.spaces.length} 个`],
+            ["工位资源", `${allocatedWorkstations}/${totalWorkstations}`],
+            ["适用费用", `${enabledFeeConfigs.length} 类`],
+          ].map(([label, value], index) => (
+            <div key={label} className={`px-4 py-3.5 ${index < 2 ? "border-b border-slate-100 sm:border-b-0" : ""}`}>
+              <p className="text-xs text-slate-400">{label}</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <Tabs defaultValue={requestedFee ? "billing" : "resources"} className="space-y-5">
+          <div className="overflow-x-auto pb-1">
+            <TabsList className="h-10 min-w-max rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              <TabsTrigger value="resources" className="rounded-md px-3 data-[state=active]:bg-slate-950 data-[state=active]:text-white">空间与工位</TabsTrigger>
+              <TabsTrigger value="fees" className="rounded-md px-3 data-[state=active]:bg-slate-950 data-[state=active]:text-white">费用配置</TabsTrigger>
+              <TabsTrigger value="billing" className="rounded-md px-3 data-[state=active]:bg-slate-950 data-[state=active]:text-white">费用录入</TabsTrigger>
+              <TabsTrigger value="profile" className="rounded-md px-3 data-[state=active]:bg-slate-950 data-[state=active]:text-white">物业资料</TabsTrigger>
+            </TabsList>
+          </div>
+
+        <TabsContent value="profile" className="mt-0">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
           <h2 className="text-base font-semibold mb-5" style={{ color: "#1C1917" }}>基本信息</h2>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:gap-6">
             <div className="space-y-2">
               <Label htmlFor="code">物业编号 *</Label>
               <Input
@@ -739,40 +772,19 @@ export default function MeterDetailPage() {
             </div>
           </div>
         </div>
+        </TabsContent>
 
-        {/* 表号信息表单 */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <TabsContent value="fees" className="mt-0">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
           <h2 className="text-base font-semibold mb-5 flex items-center gap-2" style={{ color: "#1C1917" }}>
             <Settings className="h-5 w-5" style={{ color: "#A8A29E" }} />
-            水电账户与账单
+            费用账户与责任
           </h2>
-
-          <div className={`mb-6 flex items-start gap-3 rounded-xl border p-4 ${alipayUtilityEnabled ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
-            {alipayUtilityEnabled ? (
-              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-            ) : (
-              <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            )}
-            <div>
-              <p className={`text-sm font-semibold ${alipayUtilityEnabled ? "text-emerald-800" : "text-amber-800"}`}>
-                {alipayUtilityEnabled
-                  ? "支付宝生活缴费查询已启用"
-                  : alipayConfiguration?.configured
-                    ? "支付宝生活缴费查询待开通"
-                    : "支付宝开放平台尚未配置"}
-              </p>
-              <p className={`mt-1 text-xs leading-5 ${alipayUtilityEnabled ? "text-emerald-700" : "text-amber-700"}`}>
-                {alipayConfiguration?.configured
-                  ? `应用 ${alipayConfiguration.appIdMasked || "已接入"} 已完成密钥配置。${alipayConfiguration.utilityBilling?.message || "户号查询代码已就绪。"}`
-                  : "配置支付宝应用密钥后，可继续开通生活缴费户号查询能力。"}
-              </p>
-            </div>
-          </div>
 
           <div className="mb-8">
             <div className="mb-3">
               <p className="text-sm font-semibold text-slate-800">适用费用</p>
-              <p className="mt-1 text-xs text-slate-400">只有启用的费用会显示对应账户配置，并进入基地物业缴费看板。</p>
+              <p className="mt-1 text-xs text-slate-400">只有启用的费用会进入物业缴费看板，并可分别指定费用承担方。</p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {[
@@ -780,7 +792,7 @@ export default function MeterDetailPage() {
                 { field: "waterEnabled" as const, label: "水费", icon: Droplets, className: "text-sky-600" },
                 { field: "heatingEnabled" as const, label: "取暖费", icon: Flame, className: "text-orange-600" },
                 { field: "propertyFeeEnabled" as const, label: "物业费", icon: ReceiptText, className: "text-emerald-600" },
-                { field: "networkEnabled" as const, label: "网络费", icon: Wifi, className: "text-violet-600" },
+                { field: "networkEnabled" as const, label: "宽带费", icon: Wifi, className: "text-violet-600" },
               ].map(item => (
                 <label key={item.field} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-medium transition ${form[item.field] ? "border-cyan-300 bg-cyan-50" : "border-slate-200 bg-white"}`}>
                   <Checkbox
@@ -791,6 +803,25 @@ export default function MeterDetailPage() {
                   {item.label}
                 </label>
               ))}
+              {extraFeeTypes.map(feeType => {
+                const config = feeConfigForms[feeType.id];
+                return (
+                  <label key={feeType.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-medium transition ${config?.enabled ? "border-cyan-300 bg-cyan-50" : "border-slate-200 bg-white"}`}>
+                    <Checkbox
+                      checked={config?.enabled || false}
+                      onCheckedChange={checked => setFeeConfigForms(current => ({
+                        ...current,
+                        [feeType.id]: {
+                          ...(current[feeType.id] || { responsibilityType: "base", enterpriseId: "", accountNumber: "", provider: "", notes: "" }),
+                          enabled: checked === true,
+                        },
+                      }))}
+                    />
+                    <ReceiptText className="h-4 w-4 text-slate-500" />
+                    <span className="min-w-0 truncate">{feeType.name}</span>
+                  </label>
+                );
+              })}
             </div>
             {form.propertyFeeEnabled && (
               <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-700">
@@ -800,11 +831,11 @@ export default function MeterDetailPage() {
           </div>
 
           <div className="space-y-8">
-            {/* 电表 - 显示余额（只读） */}
+            {/* 电表 */}
             {form.electricityEnabled && <div>
               <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
                 <Zap className="h-4 w-4 text-amber-500" />
-                电费账单
+                电费账户
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <div className="space-y-2">
@@ -823,85 +854,22 @@ export default function MeterDetailPage() {
                     placeholder="例如：国网吉林省电力有限公司"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>支付宝收费机构编码</Label>
-                  <Input
-                    value={form.electricityChargeInst}
-                    onChange={(e) => setForm({ ...form, electricityChargeInst: e.target.value })}
-                    placeholder="例如生活缴费平台分配的 charge_inst"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>类型</Label>
-                  <Select value={form.electricityType} onValueChange={(v) => setForm({ ...form, electricityType: v as MeterType })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="base">基地电表</SelectItem>
-                      <SelectItem value="customer">客户电表</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>负责公司</Label>
-                  <Select value={form.electricityEnterpriseId || "none"} onValueChange={(v) => setForm({ ...form, electricityEnterpriseId: v === "none" ? "" : v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择负责公司" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">无</SelectItem>
-                      {enterprises.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-              <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-100">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <ReceiptText className="h-4 w-4 text-amber-600" />
-                      <span className="text-xs font-medium text-amber-700">账户余额</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${electricityPaymentStatus.className}`}>{electricityPaymentStatus.label}</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-amber-700">{formatBalance(meter.electricityBalance)}</p>
-                    <p className="mt-1 text-xs text-amber-700/70">
-                      {formatBalanceUpdatedAt(meter.electricityBalanceUpdatedAt)}
-                      {electricityPayment ? ` · 最近账单 ${formatBillAmount(electricityPayment)}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
-                      onClick={() => handleSyncBalance("electricity")}
-                      disabled={syncingBalance !== null}
-                    >
-                      {syncingBalance === "electricity" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                      同步余额
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
-                      onClick={() => openUtilityBillDialog("electricity")}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      录入账单
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <UtilityResponsibilityFields
+                responsibilityType={form.electricityType}
+                enterpriseId={form.electricityEnterpriseId}
+                enterprises={enterprises}
+                managementCompanyName={baseContext.managementCompanyName}
+                onResponsibilityTypeChange={electricityType => setForm(current => ({ ...current, electricityType }))}
+                onEnterpriseChange={electricityEnterpriseId => setForm(current => ({ ...current, electricityEnterpriseId }))}
+              />
             </div>}
 
-            {/* 水表 - 显示余额（只读） */}
+            {/* 水表 */}
             {form.waterEnabled && <div>
               <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
                 <Droplets className="h-4 w-4 text-sky-500" />
-                水费账单
+                水费账户
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <div className="space-y-2">
@@ -920,78 +888,15 @@ export default function MeterDetailPage() {
                     placeholder="例如：松原市自来水公司"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>支付宝收费机构编码</Label>
-                  <Input
-                    value={form.waterChargeInst}
-                    onChange={(e) => setForm({ ...form, waterChargeInst: e.target.value })}
-                    placeholder="例如生活缴费平台分配的 charge_inst"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>类型</Label>
-                  <Select value={form.waterType} onValueChange={(v) => setForm({ ...form, waterType: v as MeterType })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="base">基地水表</SelectItem>
-                      <SelectItem value="customer">客户水表</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>负责公司</Label>
-                  <Select value={form.waterEnterpriseId || "none"} onValueChange={(v) => setForm({ ...form, waterEnterpriseId: v === "none" ? "" : v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择负责公司" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">无</SelectItem>
-                      {enterprises.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-              <div className="mt-4 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-xl border border-sky-100">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <ReceiptText className="h-4 w-4 text-sky-600" />
-                      <span className="text-xs font-medium text-sky-700">账户余额</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${waterPaymentStatus.className}`}>{waterPaymentStatus.label}</span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold text-sky-700">{formatBalance(meter.waterBalance)}</p>
-                    <p className="mt-1 text-xs text-sky-700/70">
-                      {formatBalanceUpdatedAt(meter.waterBalanceUpdatedAt)}
-                      {waterPayment ? ` · 最近账单 ${formatBillAmount(waterPayment)}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 border-sky-200 hover:bg-sky-100 hover:border-sky-300"
-                      onClick={() => handleSyncBalance("water")}
-                      disabled={syncingBalance !== null}
-                    >
-                      {syncingBalance === "water" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                      同步余额
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 border-sky-200 hover:bg-sky-100 hover:border-sky-300"
-                      onClick={() => openUtilityBillDialog("water")}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      录入账单
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <UtilityResponsibilityFields
+                responsibilityType={form.waterType}
+                enterpriseId={form.waterEnterpriseId}
+                enterprises={enterprises}
+                managementCompanyName={baseContext.managementCompanyName}
+                onResponsibilityTypeChange={waterType => setForm(current => ({ ...current, waterType }))}
+                onEnterpriseChange={waterEnterpriseId => setForm(current => ({ ...current, waterEnterpriseId }))}
+              />
             </div>}
 
             {/* 取暖 - 状态选择 */}
@@ -1000,7 +905,7 @@ export default function MeterDetailPage() {
                 <Flame className="h-4 w-4 text-orange-500" />
                 取暖号
               </h3>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:max-w-md">
                 <div className="space-y-2">
                   <Label>取暖号</Label>
                   <Input
@@ -1009,114 +914,229 @@ export default function MeterDetailPage() {
                     placeholder="输入取暖号"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>类型</Label>
-                  <Select value={form.heatingType} onValueChange={(v) => setForm({ ...form, heatingType: v as MeterType })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="base">基地取暖号</SelectItem>
-                      <SelectItem value="customer">客户取暖号</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>负责公司</Label>
-                  <Select value={form.heatingEnterpriseId || "none"} onValueChange={(v) => setForm({ ...form, heatingEnterpriseId: v === "none" ? "" : v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择负责公司" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">无</SelectItem>
-                      {enterprises.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-              {/* 状态选择 */}
-              <div className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
-                <div className="flex items-center justify-between">
+              <UtilityResponsibilityFields
+                responsibilityType={form.heatingType}
+                enterpriseId={form.heatingEnterpriseId}
+                enterprises={enterprises}
+                managementCompanyName={baseContext.managementCompanyName}
+                onResponsibilityTypeChange={heatingType => setForm(current => ({ ...current, heatingType }))}
+                onEnterpriseChange={heatingEnterpriseId => setForm(current => ({ ...current, heatingEnterpriseId }))}
+              />
+              <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <span className="text-sm font-medium" style={{ color: "#1C1917" }}>缴费状态</span>
-                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置取暖费缴纳状态</p>
+                    <span className="text-sm font-medium text-slate-800">供暖状态</span>
+                    <p className="mt-0.5 text-xs text-slate-500">费用记录在“费用录入”中统一维护。</p>
                   </div>
-                  <Select value={form.heatingStatus} onValueChange={(v) => setForm({ ...form, heatingStatus: v as HeatingStatus })}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full">全额</SelectItem>
-                      <SelectItem value="base">基础</SelectItem>
-                      <SelectItem value="arrears">欠费</SelectItem>
-                      <SelectItem value="not_applicable">不涉及</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Select value={form.heatingStatus} onValueChange={(v) => setForm({ ...form, heatingStatus: v as HeatingStatus })}>
+                      <SelectTrigger className="w-32 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="full">全额</SelectItem>
+                        <SelectItem value="base">基础</SelectItem>
+                        <SelectItem value="arrears">欠费</SelectItem>
+                        <SelectItem value="not_applicable">不涉及</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
+            </div>}
+
+            {form.propertyFeeEnabled && <div>
+              <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-2 text-sm font-medium" style={{ color: "#78716C" }}>
+                <ReceiptText className="h-4 w-4 text-emerald-600" />
+                物业费
+              </h3>
+              {baseContext.propertyFeeMode === "free" ? (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
+                  当前基地免收物业费，无需指定费用承担方。
+                </div>
+              ) : (
+                <>
+                  <UtilityResponsibilityFields
+                    responsibilityType={form.propertyFeeType}
+                    enterpriseId={form.propertyFeeEnterpriseId}
+                    enterprises={enterprises}
+                    managementCompanyName={baseContext.managementCompanyName}
+                    onResponsibilityTypeChange={propertyFeeType => setForm(current => ({ ...current, propertyFeeType }))}
+                    onEnterpriseChange={propertyFeeEnterpriseId => setForm(current => ({ ...current, propertyFeeEnterpriseId }))}
+                  />
+                </>
+              )}
             </div>}
 
             {/* 网络 - 状态选择 */}
             {form.networkEnabled && <div>
               <h3 className="text-sm font-medium mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" style={{ color: "#78716C" }}>
                 <Wifi className="h-4 w-4 text-violet-500" />
-                网络
+                宽带费
               </h3>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:max-w-md">
                 <div className="space-y-2">
-                  <Label>网络账号</Label>
+                  <Label>宽带账号</Label>
                   <Input
                     value={form.networkNumber}
                     onChange={(e) => setForm({ ...form, networkNumber: e.target.value })}
-                    placeholder="输入网络账号"
+                    placeholder="输入宽带账号"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>类型</Label>
-                  <Select value={form.networkType} onValueChange={(v) => setForm({ ...form, networkType: v as MeterType })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="base">基地网络</SelectItem>
-                      <SelectItem value="customer">客户网络</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div></div>
               </div>
-              {/* 状态选择 */}
-              <div className="mt-4 p-4 bg-violet-50 rounded-xl border border-violet-100">
-                <div className="flex items-center justify-between">
+              <UtilityResponsibilityFields
+                responsibilityType={form.networkType}
+                enterpriseId={form.networkEnterpriseId}
+                enterprises={enterprises}
+                managementCompanyName={baseContext.managementCompanyName}
+                onResponsibilityTypeChange={networkType => setForm(current => ({ ...current, networkType }))}
+                onEnterpriseChange={networkEnterpriseId => setForm(current => ({ ...current, networkEnterpriseId }))}
+              />
+              <div className="mt-4 rounded-lg border border-violet-100 bg-violet-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <span className="text-sm font-medium" style={{ color: "#1C1917" }}>缴费状态</span>
-                    <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>手动设置网络费状态</p>
+                    <span className="text-sm font-medium text-slate-800">宽带状态</span>
+                    <p className="mt-0.5 text-xs text-slate-500">费用记录在“费用录入”中统一维护。</p>
                   </div>
-                  <Select value={form.networkStatus} onValueChange={(v) => setForm({ ...form, networkStatus: v as NetworkStatus })}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">正常</SelectItem>
-                      <SelectItem value="arrears">欠费</SelectItem>
-                      <SelectItem value="not_applicable">不涉及</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Select value={form.networkStatus} onValueChange={(v) => setForm({ ...form, networkStatus: v as NetworkStatus })}>
+                      <SelectTrigger className="w-32 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">正常</SelectItem>
+                        <SelectItem value="arrears">欠费</SelectItem>
+                        <SelectItem value="not_applicable">不涉及</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>}
+
+            {extraFeeTypes.map(feeType => {
+              const config = feeConfigForms[feeType.id];
+              if (!config?.enabled) return null;
+              return (
+                <div key={feeType.id}>
+                  <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-2 text-sm font-medium text-slate-600">
+                    <ReceiptText className="h-4 w-4 text-slate-500" />
+                    {feeType.name}
+                    <span className="ml-auto text-xs font-normal text-slate-400">{feeType.billingCycle === "monthly" ? "按月" : "按年"}</span>
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>费用账户/合同号</Label>
+                      <Input
+                        value={config.accountNumber}
+                        onChange={event => setFeeConfigForms(current => ({
+                          ...current,
+                          [feeType.id]: { ...current[feeType.id], accountNumber: event.target.value },
+                        }))}
+                        placeholder="选填"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>收费方</Label>
+                      <Input
+                        value={config.provider}
+                        onChange={event => setFeeConfigForms(current => ({
+                          ...current,
+                          [feeType.id]: { ...current[feeType.id], provider: event.target.value },
+                        }))}
+                        placeholder="选填"
+                      />
+                    </div>
+                  </div>
+                  <UtilityResponsibilityFields
+                    responsibilityType={config.responsibilityType}
+                    enterpriseId={config.enterpriseId}
+                    enterprises={enterprises}
+                    managementCompanyName={baseContext.managementCompanyName}
+                    onResponsibilityTypeChange={responsibilityType => setFeeConfigForms(current => ({
+                      ...current,
+                      [feeType.id]: { ...current[feeType.id], responsibilityType },
+                    }))}
+                    onEnterpriseChange={enterpriseId => setFeeConfigForms(current => ({
+                      ...current,
+                      [feeType.id]: { ...current[feeType.id], enterpriseId },
+                    }))}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
+        </TabsContent>
 
-        {/* 物理空间 */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: "#1C1917" }}>
-              <DoorOpen className="h-5 w-5" style={{ color: "#A8A29E" }} />
-              物理空间
-            </h2>
+        <TabsContent value="billing" className="mt-0">
+          <section>
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">费用录入</h2>
+                <p className="mt-1 text-sm text-slate-500">按费用类型登记当前物业的月度消费或年度费用。</p>
+              </div>
+              <span className="text-sm text-slate-400">{enabledFeeConfigs.length} 类适用费用</span>
+            </div>
+
+            {enabledFeeConfigs.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-400">
+                请先在“费用配置”中启用适用费用。
+              </div>
+            ) : (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {enabledFeeConfigs.map(config => {
+                  const feeType = config.feeType;
+                  const latestPayment = getLatestPayment(meter, feeType.code);
+                  const paymentStatus = getPaymentStatus(latestPayment);
+                  const FeeIcon = getFeeIcon(feeType.code);
+                  const cycleLabel = feeType.billingCycle === "monthly" ? "月度" : "年度";
+                  return (
+                    <article key={config.id} className="flex min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <FeeIcon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-900">{feeType.name}</h3>
+                            <p className="mt-0.5 text-xs text-slate-400">{cycleLabel}记录 · {config.accountNumber || "未登记账户"}</p>
+                          </div>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${paymentStatus.className}`}>
+                          {paymentStatus.label}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex items-end justify-between gap-3 border-t border-slate-100 pt-3">
+                        <div className="min-w-0">
+                          <p className="text-xs text-slate-400">最近记录</p>
+                          <p className="mt-1 truncate text-sm font-medium tabular-nums text-slate-700">
+                            {latestPayment ? `${latestPayment.billingPeriod} · ${formatBillAmount(latestPayment)}` : "暂无记录"}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => openUtilityBillDialog(feeType.code as UtilityBillType)}>
+                          <Plus className="mr-1.5 h-3.5 w-3.5" />录入
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="resources" className="mt-0">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                <DoorOpen className="h-5 w-5 text-slate-500" />
+                物理空间与工位
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">按房间规划空间，并在空间内维护工位资源。</p>
+            </div>
             <Button variant="outline" size="sm" onClick={() => setShowAddSpace(true)}>
               <Plus className="h-4 w-4 mr-1" />
               新增空间
@@ -1125,8 +1145,8 @@ export default function MeterDetailPage() {
 
           {/* 新增空间表单 */}
           {showAddSpace && (
-            <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
-              <div className="flex gap-3 items-end">
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1 space-y-2">
                   <Label>空间名称 *</Label>
                   <Input
@@ -1152,42 +1172,37 @@ export default function MeterDetailPage() {
           ) : (
             <div className="space-y-3">
               {meter.spaces?.map((space: Space) => (
-                <div key={space.id} className="border border-slate-200 rounded-xl overflow-hidden">
-                  {/* 空间头部 */}
-                  <div
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                <div key={space.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  <button
+                    type="button"
+                    className="flex w-full flex-col gap-3 p-4 text-left transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                     onClick={() => setExpandedSpace(expandedSpace === space.id ? null : space.id)}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
-                        <DoorOpen className="h-5 w-5 text-emerald-600" />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                        <DoorOpen className="h-5 w-5" />
                       </div>
-                      <div>
-                        <span className="font-medium" style={{ color: "#1C1917" }}>{space.code}</span>
-                        <span className="text-sm ml-2" style={{ color: "#78716C" }}>{space.name}</span>
-                        {space.area && (
-                          <span className="text-xs ml-2 px-2 py-0.5 rounded-full bg-slate-100" style={{ color: "#A8A29E" }}>
-                            {space.area}㎡
-                          </span>
-                        )}
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-slate-900">{space.name}</p>
+                        <p className="mt-1 text-xs text-slate-400">空间编号 {space.code}{space.area ? ` · ${space.area} ㎡` : ""}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-xs px-2.5 py-1 rounded-full" style={{ background: (space.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0) > 0 ? "#DCFCE7" : "#F5F5F4", color: (space.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0) > 0 ? "#15803D" : "#78716C" }}>
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                      <div className={`rounded-full px-2.5 py-1 text-xs font-medium ${(space.regNumbers?.filter((r: RegNumber) => r.available === false).length || 0) > 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         {(space.regNumbers?.filter((r: RegNumber) => r.available === false)?.length || 0)}/{space.regNumbers?.length || 0} 已分配
                       </div>
-                      <ChevronRight className={`h-4 w-4 transition-transform ${expandedSpace === space.id ? "rotate-90" : ""}`} style={{ color: "#A8A29E" }} />
+                      <ChevronRight className={`h-4 w-4 text-slate-400 transition-transform ${expandedSpace === space.id ? "rotate-90" : ""}`} />
                     </div>
-                  </div>
+                  </button>
 
                   {/* 展开内容 */}
                   {expandedSpace === space.id && (
-                    <div className="px-4 pb-4 border-t border-slate-100 bg-slate-50/50">
+                    <div className="border-t border-slate-100 bg-slate-50/60 px-4 pb-4">
                       {/* 空间编辑表单 */}
                       {editingSpace === space.id ? (
                         <div className="bg-white rounded-lg p-4 mt-3 border border-slate-200">
                           <h4 className="text-sm font-medium mb-3" style={{ color: "#1C1917" }}>编辑空间信息</h4>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
                               <Label>空间名称 *</Label>
                               <Input
@@ -1217,7 +1232,7 @@ export default function MeterDetailPage() {
                       ) : (
                         <>
                           {/* 操作按钮 */}
-                          <div className="flex items-center gap-2 mt-3 mb-3">
+                          <div className="mb-3 mt-3 flex items-center gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1243,8 +1258,8 @@ export default function MeterDetailPage() {
                           </div>
 
                           {/* 工位号 */}
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-medium" style={{ color: "#78716C" }}>工位号</span>
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-xs font-medium text-slate-500">工位号</span>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1260,10 +1275,10 @@ export default function MeterDetailPage() {
 
                           {/* 新增工位号表单 */}
                           {showAddRegNumber === space.id && (
-                            <div className="bg-white rounded-lg p-3 mb-3 border border-slate-200">
-                              <div className="flex gap-2 items-end">
+                            <div className="mb-3 rounded-lg border border-slate-200 bg-white p-3">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                                 <div className="flex-1">
-                                  <label className="text-xs font-medium mb-1 block" style={{ color: "#78716C" }}>工位号 *</label>
+                                  <label className="mb-1 block text-xs font-medium text-slate-500">工位号 *</label>
                                   <Input
                                     value={regNumberForm.code}
                                     onChange={(e) => setRegNumberForm({ code: e.target.value })}
@@ -1283,7 +1298,7 @@ export default function MeterDetailPage() {
                           {(space.regNumbers?.length || 0) === 0 ? (
                             <p className="text-xs text-center py-6" style={{ color: "#A8A29E" }}>暂无工位号</p>
                           ) : (
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                               {space.regNumbers?.map((reg: RegNumber) => {
                                 // 优先显示人工编号
                                 const displayCode = reg.manualCode || reg.code;
@@ -1292,15 +1307,15 @@ export default function MeterDetailPage() {
                                 return (
                                   <div
                                     key={reg.id}
-                                    className={`px-3 py-2.5 rounded-lg border text-center ${
+                                    className={`rounded-md border px-3 py-2.5 text-center ${
                                       reg.available === false
                                         ? "bg-emerald-50 border-emerald-200"
                                         : "bg-white border-slate-200"
                                     }`}
                                   >
-                                    <span className="font-mono text-sm font-medium" style={{ color: "#1C1917" }}>{displayCode}</span>
+                                    <span className="font-mono text-sm font-medium text-slate-900">{displayCode}</span>
                                     {displayName && (
-                                      <p className="text-xs mt-0.5 truncate" style={{ color: "#A8A29E" }}>{displayName}</p>
+                                      <p className="mt-0.5 truncate text-xs text-slate-400">{displayName}</p>
                                     )}
                                   </div>
                                 );
@@ -1316,6 +1331,8 @@ export default function MeterDetailPage() {
             </div>
           )}
         </div>
+        </TabsContent>
+        </Tabs>
       </div>
 
       <Dialog
@@ -1326,22 +1343,26 @@ export default function MeterDetailPage() {
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>录入{billDialogType === "electricity" ? "电费" : "水费"}账单</DialogTitle>
+            <DialogTitle>录入{billDialogType ? getUtilityLabel(billDialogType, feeTypes) : "费用"}{billIsMonthly ? "消费" : "记录"}</DialogTitle>
             <DialogDescription>
-              录入收费机构账单或历史缴费记录。同一账期再次保存会更新原记录。
+              {billIsMonthly
+                ? "登记当月消费金额与用量。同一月份再次保存会更新原记录。"
+                : "登记本期费用、缴费状态和发票进度。同一周期再次保存会更新原记录。"}
+              该记录由管理公司统一维护。
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>账期</Label>
+              <Label>{billIsMonthly ? "账期" : "年度/周期"}</Label>
               <Input
-                type="month"
+                type={billIsMonthly ? "month" : "text"}
                 value={utilityBillForm.billingPeriod}
                 onChange={(event) => setUtilityBillForm({ ...utilityBillForm, billingPeriod: event.target.value })}
+                placeholder={billDialogType === "heating" ? "例如：2025-2026" : "例如：2026"}
               />
             </div>
             <div className="space-y-2">
-              <Label>应缴金额（元）</Label>
+              <Label>{billIsMonthly ? "消费金额（元）" : "应缴金额（元）"}</Label>
               <Input
                 type="number"
                 min="0"
@@ -1351,7 +1372,7 @@ export default function MeterDetailPage() {
                 placeholder="0.00"
               />
             </div>
-            <div className="space-y-2">
+            {billSupportsUsage && <div className="space-y-2">
               <Label>用量（可选）</Label>
               <Input
                 type="number"
@@ -1361,8 +1382,8 @@ export default function MeterDetailPage() {
                 onChange={(event) => setUtilityBillForm({ ...utilityBillForm, quantity: event.target.value })}
                 placeholder={billDialogType === "electricity" ? "单位：kWh" : "单位：m³"}
               />
-            </div>
-            <div className="space-y-2">
+            </div>}
+            {billSupportsUsage && <div className="space-y-2">
               <Label>单价（可选）</Label>
               <Input
                 type="number"
@@ -1372,39 +1393,73 @@ export default function MeterDetailPage() {
                 onChange={(event) => setUtilityBillForm({ ...utilityBillForm, unitPrice: event.target.value })}
                 placeholder="0.0000"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>账单状态</Label>
-              <Select
-                value={utilityBillForm.status}
-                onValueChange={(value) => setUtilityBillForm({ ...utilityBillForm, status: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">待缴</SelectItem>
-                  <SelectItem value="arrears">欠费</SelectItem>
-                  <SelectItem value="paid">已缴</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>支付方式（可选）</Label>
-              <Input
-                value={utilityBillForm.paymentMethod}
-                onChange={(event) => setUtilityBillForm({ ...utilityBillForm, paymentMethod: event.target.value })}
-                placeholder="例如：支付宝、银行转账"
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>回执号（可选）</Label>
-              <Input
-                value={utilityBillForm.receiptNumber}
-                onChange={(event) => setUtilityBillForm({ ...utilityBillForm, receiptNumber: event.target.value })}
-                placeholder="缴费回执或收费机构流水号"
-              />
-            </div>
+            </div>}
+            {!billIsMonthly && <>
+              <div className="space-y-2">
+                <Label>缴费截止日（可选）</Label>
+                <Input
+                  type="date"
+                  value={utilityBillForm.dueDate}
+                  onChange={(event) => setUtilityBillForm({ ...utilityBillForm, dueDate: event.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>账单状态</Label>
+                <Select
+                  value={utilityBillForm.status}
+                  onValueChange={(value) => setUtilityBillForm({ ...utilityBillForm, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">待缴</SelectItem>
+                    <SelectItem value="arrears">欠费</SelectItem>
+                    <SelectItem value="paid">已缴</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>支付方式（可选）</Label>
+                <Input
+                  value={utilityBillForm.paymentMethod}
+                  onChange={(event) => setUtilityBillForm({ ...utilityBillForm, paymentMethod: event.target.value })}
+                  placeholder="例如：支付宝、银行转账"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>缴费回执号（可选）</Label>
+                <Input
+                  value={utilityBillForm.receiptNumber}
+                  onChange={(event) => setUtilityBillForm({ ...utilityBillForm, receiptNumber: event.target.value })}
+                  placeholder="缴费回执或收费机构流水号"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>发票状态</Label>
+                <Select
+                  value={utilityBillForm.invoiceStatus}
+                  onValueChange={(value) => setUtilityBillForm({ ...utilityBillForm, invoiceStatus: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">待开票</SelectItem>
+                    <SelectItem value="issued">已开票</SelectItem>
+                    <SelectItem value="not_required">无需开票</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>发票号码（可选）</Label>
+                <Input
+                  value={utilityBillForm.invoiceNumber}
+                  onChange={(event) => setUtilityBillForm({ ...utilityBillForm, invoiceNumber: event.target.value })}
+                  placeholder="登记发票号码"
+                />
+              </div>
+            </>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBillDialogType(null)} disabled={savingBill}>
@@ -1412,7 +1467,7 @@ export default function MeterDetailPage() {
             </Button>
             <Button onClick={handleSaveUtilityBill} disabled={savingBill}>
               {savingBill && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              保存账单
+              {billIsMonthly ? "保存消费记录" : "保存费用记录"}
             </Button>
           </DialogFooter>
         </DialogContent>

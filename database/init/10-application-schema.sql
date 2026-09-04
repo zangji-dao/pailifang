@@ -499,9 +499,12 @@ CREATE TABLE public.meters (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone,
     property_fee_enabled boolean DEFAULT false NOT NULL,
+    property_fee_type character varying(20) DEFAULT 'base'::character varying,
+    property_fee_enterprise_id character varying(36),
     network_enabled boolean DEFAULT false NOT NULL,
     network_number character varying(50),
     network_type character varying(20) DEFAULT 'base'::character varying,
+    network_enterprise_id character varying(36),
     electricity_balance numeric(10,2),
     electricity_balance_updated_at timestamp without time zone,
     water_balance numeric(10,2),
@@ -509,6 +512,43 @@ CREATE TABLE public.meters (
     network_status character varying(20) DEFAULT 'normal'::character varying,
     heating_status character varying(20) DEFAULT 'full_paid'::character varying
 );
+
+CREATE TABLE public.base_fee_types (
+    id character varying(36) DEFAULT gen_random_uuid() NOT NULL,
+    base_id character varying(36) NOT NULL REFERENCES public.bases(id) ON DELETE CASCADE,
+    code character varying(50) NOT NULL,
+    name character varying(100) NOT NULL,
+    billing_cycle character varying(20) DEFAULT 'monthly'::character varying NOT NULL,
+    is_builtin boolean DEFAULT false NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone,
+    CONSTRAINT base_fee_types_pkey PRIMARY KEY (id),
+    CONSTRAINT base_fee_types_base_code_unique UNIQUE (base_id, code),
+    CONSTRAINT base_fee_types_cycle_check CHECK (billing_cycle IN ('monthly', 'annual'))
+);
+
+CREATE INDEX base_fee_types_base_idx ON public.base_fee_types USING btree (base_id, is_active, sort_order);
+
+CREATE TABLE public.meter_fee_configs (
+    id character varying(36) DEFAULT gen_random_uuid() NOT NULL,
+    meter_id character varying(36) NOT NULL REFERENCES public.meters(id) ON DELETE CASCADE,
+    fee_type_id character varying(36) NOT NULL REFERENCES public.base_fee_types(id) ON DELETE CASCADE,
+    enabled boolean DEFAULT false NOT NULL,
+    responsibility_type character varying(20) DEFAULT 'base'::character varying NOT NULL,
+    enterprise_id character varying(36),
+    account_number character varying(100),
+    provider character varying(255),
+    notes text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone,
+    CONSTRAINT meter_fee_configs_pkey PRIMARY KEY (id),
+    CONSTRAINT meter_fee_configs_meter_type_unique UNIQUE (meter_id, fee_type_id),
+    CONSTRAINT meter_fee_configs_responsibility_check CHECK (responsibility_type IN ('base', 'customer'))
+);
+
+CREATE INDEX meter_fee_configs_meter_idx ON public.meter_fee_configs USING btree (meter_id, enabled);
 
 
 --

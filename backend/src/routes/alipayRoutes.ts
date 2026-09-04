@@ -8,8 +8,6 @@ import {
   getAlipayConfigurationStatus,
   generateAuthUrl,
   exchangeToken,
-  queryInstitutionBill,
-  UtilityBillSubType,
 } from '../services/alipay';
 import { db, alipayAuthTokens, eq } from '../database/client';
 
@@ -163,62 +161,6 @@ router.get('/status', async (req: Request, res: Response) => {
       error: '查询授权状态失败',
     });
   }
-});
-
-/**
- * POST /api/alipay/bill/query
- * 兼容旧版户号查账接口
- */
-router.post('/bill/query', async (req: Request, res: Response) => {
-  try {
-    const { billKey, chargeInst, billType, billDate } = req.body as {
-      billKey?: string;
-      chargeInst?: string;
-      billType?: UtilityBillSubType;
-      billDate?: string;
-    };
-
-    if (!billKey || !chargeInst || !billType || !['ELECTRIC', 'WATER'].includes(billType)) {
-      return res.status(400).json({
-        success: false,
-        code: 'INVALID_UTILITY_BILL_QUERY',
-        error: '请提供正确的户号、收费机构编码和缴费类型。',
-      });
-    }
-
-    const result = await queryInstitutionBill({
-      billKey,
-      chargeInst,
-      subBizType: billType,
-      billDate,
-    });
-
-    if (!result.success) {
-      const status = result.code === 'ALIPAY_UTILITY_BILLING_NOT_ENABLED' ? 403 : 502;
-      return res.status(status).json(result);
-    }
-
-    return res.json(result);
-  } catch (error) {
-    console.error('支付宝生活缴费查询失败:', error);
-    return res.status(500).json({
-      success: false,
-      code: 'ALIPAY_UTILITY_BILL_QUERY_FAILED',
-      error: error instanceof Error ? error.message : '支付宝生活缴费查询失败',
-    });
-  }
-});
-
-/**
- * GET /api/alipay/charge-insts
- * 兼容旧版收费机构列表接口
- */
-router.get('/charge-insts', (_req: Request, res: Response) => {
-  res.status(410).json({
-    success: false,
-    code: 'ALIPAY_CHARGE_INST_LIST_UNAVAILABLE',
-    error: '收费机构编码由获批的生活缴费机构接入方案提供，平台不再使用预置模拟编码。',
-  });
 });
 
 export default router;

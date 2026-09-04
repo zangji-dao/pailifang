@@ -97,18 +97,12 @@ export async function GET(
         electricity_enabled,
         electricity_number,
         electricity_provider,
-        electricity_charge_inst,
         electricity_type,
-        electricity_balance,
-        electricity_balance_updated_at,
         electricity_enterprise_id,
         water_enabled,
         water_number,
         water_provider,
-        water_charge_inst,
         water_type,
-        water_balance,
-        water_balance_updated_at,
         water_enterprise_id,
         heating_enabled,
         heating_number,
@@ -116,10 +110,13 @@ export async function GET(
         heating_status,
         heating_enterprise_id,
         property_fee_enabled,
+        property_fee_type,
+        property_fee_enterprise_id,
         network_enabled,
         network_number,
         network_type,
         network_status,
+        network_enterprise_id,
         enterprise_id,
         created_at,
         updated_at,
@@ -143,12 +140,44 @@ export async function GET(
     }
 
     const meterIds = (meters || []).map(meter => meter.id);
+    const { data: feeTypes, error: feeTypesError } = await supabase
+      .from('base_fee_types')
+      .select('id, base_id, code, name, billing_cycle, is_builtin, is_active, sort_order, created_at, updated_at')
+      .eq('base_id', id)
+      .order('sort_order');
+
+    if (feeTypesError) {
+      console.error('获取基地费用类型失败:', feeTypesError);
+    }
+
+    const { data: meterFeeConfigs, error: meterFeeConfigsError } = meterIds.length > 0
+      ? await supabase
+          .from('meter_fee_configs')
+          .select('id, meter_id, fee_type_id, enabled, responsibility_type, enterprise_id, account_number, provider, notes, created_at, updated_at')
+          .in('meter_id', meterIds)
+      : { data: [], error: null };
+
+    if (meterFeeConfigsError) {
+      console.error('获取物业费用配置失败:', meterFeeConfigsError);
+    }
+
+    const feeTypeById = new Map((feeTypes || []).map(feeType => [feeType.id, feeType]));
+    const feeConfigsByMeterId: Record<string, Record<string, unknown>[]> = {};
+    (meterFeeConfigs || []).forEach(config => {
+      if (!feeConfigsByMeterId[config.meter_id]) feeConfigsByMeterId[config.meter_id] = [];
+      feeConfigsByMeterId[config.meter_id].push({
+        ...config,
+        fee_type: feeTypeById.get(config.fee_type_id) || null,
+      });
+    });
+
     const { data: utilityPayments, error: utilityPaymentError } = meterIds.length > 0
       ? await supabase
           .from('property_utility_payments')
           .select(`
             id,
             meter_id,
+            fee_type_id,
             utility_type,
             billing_period,
             provider,
@@ -253,6 +282,10 @@ export async function GET(
         regNumbers: regNumbersBySpaceId[space.id] || []
       })) || [],
       utilityPayments: paymentsByMeterId[meter.id] || [],
+      feeConfigs: (feeConfigsByMeterId[meter.id] || []).map(config => ({
+        ...config,
+        feeType: config.fee_type,
+      })),
     })) || [];
 
     // 转换字段名为 camelCase
@@ -369,6 +402,7 @@ export async function GET(
         tenantEnterprises,
         serviceEnterprises,
         serviceEnterpriseCount: serviceEnterprises.length,
+        feeTypes: (feeTypes || []).map(feeType => toCamelCase(feeType)),
         meters: camelMeters,
       },
     });

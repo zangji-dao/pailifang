@@ -1,181 +1,134 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Zap, Droplets, Flame, Wifi, DoorOpen, Hash, ChevronRight, Gift } from "lucide-react";
-import type { Meter, NetworkStatus, HeatingStatus } from "../types";
+import {
+  Building2,
+  ChevronRight,
+  DoorOpen,
+  Droplets,
+  Flame,
+  Gift,
+  Hash,
+  PhoneCall,
+  ReceiptText,
+  Wifi,
+  Zap,
+} from "lucide-react";
+import type { Meter } from "../types";
+import { buildMeterUtilityTasks, getUtilityLabel, type UtilityTask } from "../utilityTasks";
 
 interface MeterCardProps {
   meter: Meter;
   baseId: string;
+  propertyFeeMode: "charged" | "free";
 }
 
-function formatBalance(value: number | string | null) {
-  if (value === null || value === "") return "--";
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "--";
-  return amount >= 1000 ? `¥${(amount / 1000).toFixed(1)}k` : `¥${amount.toFixed(2)}`;
+function getTaskStatus(task: UtilityTask) {
+  if (task.status === "exempt") return { label: "免收", className: "bg-emerald-50 text-emerald-700" };
+  if (task.status === "paid") {
+    return task.invoiceStatus === "pending"
+      ? { label: "待开票", className: "bg-cyan-50 text-cyan-700" }
+      : { label: "已缴", className: "bg-emerald-50 text-emerald-700" };
+  }
+  if (task.status === "arrears") return { label: "欠费", className: "bg-rose-50 text-rose-700" };
+  return { label: task.status === "missing" ? "待录入" : "待缴", className: "bg-amber-50 text-amber-700" };
 }
 
-// 网络状态显示 - 带图标和徽章样式
-function getNetworkStatusDisplay(status: NetworkStatus) {
-  const statusMap = {
-    normal: { 
-      text: "正常", 
-      dotColor: "bg-emerald-500",
-      textColor: "text-emerald-700",
-      bgColor: "bg-emerald-100 border-emerald-200"
-    },
-    arrears: { 
-      text: "欠费", 
-      dotColor: "bg-red-500 animate-pulse",
-      textColor: "text-red-700",
-      bgColor: "bg-red-100 border-red-200"
-    },
-    not_applicable: { 
-      text: "不涉及", 
-      dotColor: "bg-slate-400",
-      textColor: "text-slate-600",
-      bgColor: "bg-slate-100 border-slate-200"
-    },
-  };
-  return statusMap[status] || statusMap.normal;
+function getTaskIcon(type: string) {
+  if (type === "electricity") return Zap;
+  if (type === "water") return Droplets;
+  if (type === "heating") return Flame;
+  if (type === "property_fee") return Gift;
+  if (type === "telephone") return PhoneCall;
+  if (type === "network") return Wifi;
+  return ReceiptText;
 }
 
-// 取暖状态显示 - 带图标和徽章样式
-function getHeatingStatusDisplay(status: HeatingStatus) {
-  const statusMap = {
-    full: { 
-      text: "全额", 
-      dotColor: "bg-emerald-500",
-      textColor: "text-emerald-700",
-      bgColor: "bg-emerald-100 border-emerald-200"
-    },
-    base: { 
-      text: "基础", 
-      dotColor: "bg-amber-500",
-      textColor: "text-amber-700",
-      bgColor: "bg-amber-100 border-amber-200"
-    },
-    arrears: { 
-      text: "欠费", 
-      dotColor: "bg-red-500 animate-pulse",
-      textColor: "text-red-700",
-      bgColor: "bg-red-100 border-red-200"
-    },
-    not_applicable: { 
-      text: "不涉及", 
-      dotColor: "bg-slate-400",
-      textColor: "text-slate-600",
-      bgColor: "bg-slate-100 border-slate-200"
-    },
-  };
-  return statusMap[status] || statusMap.full;
-}
-
-export function MeterCard({ meter, baseId }: MeterCardProps) {
+export function MeterCard({ meter, baseId, propertyFeeMode }: MeterCardProps) {
   const router = useRouter();
-
-  // 点击卡片跳转到物业详情页
-  const handleClick = () => {
-    router.push(`/dashboard/base/sites/${baseId}/meters/${meter.id}`);
-  };
-
-  // 计算已分配工位号数量（available = false 表示已分配）
   const allocatedRegNumbers = meter.spaces?.reduce(
-    (sum, sp) => sum + (sp.regNumbers?.filter(r => r.available === false)?.length || 0),
-    0
+    (sum, space) => sum + (space.regNumbers?.filter(regNumber => regNumber.available === false)?.length || 0),
+    0,
   ) || 0;
-
   const totalRegNumbers = meter.spaces?.reduce(
-    (sum, sp) => sum + (sp.regNumbers?.length || 0),
-    0
+    (sum, space) => sum + (space.regNumbers?.length || 0),
+    0,
   ) || 0;
-
-  const networkDisplay = getNetworkStatusDisplay(meter.networkStatus);
-  const heatingDisplay = getHeatingStatusDisplay(meter.heatingStatus);
+  const utilityTasks = buildMeterUtilityTasks(meter, propertyFeeMode);
+  const feeTypes = meter.feeConfigs?.map(config => config.feeType) || [];
+  const arrearsCount = utilityTasks.filter(task => task.status === "arrears").length;
+  const pendingCount = utilityTasks.filter(task => task.status === "missing" || task.status === "pending").length;
+  const invoicePendingCount = utilityTasks.filter(task => task.invoiceStatus === "pending").length;
+  const feeOverview = arrearsCount > 0
+    ? { label: `${arrearsCount} 项欠费`, className: "bg-rose-50 text-rose-700 ring-rose-600/15" }
+    : pendingCount > 0
+      ? { label: `${pendingCount} 项待处理`, className: "bg-amber-50 text-amber-700 ring-amber-600/15" }
+      : invoicePendingCount > 0
+        ? { label: `${invoicePendingCount} 项待开票`, className: "bg-cyan-50 text-cyan-700 ring-cyan-600/15" }
+        : { label: "费用正常", className: "bg-emerald-50 text-emerald-700 ring-emerald-600/15" };
 
   return (
-    <div onClick={handleClick} className="group cursor-pointer">
-      <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all duration-300 hover:-translate-y-0.5 h-full flex flex-col">
-        {/* 物业编号和面积 */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-2xl font-semibold text-slate-900">{meter.code}</h3>
-            {meter.area && (
-              <p className="text-sm mt-0.5" style={{ color: "#78716C" }}>{meter.area} ㎡</p>
-            )}
+    <button
+      type="button"
+      onClick={() => router.push(`/dashboard/base/sites/${baseId}/meters/${meter.id}?from=resources`)}
+      className="group flex h-full w-full flex-col rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-cyan-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+    >
+      <div className="flex flex-col gap-3 pl-7 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <Building2 className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="break-words font-semibold leading-5 text-slate-950">{meter.name || meter.code}</h3>
+            <p className="mt-1 text-[11px] text-slate-400 sm:text-xs">物业编号 {meter.code}</p>
           </div>
-          <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
         </div>
+        <span className={`self-start rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${feeOverview.className}`}>
+          {feeOverview.label}
+        </span>
+      </div>
 
-        {/* 已启用费用 */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {/* 电 - 显示余额 */}
-          {meter.electricityEnabled && <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-100">
-            <Zap className="h-5 w-5 text-amber-500" />
-            <span className="text-xs mt-1 font-medium text-amber-700">电</span>
-            <span className={`text-sm font-bold mt-0.5 ${meter.electricityBalance === null ? "text-slate-400" : "text-amber-700"}`}>
-              {formatBalance(meter.electricityBalance)}
-            </span>
-            <span className="text-[10px] text-amber-600/60">{meter.electricityBalanceUpdatedAt ? "已同步" : "待同步"}</span>
-          </div>}
-
-          {/* 水 - 显示余额 */}
-          {meter.waterEnabled && <div className="flex flex-col items-center p-2.5 rounded-xl bg-gradient-to-b from-sky-50 to-sky-100/50 border border-sky-100">
-            <Droplets className="h-5 w-5 text-sky-500" />
-            <span className="text-xs mt-1 font-medium text-sky-700">水</span>
-            <span className={`text-sm font-bold mt-0.5 ${meter.waterBalance === null ? "text-slate-400" : "text-sky-700"}`}>
-              {formatBalance(meter.waterBalance)}
-            </span>
-            <span className="text-[10px] text-sky-600/60">{meter.waterBalanceUpdatedAt ? "已同步" : "待同步"}</span>
-          </div>}
-
-          {/* 暖 - 显示状态徽章 */}
-          {meter.heatingEnabled && <div className={`flex flex-col items-center p-2.5 rounded-xl border ${heatingDisplay.bgColor}`}>
-            <Flame className={`h-5 w-5 ${heatingDisplay.textColor}`} />
-            <span className="text-xs mt-1 font-medium text-orange-700">暖</span>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 ${heatingDisplay.bgColor} ${heatingDisplay.textColor}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${heatingDisplay.dotColor}`}></span>
-              {heatingDisplay.text}
-            </span>
-          </div>}
-
-          {meter.propertyFeeEnabled && <div className="flex flex-col items-center rounded-xl border border-emerald-100 bg-emerald-50 p-2.5">
-            <Gift className="h-5 w-5 text-emerald-600" />
-            <span className="mt-1 text-xs font-medium text-emerald-700">物业</span>
-            <span className="mt-1 text-[10px] font-medium text-emerald-700">已启用</span>
-          </div>}
-
-          {/* 网 - 显示状态徽章 */}
-          {meter.networkEnabled && <div className={`flex flex-col items-center p-2.5 rounded-xl border ${networkDisplay.bgColor}`}>
-            <Wifi className={`h-5 w-5 ${networkDisplay.textColor}`} />
-            <span className="text-xs mt-1 font-medium text-violet-700">网</span>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 ${networkDisplay.bgColor} ${networkDisplay.textColor}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${networkDisplay.dotColor}`}></span>
-              {networkDisplay.text}
-            </span>
-          </div>}
+      <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-y border-slate-100 py-3">
+        <div className="pr-3">
+          <p className="text-[11px] text-slate-400">建筑面积</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums text-slate-800">{Number(meter.area || 0).toLocaleString("zh-CN")} ㎡</p>
         </div>
-
-        {/* 底部统计 - 简化显示 */}
-        <div className="mt-auto pt-4 border-t border-slate-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* 空间数量 */}
-              <div className="flex items-center gap-1.5">
-                <DoorOpen className="h-4 w-4 text-slate-400" />
-                <span className="text-sm text-slate-600">{meter.spaces?.length || 0} 空间</span>
-              </div>
-              {/* 工位号统计 */}
-              <div className="flex items-center gap-1.5">
-                <Hash className="h-4 w-4 text-slate-400" />
-                <span className="text-sm text-slate-600">{allocatedRegNumbers}/{totalRegNumbers} 已分配</span>
-              </div>
-            </div>
-            <span className="text-xs text-slate-400 group-hover:text-amber-500 transition-colors">点击查看详情</span>
-          </div>
+        <div className="px-3">
+          <p className="flex items-center gap-1 text-[11px] text-slate-400"><DoorOpen className="h-3 w-3" />物理空间</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums text-slate-800">{meter.spaces?.length || 0} 个</p>
+        </div>
+        <div className="pl-3">
+          <p className="flex items-center gap-1 text-[11px] text-slate-400"><Hash className="h-3 w-3" />工位使用</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums text-slate-800">{allocatedRegNumbers}/{totalRegNumbers}</p>
         </div>
       </div>
-    </div>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium text-slate-500">适用费用</p>
+          <span className="text-[11px] text-slate-400">{utilityTasks.length} 类</span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {utilityTasks.length === 0 ? (
+            <span className="text-xs text-slate-400">尚未配置费用类型</span>
+          ) : utilityTasks.map(task => {
+            const Icon = getTaskIcon(task.utilityType);
+            const status = getTaskStatus(task);
+            return (
+              <span key={task.utilityType} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
+                <Icon className="h-3.5 w-3.5 text-slate-400" />
+                {getUtilityLabel(task.utilityType, feeTypes)}
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${status.className}`}>{status.label}</span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">
+        <span>管理费用、空间与工位</span>
+        <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:text-cyan-700" />
+      </div>
+    </button>
   );
 }
